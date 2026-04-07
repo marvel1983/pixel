@@ -54,7 +54,7 @@ function sanitizeUser(u: typeof users.$inferSelect) {
   return {
     id: u.id, email: u.email, firstName: u.firstName, lastName: u.lastName,
     role: u.role, avatarUrl: u.avatarUrl, emailVerified: u.emailVerified,
-    googleId: u.googleId, createdAt: u.createdAt,
+    googleId: u.googleId, createdAt: u.createdAt, preferredLocale: u.preferredLocale,
   };
 }
 

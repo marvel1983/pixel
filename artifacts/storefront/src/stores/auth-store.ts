@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import i18n from "@/i18n";
 
 export interface AuthUser {
   id: number;
@@ -8,6 +9,7 @@ export interface AuthUser {
   lastName: string | null;
   role: "CUSTOMER" | "ADMIN" | "SUPER_ADMIN";
   avatarUrl: string | null;
+  preferredLocale?: string | null;
 }
 
 interface AuthState {
@@ -26,7 +28,12 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       token: null,
 
-      setAuth: (user, token) => set({ user, token }),
+      setAuth: (user, token) => {
+        set({ user, token });
+        if (user.preferredLocale) {
+          i18n.changeLanguage(user.preferredLocale);
+        }
+      },
 
       logout: () => {
         const baseUrl = import.meta.env.VITE_API_URL ?? "/api";
@@ -56,6 +63,9 @@ export const useAuthStore = create<AuthState>()(
           if (res.ok) {
             const data = await res.json();
             set({ user: data.user });
+            if (data.user.preferredLocale) {
+              i18n.changeLanguage(data.user.preferredLocale);
+            }
           } else {
             set({ user: null, token: null });
           }

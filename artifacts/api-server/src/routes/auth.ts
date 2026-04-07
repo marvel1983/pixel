@@ -34,14 +34,8 @@ const updateProfileSchema = z.object({
   newPassword: z.string().min(8).optional(),
 });
 
-const forgotPasswordSchema = z.object({
-  email: z.string().email(),
-});
-
-const resetPasswordSchema = z.object({
-  token: z.string().min(1),
-  password: z.string().min(8),
-});
+const forgotPasswordSchema = z.object({ email: z.string().email() });
+const resetPasswordSchema = z.object({ token: z.string().min(1), password: z.string().min(8) });
 
 const COOKIE_OPTS = {
   httpOnly: true,
@@ -51,7 +45,7 @@ const COOKIE_OPTS = {
 };
 
 function sanitizeUser(u: User) {
-  return { id: u.id, email: u.email, firstName: u.firstName, lastName: u.lastName, role: u.role, avatarUrl: u.avatarUrl, emailVerified: u.emailVerified, googleId: u.googleId, createdAt: u.createdAt };
+  return { id: u.id, email: u.email, firstName: u.firstName, lastName: u.lastName, role: u.role, avatarUrl: u.avatarUrl, emailVerified: u.emailVerified, googleId: u.googleId, createdAt: u.createdAt, preferredLocale: u.preferredLocale };
 }
 
 function makeToken(u: User) {
@@ -98,7 +92,8 @@ router.post("/auth/register", async (req, res) => {
   res.cookie("token", token, COOKIE_OPTS);
   logger.info({ userId: user.id }, "User registered");
 
-  sendWelcomeEmail(user.email, firstName).catch((err) =>
+  const locale = typeof req.body.locale === "string" ? req.body.locale.slice(0, 10) : undefined;
+  sendWelcomeEmail(user.email, firstName, locale).catch((err) =>
     logger.error({ err, userId: user.id }, "Failed to enqueue welcome email"),
   );
   awardWelcomeBonus(user.id).catch((err) =>
@@ -226,7 +221,7 @@ router.post("/auth/forgot-password", async (req, res) => {
   }
 
   const [user] = await db
-    .select({ id: users.id, firstName: users.firstName })
+    .select({ id: users.id, firstName: users.firstName, preferredLocale: users.preferredLocale })
     .from(users)
     .where(eq(users.email, parsed.data.email.toLowerCase()))
     .limit(1);
@@ -250,6 +245,7 @@ router.post("/auth/forgot-password", async (req, res) => {
       firstName: user.firstName ?? "there",
       resetLink,
       expiresIn: "1 hour",
+      locale: user.preferredLocale ?? undefined,
     }).catch((err) =>
       logger.error({ err, userId: user.id }, "Failed to enqueue reset email"),
     );
@@ -257,7 +253,7 @@ router.post("/auth/forgot-password", async (req, res) => {
     logger.info({ userId: user.id }, "Password reset requested");
   }
 
-  res.json({ ok: true, resetToken });
+  res.json({ ok: true });
 });
 
 router.post("/auth/reset-password", async (req, res) => {

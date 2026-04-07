@@ -149,7 +149,15 @@
     "agreeToTerms": "Akceptuję Regulamin i Politykę Prywatności",
     "accountCreated": "Konto utworzone!"
   },
+  "categories": {
+    "operatingSystems": "Systemy operacyjne",
+    "officeProductivity": "Biuro i produktywność",
+    "antivirusSecurity": "Antywirus i bezpieczeństwo",
+    "games": "Gry",
+    "serversDevelopment": "Serwery i programowanie"
+  },
   "common": {
+    "menu": "Menu",
     "loading": "Ładowanie...",
     "error": "Wystąpił błąd",
     "save": "Zapisz",
@@ -191,5 +199,14 @@
     "wallet": "Portfel",
     "security": "Bezpieczeństwo",
     "preferences": "Preferencje"
+  },
+  "seo": {
+    "homeTitle": "PixelCodes — Cyfrowe licencje na oprogramowanie",
+    "bundlesTitle": "Pakiety produktów | PixelCodes",
+    "bundlesDescription": "Oszczędzaj więcej dzięki pakietom oprogramowania",
+    "cartTitle": "Koszyk | PixelCodes",
+    "checkoutTitle": "Zamówienie | PixelCodes",
+    "loginTitle": "Zaloguj się | PixelCodes",
+    "registerTitle": "Utwórz konto | PixelCodes"
   }
 }

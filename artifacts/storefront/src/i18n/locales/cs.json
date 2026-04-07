@@ -149,7 +149,15 @@
     "agreeToTerms": "Souhlasím s Obchodními podmínkami a Zásadami ochrany osobních údajů",
     "accountCreated": "Účet vytvořen!"
   },
+  "categories": {
+    "operatingSystems": "Operační systémy",
+    "officeProductivity": "Kancelář a produktivita",
+    "antivirusSecurity": "Antivirus a zabezpečení",
+    "games": "Hry",
+    "serversDevelopment": "Servery a vývoj"
+  },
   "common": {
+    "menu": "Menu",
     "loading": "Načítání...",
     "error": "Došlo k chybě",
     "save": "Uložit",
@@ -191,5 +199,14 @@
     "wallet": "Peněženka",
     "security": "Zabezpečení",
     "preferences": "Předvolby"
+  },
+  "seo": {
+    "homeTitle": "PixelCodes — Digitální softwarové licence",
+    "bundlesTitle": "Balíčky produktů | PixelCodes",
+    "bundlesDescription": "Ušetřete více s kurátorskými balíčky softwaru",
+    "cartTitle": "Košík | PixelCodes",
+    "checkoutTitle": "Pokladna | PixelCodes",
+    "loginTitle": "Přihlášení | PixelCodes",
+    "registerTitle": "Vytvořit účet | PixelCodes"
   }
 }

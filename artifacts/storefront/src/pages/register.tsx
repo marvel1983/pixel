@@ -13,7 +13,7 @@ import { UserPlus, Eye, EyeOff, Loader2 } from "lucide-react";
 import { GoogleButton } from "@/components/auth/google-button";
 
 export default function RegisterPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [, setLocation] = useLocation();
   const { setAuth } = useAuthStore();
   const { toast } = useToast();
@@ -57,6 +57,7 @@ export default function RegisterPage() {
           firstName: form.firstName,
           lastName: form.lastName,
           agreeTerms: true,
+          locale: i18n.language,
         }),
       });
 

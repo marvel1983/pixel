@@ -38,6 +38,7 @@ export async function sendOrderConfirmationOnly(
   orderId: number,
   items: ItemInfo[],
   total: number,
+  locale?: string,
 ) {
   try {
     await sendOrderConfirmationEmail(billing.email, {
@@ -46,6 +47,7 @@ export async function sendOrderConfirmationOnly(
       items: buildEmailItems(items),
       total: `$${total.toFixed(2)}`,
       customerName: billing.firstName,
+      locale,
     });
   } catch (err) {
     logger.error({ err, orderNumber }, "Failed to enqueue confirmation email (non-fatal)");
@@ -58,6 +60,7 @@ export async function triggerOrderEmails(
   orderId: number,
   items: ItemInfo[],
   total: number,
+  locale?: string,
 ) {
   try {
     await sendOrderConfirmationEmail(billing.email, {
@@ -66,6 +69,7 @@ export async function triggerOrderEmails(
       items: buildEmailItems(items),
       total: `$${total.toFixed(2)}`,
       customerName: billing.firstName,
+      locale,
     });
 
     const deliveredKeys = await db
@@ -96,6 +100,7 @@ export async function triggerOrderEmails(
         orderRef: orderNumber,
         customerName: billing.firstName,
         keys,
+        locale,
       });
     }
   } catch (err) {

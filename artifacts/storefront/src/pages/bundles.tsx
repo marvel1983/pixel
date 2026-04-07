@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
+import { useTranslation } from "react-i18next";
 import { Package, Tag, ArrowRight, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -30,12 +31,13 @@ interface BundleListing {
 }
 
 export default function BundlesPage() {
+  const { t } = useTranslation();
   const [bundles, setBundles] = useState<BundleListing[]>([]);
   const [loading, setLoading] = useState(true);
   const format = useCurrencyStore((s) => s.format);
 
   useEffect(() => {
-    setSeoMeta({ title: "Product Bundles | PixelCodes", description: "Save more with curated software bundles" });
+    setSeoMeta({ title: t("seo.bundlesTitle"), description: t("seo.bundlesDescription") });
     fetch(`${API}/bundles`)
       .then((r) => r.json())
       .then(setBundles)

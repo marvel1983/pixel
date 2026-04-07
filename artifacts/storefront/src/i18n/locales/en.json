@@ -149,7 +149,15 @@
     "agreeToTerms": "I agree to the Terms of Service and Privacy Policy",
     "accountCreated": "Account created!"
   },
+  "categories": {
+    "operatingSystems": "Operating Systems",
+    "officeProductivity": "Office & Productivity",
+    "antivirusSecurity": "Antivirus & Security",
+    "games": "Games",
+    "serversDevelopment": "Servers & Development"
+  },
   "common": {
+    "menu": "Menu",
     "loading": "Loading...",
     "error": "An error occurred",
     "save": "Save",
@@ -191,5 +199,14 @@
     "wallet": "Wallet",
     "security": "Security",
     "preferences": "Preferences"
+  },
+  "seo": {
+    "homeTitle": "PixelCodes — Digital Software Licenses",
+    "bundlesTitle": "Product Bundles | PixelCodes",
+    "bundlesDescription": "Save more with curated software bundles",
+    "cartTitle": "Shopping Cart | PixelCodes",
+    "checkoutTitle": "Checkout | PixelCodes",
+    "loginTitle": "Sign In | PixelCodes",
+    "registerTitle": "Create Account | PixelCodes"
   }
 }
