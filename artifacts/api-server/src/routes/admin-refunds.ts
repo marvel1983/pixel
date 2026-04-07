@@ -4,8 +4,7 @@ import { refunds, orders, users } from "@workspace/db/schema";
 import { eq, desc, and, or, ilike, gte, lte, count } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
-import { processRefund, updateOrderRefundStatus } from "../lib/refund-service";
-import { creditWallet } from "../services/wallet-service";
+import { processRefund, processWalletRefund, updateOrderRefundStatus } from "../lib/refund-service";
 
 const router = Router();
 
@@ -100,18 +99,18 @@ router.post("/admin/refunds", requireAuth, requireAdmin, requirePermission("mana
   }
 
   if (refundToWallet) {
-    const orderUser = order.guestEmail
-      ? await db.select({ id: users.id }).from(users).where(eq(users.email, order.guestEmail)).limit(1)
-      : [];
-    if (!orderUser.length) { res.status(400).json({ error: "No user account found for wallet refund" }); return; }
-    await creditWallet(orderUser[0].id, roundedAmount, "REFUND",
-      `Refund for order ${order.orderNumber}`, `refund:order:${orderId}`);
+    const userId = order.userId ?? (order.guestEmail
+      ? (await db.select({ id: users.id }).from(users).where(eq(users.email, order.guestEmail)).limit(1))[0]?.id
+      : undefined);
+    if (!userId) { res.status(400).json({ error: "No user account found for wallet refund" }); return; }
     const [refund] = await db.insert(refunds).values({
       orderId, initiatedBy: req.user!.userId, amountUsd: roundedAmount.toFixed(2),
-      reason, notes: `[Wallet Refund] ${notes || ""}`.trim(), notifyCustomer: notifyCustomer ?? true, status: "COMPLETED",
+      reason, notes: `[Wallet Refund] ${notes || ""}`.trim(), notifyCustomer: notifyCustomer ?? true, status: "PENDING",
     }).returning();
-    await updateOrderRefundStatus(orderId);
-    res.json({ success: true, refund });
+    const result = await processWalletRefund(refund.id, userId);
+    const [updated] = await db.select().from(refunds).where(eq(refunds.id, refund.id));
+    if (!result.success) { res.status(500).json({ error: result.error, refund: updated }); return; }
+    res.json({ success: true, refund: updated });
     return;
   }
 

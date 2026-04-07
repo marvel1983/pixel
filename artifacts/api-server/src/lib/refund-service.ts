@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { processProviderRefund } from "../services/refund";
 import { renderAndSendTemplate } from "./email/render-template";
 import { reverseCommissionsForOrder } from "../services/affiliate-service";
+import { creditWallet } from "../services/wallet-service";
 import { logger } from "./logger";
 
 export async function processRefund(refundId: number): Promise<{ success: boolean; error?: string }> {
@@ -63,6 +64,49 @@ export async function processRefund(refundId: number): Promise<{ success: boolea
     }).where(eq(refunds.id, refundId));
 
     logger.error({ refundId, err }, "Refund processing failed");
+    return { success: false, error: errorMsg };
+  }
+}
+
+export async function processWalletRefund(refundId: number, userId: number): Promise<{ success: boolean; error?: string }> {
+  const [refund] = await db.select().from(refunds).where(eq(refunds.id, refundId));
+  if (!refund) return { success: false, error: "Refund not found" };
+
+  const [order] = await db.select().from(orders).where(eq(orders.id, refund.orderId));
+  if (!order) return { success: false, error: "Order not found" };
+
+  await db.update(refunds).set({ status: "PROCESSING" }).where(eq(refunds.id, refundId));
+
+  try {
+    await creditWallet(userId, parseFloat(refund.amountUsd), "REFUND",
+      `Refund for order ${order.orderNumber}`, `refund:${refundId}`);
+
+    await db.update(refunds).set({
+      status: "COMPLETED", processedAt: new Date(), failureReason: null,
+      externalRefundId: `wallet_refund_${refundId}`,
+    }).where(eq(refunds.id, refundId));
+
+    await updateOrderRefundStatus(refund.orderId);
+
+    reverseCommissionsForOrder(refund.orderId).catch((err) => {
+      logger.error({ err, orderId: refund.orderId }, "Failed to reverse commissions on wallet refund");
+    });
+
+    if (refund.notifyCustomer && order.guestEmail) {
+      const customerName = order.guestEmail.split("@")[0];
+      await renderAndSendTemplate("refund_confirmation", order.guestEmail, {
+        orderNumber: order.orderNumber, customerName,
+        refundAmount: `$${refund.amountUsd}`, reason: refund.reason,
+      });
+    }
+
+    logger.info({ refundId, userId }, "Wallet refund processed successfully");
+    return { success: true };
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : "Unknown processing error";
+    await db.update(refunds).set({ status: "FAILED", failureReason: errorMsg })
+      .where(eq(refunds.id, refundId));
+    logger.error({ refundId, err }, "Wallet refund processing failed");
     return { success: false, error: errorMsg };
   }
 }
