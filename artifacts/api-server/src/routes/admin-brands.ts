@@ -16,6 +16,8 @@ router.post("/admin/brand-sections", requireAuth, requireAdmin, async (req, res)
   if (!name || typeof name !== "string") { res.status(400).json({ error: "name is required" }); return; }
   if (!slug || typeof slug !== "string") { res.status(400).json({ error: "slug is required" }); return; }
   if (name.length > 200) { res.status(400).json({ error: "name max 200 chars" }); return; }
+  const existing = await db.select({ id: brandSections.id }).from(brandSections).where(eq(brandSections.slug, slug));
+  if (existing.length > 0) { res.status(409).json({ error: "A brand with this slug already exists" }); return; }
   const maxOrder = await db.select({ sortOrder: brandSections.sortOrder }).from(brandSections).orderBy(asc(brandSections.sortOrder));
   const nextOrder = maxOrder.length > 0 ? Math.max(...maxOrder.map((r) => r.sortOrder)) + 1 : 0;
   const [row] = await db.insert(brandSections).values({
@@ -29,7 +31,7 @@ router.post("/admin/brand-sections", requireAuth, requireAdmin, async (req, res)
 
 router.put("/admin/brand-sections/reorder", requireAuth, requireAdmin, async (req, res) => {
   const { order } = req.body;
-  if (!Array.isArray(order)) { res.status(400).json({ error: "order must be an array" }); return; }
+  if (!Array.isArray(order) || !order.every((id) => typeof id === "number" && Number.isInteger(id))) { res.status(400).json({ error: "order must be an array of integer IDs" }); return; }
   for (let i = 0; i < order.length; i++) {
     await db.update(brandSections).set({ sortOrder: i, updatedAt: new Date() }).where(eq(brandSections.id, order[i]));
   }

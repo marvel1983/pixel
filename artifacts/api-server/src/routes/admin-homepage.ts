@@ -26,7 +26,7 @@ router.get("/admin/homepage-sections", requireAuth, requireAdmin, async (_req, r
 
 router.put("/admin/homepage-sections/reorder", requireAuth, requireAdmin, async (req, res) => {
   const { order } = req.body;
-  if (!Array.isArray(order)) { res.status(400).json({ error: "order must be an array" }); return; }
+  if (!Array.isArray(order) || !order.every((id) => typeof id === "number" && Number.isInteger(id))) { res.status(400).json({ error: "order must be an array of integer IDs" }); return; }
   for (let i = 0; i < order.length; i++) {
     await db.update(homepageSections).set({ sortOrder: i, updatedAt: new Date() }).where(eq(homepageSections.id, order[i]));
   }
@@ -46,7 +46,14 @@ router.put("/admin/homepage-sections/:id", requireAuth, requireAdmin, async (req
 });
 
 router.get("/homepage-sections", async (_req, res) => {
-  const sections = await db.select().from(homepageSections).where(eq(homepageSections.isEnabled, true)).orderBy(asc(homepageSections.sortOrder));
+  let sections = await db.select().from(homepageSections).where(eq(homepageSections.isEnabled, true)).orderBy(asc(homepageSections.sortOrder));
+  if (sections.length === 0) {
+    const all = await db.select().from(homepageSections);
+    if (all.length === 0) {
+      await db.insert(homepageSections).values(DEFAULT_SECTIONS);
+      sections = await db.select().from(homepageSections).where(eq(homepageSections.isEnabled, true)).orderBy(asc(homepageSections.sortOrder));
+    }
+  }
   res.json({ sections });
 });
 
