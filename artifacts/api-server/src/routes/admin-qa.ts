@@ -76,9 +76,15 @@ router.get("/admin/qa", ...guard, async (req, res) => {
       .where(inArray(productAnswers.questionId, qIds));
   }
 
+  const answerMap = new Map<number, AnswerRow[]>();
+  for (const a of answers) {
+    const arr = answerMap.get(a.questionId) ?? [];
+    arr.push(a);
+    answerMap.set(a.questionId, arr);
+  }
   const result = rows.map((r) => ({
     ...r,
-    answers: answers.filter((a) => a.questionId === r.question.id),
+    answers: answerMap.get(r.question.id) ?? [],
   }));
 
   res.json({ questions: result, total: totalRow?.c ?? 0, page, limit });
