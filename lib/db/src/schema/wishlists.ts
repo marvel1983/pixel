@@ -32,3 +32,7 @@ export const insertWishlistSchema = createInsertSchema(wishlists).omit({
 
 export type InsertWishlist = z.infer<typeof insertWishlistSchema>;
 export type Wishlist = typeof wishlists.$inferSelect;
+
+export const wishlistItems = wishlists;
+export type WishlistItem = Wishlist;
+export type InsertWishlistItem = InsertWishlist;

@@ -41,3 +41,7 @@ export const insertCouponSchema = createInsertSchema(coupons).omit({
 
 export type InsertCoupon = z.infer<typeof insertCouponSchema>;
 export type Coupon = typeof coupons.$inferSelect;
+
+export const discountCodes = coupons;
+export type DiscountCode = Coupon;
+export type InsertDiscountCode = InsertCoupon;
