@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { productAlerts, products, productVariants } from "@workspace/db/schema";
 import { eq, and, desc } from "drizzle-orm";
-import { requireAuth } from "../middleware/auth";
+import { requireAuth, optionalAuth } from "../middleware/auth";
 import { z } from "zod";
 import { verifyUnsubscribe } from "../services/alert-service";
 
@@ -16,7 +16,7 @@ const subscribeSchema = z.object({
   targetPriceUsd: z.coerce.number().positive().optional(),
 });
 
-router.post("/alerts/subscribe", async (req, res) => {
+router.post("/alerts/subscribe", optionalAuth, async (req, res) => {
   const parsed = subscribeSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid request" });

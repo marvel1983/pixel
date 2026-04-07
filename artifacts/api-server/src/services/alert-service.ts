@@ -12,7 +12,7 @@ import { enqueueEmail } from "../lib/email/queue";
 import { priceDropEmail, backInStockEmail } from "./alert-emails";
 import { logger } from "../lib/logger";
 
-const UNSUB_SECRET = process.env["ENCRYPTION_KEY"] || "alert-unsub-fallback-key";
+const UNSUB_SECRET = process.env["ENCRYPTION_KEY"]!;
 
 export function signUnsubscribe(alertId: number): string {
   const hmac = crypto.createHmac("sha256", UNSUB_SECRET).update(String(alertId)).digest("hex").slice(0, 16);
