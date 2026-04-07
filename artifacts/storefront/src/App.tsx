@@ -63,6 +63,13 @@ function AuthSyncEffect() {
       useWishlistStore.getState().syncWithServer(token);
     }
   }, [token]);
+  useEffect(() => {
+    return useAuthStore.subscribe((state, prev) => {
+      if (prev.token && !state.token) {
+        useWishlistStore.getState().clearAll();
+      }
+    });
+  }, []);
   return null;
 }
 
