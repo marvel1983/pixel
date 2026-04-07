@@ -138,6 +138,12 @@ router.patch("/admin/customers/:id/notes", requireAuth, requireAdmin, async (req
 router.post("/admin/customers/:id/reset-password", requireAuth, requireAdmin, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
+  const [target] = await db.select({ role: users.role }).from(users).where(eq(users.id, id));
+  if (!target) { res.status(404).json({ error: "Not found" }); return; }
+  const caller = req.user as { role: string };
+  if (target.role === "SUPER_ADMIN" && caller.role !== "SUPER_ADMIN") {
+    res.status(403).json({ error: "Only Super Admins can reset a Super Admin password" }); return;
+  }
   const tempPassword = Math.random().toString(36).slice(2, 10) + "A1!";
   const hash = await bcrypt.hash(tempPassword, 12);
   await db.update(users).set({ passwordHash: hash, updatedAt: new Date() }).where(eq(users.id, id));
@@ -147,8 +153,12 @@ router.post("/admin/customers/:id/reset-password", requireAuth, requireAdmin, as
 router.patch("/admin/customers/:id/toggle-active", requireAuth, requireAdmin, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
-  const [user] = await db.select({ isActive: users.isActive }).from(users).where(eq(users.id, id));
+  const [user] = await db.select({ isActive: users.isActive, role: users.role }).from(users).where(eq(users.id, id));
   if (!user) { res.status(404).json({ error: "Not found" }); return; }
+  const caller = req.user as { role: string };
+  if (user.role === "SUPER_ADMIN" && caller.role !== "SUPER_ADMIN") {
+    res.status(403).json({ error: "Only Super Admins can deactivate a Super Admin" }); return;
+  }
   await db.update(users).set({ isActive: !user.isActive, updatedAt: new Date() }).where(eq(users.id, id));
   res.json({ isActive: !user.isActive });
 });
