@@ -1,6 +1,5 @@
-import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { SUPPORTED_LOCALES } from "@/i18n";
+import { getEnabledLocales } from "@/i18n";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,46 +11,10 @@ import { useAuthStore } from "@/stores/auth-store";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
-interface LocaleOption {
-  code: string;
-  name: string;
-  flag: string;
-}
-
-const DEFAULT_LOCALES: LocaleOption[] = SUPPORTED_LOCALES.map((l) => ({
-  code: l.code,
-  name: l.name,
-  flag: l.flag,
-}));
-
-interface LocalesResponse {
-  locales: LocaleOption[];
-}
-
 export function LanguageSelector() {
   const { i18n } = useTranslation();
   const token = useAuthStore((s) => s.token);
-  const [locales, setLocales] = useState<LocaleOption[]>(DEFAULT_LOCALES);
-
-  useEffect(() => {
-    fetch(`${API}/locales`)
-      .then((r) => {
-        if (!r.ok) throw new Error("fetch failed");
-        return r.json() as Promise<LocalesResponse>;
-      })
-      .then((data) => {
-        if (Array.isArray(data.locales) && data.locales.length > 0) {
-          setLocales(
-            data.locales.map((l) => ({
-              code: String(l.code),
-              name: String(l.name),
-              flag: String(l.flag),
-            })),
-          );
-        }
-      })
-      .catch(() => {});
-  }, []);
+  const locales = getEnabledLocales();
 
   const current = locales.find((l) => l.code === i18n.language) ?? locales[0];
 

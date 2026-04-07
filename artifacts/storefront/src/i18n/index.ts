@@ -19,6 +19,13 @@ const de = { ...deCore, ...dePages };
 const fr = { ...frCore, ...frPages };
 const cs = { ...csCore, ...csPages };
 
+export interface EnabledLocale {
+  code: string;
+  name: string;
+  flag: string;
+  isDefault: boolean;
+}
+
 export const SUPPORTED_LOCALES = [
   { code: "en", name: "English", flag: "🇬🇧" },
   { code: "pl", name: "Polski", flag: "🇵🇱" },
@@ -28,6 +35,14 @@ export const SUPPORTED_LOCALES = [
 ] as const;
 
 export type LocaleCode = (typeof SUPPORTED_LOCALES)[number]["code"];
+
+let enabledLocales: EnabledLocale[] = [...SUPPORTED_LOCALES.map(
+  (l) => ({ ...l, isDefault: l.code === "en" }),
+)];
+
+export function getEnabledLocales(): EnabledLocale[] {
+  return enabledLocales;
+}
 
 i18n
   .use(LanguageDetector)
@@ -66,7 +81,30 @@ export async function loadOverrides() {
   }
 }
 
+export async function syncEnabledLocales() {
+  try {
+    const res = await fetch(`${API}/locales`);
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!Array.isArray(data.locales) || data.locales.length === 0) return;
+
+    enabledLocales = data.locales;
+    const enabledCodes = enabledLocales.map((l: EnabledLocale) => l.code);
+    const adminDefault = enabledLocales.find((l: EnabledLocale) => l.isDefault);
+    const fallback = adminDefault?.code || "en";
+
+    i18n.options.supportedLngs = [...enabledCodes, "cimode"];
+    i18n.options.fallbackLng = [fallback];
+
+    if (!enabledCodes.includes(i18n.language)) {
+      i18n.changeLanguage(fallback);
+    }
+  } catch {
+  }
+}
+
 i18n.on("languageChanged", () => { loadOverrides(); });
-loadOverrides();
+
+syncEnabledLocales().then(() => loadOverrides());
 
 export default i18n;
