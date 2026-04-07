@@ -19,6 +19,8 @@ import {
   Ticket,
   MessageSquare,
   HelpCircle,
+  ClipboardList,
+  Wallet,
   type LucideIcon,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -80,6 +82,8 @@ const sections: NavSection[] = [
     title: "SYSTEM",
     items: [
       { label: "Settings", href: "/admin/settings", icon: Settings },
+      { label: "Audit Log", href: "/admin/audit-log", icon: ClipboardList },
+      { label: "Metenzi Balance", href: "/admin/metenzi-balance", icon: Wallet },
       { label: "Security", href: "/admin/security", icon: Shield },
     ],
   },
