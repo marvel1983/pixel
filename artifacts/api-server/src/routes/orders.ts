@@ -1,5 +1,8 @@
 import { Router } from "express";
 import { z } from "zod";
+import { inArray } from "drizzle-orm";
+import { db } from "@workspace/db";
+import { productVariants } from "@workspace/db/schema";
 import { executeOrderPipeline } from "../services/order-pipeline";
 import { logger } from "../lib/logger";
 
@@ -57,6 +60,25 @@ function generateOrderNumber() {
   return `PC-${ts}-${rand}`;
 }
 
+async function validatePricesFromDb(items: z.infer<typeof orderSchema>["items"]) {
+  const variantIds = items.map((i) => i.variantId);
+  const dbVariants = await db
+    .select({ id: productVariants.id, priceUsd: productVariants.priceUsd })
+    .from(productVariants)
+    .where(inArray(productVariants.id, variantIds));
+
+  if (dbVariants.length === 0) return null;
+
+  const priceMap = new Map(dbVariants.map((v) => [v.id, v.priceUsd]));
+  for (const item of items) {
+    const dbPrice = priceMap.get(item.variantId);
+    if (dbPrice && dbPrice !== item.priceUsd) {
+      return `Price mismatch for ${item.productName}: expected ${dbPrice}`;
+    }
+  }
+  return null;
+}
+
 router.post("/orders", async (req, res) => {
   const parsed = orderSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -68,6 +90,12 @@ router.post("/orders", async (req, res) => {
   }
 
   const { billing, items, coupon, cppSelected, total, payment } = parsed.data;
+
+  const priceError = await validatePricesFromDb(items);
+  if (priceError) {
+    res.status(400).json({ error: priceError });
+    return;
+  }
 
   const subtotal = items.reduce(
     (sum, it) => sum + parseFloat(it.priceUsd) * it.quantity,

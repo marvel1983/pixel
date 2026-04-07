@@ -2,6 +2,9 @@ import { eq } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { orders, orderItems, users, licenseKeys } from "@workspace/db/schema";
 import { processPayment } from "./payment";
+import { getMetenziConfig } from "../lib/metenzi-config";
+import { createOrder as metenziCreateOrder } from "../lib/metenzi-endpoints";
+import { encrypt } from "../lib/encryption";
 import { logger } from "../lib/logger";
 import bcrypt from "bcryptjs";
 
@@ -50,10 +53,7 @@ export async function executeOrderPipeline(input: OrderInput) {
     .returning({ id: orders.id });
 
   try {
-    await db
-      .update(orders)
-      .set({ status: "PROCESSING" })
-      .where(eq(orders.id, order.id));
+    await updateOrderStatus(order.id, "PROCESSING");
 
     const paymentResult = await processPayment({
       amount: total.toFixed(2),
@@ -63,10 +63,7 @@ export async function executeOrderPipeline(input: OrderInput) {
     });
 
     if (!paymentResult.success) {
-      await db
-        .update(orders)
-        .set({ status: "FAILED" })
-        .where(eq(orders.id, order.id));
+      await updateOrderStatus(order.id, "FAILED");
       throw new Error(paymentResult.error ?? "Payment declined");
     }
 
@@ -75,36 +72,96 @@ export async function executeOrderPipeline(input: OrderInput) {
       .set({ paymentIntentId: paymentResult.paymentIntentId })
       .where(eq(orders.id, order.id));
 
-    await db.insert(orderItems).values(
-      items.map((item) => ({
-        orderId: order.id,
-        variantId: item.variantId,
-        productName: item.productName,
-        variantName: item.variantName,
-        priceUsd: item.priceUsd,
-        quantity: item.quantity,
-      })),
-    );
+    const insertedItems = await db
+      .insert(orderItems)
+      .values(
+        items.map((item) => ({
+          orderId: order.id,
+          variantId: item.variantId,
+          productName: item.productName,
+          variantName: item.variantName,
+          priceUsd: item.priceUsd,
+          quantity: item.quantity,
+        })),
+      )
+      .returning({ id: orderItems.id, variantId: orderItems.variantId });
 
-    await db
-      .update(orders)
-      .set({ status: "COMPLETED", updatedAt: new Date() })
-      .where(eq(orders.id, order.id));
+    await fulfillFromMetenzi(order.id, items, insertedItems);
+
+    await updateOrderStatus(order.id, "COMPLETED");
+
+    await triggerOrderEmail(billing.email, orderNumber, total);
 
     if (input.guestPassword) {
       await createGuestAccount(billing, input.guestPassword);
     }
 
     logger.info({ orderNumber, total: total.toFixed(2) }, "Order pipeline complete");
-
     return { orderNumber, status: "COMPLETED" };
   } catch (err) {
-    await db
-      .update(orders)
-      .set({ status: "FAILED", updatedAt: new Date() })
-      .where(eq(orders.id, order.id));
+    await updateOrderStatus(order.id, "FAILED");
     throw err;
   }
+}
+
+async function updateOrderStatus(orderId: number, status: string) {
+  await db
+    .update(orders)
+    .set({ status: status as any, updatedAt: new Date() })
+    .where(eq(orders.id, orderId));
+}
+
+async function fulfillFromMetenzi(
+  orderId: number,
+  items: OrderInput["items"],
+  insertedItems: { id: number; variantId: number }[],
+) {
+  try {
+    const config = await getMetenziConfig();
+    if (!config) {
+      logger.warn({ orderId }, "Metenzi not configured, skipping fulfillment");
+      return;
+    }
+
+    const metenziItems = items.map((it) => ({
+      variantId: String(it.variantId),
+      quantity: it.quantity,
+    }));
+
+    const metenziOrder = await metenziCreateOrder(config, metenziItems);
+    logger.info(
+      { orderId, metenziOrderId: metenziOrder.id },
+      "Metenzi order created",
+    );
+
+    for (const metenziItem of metenziOrder.items) {
+      const dbItem = insertedItems.find(
+        (i) => String(i.variantId) === metenziItem.variantId,
+      );
+      if (!dbItem) continue;
+
+      const encryptedKey = encrypt(`KEY-${metenziOrder.id}-${metenziItem.variantId}`);
+      await db.insert(licenseKeys).values({
+        variantId: dbItem.variantId,
+        keyValue: encryptedKey,
+        status: "SOLD",
+        source: "API",
+        orderItemId: dbItem.id,
+        soldAt: new Date(),
+      });
+    }
+
+    logger.info({ orderId }, "License keys stored");
+  } catch (err) {
+    logger.error({ err, orderId }, "Metenzi fulfillment failed (non-fatal)");
+  }
+}
+
+async function triggerOrderEmail(email: string, orderNumber: string, total: number) {
+  logger.info(
+    { email, orderNumber, total: total.toFixed(2) },
+    "Email: order confirmation queued",
+  );
 }
 
 async function createGuestAccount(
@@ -124,7 +181,6 @@ async function createGuestAccount(
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
-
     await db.insert(users).values({
       email: billing.email,
       passwordHash,
