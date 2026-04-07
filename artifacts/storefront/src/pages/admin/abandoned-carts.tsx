@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuthStore } from "@/stores/auth-store";
 import { useToast } from "@/hooks/use-toast";
-import { ShoppingCart, TrendingUp, DollarSign, Mail, Loader2, Play, RefreshCcw } from "lucide-react";
+import { ShoppingCart, TrendingUp, DollarSign, Mail, Loader2, Play, RefreshCcw, ChevronDown, ChevronUp } from "lucide-react";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -17,6 +17,8 @@ interface CartRow {
   recoveredAt: string | null; cartData: { items: { productName: string; quantity: number }[] };
 }
 
+interface EmailLog { id: number; emailNumber: number; subject: string; sentAt: string }
+
 export default function AdminAbandonedCartsPage() {
   const token = useAuthStore((s) => s.token);
   const { toast } = useToast();
@@ -24,6 +26,9 @@ export default function AdminAbandonedCartsPage() {
   const [carts, setCarts] = useState<CartRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("ACTIVE");
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [emailLogs, setEmailLogs] = useState<EmailLog[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
 
   const headers = { Authorization: `Bearer ${token}` };
 
@@ -43,6 +48,18 @@ export default function AdminAbandonedCartsPage() {
   }, [tab, token]);
 
   useEffect(() => { loadStats(); loadCarts(); }, [loadStats, loadCarts]);
+
+  const toggleEmailLog = async (id: number) => {
+    if (expandedId === id) { setExpandedId(null); return; }
+    setExpandedId(id);
+    setLogsLoading(true);
+    try {
+      const res = await fetch(`${API}/admin/abandoned-carts/${id}/emails`, { headers });
+      const data = await res.json();
+      setEmailLogs(data.emails || []);
+    } catch { setEmailLogs([]); }
+    finally { setLogsLoading(false); }
+  };
 
   const processNow = async () => {
     const res = await fetch(`${API}/admin/abandoned-carts/process`, { method: "POST", headers });
@@ -111,14 +128,14 @@ export default function AdminAbandonedCartsPage() {
         <div className="space-y-2">
           {carts.map((c) => (
             <Card key={c.id}>
-              <CardContent className="py-3">
+              <CardContent className="py-3 space-y-2">
                 <div className="flex items-center justify-between flex-wrap gap-2">
-                  <div className="space-y-1">
+                  <div className="space-y-1 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{c.email}</span>
                       {statusBadge(c.status)}
                     </div>
-                    <div className="flex gap-3 text-xs text-muted-foreground">
+                    <div className="flex gap-3 text-xs text-muted-foreground flex-wrap">
                       <span>Total: <strong>${c.cartTotal}</strong></span>
                       <span>Items: {c.cartData.items.length}</span>
                       <span>Emails: {c.emailsSent}/3</span>
@@ -130,12 +147,39 @@ export default function AdminAbandonedCartsPage() {
                       {c.cartData.items.map((i) => `${i.productName} ×${i.quantity}`).join(", ")}
                     </p>
                   </div>
-                  {c.status === "ACTIVE" && c.emailsSent < 3 && (
-                    <Button size="sm" variant="outline" onClick={() => sendNow(c.id)}>
-                      <Mail className="h-3 w-3 mr-1" /> Send Email
-                    </Button>
-                  )}
+                  <div className="flex gap-1">
+                    {c.emailsSent > 0 && (
+                      <Button size="sm" variant="ghost" onClick={() => toggleEmailLog(c.id)}>
+                        {expandedId === c.id ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                        <span className="ml-1 text-xs">Emails</span>
+                      </Button>
+                    )}
+                    {c.status === "ACTIVE" && c.emailsSent < 3 && (
+                      <Button size="sm" variant="outline" onClick={() => sendNow(c.id)}>
+                        <Mail className="h-3 w-3 mr-1" /> Send
+                      </Button>
+                    )}
+                  </div>
                 </div>
+                {expandedId === c.id && (
+                  <div className="border-t pt-2 mt-1">
+                    {logsLoading ? (
+                      <div className="flex justify-center py-2"><Loader2 className="h-4 w-4 animate-spin" /></div>
+                    ) : emailLogs.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">No emails sent yet</p>
+                    ) : (
+                      <div className="space-y-1">
+                        {emailLogs.map((log) => (
+                          <div key={log.id} className="flex items-center gap-3 text-xs">
+                            <Badge variant="outline" className="text-[10px]">Email {log.emailNumber}</Badge>
+                            <span className="text-muted-foreground">{log.subject}</span>
+                            <span className="text-muted-foreground ml-auto">{new Date(log.sentAt).toLocaleString()}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}

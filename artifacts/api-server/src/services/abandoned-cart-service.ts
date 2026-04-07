@@ -87,8 +87,7 @@ export async function processAbandonedCarts(): Promise<{ sent: number }> {
     if (nextEmail > 3) continue;
 
     const delayMs = delays[nextEmail - 1]! * 60 * 1000;
-    const referenceTime = cart.lastEmailAt || cart.createdAt;
-    const sendAfter = new Date(referenceTime.getTime() + delayMs);
+    const sendAfter = new Date(cart.createdAt.getTime() + delayMs);
     if (new Date() < sendAfter) continue;
 
     let couponCode: string | undefined;
@@ -99,7 +98,9 @@ export async function processAbandonedCarts(): Promise<{ sent: number }> {
         .where(eq(abandonedCarts.id, cart.id));
     }
 
-    const recoveryUrl = `${process.env["REPLIT_DEV_DOMAIN"] ? `https://${process.env["REPLIT_DEV_DOMAIN"]}` : ""}/cart/recover/${cart.recoveryToken}`;
+    const domain = process.env["REPLIT_DEV_DOMAIN"] || process.env["REPLIT_DOMAINS"]?.split(",")[0] || "localhost";
+    const baseUrl = domain.startsWith("http") ? domain : `https://${domain}`;
+    const recoveryUrl = `${baseUrl}/cart/recover/${cart.recoveryToken}`;
     const unsubUrl = `${recoveryUrl}?action=unsubscribe`;
     const { subject, html } = abandonedCartEmail({
       emailNumber: nextEmail,

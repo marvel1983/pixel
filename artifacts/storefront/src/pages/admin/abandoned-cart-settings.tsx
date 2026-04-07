@@ -46,8 +46,8 @@ export default function AbandonedCartSettingsPage() {
       });
       if (!res.ok) throw new Error("Failed to save");
       toast({ title: "Settings saved" });
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } catch {
+      toast({ title: "Error", description: "Failed to save settings", variant: "destructive" });
     } finally { setSaving(false); }
   };
 
