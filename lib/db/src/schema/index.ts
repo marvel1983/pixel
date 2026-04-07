@@ -15,3 +15,4 @@ export * from "./banners";
 export * from "./currency-rates";
 export * from "./audit-log";
 export * from "./compare-sessions";
+export * from "./category-meta";
