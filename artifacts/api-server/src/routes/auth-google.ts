@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { users, siteSettings } from "@workspace/db/schema";
 import { signToken, requireAuth, type JwtPayload } from "../middleware/auth";
-import { encrypt, decrypt } from "../lib/encryption";
+import { decrypt } from "../lib/encryption";
 import { logger } from "../lib/logger";
 import crypto from "node:crypto";
 
