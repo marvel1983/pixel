@@ -19,7 +19,8 @@ interface ProductCardProps {
 export function ProductCard({ product, flashSalePrice: flashSalePriceProp }: ProductCardProps) {
   const flashPrices = useFlashSaleStore((s) => s.prices);
   const variant = product.variants?.[0];
-  const flashSalePrice = flashSalePriceProp ?? (variant ? flashPrices.get(variant.id) : undefined) ?? null;
+  const resolvedFlashPrice = product.variants?.reduce<string | undefined>((found, v) => found ?? flashPrices.get(v.id), undefined);
+  const flashSalePrice = flashSalePriceProp ?? resolvedFlashPrice ?? null;
   const addItem = useCartStore((s) => s.addItem);
   const format = useCurrencyStore((s) => s.format);
   const { toast } = useToast();
