@@ -60,14 +60,18 @@ export const useCartStore = create<CartState>()(
 
       addBundleItems: (bundleId, bundleName, bundleItems) =>
         set((state) => {
-          const withoutBundle = state.items.filter((i) => i.bundleId !== bundleId);
+          const existing = state.items.find((i) => i.bundleId === bundleId);
+          if (existing) {
+            return {
+              items: state.items.map((i) =>
+                i.bundleId === bundleId ? { ...i, quantity: i.quantity + 1 } : i,
+              ),
+            };
+          }
           const newItems = bundleItems.map((item) => ({
-            ...item,
-            quantity: 1,
-            bundleId,
-            bundleName,
+            ...item, quantity: 1, bundleId, bundleName,
           }));
-          return { items: [...withoutBundle, ...newItems] };
+          return { items: [...state.items, ...newItems] };
         }),
 
       removeBundleItems: (bundleId) =>
