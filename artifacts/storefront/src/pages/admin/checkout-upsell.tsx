@@ -46,7 +46,7 @@ export default function CheckoutUpsellPage() {
   useEffect(() => {
     if (searchQ.length < 2) { setSearchResults([]); return; }
     const t = setTimeout(() => {
-      fetch(`${API}/admin/products?search=${encodeURIComponent(searchQ)}&limit=8`, { headers: { Authorization: `Bearer ${token}` } })
+      fetch(`${API}/admin/products?q=${encodeURIComponent(searchQ)}`, { headers: { Authorization: `Bearer ${token}` } })
         .then((r) => r.json())
         .then((d) => setSearchResults(d.products?.map((p: Product & { id: number }) => ({ id: p.id, name: p.name, imageUrl: p.imageUrl })) ?? []))
         .catch(() => {});

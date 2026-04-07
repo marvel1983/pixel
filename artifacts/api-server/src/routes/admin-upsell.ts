@@ -32,9 +32,21 @@ router.get("/admin/checkout-upsell", requireAuth, requireAdmin, async (_req, res
 
 router.post("/admin/checkout-upsell", requireAuth, requireAdmin, async (req, res) => {
   const { productId, displayPrice, strikethroughPrice, urgencyMessage, checkboxLabel } = req.body;
-  if (!productId || typeof productId !== "number") {
-    res.status(400).json({ error: "productId is required" });
+  if (!productId || typeof productId !== "number" || !Number.isInteger(productId)) {
+    res.status(400).json({ error: "productId is required and must be an integer" });
     return;
+  }
+  if (displayPrice && (isNaN(Number(displayPrice)) || Number(displayPrice) < 0)) {
+    res.status(400).json({ error: "displayPrice must be a positive number" }); return;
+  }
+  if (strikethroughPrice && (isNaN(Number(strikethroughPrice)) || Number(strikethroughPrice) < 0)) {
+    res.status(400).json({ error: "strikethroughPrice must be a positive number" }); return;
+  }
+  if (urgencyMessage && typeof urgencyMessage === "string" && urgencyMessage.length > 200) {
+    res.status(400).json({ error: "urgencyMessage max 200 characters" }); return;
+  }
+  if (checkboxLabel && typeof checkboxLabel === "string" && checkboxLabel.length > 200) {
+    res.status(400).json({ error: "checkboxLabel max 200 characters" }); return;
   }
 
   await db.update(checkoutUpsell).set({ isActive: false, updatedAt: new Date() });
