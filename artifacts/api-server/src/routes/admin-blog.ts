@@ -19,7 +19,8 @@ router.get("/admin/blog/posts", ...auth, async (req, res) => {
 
     const conditions = [];
     if (status === "published") conditions.push(eq(blogPosts.isPublished, true));
-    if (status === "draft") conditions.push(eq(blogPosts.isPublished, false));
+    if (status === "draft") conditions.push(and(eq(blogPosts.isPublished, false), eq(blogPosts.status, "draft"))!);
+    if (status === "scheduled") conditions.push(eq(blogPosts.status, "scheduled"));
     if (search) conditions.push(or(ilike(blogPosts.title, `%${search}%`), ilike(blogPosts.slug, `%${search}%`))!);
     if (categoryId) conditions.push(eq(blogPosts.categoryId, parseInt(categoryId)));
 
@@ -27,7 +28,8 @@ router.get("/admin/blog/posts", ...auth, async (req, res) => {
     const [posts, countResult] = await Promise.all([
       db.select({
         id: blogPosts.id, title: blogPosts.title, slug: blogPosts.slug,
-        isPublished: blogPosts.isPublished, publishedAt: blogPosts.publishedAt,
+        status: blogPosts.status, isPublished: blogPosts.isPublished,
+        publishedAt: blogPosts.publishedAt, scheduledAt: blogPosts.scheduledAt,
         viewCount: blogPosts.viewCount, createdAt: blogPosts.createdAt,
         categoryName: blogCategories.name, authorName: users.firstName,
       })

@@ -13,8 +13,10 @@ interface AdminPost {
   id: number;
   title: string;
   slug: string;
+  status: string;
   isPublished: boolean;
   publishedAt: string | null;
+  scheduledAt: string | null;
   viewCount: number;
   createdAt: string;
   categoryName: string | null;
@@ -83,7 +85,7 @@ export default function AdminBlogPage() {
           <Button type="submit" variant="outline" size="icon"><Search className="h-4 w-4" /></Button>
         </form>
         <div className="flex gap-1">
-          {[{ label: "All", value: "" }, { label: "Published", value: "published" }, { label: "Draft", value: "draft" }].map((f) => (
+          {[{ label: "All", value: "" }, { label: "Published", value: "published" }, { label: "Draft", value: "draft" }, { label: "Scheduled", value: "scheduled" }].map((f) => (
             <Button key={f.value} variant={statusFilter === f.value ? "default" : "outline"} size="sm"
               onClick={() => { setStatusFilter(f.value); setPage(1); }}>{f.label}</Button>
           ))}
@@ -119,7 +121,7 @@ export default function AdminBlogPage() {
                 <tr key={p.id} className="hover:bg-muted/30">
                   <td className="px-4 py-3"><span className="font-medium">{p.title}</span><span className="text-xs text-muted-foreground block">/{p.slug}</span></td>
                   <td className="px-4 py-3 hidden md:table-cell">{p.categoryName || "—"}</td>
-                  <td className="px-4 py-3"><Badge variant={p.isPublished ? "default" : "secondary"}>{p.isPublished ? "Published" : "Draft"}</Badge></td>
+                  <td className="px-4 py-3"><Badge variant={p.isPublished ? "default" : p.status === "scheduled" ? "outline" : "secondary"}>{p.isPublished ? "Published" : p.status === "scheduled" ? "Scheduled" : "Draft"}</Badge></td>
                   <td className="px-4 py-3 hidden sm:table-cell"><span className="flex items-center gap-1"><Eye className="h-3 w-3" /> {p.viewCount}</span></td>
                   <td className="px-4 py-3 hidden lg:table-cell text-muted-foreground">{new Date(p.createdAt).toLocaleDateString()}</td>
                   <td className="px-4 py-3 text-right">
