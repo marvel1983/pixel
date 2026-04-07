@@ -2,14 +2,16 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 export const SUPPORTED_CURRENCIES = [
-  { code: "USD", symbol: "$", name: "US Dollar" },
-  { code: "EUR", symbol: "€", name: "Euro" },
-  { code: "GBP", symbol: "£", name: "British Pound" },
-  { code: "CAD", symbol: "C$", name: "Canadian Dollar" },
-  { code: "AUD", symbol: "A$", name: "Australian Dollar" },
-  { code: "PLN", symbol: "zł", name: "Polish Złoty" },
-  { code: "BRL", symbol: "R$", name: "Brazilian Real" },
-  { code: "TRY", symbol: "₺", name: "Turkish Lira" },
+  { code: "USD", symbol: "$", flag: "🇺🇸", name: "US Dollar" },
+  { code: "EUR", symbol: "€", flag: "🇪🇺", name: "Euro" },
+  { code: "GBP", symbol: "£", flag: "🇬🇧", name: "British Pound" },
+  { code: "PLN", symbol: "zł", flag: "🇵🇱", name: "Polish Złoty" },
+  { code: "CZK", symbol: "Kč", flag: "🇨🇿", name: "Czech Koruna" },
+  { code: "HUF", symbol: "Ft", flag: "🇭🇺", name: "Hungarian Forint" },
+  { code: "CAD", symbol: "C$", flag: "🇨🇦", name: "Canadian Dollar" },
+  { code: "AUD", symbol: "A$", flag: "🇦🇺", name: "Australian Dollar" },
+  { code: "BRL", symbol: "R$", flag: "🇧🇷", name: "Brazilian Real" },
+  { code: "TRY", symbol: "₺", flag: "🇹🇷", name: "Turkish Lira" },
 ] as const;
 
 export type CurrencyCode = (typeof SUPPORTED_CURRENCIES)[number]["code"];
@@ -22,7 +24,10 @@ interface CurrencyState {
   setRates: (rates: Record<string, number>) => void;
   convert: (usdAmount: number) => number;
   format: (usdAmount: number) => string;
+  fetchRates: () => Promise<void>;
 }
+
+const RATE_CACHE_MS = 60 * 60 * 1000;
 
 export const useCurrencyStore = create<CurrencyState>()(
   persist(
@@ -46,7 +51,25 @@ export const useCurrencyStore = create<CurrencyState>()(
         const { code, convert } = get();
         const converted = convert(usdAmount);
         const currency = SUPPORTED_CURRENCIES.find((c) => c.code === code);
+        if (code === "HUF" || code === "CZK") {
+          return `${Math.round(converted)} ${currency?.symbol ?? code}`;
+        }
         return `${currency?.symbol ?? "$"}${converted.toFixed(2)}`;
+      },
+
+      fetchRates: async () => {
+        const { lastFetched } = get();
+        if (lastFetched && Date.now() - lastFetched < RATE_CACHE_MS) return;
+        try {
+          const baseUrl = import.meta.env.VITE_API_URL ?? "/api";
+          const res = await fetch(`${baseUrl}/currencies`);
+          if (res.ok) {
+            const data = await res.json();
+            set({ rates: data.rates, lastFetched: Date.now() });
+          }
+        } catch {
+          // keep cached rates on failure
+        }
       },
     }),
     { name: "pixelcodes-currency" },

@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { SiteLayout } from "@/components/layout/site-layout";
 import { useAuthStore } from "@/stores/auth-store";
 import { useWishlistStore } from "@/stores/wishlist-store";
+import { useCurrencyStore } from "@/stores/currency-store";
 import HomePage from "@/pages/home";
 import ShopPage from "@/pages/shop";
 import CategoryPage from "@/pages/category";
@@ -56,8 +57,11 @@ function Router() {
   );
 }
 
-function AuthSyncEffect() {
+function AppInitEffect() {
   const token = useAuthStore((s) => s.token);
+  useEffect(() => {
+    useCurrencyStore.getState().fetchRates();
+  }, []);
   useEffect(() => {
     if (token) {
       useWishlistStore.getState().syncWithServer(token);
@@ -78,7 +82,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-          <AuthSyncEffect />
+          <AppInitEffect />
           <Router />
         </WouterRouter>
         <Toaster />
