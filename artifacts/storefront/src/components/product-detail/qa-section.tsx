@@ -27,10 +27,9 @@ interface Question {
 
 interface QASectionProps {
   productId: number;
-  productName: string;
 }
 
-export function QASection({ productId, productName }: QASectionProps) {
+export function QASection({ productId }: QASectionProps) {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);

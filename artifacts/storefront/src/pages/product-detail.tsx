@@ -109,7 +109,7 @@ export default function ProductDetailPage() {
 
       <Separator />
 
-      <QASection productId={product.id} productName={product.name} />
+      <QASection productId={product.id} />
 
       <Separator />
 

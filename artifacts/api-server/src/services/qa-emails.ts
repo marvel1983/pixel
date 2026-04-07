@@ -6,17 +6,21 @@ interface QAAnsweredParams {
   productUrl: string;
 }
 
+function esc(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
 export function qaAnsweredEmail(p: QAAnsweredParams): { subject: string; html: string } {
   const content = `
 <h2 style="margin:0 0 16px;color:#111827">Your Question Was Answered!</h2>
-<p style="color:#4b5563;margin:0 0 20px">Hi ${p.askerName}, your question about <strong>${p.productName}</strong> has been answered by our team.</p>
+<p style="color:#4b5563;margin:0 0 20px">Hi ${esc(p.askerName)}, your question about <strong>${esc(p.productName)}</strong> has been answered by our team.</p>
 <div style="padding:16px;background:#f0f9ff;border-radius:8px;margin:0 0 16px">
 <p style="margin:0 0 8px;font-weight:600;color:#111827">Your Question:</p>
-<p style="margin:0;color:#4b5563">${p.questionText}</p>
+<p style="margin:0;color:#4b5563">${esc(p.questionText)}</p>
 </div>
 <div style="padding:16px;background:#f0fdf4;border-radius:8px;margin:0 0 20px">
 <p style="margin:0 0 8px;font-weight:600;color:#111827">Answer from Store Admin:</p>
-<p style="margin:0;color:#4b5563">${p.answerText}</p>
+<p style="margin:0;color:#4b5563">${esc(p.answerText)}</p>
 </div>
 <div style="text-align:center;margin:24px 0">
 <a href="${p.productUrl}" style="display:inline-block;padding:12px 32px;background:#2563eb;color:#fff;text-decoration:none;border-radius:6px;font-weight:600">View Product</a>

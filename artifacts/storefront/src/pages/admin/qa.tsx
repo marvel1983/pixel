@@ -59,12 +59,14 @@ export default function AdminQAPage() {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const updateStatus = async (id: number, st: string) => {
-    await fetch(`${API}/admin/qa/${id}/status`, { method: "PATCH", headers, body: JSON.stringify({ status: st }) });
+    const res = await fetch(`${API}/admin/qa/${id}/status`, { method: "PATCH", headers, body: JSON.stringify({ status: st }) });
+    if (!res.ok) { const d = await res.json().catch(() => ({})); toast({ title: "Error", description: d.error || "Failed to update status", variant: "destructive" }); return; }
     fetchData();
   };
 
   const deleteQ = async (id: number) => {
-    await fetch(`${API}/admin/qa/${id}`, { method: "DELETE", headers });
+    const res = await fetch(`${API}/admin/qa/${id}`, { method: "DELETE", headers });
+    if (!res.ok) { const d = await res.json().catch(() => ({})); toast({ title: "Error", description: d.error || "Failed to delete", variant: "destructive" }); return; }
     if (detail?.question.id === id) setDetail(null);
     fetchData();
   };
@@ -72,7 +74,13 @@ export default function AdminQAPage() {
   const submitAnswer = async () => {
     if (!detail || !answer.trim()) return;
     setSavingAnswer(true);
-    await fetch(`${API}/admin/qa/${detail.question.id}/answer`, { method: "POST", headers, body: JSON.stringify({ answer }) });
+    const res = await fetch(`${API}/admin/qa/${detail.question.id}/answer`, { method: "POST", headers, body: JSON.stringify({ answer }) });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      toast({ title: "Error", description: d.error || "Failed to post answer", variant: "destructive" });
+      setSavingAnswer(false);
+      return;
+    }
     toast({ title: "Answer posted", description: "The customer will be notified by email." });
     setAnswer("");
     setSavingAnswer(false);
@@ -82,11 +90,10 @@ export default function AdminQAPage() {
 
   const bulkAction = async (action: string) => {
     const ids = [...selected];
-    if (action === "delete") {
-      await fetch(`${API}/admin/qa/bulk-delete`, { method: "POST", headers, body: JSON.stringify({ ids }) });
-    } else {
-      await fetch(`${API}/admin/qa/bulk-status`, { method: "POST", headers, body: JSON.stringify({ ids, status: action }) });
-    }
+    const url = action === "delete" ? `${API}/admin/qa/bulk-delete` : `${API}/admin/qa/bulk-status`;
+    const body = action === "delete" ? { ids } : { ids, status: action };
+    const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
+    if (!res.ok) { const d = await res.json().catch(() => ({})); toast({ title: "Error", description: d.error || "Bulk action failed", variant: "destructive" }); return; }
     setSelected(new Set());
     fetchData();
   };
