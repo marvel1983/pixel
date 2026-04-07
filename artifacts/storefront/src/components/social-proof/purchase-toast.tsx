@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { X, ShoppingBag, Package } from "lucide-react";
 import { useRecentPurchases, type RecentPurchase } from "@/hooks/use-social-proof";
 import { useLocation } from "wouter";
@@ -22,70 +22,57 @@ function formatTimeAgo(dateStr: string): string {
   return `${hours} hours ago`;
 }
 
+function randomDelay(min: number, max: number): number {
+  return (min + Math.random() * (max - min)) * 1000;
+}
+
 export function PurchaseToastProvider() {
   const { purchases, config } = useRecentPurchases();
   const [current, setCurrent] = useState<RecentPurchase | null>(null);
   const [visible, setVisible] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [location] = useLocation();
 
   const isAllowedPage =
     location === "/" || location === "/shop" || location.startsWith("/product/");
 
-  const showNext = useCallback(() => {
-    if (!config.toastEnabled || !isAllowedPage) return;
-    if (getToastCount() >= config.toastMaxPerSession) return;
-    if (!purchases.length) return;
-
-    const idx = getToastCount() % purchases.length;
-    setCurrent(purchases[idx]);
-    setVisible(true);
-    incrementToastCount();
-
-    setTimeout(() => setVisible(false), 6000);
-  }, [purchases, config, isAllowedPage]);
-
   useEffect(() => {
     if (!config.toastEnabled || !purchases.length || !isAllowedPage) return;
     if (getToastCount() >= config.toastMaxPerSession) return;
 
-    const randomInterval =
-      (config.toastIntervalMin +
-        Math.random() * (config.toastIntervalMax - config.toastIntervalMin)) *
-      1000;
+    function scheduleNext() {
+      if (getToastCount() >= config.toastMaxPerSession) return;
+      const delay = randomDelay(config.toastIntervalMin, config.toastIntervalMax);
+      timerRef.current = setTimeout(() => {
+        if (getToastCount() >= config.toastMaxPerSession) return;
+        const idx = getToastCount() % purchases.length;
+        setCurrent(purchases[idx]);
+        setVisible(true);
+        incrementToastCount();
+        setTimeout(() => {
+          setVisible(false);
+          scheduleNext();
+        }, 6000);
+      }, delay);
+    }
 
-    const timer = setTimeout(showNext, randomInterval);
-    return () => clearTimeout(timer);
-  }, [showNext, config, purchases, isAllowedPage]);
+    scheduleNext();
 
-  useEffect(() => {
-    if (!visible || !config.toastEnabled || !purchases.length || !isAllowedPage) return;
-    if (getToastCount() >= config.toastMaxPerSession) return;
-
-    const randomInterval =
-      (config.toastIntervalMin +
-        Math.random() * (config.toastIntervalMax - config.toastIntervalMin)) *
-      1000;
-
-    const timer = setTimeout(showNext, randomInterval);
-    return () => clearTimeout(timer);
-  }, [visible, showNext, config, purchases, isAllowedPage]);
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [config.toastEnabled, config.toastIntervalMin, config.toastIntervalMax, config.toastMaxPerSession, purchases, isAllowedPage]);
 
   if (!current || !visible) return null;
 
-  const cityText = current.customerCity
-    ? ` from ${current.customerCity}`
-    : "";
+  const cityText = current.customerCity ? ` from ${current.customerCity}` : "";
 
   return (
     <div className="fixed bottom-4 left-4 z-50 animate-in slide-in-from-bottom-4 fade-in duration-300 max-w-xs">
       <div className="bg-white border border-border rounded-lg shadow-lg p-3 flex gap-3 items-start">
         <div className="w-10 h-10 rounded bg-muted flex items-center justify-center flex-shrink-0">
           {current.productImageUrl ? (
-            <img
-              src={current.productImageUrl}
-              alt=""
-              className="w-10 h-10 rounded object-cover"
-            />
+            <img src={current.productImageUrl} alt="" className="w-10 h-10 rounded object-cover" />
           ) : (
             <Package className="h-5 w-5 text-muted-foreground" />
           )}
@@ -104,10 +91,7 @@ export function PurchaseToastProvider() {
             {formatTimeAgo(current.createdAt)}
           </p>
         </div>
-        <button
-          onClick={() => setVisible(false)}
-          className="text-muted-foreground hover:text-foreground p-0.5"
-        >
+        <button onClick={() => setVisible(false)} className="text-muted-foreground hover:text-foreground p-0.5">
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
