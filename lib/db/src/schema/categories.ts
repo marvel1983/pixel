@@ -6,6 +6,7 @@ import {
   integer,
   boolean,
   timestamp,
+  AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -16,9 +17,12 @@ export const categories = pgTable("categories", {
   slug: varchar("slug", { length: 200 }).notNull().unique(),
   description: text("description"),
   imageUrl: text("image_url"),
-  parentId: integer("parent_id").references((): any => categories.id, {
-    onDelete: "set null",
-  }),
+  metaTitle: varchar("meta_title", { length: 300 }),
+  metaDescription: varchar("meta_description", { length: 500 }),
+  parentId: integer("parent_id").references(
+    (): AnyPgColumn => categories.id,
+    { onDelete: "set null" },
+  ),
   sortOrder: integer("sort_order").notNull().default(0),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),

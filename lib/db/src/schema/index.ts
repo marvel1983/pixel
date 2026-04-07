@@ -11,3 +11,6 @@ export * from "./wishlists";
 export * from "./wallet";
 export * from "./blog";
 export * from "./support";
+export * from "./banners";
+export * from "./currency-rates";
+export * from "./audit-log";
