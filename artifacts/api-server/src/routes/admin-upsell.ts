@@ -3,10 +3,11 @@ import { db } from "@workspace/db";
 import { checkoutUpsell, products, productVariants } from "@workspace/db/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
+import { requirePermission } from "../middleware/permissions";
 
 const router = Router();
 
-router.get("/admin/checkout-upsell", requireAuth, requireAdmin, async (_req, res) => {
+router.get("/admin/checkout-upsell", requireAuth, requireAdmin, requirePermission("manageDiscounts"), async (_req, res) => {
   const rows = await db
     .select({
       id: checkoutUpsell.id,
@@ -30,7 +31,7 @@ router.get("/admin/checkout-upsell", requireAuth, requireAdmin, async (_req, res
   res.json({ current, history });
 });
 
-router.post("/admin/checkout-upsell", requireAuth, requireAdmin, async (req, res) => {
+router.post("/admin/checkout-upsell", requireAuth, requireAdmin, requirePermission("manageDiscounts"), async (req, res) => {
   const { productId, displayPrice, strikethroughPrice, urgencyMessage, checkboxLabel } = req.body;
   if (!productId || typeof productId !== "number" || !Number.isInteger(productId)) {
     res.status(400).json({ error: "productId is required and must be an integer" });
@@ -67,7 +68,7 @@ router.post("/admin/checkout-upsell", requireAuth, requireAdmin, async (req, res
   res.json({ success: true });
 });
 
-router.patch("/admin/checkout-upsell/:id/toggle", requireAuth, requireAdmin, async (req, res) => {
+router.patch("/admin/checkout-upsell/:id/toggle", requireAuth, requireAdmin, requirePermission("manageDiscounts"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const [row] = await db.select({ isActive: checkoutUpsell.isActive }).from(checkoutUpsell).where(eq(checkoutUpsell.id, id));

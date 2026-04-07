@@ -28,6 +28,7 @@ import ComparePage from "@/pages/compare";
 import SearchPage from "@/pages/search";
 import StaticPageView from "@/pages/static-page";
 import AdminRoot from "@/pages/admin/index";
+import AcceptInvitePage from "@/pages/admin/accept-invite";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -35,6 +36,7 @@ const queryClient = new QueryClient();
 function Router() {
   return (
     <Switch>
+      <Route path="/admin/accept-invite" component={AcceptInvitePage} />
       <Route path="/admin" component={AdminRoot} />
       <Route path="/admin/:rest*" component={AdminRoot} />
       <Route>

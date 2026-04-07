@@ -3,13 +3,14 @@ import { db } from "@workspace/db";
 import { claims, licenseKeys, orders, products, productVariants, orderItems } from "@workspace/db/schema";
 import { eq, desc, and, or, gte, lte, count, sql, avg, isNotNull } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
+import { requirePermission } from "../middleware/permissions";
 import { getMetenziConfig } from "../lib/metenzi-config";
 import { metenziRequest } from "../lib/metenzi-client";
 import { logger } from "../lib/logger";
 
 const router = Router();
 
-router.get("/admin/claims", requireAuth, requireAdmin, async (req, res) => {
+router.get("/admin/claims", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
   const page = Math.max(1, Number(req.query.page) || 1);
   const limit = Math.min(100, Math.max(10, Number(req.query.limit) || 50));
   const offset = (page - 1) * limit;
@@ -68,7 +69,7 @@ router.get("/admin/claims", requireAuth, requireAdmin, async (req, res) => {
   });
 });
 
-router.get("/admin/claims/orders", requireAuth, requireAdmin, async (req, res) => {
+router.get("/admin/claims/orders", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
   const search = (req.query.search as string)?.trim();
   const conds = search ? or(
     sql`${orders.orderNumber} ILIKE ${"%" + search + "%"}`,
@@ -89,7 +90,7 @@ router.get("/admin/claims/orders", requireAuth, requireAdmin, async (req, res) =
   res.json({ orders: rows });
 });
 
-router.get("/admin/claims/keys-for-order/:orderId", requireAuth, requireAdmin, async (req, res) => {
+router.get("/admin/claims/keys-for-order/:orderId", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
   const orderId = Number(req.params.orderId);
   if (!Number.isInteger(orderId) || orderId <= 0) {
     res.status(400).json({ error: "Invalid order ID" });
@@ -113,7 +114,7 @@ router.get("/admin/claims/keys-for-order/:orderId", requireAuth, requireAdmin, a
   res.json({ keys: rows });
 });
 
-router.post("/admin/claims", requireAuth, requireAdmin, async (req, res) => {
+router.post("/admin/claims", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
   const { orderId, licenseKeyId, customerEmail, reason, notes } = req.body;
   const validReasons = ["DEFECTIVE", "ALREADY_USED", "WRONG_PRODUCT", "NOT_RECEIVED", "OTHER"];
   if (!customerEmail?.trim() || !reason) {
@@ -180,7 +181,7 @@ router.post("/admin/claims", requireAuth, requireAdmin, async (req, res) => {
   res.json({ claim });
 });
 
-router.post("/admin/claims/:id/refresh", requireAuth, requireAdmin, async (req, res) => {
+router.post("/admin/claims/:id/refresh", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     res.status(400).json({ error: "Invalid claim ID" });
@@ -235,7 +236,7 @@ router.post("/admin/claims/:id/refresh", requireAuth, requireAdmin, async (req, 
   }
 });
 
-router.patch("/admin/claims/:id", requireAuth, requireAdmin, async (req, res) => {
+router.patch("/admin/claims/:id", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     res.status(400).json({ error: "Invalid claim ID" });

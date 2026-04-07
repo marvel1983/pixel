@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, boolean, timestamp, varchar, text } from "drizzle-orm/pg-core";
 import { users } from "./users";
 
 export const adminPermissions = pgTable("admin_permissions", {
@@ -16,4 +16,17 @@ export const adminPermissions = pgTable("admin_permissions", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+export const adminInvites = pgTable("admin_invites", {
+  id: serial("id").primaryKey(),
+  email: varchar("email", { length: 255 }).notNull(),
+  token: varchar("token", { length: 128 }).notNull().unique(),
+  invitedBy: integer("invited_by").notNull().references(() => users.id),
+  userId: integer("user_id").references(() => users.id),
+  permissionsJson: text("permissions_json"),
+  accepted: boolean("accepted").notNull().default(false),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export type AdminPermission = typeof adminPermissions.$inferSelect;
+export type AdminInvite = typeof adminInvites.$inferSelect;

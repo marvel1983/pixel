@@ -10,6 +10,7 @@ import {
 } from "@workspace/db/schema";
 import { eq, sql, and, gte, lte, count, sum, desc, lt, inArray } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
+import { requirePermission } from "../middleware/permissions";
 import { getMetenziConfig } from "../lib/metenzi-config";
 import { getBalance } from "../lib/metenzi-endpoints";
 
@@ -19,6 +20,7 @@ router.get(
   "/admin/dashboard/stats",
   requireAuth,
   requireAdmin,
+  requirePermission("viewAnalytics"),
   async (_req, res) => {
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -87,6 +89,7 @@ router.get(
   "/admin/dashboard/recent-orders",
   requireAuth,
   requireAdmin,
+  requirePermission("viewAnalytics"),
   async (_req, res) => {
     const recentOrders = await db
       .select({
@@ -133,6 +136,7 @@ router.get(
   "/admin/dashboard/low-stock",
   requireAuth,
   requireAdmin,
+  requirePermission("viewAnalytics"),
   async (_req, res) => {
     const lowStock = await db
       .select({
@@ -162,6 +166,7 @@ router.get(
   "/admin/dashboard/pending-reviews",
   requireAuth,
   requireAdmin,
+  requirePermission("viewAnalytics"),
   async (_req, res) => {
     const pending = await db
       .select({
@@ -188,6 +193,7 @@ router.post(
   "/admin/dashboard/reviews/:id/approve",
   requireAuth,
   requireAdmin,
+  requirePermission("viewAnalytics"),
   async (req, res) => {
     const reviewId = Number(req.params.id);
     if (!Number.isInteger(reviewId) || reviewId <= 0) {
@@ -210,6 +216,7 @@ router.delete(
   "/admin/dashboard/reviews/:id",
   requireAuth,
   requireAdmin,
+  requirePermission("viewAnalytics"),
   async (req, res) => {
     const reviewId = Number(req.params.id);
     if (!Number.isInteger(reviewId) || reviewId <= 0) {

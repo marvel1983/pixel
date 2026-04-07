@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { siteSettings, apiProviders, apiCredentials } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
+import { requirePermission } from "../middleware/permissions";
 import { encrypt, decrypt } from "../lib/encryption";
 
 const router = Router();
@@ -19,7 +20,7 @@ function validateProviderField(provider: string, field: string): string | null {
   return null;
 }
 
-router.get("/admin/settings/general", requireAuth, requireAdmin, async (_req, res) => {
+router.get("/admin/settings/general", requireAuth, requireAdmin, requirePermission("manageSettings"), async (_req, res) => {
   const rows = await db.select().from(siteSettings);
   if (rows.length === 0) { res.json({ settings: null }); return; }
   const s = rows[0];
@@ -36,7 +37,7 @@ router.get("/admin/settings/general", requireAuth, requireAdmin, async (_req, re
   });
 });
 
-router.put("/admin/settings/general", requireAuth, requireAdmin, async (req, res) => {
+router.put("/admin/settings/general", requireAuth, requireAdmin, requirePermission("manageSettings"), async (req, res) => {
   const rows = await db.select({ id: siteSettings.id }).from(siteSettings);
   const data = {
     siteName: String(req.body.siteName ?? "PixelCodes"),
@@ -64,7 +65,7 @@ router.put("/admin/settings/general", requireAuth, requireAdmin, async (req, res
   res.json({ success: true });
 });
 
-router.get("/admin/settings/api-keys", requireAuth, requireAdmin, async (_req, res) => {
+router.get("/admin/settings/api-keys", requireAuth, requireAdmin, requirePermission("manageSettings"), async (_req, res) => {
   const [metenzi] = await db.select().from(apiProviders).where(eq(apiProviders.slug, "metenzi"));
   const [checkout] = await db.select().from(apiCredentials).where(eq(apiCredentials.provider, "checkout"));
   res.json({
@@ -81,7 +82,7 @@ router.get("/admin/settings/api-keys", requireAuth, requireAdmin, async (_req, r
   });
 });
 
-router.post("/admin/settings/api-keys/reveal", requireAuth, requireAdmin, async (req, res) => {
+router.post("/admin/settings/api-keys/reveal", requireAuth, requireAdmin, requirePermission("manageSettings"), async (req, res) => {
   const { provider, field } = req.body;
   const err = validateProviderField(provider, field);
   if (err) { res.status(400).json({ error: err }); return; }
@@ -102,7 +103,7 @@ router.post("/admin/settings/api-keys/reveal", requireAuth, requireAdmin, async 
   } else { res.status(400).json({ error: "Unknown provider" }); }
 });
 
-router.put("/admin/settings/api-keys", requireAuth, requireAdmin, async (req, res) => {
+router.put("/admin/settings/api-keys", requireAuth, requireAdmin, requirePermission("manageSettings"), async (req, res) => {
   const { provider, field, value } = req.body;
   const fieldErr = validateProviderField(provider, field);
   if (fieldErr) { res.status(400).json({ error: fieldErr }); return; }
@@ -122,7 +123,7 @@ router.put("/admin/settings/api-keys", requireAuth, requireAdmin, async (req, re
   res.json({ success: true });
 });
 
-router.post("/admin/settings/api-keys/test", requireAuth, requireAdmin, async (req, res) => {
+router.post("/admin/settings/api-keys/test", requireAuth, requireAdmin, requirePermission("manageSettings"), async (req, res) => {
   const { provider } = req.body;
   if (provider === "metenzi") {
     const [row] = await db.select().from(apiProviders).where(eq(apiProviders.slug, "metenzi"));

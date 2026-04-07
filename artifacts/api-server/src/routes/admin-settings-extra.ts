@@ -3,12 +3,13 @@ import { db } from "@workspace/db";
 import { siteSettings, currencyRates, emailQueue } from "@workspace/db/schema";
 import { eq, sql, desc } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
+import { requirePermission } from "../middleware/permissions";
 import { encrypt, decrypt } from "../lib/encryption";
 import { invalidateMailerCache } from "../lib/email/mailer";
 
 const router = Router();
 
-router.get("/admin/settings/cpp-fees", requireAuth, requireAdmin, async (_req, res) => {
+router.get("/admin/settings/cpp-fees", requireAuth, requireAdmin, requirePermission("manageSettings"), async (_req, res) => {
   const [s] = await db.select().from(siteSettings);
   res.json({
     cppEnabled: s?.cppEnabled ?? false,
@@ -20,7 +21,7 @@ router.get("/admin/settings/cpp-fees", requireAuth, requireAdmin, async (_req, r
   });
 });
 
-router.put("/admin/settings/cpp-fees", requireAuth, requireAdmin, async (req, res) => {
+router.put("/admin/settings/cpp-fees", requireAuth, requireAdmin, requirePermission("manageSettings"), async (req, res) => {
   const [existing] = await db.select({ id: siteSettings.id }).from(siteSettings);
   const data = {
     cppEnabled: Boolean(req.body.cppEnabled),
@@ -36,13 +37,13 @@ router.put("/admin/settings/cpp-fees", requireAuth, requireAdmin, async (req, re
   res.json({ success: true });
 });
 
-router.get("/admin/settings/currencies", requireAuth, requireAdmin, async (_req, res) => {
+router.get("/admin/settings/currencies", requireAuth, requireAdmin, requirePermission("manageSettings"), async (_req, res) => {
   const [s] = await db.select({ defaultCurrency: siteSettings.defaultCurrency }).from(siteSettings);
   const rates = await db.select().from(currencyRates).orderBy(currencyRates.sortOrder, currencyRates.currencyCode);
   res.json({ defaultCurrency: s?.defaultCurrency ?? "USD", currencies: rates });
 });
 
-router.put("/admin/settings/currencies/default", requireAuth, requireAdmin, async (req, res) => {
+router.put("/admin/settings/currencies/default", requireAuth, requireAdmin, requirePermission("manageSettings"), async (req, res) => {
   const code = String(req.body.defaultCurrency || "USD").toUpperCase();
   if (code.length !== 3) { res.status(400).json({ error: "Invalid currency code" }); return; }
   const [currency] = await db.select().from(currencyRates).where(eq(currencyRates.currencyCode, code));
@@ -54,7 +55,7 @@ router.put("/admin/settings/currencies/default", requireAuth, requireAdmin, asyn
   res.json({ success: true });
 });
 
-router.post("/admin/settings/currencies", requireAuth, requireAdmin, async (req, res) => {
+router.post("/admin/settings/currencies", requireAuth, requireAdmin, requirePermission("manageSettings"), async (req, res) => {
   const code = String(req.body.currencyCode || "").toUpperCase().trim();
   const symbol = String(req.body.symbol || "$").trim();
   const rate = String(req.body.rateToUsd || "1");
@@ -66,7 +67,7 @@ router.post("/admin/settings/currencies", requireAuth, requireAdmin, async (req,
   res.json(created);
 });
 
-router.put("/admin/settings/currencies/reorder", requireAuth, requireAdmin, async (req, res) => {
+router.put("/admin/settings/currencies/reorder", requireAuth, requireAdmin, requirePermission("manageSettings"), async (req, res) => {
   const ids = req.body.ids;
   if (!Array.isArray(ids) || ids.length === 0) { res.status(400).json({ error: "ids array required" }); return; }
   for (let i = 0; i < ids.length; i++) {
@@ -75,7 +76,7 @@ router.put("/admin/settings/currencies/reorder", requireAuth, requireAdmin, asyn
   res.json({ success: true });
 });
 
-router.put("/admin/settings/currencies/:id", requireAuth, requireAdmin, async (req, res) => {
+router.put("/admin/settings/currencies/:id", requireAuth, requireAdmin, requirePermission("manageSettings"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const updates: Record<string, unknown> = { updatedAt: new Date() };
@@ -90,14 +91,14 @@ router.put("/admin/settings/currencies/:id", requireAuth, requireAdmin, async (r
   res.json({ success: true });
 });
 
-router.delete("/admin/settings/currencies/:id", requireAuth, requireAdmin, async (req, res) => {
+router.delete("/admin/settings/currencies/:id", requireAuth, requireAdmin, requirePermission("manageSettings"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   await db.delete(currencyRates).where(eq(currencyRates.id, id));
   res.json({ success: true });
 });
 
-router.get("/admin/settings/smtp", requireAuth, requireAdmin, async (_req, res) => {
+router.get("/admin/settings/smtp", requireAuth, requireAdmin, requirePermission("manageSettings"), async (_req, res) => {
   const [s] = await db.select().from(siteSettings);
   res.json({
     smtpHost: s?.smtpHost ?? "",
@@ -109,7 +110,7 @@ router.get("/admin/settings/smtp", requireAuth, requireAdmin, async (_req, res) 
   });
 });
 
-router.put("/admin/settings/smtp", requireAuth, requireAdmin, async (req, res) => {
+router.put("/admin/settings/smtp", requireAuth, requireAdmin, requirePermission("manageSettings"), async (req, res) => {
   const [existing] = await db.select({ id: siteSettings.id }).from(siteSettings);
   const data: Record<string, unknown> = {
     smtpHost: req.body.smtpHost || null,
@@ -128,7 +129,7 @@ router.put("/admin/settings/smtp", requireAuth, requireAdmin, async (req, res) =
   res.json({ success: true });
 });
 
-router.post("/admin/settings/smtp/test", requireAuth, requireAdmin, async (req, res) => {
+router.post("/admin/settings/smtp/test", requireAuth, requireAdmin, requirePermission("manageSettings"), async (req, res) => {
   const [s] = await db.select().from(siteSettings);
   if (!s?.smtpHost || !s?.smtpUser) { res.json({ success: false, message: "SMTP not configured" }); return; }
   const to = String(req.body.to || s.contactEmail || s.supportEmail || "");
@@ -139,7 +140,7 @@ router.post("/admin/settings/smtp/test", requireAuth, requireAdmin, async (req, 
   } catch (e) { res.json({ success: false, message: `Failed: ${(e as Error).message}` }); }
 });
 
-router.get("/admin/settings/smtp/queue-status", requireAuth, requireAdmin, async (_req, res) => {
+router.get("/admin/settings/smtp/queue-status", requireAuth, requireAdmin, requirePermission("manageSettings"), async (_req, res) => {
   const [counts] = await db.select({
     total: sql<number>`count(*)::int`,
     pending: sql<number>`count(*) filter (where status = 'pending')::int`,

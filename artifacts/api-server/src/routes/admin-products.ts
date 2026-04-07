@@ -3,12 +3,13 @@ import { db } from "@workspace/db";
 import { products, productVariants, categories } from "@workspace/db/schema";
 import { eq, sql, and, ilike, count, asc, desc, inArray } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
+import { requirePermission } from "../middleware/permissions";
 import { syncProducts } from "../lib/product-sync";
 import { getMetenziConfig } from "../lib/metenzi-config";
 
 const router = Router();
 
-router.get("/admin/products", requireAuth, requireAdmin, async (req, res) => {
+router.get("/admin/products", requireAuth, requireAdmin, requirePermission("manageProducts"), async (req, res) => {
   const page = Math.max(1, Number(req.query.page) || 1);
   const limit = 25;
   const offset = (page - 1) * limit;
@@ -101,7 +102,7 @@ router.get("/admin/products", requireAuth, requireAdmin, async (req, res) => {
   });
 });
 
-router.post("/admin/products/bulk", requireAuth, requireAdmin, async (req, res) => {
+router.post("/admin/products/bulk", requireAuth, requireAdmin, requirePermission("manageProducts"), async (req, res) => {
   const { ids, action } = req.body as { ids: number[]; action: string };
   if (!Array.isArray(ids) || ids.length === 0) {
     res.status(400).json({ error: "No product IDs provided" });
@@ -118,7 +119,7 @@ router.post("/admin/products/bulk", requireAuth, requireAdmin, async (req, res) 
   res.json({ success: true, affected: ids.length });
 });
 
-router.post("/admin/products/sync", requireAuth, requireAdmin, async (_req, res) => {
+router.post("/admin/products/sync", requireAuth, requireAdmin, requirePermission("manageProducts"), async (_req, res) => {
   const config = await getMetenziConfig();
   if (!config) {
     res.status(400).json({ error: "Metenzi not configured" });
@@ -132,7 +133,7 @@ router.post("/admin/products/sync", requireAuth, requireAdmin, async (_req, res)
   }
 });
 
-router.get("/admin/products/export", requireAuth, requireAdmin, async (req, res) => {
+router.get("/admin/products/export", requireAuth, requireAdmin, requirePermission("manageProducts"), async (req, res) => {
   const idsParam = (req.query.ids as string) ?? "";
   const filterIds = idsParam ? idsParam.split(",").map(Number).filter((n) => Number.isInteger(n) && n > 0) : [];
 
@@ -177,7 +178,7 @@ router.get("/admin/products/export", requireAuth, requireAdmin, async (req, res)
   res.send(header + csvRows.join("\n"));
 });
 
-router.get("/admin/products/:id", requireAuth, requireAdmin, async (req, res) => {
+router.get("/admin/products/:id", requireAuth, requireAdmin, requirePermission("manageProducts"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     res.status(400).json({ error: "Invalid product ID" });
@@ -215,7 +216,7 @@ router.get("/admin/products/:id", requireAuth, requireAdmin, async (req, res) =>
   res.json({ product, variants, categories: cats, allProducts });
 });
 
-router.put("/admin/products/:id", requireAuth, requireAdmin, async (req, res) => {
+router.put("/admin/products/:id", requireAuth, requireAdmin, requirePermission("manageProducts"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     res.status(400).json({ error: "Invalid product ID" });
@@ -249,7 +250,7 @@ router.put("/admin/products/:id", requireAuth, requireAdmin, async (req, res) =>
   res.json({ success: true });
 });
 
-router.patch("/admin/products/:id/toggle", requireAuth, requireAdmin, async (req, res) => {
+router.patch("/admin/products/:id/toggle", requireAuth, requireAdmin, requirePermission("manageProducts"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     res.status(400).json({ error: "Invalid product ID" });
@@ -270,7 +271,7 @@ router.patch("/admin/products/:id/toggle", requireAuth, requireAdmin, async (req
   res.json({ isActive: !product.isActive });
 });
 
-router.patch("/admin/variants/:id/price-override", requireAuth, requireAdmin, async (req, res) => {
+router.patch("/admin/variants/:id/price-override", requireAuth, requireAdmin, requirePermission("manageProducts"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     res.status(400).json({ error: "Invalid variant ID" });

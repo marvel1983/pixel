@@ -4,10 +4,11 @@ import { categories, categoryMeta } from "@workspace/db/schema";
 import { products } from "@workspace/db/schema";
 import { eq, asc, sql, count } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
+import { requirePermission } from "../middleware/permissions";
 
 const router = Router();
 
-router.get("/admin/categories", requireAuth, requireAdmin, async (_req, res) => {
+router.get("/admin/categories", requireAuth, requireAdmin, requirePermission("manageProducts"), async (_req, res) => {
   const rows = await db
     .select({
       id: categories.id,
@@ -36,7 +37,7 @@ router.get("/admin/categories", requireAuth, requireAdmin, async (_req, res) => 
   res.json({ categories: rows });
 });
 
-router.get("/admin/categories/:id", requireAuth, requireAdmin, async (req, res) => {
+router.get("/admin/categories/:id", requireAuth, requireAdmin, requirePermission("manageProducts"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     res.status(400).json({ error: "Invalid category ID" });
@@ -79,7 +80,7 @@ router.get("/admin/categories/:id", requireAuth, requireAdmin, async (req, res) 
   res.json({ category: row, parentOptions });
 });
 
-router.put("/admin/categories/:id", requireAuth, requireAdmin, async (req, res) => {
+router.put("/admin/categories/:id", requireAuth, requireAdmin, requirePermission("manageProducts"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     res.status(400).json({ error: "Invalid category ID" });
@@ -142,7 +143,7 @@ router.put("/admin/categories/:id", requireAuth, requireAdmin, async (req, res) 
   res.json({ success: true });
 });
 
-router.patch("/admin/categories/:id/toggle", requireAuth, requireAdmin, async (req, res) => {
+router.patch("/admin/categories/:id/toggle", requireAuth, requireAdmin, requirePermission("manageProducts"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     res.status(400).json({ error: "Invalid category ID" });
@@ -166,7 +167,7 @@ router.patch("/admin/categories/:id/toggle", requireAuth, requireAdmin, async (r
   }
 });
 
-router.post("/admin/categories", requireAuth, requireAdmin, async (req, res) => {
+router.post("/admin/categories", requireAuth, requireAdmin, requirePermission("manageProducts"), async (req, res) => {
   const body = req.body;
   if (!body.name || !body.slug) {
     res.status(400).json({ error: "Name and slug are required" });
@@ -205,7 +206,7 @@ router.post("/admin/categories", requireAuth, requireAdmin, async (req, res) => 
   res.status(201).json({ category: created });
 });
 
-router.delete("/admin/categories/:id", requireAuth, requireAdmin, async (req, res) => {
+router.delete("/admin/categories/:id", requireAuth, requireAdmin, requirePermission("manageProducts"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     res.status(400).json({ error: "Invalid category ID" });

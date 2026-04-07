@@ -3,11 +3,12 @@ import { db } from "@workspace/db";
 import { coupons, orders } from "@workspace/db/schema";
 import { eq, desc, and, ilike, count, sum, sql, gte, lte } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
+import { requirePermission } from "../middleware/permissions";
 import crypto from "node:crypto";
 
 const router = Router();
 
-router.get("/admin/discounts", requireAuth, requireAdmin, async (req, res) => {
+router.get("/admin/discounts", requireAuth, requireAdmin, requirePermission("manageDiscounts"), async (req, res) => {
   const page = Math.max(1, Number(req.query.page) || 1);
   const limit = Math.min(100, Math.max(10, Number(req.query.limit) || 50));
   const offset = (page - 1) * limit;
@@ -36,7 +37,7 @@ router.get("/admin/discounts", requireAuth, requireAdmin, async (req, res) => {
   });
 });
 
-router.get("/admin/discounts/check-code", requireAuth, requireAdmin, async (req, res) => {
+router.get("/admin/discounts/check-code", requireAuth, requireAdmin, requirePermission("manageDiscounts"), async (req, res) => {
   const code = (req.query.code as string)?.trim().toUpperCase();
   if (!code) { res.json({ available: false }); return; }
   const excludeId = req.query.excludeId ? Number(req.query.excludeId) : null;
@@ -47,7 +48,7 @@ router.get("/admin/discounts/check-code", requireAuth, requireAdmin, async (req,
   res.json({ available: !existing });
 });
 
-router.get("/admin/discounts/:id", requireAuth, requireAdmin, async (req, res) => {
+router.get("/admin/discounts/:id", requireAuth, requireAdmin, requirePermission("manageDiscounts"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
   const [disc] = await db.select().from(coupons).where(eq(coupons.id, id));
@@ -55,7 +56,7 @@ router.get("/admin/discounts/:id", requireAuth, requireAdmin, async (req, res) =
   res.json({ discount: disc });
 });
 
-router.post("/admin/discounts", requireAuth, requireAdmin, async (req, res) => {
+router.post("/admin/discounts", requireAuth, requireAdmin, requirePermission("manageDiscounts"), async (req, res) => {
   const data = parseDiscountBody(req.body);
   if (!data) { res.status(400).json({ error: "Invalid discount data" }); return; }
 
@@ -66,7 +67,7 @@ router.post("/admin/discounts", requireAuth, requireAdmin, async (req, res) => {
   res.json({ discount: disc });
 });
 
-router.put("/admin/discounts/:id", requireAuth, requireAdmin, async (req, res) => {
+router.put("/admin/discounts/:id", requireAuth, requireAdmin, requirePermission("manageDiscounts"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
 
@@ -86,7 +87,7 @@ router.put("/admin/discounts/:id", requireAuth, requireAdmin, async (req, res) =
   res.json({ discount: updated });
 });
 
-router.patch("/admin/discounts/:id/toggle", requireAuth, requireAdmin, async (req, res) => {
+router.patch("/admin/discounts/:id/toggle", requireAuth, requireAdmin, requirePermission("manageDiscounts"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
   const [disc] = await db.select({ isActive: coupons.isActive }).from(coupons).where(eq(coupons.id, id));
@@ -95,14 +96,14 @@ router.patch("/admin/discounts/:id/toggle", requireAuth, requireAdmin, async (re
   res.json({ isActive: !disc.isActive });
 });
 
-router.delete("/admin/discounts/:id", requireAuth, requireAdmin, async (req, res) => {
+router.delete("/admin/discounts/:id", requireAuth, requireAdmin, requirePermission("manageDiscounts"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
   await db.delete(coupons).where(eq(coupons.id, id));
   res.json({ success: true });
 });
 
-router.post("/admin/discounts/bulk", requireAuth, requireAdmin, async (req, res) => {
+router.post("/admin/discounts/bulk", requireAuth, requireAdmin, requirePermission("manageDiscounts"), async (req, res) => {
   const { prefix, length, quantity, discountType, discountValue, minOrderUsd, maxDiscountUsd, usageLimit, expiresAt } = req.body;
   const qty = Math.min(1000, Math.max(1, Number(quantity) || 10));
   const codeLen = Math.min(20, Math.max(4, Number(length) || 8));
@@ -147,7 +148,7 @@ router.post("/admin/discounts/bulk", requireAuth, requireAdmin, async (req, res)
   res.json({ generated: codes.length, groupId, codes });
 });
 
-router.get("/admin/discounts/:id/usage", requireAuth, requireAdmin, async (req, res) => {
+router.get("/admin/discounts/:id/usage", requireAuth, requireAdmin, requirePermission("manageDiscounts"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
 

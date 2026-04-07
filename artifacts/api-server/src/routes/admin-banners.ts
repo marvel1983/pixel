@@ -3,17 +3,18 @@ import { db } from "@workspace/db";
 import { banners } from "@workspace/db/schema";
 import { eq, asc, count } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
+import { requirePermission } from "../middleware/permissions";
 
 const router = Router();
 
-router.get("/admin/banners", requireAuth, requireAdmin, async (_req, res) => {
+router.get("/admin/banners", requireAuth, requireAdmin, requirePermission("manageContent"), async (_req, res) => {
   const rows = await db.select().from(banners).orderBy(asc(banners.sortOrder), asc(banners.id));
   const [{ total }] = await db.select({ total: count() }).from(banners);
   const active = rows.filter((r) => r.isActive).length;
   res.json({ banners: rows, total, active });
 });
 
-router.get("/admin/banners/:id", requireAuth, requireAdmin, async (req, res) => {
+router.get("/admin/banners/:id", requireAuth, requireAdmin, requirePermission("manageContent"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
   const [banner] = await db.select().from(banners).where(eq(banners.id, id));
@@ -21,14 +22,14 @@ router.get("/admin/banners/:id", requireAuth, requireAdmin, async (req, res) => 
   res.json({ banner });
 });
 
-router.post("/admin/banners", requireAuth, requireAdmin, async (req, res) => {
+router.post("/admin/banners", requireAuth, requireAdmin, requirePermission("manageContent"), async (req, res) => {
   const data = parseBannerBody(req.body);
   if (!data) { res.status(400).json({ error: "Title is required" }); return; }
   const [banner] = await db.insert(banners).values(data).returning();
   res.json({ banner });
 });
 
-router.put("/admin/banners/:id", requireAuth, requireAdmin, async (req, res) => {
+router.put("/admin/banners/:id", requireAuth, requireAdmin, requirePermission("manageContent"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
   const data = parseBannerBody(req.body);
@@ -39,7 +40,7 @@ router.put("/admin/banners/:id", requireAuth, requireAdmin, async (req, res) => 
   res.json({ banner: updated });
 });
 
-router.patch("/admin/banners/:id/toggle", requireAuth, requireAdmin, async (req, res) => {
+router.patch("/admin/banners/:id/toggle", requireAuth, requireAdmin, requirePermission("manageContent"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
   const [b] = await db.select({ isActive: banners.isActive }).from(banners).where(eq(banners.id, id));
@@ -48,14 +49,14 @@ router.patch("/admin/banners/:id/toggle", requireAuth, requireAdmin, async (req,
   res.json({ isActive: !b.isActive });
 });
 
-router.delete("/admin/banners/:id", requireAuth, requireAdmin, async (req, res) => {
+router.delete("/admin/banners/:id", requireAuth, requireAdmin, requirePermission("manageContent"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
   await db.delete(banners).where(eq(banners.id, id));
   res.json({ success: true });
 });
 
-router.post("/admin/banners/reorder", requireAuth, requireAdmin, async (req, res) => {
+router.post("/admin/banners/reorder", requireAuth, requireAdmin, requirePermission("manageContent"), async (req, res) => {
   const { ids } = req.body;
   if (!Array.isArray(ids) || ids.length === 0) { res.status(400).json({ error: "IDs array required" }); return; }
   for (let i = 0; i < ids.length; i++) {

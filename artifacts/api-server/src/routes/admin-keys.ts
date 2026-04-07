@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { licenseKeys, productVariants, products, orderItems, orders, auditLog } from "@workspace/db/schema";
 import { eq, desc, and, or, ilike, gte, lte, count, sql, isNull } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
+import { requirePermission } from "../middleware/permissions";
 import { decrypt } from "../lib/encryption";
 
 const router = Router();
@@ -24,7 +25,7 @@ async function ensureKeyMask(id: number, keyValue: string, currentMask: string |
   return mask;
 }
 
-router.get("/admin/keys", requireAuth, requireAdmin, async (req, res) => {
+router.get("/admin/keys", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
   const page = Math.max(1, Number(req.query.page) || 1);
   const limit = Math.min(100, Math.max(10, Number(req.query.limit) || 50));
   const offset = (page - 1) * limit;
@@ -101,7 +102,7 @@ router.get("/admin/keys", requireAuth, requireAdmin, async (req, res) => {
   });
 });
 
-router.post("/admin/keys/backfill-masks", requireAuth, requireAdmin, async (_req, res) => {
+router.post("/admin/keys/backfill-masks", requireAuth, requireAdmin, requirePermission("manageOrders"), async (_req, res) => {
   const nullMasks = await db.select({ id: licenseKeys.id, keyValue: licenseKeys.keyValue })
     .from(licenseKeys).where(isNull(licenseKeys.keyMask)).limit(500);
   let updated = 0;
@@ -114,7 +115,7 @@ router.post("/admin/keys/backfill-masks", requireAuth, requireAdmin, async (_req
   res.json({ updated, remaining: nullMasks.length === 500 });
 });
 
-router.get("/admin/keys/products", requireAuth, requireAdmin, async (_req, res) => {
+router.get("/admin/keys/products", requireAuth, requireAdmin, requirePermission("manageOrders"), async (_req, res) => {
   const prods = await db
     .select({ id: products.id, name: products.name })
     .from(products)
@@ -122,7 +123,7 @@ router.get("/admin/keys/products", requireAuth, requireAdmin, async (_req, res) 
   res.json({ products: prods });
 });
 
-router.post("/admin/keys/:id/reveal", requireAuth, requireAdmin, async (req, res) => {
+router.post("/admin/keys/:id/reveal", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     res.status(400).json({ error: "Invalid key ID" });
@@ -147,7 +148,7 @@ router.post("/admin/keys/:id/reveal", requireAuth, requireAdmin, async (req, res
   res.json({ keyValue: safeDecrypt(key.keyValue) });
 });
 
-router.post("/admin/keys/:id/copy-audit", requireAuth, requireAdmin, async (req, res) => {
+router.post("/admin/keys/:id/copy-audit", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     res.status(400).json({ error: "Invalid key ID" });
@@ -172,7 +173,7 @@ router.post("/admin/keys/:id/copy-audit", requireAuth, requireAdmin, async (req,
   res.json({ success: true });
 });
 
-router.patch("/admin/keys/:id/status", requireAuth, requireAdmin, async (req, res) => {
+router.patch("/admin/keys/:id/status", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     res.status(400).json({ error: "Invalid key ID" });

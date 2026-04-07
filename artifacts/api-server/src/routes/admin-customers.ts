@@ -3,12 +3,13 @@ import { db } from "@workspace/db";
 import { users, orders, wishlists, reviews, products } from "@workspace/db/schema";
 import { eq, desc, sql, and, or, ilike, gte, lte, count, sum, inArray } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
+import { requirePermission } from "../middleware/permissions";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 
 const router = Router();
 
-router.get("/admin/customers", requireAuth, requireAdmin, async (req, res) => {
+router.get("/admin/customers", requireAuth, requireAdmin, requirePermission("manageCustomers"), async (req, res) => {
   const page = Math.max(1, Number(req.query.page) || 1);
   const limit = Math.min(100, Math.max(10, Number(req.query.limit) || 25));
   const offset = (page - 1) * limit;
@@ -63,7 +64,7 @@ router.get("/admin/customers", requireAuth, requireAdmin, async (req, res) => {
   });
 });
 
-router.get("/admin/customers/:id", requireAuth, requireAdmin, async (req, res) => {
+router.get("/admin/customers/:id", requireAuth, requireAdmin, requirePermission("manageCustomers"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
 
@@ -111,7 +112,7 @@ router.get("/admin/customers/:id", requireAuth, requireAdmin, async (req, res) =
   });
 });
 
-router.patch("/admin/customers/:id/role", requireAuth, requireAdmin, async (req, res) => {
+router.patch("/admin/customers/:id/role", requireAuth, requireAdmin, requirePermission("manageCustomers"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
   const { role } = req.body;
@@ -129,14 +130,14 @@ router.patch("/admin/customers/:id/role", requireAuth, requireAdmin, async (req,
   res.json({ success: true });
 });
 
-router.patch("/admin/customers/:id/notes", requireAuth, requireAdmin, async (req, res) => {
+router.patch("/admin/customers/:id/notes", requireAuth, requireAdmin, requirePermission("manageCustomers"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
   await db.update(users).set({ adminNotes: req.body.notes ?? null, updatedAt: new Date() }).where(eq(users.id, id));
   res.json({ success: true });
 });
 
-router.post("/admin/customers/:id/reset-password", requireAuth, requireAdmin, async (req, res) => {
+router.post("/admin/customers/:id/reset-password", requireAuth, requireAdmin, requirePermission("manageCustomers"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
   const [target] = await db.select({ role: users.role }).from(users).where(eq(users.id, id));
@@ -151,7 +152,7 @@ router.post("/admin/customers/:id/reset-password", requireAuth, requireAdmin, as
   res.json({ success: true, tempPassword });
 });
 
-router.patch("/admin/customers/:id/toggle-active", requireAuth, requireAdmin, async (req, res) => {
+router.patch("/admin/customers/:id/toggle-active", requireAuth, requireAdmin, requirePermission("manageCustomers"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
   const [user] = await db.select({ isActive: users.isActive, role: users.role }).from(users).where(eq(users.id, id));
@@ -164,7 +165,7 @@ router.patch("/admin/customers/:id/toggle-active", requireAuth, requireAdmin, as
   res.json({ isActive: !user.isActive });
 });
 
-router.delete("/admin/customers/:id", requireAuth, requireAdmin, async (req, res) => {
+router.delete("/admin/customers/:id", requireAuth, requireAdmin, requirePermission("manageCustomers"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
   const [target] = await db.select({ role: users.role }).from(users).where(eq(users.id, id));

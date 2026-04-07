@@ -3,15 +3,16 @@ import { db } from "@workspace/db";
 import { brandSections } from "@workspace/db/schema";
 import { eq, asc } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
+import { requirePermission } from "../middleware/permissions";
 
 const router = Router();
 
-router.get("/admin/brand-sections", requireAuth, requireAdmin, async (_req, res) => {
+router.get("/admin/brand-sections", requireAuth, requireAdmin, requirePermission("manageContent"), async (_req, res) => {
   const brands = await db.select().from(brandSections).orderBy(asc(brandSections.sortOrder));
   res.json({ brands });
 });
 
-router.post("/admin/brand-sections", requireAuth, requireAdmin, async (req, res) => {
+router.post("/admin/brand-sections", requireAuth, requireAdmin, requirePermission("manageContent"), async (req, res) => {
   const { name, slug, bannerImage, bgColor, title, description, marketingPoints, productIds } = req.body;
   if (!name || typeof name !== "string") { res.status(400).json({ error: "name is required" }); return; }
   if (!slug || typeof slug !== "string") { res.status(400).json({ error: "slug is required" }); return; }
@@ -29,7 +30,7 @@ router.post("/admin/brand-sections", requireAuth, requireAdmin, async (req, res)
   res.json({ brand: row });
 });
 
-router.put("/admin/brand-sections/reorder", requireAuth, requireAdmin, async (req, res) => {
+router.put("/admin/brand-sections/reorder", requireAuth, requireAdmin, requirePermission("manageContent"), async (req, res) => {
   const { order } = req.body;
   if (!Array.isArray(order) || !order.every((id) => typeof id === "number" && Number.isInteger(id))) { res.status(400).json({ error: "order must be an array of integer IDs" }); return; }
   for (let i = 0; i < order.length; i++) {
@@ -38,7 +39,7 @@ router.put("/admin/brand-sections/reorder", requireAuth, requireAdmin, async (re
   res.json({ success: true });
 });
 
-router.put("/admin/brand-sections/:id", requireAuth, requireAdmin, async (req, res) => {
+router.put("/admin/brand-sections/:id", requireAuth, requireAdmin, requirePermission("manageContent"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const { name, slug, bannerImage, bgColor, title, description, marketingPoints, productIds, isEnabled } = req.body;
@@ -56,7 +57,7 @@ router.put("/admin/brand-sections/:id", requireAuth, requireAdmin, async (req, r
   res.json({ success: true });
 });
 
-router.delete("/admin/brand-sections/:id", requireAuth, requireAdmin, async (req, res) => {
+router.delete("/admin/brand-sections/:id", requireAuth, requireAdmin, requirePermission("manageContent"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   await db.delete(brandSections).where(eq(brandSections.id, id));

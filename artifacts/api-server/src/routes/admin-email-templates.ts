@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { emailTemplates } from "@workspace/db/schema";
 import { eq, asc } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
+import { requirePermission } from "../middleware/permissions";
 
 const router = Router();
 
@@ -15,7 +16,7 @@ const DEFAULT_TEMPLATES = [
   { key: "claim_resolved", name: "Claim Resolved", subject: "Your claim #{{claimId}} has been resolved", bodyHtml: "<h1>Claim Resolved</h1><p>Hi {{customerName}},</p><p>Your claim <strong>#{{claimId}}</strong> for order #{{orderId}} has been resolved.</p><p>Resolution: {{resolution}}</p>", variables: ["claimId", "orderId", "customerName", "resolution"], sampleData: { claimId: "CLM-001", orderId: "10042", customerName: "John Doe", resolution: "Replacement key issued" } },
 ];
 
-router.get("/admin/email-templates", requireAuth, requireAdmin, async (_req, res) => {
+router.get("/admin/email-templates", requireAuth, requireAdmin, requirePermission("manageContent"), async (_req, res) => {
   let templates = await db.select().from(emailTemplates).orderBy(asc(emailTemplates.id));
   if (templates.length === 0) {
     await db.insert(emailTemplates).values(DEFAULT_TEMPLATES).onConflictDoNothing();
@@ -24,7 +25,7 @@ router.get("/admin/email-templates", requireAuth, requireAdmin, async (_req, res
   res.json({ templates });
 });
 
-router.get("/admin/email-templates/:id", requireAuth, requireAdmin, async (req, res) => {
+router.get("/admin/email-templates/:id", requireAuth, requireAdmin, requirePermission("manageContent"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const [tmpl] = await db.select().from(emailTemplates).where(eq(emailTemplates.id, id));
@@ -32,7 +33,7 @@ router.get("/admin/email-templates/:id", requireAuth, requireAdmin, async (req, 
   res.json({ template: tmpl });
 });
 
-router.put("/admin/email-templates/:id", requireAuth, requireAdmin, async (req, res) => {
+router.put("/admin/email-templates/:id", requireAuth, requireAdmin, requirePermission("manageContent"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const { subject, bodyHtml, isEnabled, name, variables, sampleData } = req.body;
@@ -50,7 +51,7 @@ router.put("/admin/email-templates/:id", requireAuth, requireAdmin, async (req, 
   res.json({ template: updated });
 });
 
-router.post("/admin/email-templates/:id/test", requireAuth, requireAdmin, async (req, res) => {
+router.post("/admin/email-templates/:id/test", requireAuth, requireAdmin, requirePermission("manageContent"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const { email } = req.body;

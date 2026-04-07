@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { orders, orderItems, products, productVariants, categories, users } from "@workspace/db/schema";
 import { eq, sql, and, gte, lte, count, sum, desc } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
+import { requirePermission } from "../middleware/permissions";
 
 const router = Router();
 
@@ -10,6 +11,7 @@ router.get(
   "/admin/analytics",
   requireAuth,
   requireAdmin,
+  requirePermission("viewAnalytics"),
   async (req, res) => {
     const from = req.query.from as string | undefined;
     const to = req.query.to as string | undefined;

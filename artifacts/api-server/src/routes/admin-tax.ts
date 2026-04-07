@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { taxSettings, taxRates } from "@workspace/db/schema";
 import { eq, asc } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
+import { requirePermission } from "../middleware/permissions";
 
 const router = Router();
 
@@ -45,13 +46,13 @@ async function getOrCreateSettings() {
   return s;
 }
 
-router.get("/admin/tax-settings", requireAuth, requireAdmin, async (_req, res) => {
+router.get("/admin/tax-settings", requireAuth, requireAdmin, requirePermission("manageSettings"), async (_req, res) => {
   const settings = await getOrCreateSettings();
   const rates = await db.select().from(taxRates).orderBy(asc(taxRates.countryName));
   res.json({ settings, rates });
 });
 
-router.put("/admin/tax-settings", requireAuth, requireAdmin, async (req, res) => {
+router.put("/admin/tax-settings", requireAuth, requireAdmin, requirePermission("manageSettings"), async (req, res) => {
   const s = await getOrCreateSettings();
   const { enabled, priceDisplay, taxLabel, defaultRate, merchantVatNumber, b2bExemptionEnabled } = req.body;
   const updates: Record<string, unknown> = { updatedAt: new Date() };
@@ -66,7 +67,7 @@ router.put("/admin/tax-settings", requireAuth, requireAdmin, async (req, res) =>
   res.json({ settings: updated });
 });
 
-router.post("/admin/tax-rates", requireAuth, requireAdmin, async (req, res) => {
+router.post("/admin/tax-rates", requireAuth, requireAdmin, requirePermission("manageSettings"), async (req, res) => {
   const { countryCode, countryName, rate } = req.body;
   if (!countryCode || !countryName || rate === undefined) { res.status(400).json({ error: "countryCode, countryName, rate required" }); return; }
   const existing = await db.select({ id: taxRates.id }).from(taxRates).where(eq(taxRates.countryCode, countryCode.toUpperCase()));
@@ -75,7 +76,7 @@ router.post("/admin/tax-rates", requireAuth, requireAdmin, async (req, res) => {
   res.json({ rate: row });
 });
 
-router.put("/admin/tax-rates/:id", requireAuth, requireAdmin, async (req, res) => {
+router.put("/admin/tax-rates/:id", requireAuth, requireAdmin, requirePermission("manageSettings"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const { rate, isEnabled, countryName } = req.body;
@@ -87,7 +88,7 @@ router.put("/admin/tax-rates/:id", requireAuth, requireAdmin, async (req, res) =
   res.json({ success: true });
 });
 
-router.delete("/admin/tax-rates/:id", requireAuth, requireAdmin, async (req, res) => {
+router.delete("/admin/tax-rates/:id", requireAuth, requireAdmin, requirePermission("manageSettings"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   await db.delete(taxRates).where(eq(taxRates.id, id));

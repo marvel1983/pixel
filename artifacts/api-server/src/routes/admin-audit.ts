@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { auditLog, auditActionEnum, users } from "@workspace/db/schema";
 import { eq, desc, sql, and, ilike, gte, lte, inArray } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
+import { requirePermission } from "../middleware/permissions";
 
 const router = Router();
 
@@ -28,7 +29,7 @@ function csvEscape(val: string | null | undefined): string {
   return `"${s}"`;
 }
 
-router.get("/admin/audit-log", requireAuth, requireAdmin, async (req, res) => {
+router.get("/admin/audit-log", requireAuth, requireAdmin, requirePermission("manageSettings"), async (req, res) => {
   const page = Math.max(1, Number(req.query.page) || 1);
   const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 50));
   const offset = (page - 1) * limit;
@@ -53,7 +54,7 @@ router.get("/admin/audit-log", requireAuth, requireAdmin, async (req, res) => {
   res.json({ logs: rows, total: countResult.count, page, limit });
 });
 
-router.get("/admin/audit-log/export", requireAuth, requireAdmin, async (req, res) => {
+router.get("/admin/audit-log/export", requireAuth, requireAdmin, requirePermission("manageSettings"), async (req, res) => {
   const conditions = [];
   if (typeof req.query.action === "string" && isValidAction(req.query.action)) conditions.push(eq(auditLog.action, req.query.action));
   if (typeof req.query.userId === "string" && !isNaN(Number(req.query.userId))) conditions.push(eq(auditLog.userId, Number(req.query.userId)));
@@ -78,12 +79,12 @@ router.get("/admin/audit-log/export", requireAuth, requireAdmin, async (req, res
   res.send(header + csv);
 });
 
-router.get("/admin/audit-log/actions", requireAuth, requireAdmin, async (_req, res) => {
+router.get("/admin/audit-log/actions", requireAuth, requireAdmin, requirePermission("manageSettings"), async (_req, res) => {
   const actions = await db.selectDistinct({ action: auditLog.action }).from(auditLog);
   res.json(actions.map((a) => a.action));
 });
 
-router.get("/admin/audit-log/users", requireAuth, requireAdmin, async (_req, res) => {
+router.get("/admin/audit-log/users", requireAuth, requireAdmin, requirePermission("manageSettings"), async (_req, res) => {
   const result = await db.selectDistinct({ userId: auditLog.userId }).from(auditLog).where(sql`${auditLog.userId} IS NOT NULL`);
   const userIds = result.map((r) => r.userId!);
   if (userIds.length === 0) { res.json([]); return; }

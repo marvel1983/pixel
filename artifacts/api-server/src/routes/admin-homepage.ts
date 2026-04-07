@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { homepageSections } from "@workspace/db/schema";
 import { eq, asc } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
+import { requirePermission } from "../middleware/permissions";
 
 const router = Router();
 
@@ -15,7 +16,7 @@ const DEFAULT_SECTIONS = [
   { type: "FEATURED_TEXT_BANNER" as const, title: "Featured Banner", sortOrder: 5, config: { text: "", link: "" } },
 ];
 
-router.get("/admin/homepage-sections", requireAuth, requireAdmin, async (_req, res) => {
+router.get("/admin/homepage-sections", requireAuth, requireAdmin, requirePermission("manageContent"), async (_req, res) => {
   let sections = await db.select().from(homepageSections).orderBy(asc(homepageSections.sortOrder));
   if (sections.length === 0) {
     await db.insert(homepageSections).values(DEFAULT_SECTIONS);
@@ -24,7 +25,7 @@ router.get("/admin/homepage-sections", requireAuth, requireAdmin, async (_req, r
   res.json({ sections });
 });
 
-router.put("/admin/homepage-sections/reorder", requireAuth, requireAdmin, async (req, res) => {
+router.put("/admin/homepage-sections/reorder", requireAuth, requireAdmin, requirePermission("manageContent"), async (req, res) => {
   const { order } = req.body;
   if (!Array.isArray(order) || !order.every((id) => typeof id === "number" && Number.isInteger(id))) { res.status(400).json({ error: "order must be an array of integer IDs" }); return; }
   for (let i = 0; i < order.length; i++) {
@@ -33,7 +34,7 @@ router.put("/admin/homepage-sections/reorder", requireAuth, requireAdmin, async 
   res.json({ success: true });
 });
 
-router.put("/admin/homepage-sections/:id", requireAuth, requireAdmin, async (req, res) => {
+router.put("/admin/homepage-sections/:id", requireAuth, requireAdmin, requirePermission("manageContent"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const { title, isEnabled, config } = req.body;

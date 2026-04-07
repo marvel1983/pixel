@@ -3,12 +3,13 @@ import { db } from "@workspace/db";
 import { apiProviders } from "@workspace/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
+import { requirePermission } from "../middleware/permissions";
 import { getMetenziConfig } from "../lib/metenzi-config";
 import { getBalance, listWebhooks, listClaims } from "../lib/metenzi-endpoints";
 
 const router = Router();
 
-router.get("/admin/metenzi/balance", requireAuth, requireAdmin, async (_req, res) => {
+router.get("/admin/metenzi/balance", requireAuth, requireAdmin, requirePermission("manageSettings"), async (_req, res) => {
   const config = await getMetenziConfig();
   if (!config) { res.json({ configured: false }); return; }
   try {
@@ -17,7 +18,7 @@ router.get("/admin/metenzi/balance", requireAuth, requireAdmin, async (_req, res
   } catch (e) { res.json({ configured: true, error: (e as Error).message }); }
 });
 
-router.get("/admin/metenzi/status", requireAuth, requireAdmin, async (_req, res) => {
+router.get("/admin/metenzi/status", requireAuth, requireAdmin, requirePermission("manageSettings"), async (_req, res) => {
   const config = await getMetenziConfig();
   if (!config) { res.json({ configured: false }); return; }
   const [provider] = await db.select({ updatedAt: apiProviders.updatedAt, isActive: apiProviders.isActive }).from(apiProviders).where(eq(apiProviders.slug, "metenzi"));
@@ -44,7 +45,7 @@ router.get("/admin/metenzi/status", requireAuth, requireAdmin, async (_req, res)
   });
 });
 
-router.get("/admin/metenzi/key-rotation", requireAuth, requireAdmin, async (_req, res) => {
+router.get("/admin/metenzi/key-rotation", requireAuth, requireAdmin, requirePermission("manageSettings"), async (_req, res) => {
   const [provider] = await db.select({ updatedAt: apiProviders.updatedAt }).from(apiProviders).where(eq(apiProviders.slug, "metenzi"));
   if (!provider) { res.json({ lastRotated: null, daysSinceRotation: null }); return; }
   const days = Math.floor((Date.now() - new Date(provider.updatedAt).getTime()) / 86400000);

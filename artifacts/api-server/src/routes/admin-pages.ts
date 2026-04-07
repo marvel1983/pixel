@@ -3,16 +3,17 @@ import { db } from "@workspace/db";
 import { pages, faqs } from "@workspace/db/schema";
 import { eq, asc, count } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
+import { requirePermission } from "../middleware/permissions";
 
 const router = Router();
 
-router.get("/admin/pages", requireAuth, requireAdmin, async (_req, res) => {
+router.get("/admin/pages", requireAuth, requireAdmin, requirePermission("manageContent"), async (_req, res) => {
   const rows = await db.select().from(pages).orderBy(asc(pages.sortOrder), asc(pages.id));
   const [{ total }] = await db.select({ total: count() }).from(pages);
   res.json({ pages: rows, total });
 });
 
-router.get("/admin/pages/:id", requireAuth, requireAdmin, async (req, res) => {
+router.get("/admin/pages/:id", requireAuth, requireAdmin, requirePermission("manageContent"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
   const [page] = await db.select().from(pages).where(eq(pages.id, id));
@@ -20,7 +21,7 @@ router.get("/admin/pages/:id", requireAuth, requireAdmin, async (req, res) => {
   res.json({ page });
 });
 
-router.put("/admin/pages/:id", requireAuth, requireAdmin, async (req, res) => {
+router.put("/admin/pages/:id", requireAuth, requireAdmin, requirePermission("manageContent"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
   const { title, slug, content, metaTitle, metaDescription, isPublished, sortOrder } = req.body;
@@ -46,7 +47,7 @@ router.put("/admin/pages/:id", requireAuth, requireAdmin, async (req, res) => {
   res.json({ page: updated });
 });
 
-router.post("/admin/pages", requireAuth, requireAdmin, async (req, res) => {
+router.post("/admin/pages", requireAuth, requireAdmin, requirePermission("manageContent"), async (req, res) => {
   const { title, slug } = req.body;
   if (!title || !slug) { res.status(400).json({ error: "Title and slug required" }); return; }
   const cleanSlug = String(slug).trim().toLowerCase().replace(/[^a-z0-9-]/g, "");
@@ -64,19 +65,19 @@ router.post("/admin/pages", requireAuth, requireAdmin, async (req, res) => {
   res.json({ page });
 });
 
-router.delete("/admin/pages/:id", requireAuth, requireAdmin, async (req, res) => {
+router.delete("/admin/pages/:id", requireAuth, requireAdmin, requirePermission("manageContent"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
   await db.delete(pages).where(eq(pages.id, id));
   res.json({ success: true });
 });
 
-router.get("/admin/faqs", requireAuth, requireAdmin, async (_req, res) => {
+router.get("/admin/faqs", requireAuth, requireAdmin, requirePermission("manageContent"), async (_req, res) => {
   const rows = await db.select().from(faqs).orderBy(asc(faqs.sortOrder), asc(faqs.id));
   res.json({ faqs: rows });
 });
 
-router.put("/admin/faqs/bulk", requireAuth, requireAdmin, async (req, res) => {
+router.put("/admin/faqs/bulk", requireAuth, requireAdmin, requirePermission("manageContent"), async (req, res) => {
   const items = req.body.faqs;
   if (!Array.isArray(items)) { res.status(400).json({ error: "faqs array required" }); return; }
   await db.delete(faqs);
@@ -107,7 +108,7 @@ router.get("/faqs", async (_req, res) => {
   res.json({ faqs: rows });
 });
 
-router.post("/admin/pages/seed", requireAuth, requireAdmin, async (_req, res) => {
+router.post("/admin/pages/seed", requireAuth, requireAdmin, requirePermission("manageContent"), async (_req, res) => {
   const defaultPages = [
     { title: "About Us", slug: "about-us", sortOrder: 0 },
     { title: "Terms of Service", slug: "terms", sortOrder: 1 },

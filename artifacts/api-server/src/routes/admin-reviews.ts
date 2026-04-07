@@ -3,10 +3,11 @@ import { db } from "@workspace/db";
 import { reviews, products, users } from "@workspace/db/schema";
 import { eq, desc, sql, and, or, ilike, gte, lte, count, inArray } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
+import { requirePermission } from "../middleware/permissions";
 
 const router = Router();
 
-router.get("/admin/reviews", requireAuth, requireAdmin, async (req, res) => {
+router.get("/admin/reviews", requireAuth, requireAdmin, requirePermission("manageProducts"), async (req, res) => {
   const page = Math.max(1, Number(req.query.page) || 1);
   const limit = Math.min(100, Math.max(10, Number(req.query.limit) || 25));
   const offset = (page - 1) * limit;
@@ -47,7 +48,7 @@ router.get("/admin/reviews", requireAuth, requireAdmin, async (req, res) => {
   });
 });
 
-router.get("/admin/reviews/:id", requireAuth, requireAdmin, async (req, res) => {
+router.get("/admin/reviews/:id", requireAuth, requireAdmin, requirePermission("manageProducts"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
 
@@ -71,7 +72,7 @@ router.get("/admin/reviews/:id", requireAuth, requireAdmin, async (req, res) => 
   res.json({ review });
 });
 
-router.patch("/admin/reviews/:id/status", requireAuth, requireAdmin, async (req, res) => {
+router.patch("/admin/reviews/:id/status", requireAuth, requireAdmin, requirePermission("manageProducts"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
   const { status } = req.body;
@@ -81,7 +82,7 @@ router.patch("/admin/reviews/:id/status", requireAuth, requireAdmin, async (req,
   res.json({ success: true });
 });
 
-router.patch("/admin/reviews/:id/reply", requireAuth, requireAdmin, async (req, res) => {
+router.patch("/admin/reviews/:id/reply", requireAuth, requireAdmin, requirePermission("manageProducts"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
   const { reply } = req.body;
@@ -92,14 +93,14 @@ router.patch("/admin/reviews/:id/reply", requireAuth, requireAdmin, async (req, 
   res.json({ success: true });
 });
 
-router.delete("/admin/reviews/:id", requireAuth, requireAdmin, async (req, res) => {
+router.delete("/admin/reviews/:id", requireAuth, requireAdmin, requirePermission("manageProducts"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
   await db.delete(reviews).where(eq(reviews.id, id));
   res.json({ success: true });
 });
 
-router.post("/admin/reviews/bulk", requireAuth, requireAdmin, async (req, res) => {
+router.post("/admin/reviews/bulk", requireAuth, requireAdmin, requirePermission("manageProducts"), async (req, res) => {
   const { ids, action } = req.body;
   if (!Array.isArray(ids) || ids.length === 0) { res.status(400).json({ error: "No IDs provided" }); return; }
   const intIds = ids.map(Number).filter(Number.isInteger);

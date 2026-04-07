@@ -3,11 +3,12 @@ import { db } from "@workspace/db";
 import { orders, orderItems, licenseKeys, users, coupons } from "@workspace/db/schema";
 import { eq, desc, sql, and, or, ilike, gte, lte, inArray, count, sum } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
+import { requirePermission } from "../middleware/permissions";
 import { decrypt } from "../lib/encryption";
 
 const router = Router();
 
-router.get("/admin/orders/export", requireAuth, requireAdmin, async (req, res) => {
+router.get("/admin/orders/export", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
   const idsParam = req.query.ids as string | undefined;
   const conditions = buildFilters(req.query);
   if (idsParam) {
@@ -37,7 +38,7 @@ router.get("/admin/orders/export", requireAuth, requireAdmin, async (req, res) =
   res.send(header + csv);
 });
 
-router.get("/admin/orders", requireAuth, requireAdmin, async (req, res) => {
+router.get("/admin/orders", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
   const page = Math.max(1, Number(req.query.page) || 1);
   const limit = Math.min(100, Math.max(10, Number(req.query.limit) || 25));
   const offset = (page - 1) * limit;
@@ -82,7 +83,7 @@ router.get("/admin/orders", requireAuth, requireAdmin, async (req, res) => {
   res.json({ orders: result, total: totalCount, revenue: revenue ?? "0", page, limit });
 });
 
-router.get("/admin/orders/:id", requireAuth, requireAdmin, async (req, res) => {
+router.get("/admin/orders/:id", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     res.status(400).json({ error: "Invalid order ID" });
@@ -134,7 +135,7 @@ router.get("/admin/orders/:id", requireAuth, requireAdmin, async (req, res) => {
   res.json({ order, items, licenseKeys: decryptedKeys, customer, coupon, timeline });
 });
 
-router.patch("/admin/orders/:id/status", requireAuth, requireAdmin, async (req, res) => {
+router.patch("/admin/orders/:id/status", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid order ID" }); return; }
   const validStatuses = ["PENDING", "PROCESSING", "COMPLETED", "FAILED", "REFUNDED", "PARTIALLY_REFUNDED"];
@@ -146,7 +147,7 @@ router.patch("/admin/orders/:id/status", requireAuth, requireAdmin, async (req, 
   res.json({ success: true });
 });
 
-router.post("/admin/orders/bulk-status", requireAuth, requireAdmin, async (req, res) => {
+router.post("/admin/orders/bulk-status", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
   const { ids, status } = req.body;
   if (!Array.isArray(ids) || ids.length === 0) { res.status(400).json({ error: "No order IDs provided" }); return; }
   if (!["COMPLETED", "FAILED"].includes(status)) { res.status(400).json({ error: "Invalid bulk status" }); return; }
@@ -155,14 +156,14 @@ router.post("/admin/orders/bulk-status", requireAuth, requireAdmin, async (req, 
   res.json({ success: true, updated: intIds.length });
 });
 
-router.patch("/admin/orders/:id/notes", requireAuth, requireAdmin, async (req, res) => {
+router.patch("/admin/orders/:id/notes", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid order ID" }); return; }
   await db.update(orders).set({ notes: req.body.notes ?? null, updatedAt: new Date() }).where(eq(orders.id, id));
   res.json({ success: true });
 });
 
-router.post("/admin/orders/:id/resend-email", requireAuth, requireAdmin, async (req, res) => {
+router.post("/admin/orders/:id/resend-email", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid order ID" }); return; }
   const [order] = await db.select({ id: orders.id, orderNumber: orders.orderNumber }).from(orders).where(eq(orders.id, id));

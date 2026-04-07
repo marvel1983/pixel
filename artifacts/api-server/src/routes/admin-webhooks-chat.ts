@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { siteSettings } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
+import { requirePermission } from "../middleware/permissions";
 import { getMetenziConfig } from "../lib/metenzi-config";
 import { listWebhooks, createWebhook, deleteWebhook } from "../lib/metenzi-endpoints";
 
@@ -13,7 +14,7 @@ const WEBHOOK_EVENTS = [
   "license.generated", "license.revoked", "product.updated", "stock.low",
 ];
 
-router.get("/admin/settings/webhooks", requireAuth, requireAdmin, async (_req, res) => {
+router.get("/admin/settings/webhooks", requireAuth, requireAdmin, requirePermission("manageSettings"), async (_req, res) => {
   const config = await getMetenziConfig();
   if (!config) { res.json({ configured: false, webhooks: [], events: WEBHOOK_EVENTS }); return; }
   try {
@@ -22,7 +23,7 @@ router.get("/admin/settings/webhooks", requireAuth, requireAdmin, async (_req, r
   } catch (e) { res.json({ configured: true, webhooks: [], events: WEBHOOK_EVENTS, error: (e as Error).message }); }
 });
 
-router.post("/admin/settings/webhooks", requireAuth, requireAdmin, async (req, res) => {
+router.post("/admin/settings/webhooks", requireAuth, requireAdmin, requirePermission("manageSettings"), async (req, res) => {
   const config = await getMetenziConfig();
   if (!config) { res.status(400).json({ error: "Metenzi API not configured" }); return; }
   const { url, events } = req.body;
@@ -36,7 +37,7 @@ router.post("/admin/settings/webhooks", requireAuth, requireAdmin, async (req, r
   } catch (e) { res.status(500).json({ error: (e as Error).message }); }
 });
 
-router.delete("/admin/settings/webhooks/:id", requireAuth, requireAdmin, async (req, res) => {
+router.delete("/admin/settings/webhooks/:id", requireAuth, requireAdmin, requirePermission("manageSettings"), async (req, res) => {
   const config = await getMetenziConfig();
   if (!config) { res.status(400).json({ error: "Metenzi API not configured" }); return; }
   try {
@@ -45,17 +46,17 @@ router.delete("/admin/settings/webhooks/:id", requireAuth, requireAdmin, async (
   } catch (e) { res.status(500).json({ error: (e as Error).message }); }
 });
 
-router.get("/admin/settings/webhooks/endpoint-url", requireAuth, requireAdmin, async (_req, res) => {
+router.get("/admin/settings/webhooks/endpoint-url", requireAuth, requireAdmin, requirePermission("manageSettings"), async (_req, res) => {
   const baseUrl = process.env.APP_PUBLIC_URL ?? `https://${process.env.REPLIT_DEV_DOMAIN ?? "localhost"}`;
   res.json({ url: `${baseUrl}/api/webhooks/metenzi` });
 });
 
-router.get("/admin/settings/live-chat", requireAuth, requireAdmin, async (_req, res) => {
+router.get("/admin/settings/live-chat", requireAuth, requireAdmin, requirePermission("manageSettings"), async (_req, res) => {
   const [s] = await db.select({ liveChatEnabled: siteSettings.liveChatEnabled, liveChatCode: siteSettings.liveChatCode }).from(siteSettings);
   res.json({ liveChatEnabled: s?.liveChatEnabled ?? false, liveChatCode: s?.liveChatCode ?? "" });
 });
 
-router.put("/admin/settings/live-chat", requireAuth, requireAdmin, async (req, res) => {
+router.put("/admin/settings/live-chat", requireAuth, requireAdmin, requirePermission("manageSettings"), async (req, res) => {
   const [existing] = await db.select({ id: siteSettings.id }).from(siteSettings);
   const data = {
     liveChatEnabled: Boolean(req.body.liveChatEnabled),
