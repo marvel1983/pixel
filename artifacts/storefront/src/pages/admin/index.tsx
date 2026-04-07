@@ -3,6 +3,8 @@ import { AdminLayout } from "@/components/admin/admin-layout";
 import { AdminGuard } from "@/components/admin/admin-guard";
 import AdminDashboard from "./dashboard";
 import AnalyticsPage from "./analytics";
+import AdminProductsPage from "./products";
+import ProductEditPage from "./product-edit";
 
 function AdminPlaceholder({ title }: { title: string }) {
   return (
@@ -22,9 +24,8 @@ export default function AdminRoot() {
         <Switch>
           <Route path="/admin" component={AdminDashboard} />
           <Route path="/admin/analytics" component={AnalyticsPage} />
-          <Route path="/admin/products">
-            <AdminPlaceholder title="Products" />
-          </Route>
+          <Route path="/admin/products/:id" component={ProductEditPage} />
+          <Route path="/admin/products" component={AdminProductsPage} />
           <Route path="/admin/categories">
             <AdminPlaceholder title="Categories" />
           </Route>
