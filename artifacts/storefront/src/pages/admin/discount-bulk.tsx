@@ -29,6 +29,12 @@ export default function DiscountBulkPage() {
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify({ prefix, length, quantity, discountType, discountValue, minOrderUsd: minOrderUsd || null, maxDiscountUsd: maxDiscountUsd || null, usageLimit: usageLimit || null, expiresAt: expiresAt || null }),
     });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: "Generation failed" }));
+      alert(err.error || "Failed to generate codes");
+      setGenerating(false);
+      return;
+    }
     const data = await res.json();
     setResult(data);
     setGenerating(false);

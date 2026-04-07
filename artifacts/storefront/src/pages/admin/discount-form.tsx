@@ -91,8 +91,13 @@ export default function DiscountFormPage() {
     };
     const url = isEdit ? `${API}/admin/discounts/${params.id}` : `${API}/admin/discounts`;
     const method = isEdit ? "PUT" : "POST";
-    await fetch(url, { method, headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const resp = await fetch(url, { method, headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify(body) });
     setSaving(false);
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({ error: "Save failed" }));
+      alert(err.error || "Failed to save discount");
+      return;
+    }
     navigate("/admin/discounts");
   };
 

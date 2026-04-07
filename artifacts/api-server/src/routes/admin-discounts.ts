@@ -119,7 +119,10 @@ router.post("/admin/discounts/bulk", requireAuth, requireAdmin, async (req, res)
     (await db.select({ code: coupons.code }).from(coupons)).map((r) => r.code)
   );
 
-  for (let i = 0; i < qty && codes.length < qty; i++) {
+  const maxAttempts = qty * 5;
+  let attempts = 0;
+  while (codes.length < qty && attempts < maxAttempts) {
+    attempts++;
     const rand = crypto.randomBytes(codeLen).toString("hex").toUpperCase().slice(0, codeLen);
     const code = pfx ? `${pfx}-${rand}` : rand;
     if (!existingCodes.has(code)) {
