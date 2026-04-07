@@ -44,6 +44,7 @@ router.post("/social-proof/view", async (req, res) => {
 
 router.get("/social-proof/viewers/:productId", async (req, res) => {
   const productId = Number(req.params.productId);
+  if (!productId || productId <= 0 || !Number.isInteger(productId)) return res.json({ viewers: 0 });
   const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
   const result = await db
     .select({ count: sql<number>`count(distinct ${socialProofEvents.sessionId})` })
@@ -60,6 +61,7 @@ router.get("/social-proof/viewers/:productId", async (req, res) => {
 
 router.get("/social-proof/sold/:productId", async (req, res) => {
   const productId = Number(req.params.productId);
+  if (!productId || productId <= 0 || !Number.isInteger(productId)) return res.json({ sold: 0 });
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const result = await db
     .select({ count: sql<number>`count(*)` })
