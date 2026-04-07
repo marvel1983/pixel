@@ -5,17 +5,17 @@ import { Input } from "@/components/ui/input";
 import { useCartStore } from "@/stores/cart-store";
 import { useToast } from "@/hooks/use-toast";
 
-const VALID_COUPONS: Record<string, { discount: number; label: string }> = {
-  SAVE10: { discount: 10, label: "10% off" },
-  WELCOME15: { discount: 15, label: "15% off" },
-  PIXEL20: { discount: 20, label: "20% off" },
-};
+interface CouponData {
+  pct: number;
+  label: string;
+}
 
-export function useCouponDiscount(): { pct: number; label: string } | null {
+const couponCache = new Map<string, CouponData>();
+
+export function useCouponDiscount(): CouponData | null {
   const code = useCartStore((s) => s.couponCode);
   if (!code) return null;
-  const coupon = VALID_COUPONS[code.toUpperCase()];
-  return coupon ? { pct: coupon.discount, label: coupon.label } : null;
+  return couponCache.get(code) ?? null;
 }
 
 export function CouponInput() {
@@ -28,25 +28,42 @@ export function CouponInput() {
   async function handleApply() {
     if (!code.trim()) return;
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 500));
-    setLoading(false);
 
-    const coupon = VALID_COUPONS[code.trim().toUpperCase()];
-    if (coupon) {
-      setCoupon(code.trim().toUpperCase());
-      toast({ title: "Coupon applied!", description: `${coupon.label} discount` });
-      setCode("");
-    } else {
+    try {
+      const baseUrl = import.meta.env.VITE_API_URL ?? "/api";
+      const res = await fetch(`${baseUrl}/coupons/validate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: code.trim() }),
+      });
+      const data = await res.json();
+
+      if (res.ok && data.valid) {
+        const upperCode = data.code as string;
+        couponCache.set(upperCode, { pct: data.discount, label: data.label });
+        setCoupon(upperCode);
+        toast({ title: "Coupon applied!", description: `${data.label} discount` });
+        setCode("");
+      } else {
+        toast({
+          title: "Invalid coupon",
+          description: data.error ?? "This coupon code is not valid or has expired.",
+          variant: "destructive",
+        });
+      }
+    } catch {
       toast({
-        title: "Invalid coupon",
-        description: "This coupon code is not valid or has expired.",
+        title: "Error",
+        description: "Could not validate coupon. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   }
 
   if (couponCode) {
-    const coupon = VALID_COUPONS[couponCode];
+    const coupon = couponCache.get(couponCode);
     return (
       <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 border border-green-200">
         <Tag className="h-4 w-4 text-green-600" />
