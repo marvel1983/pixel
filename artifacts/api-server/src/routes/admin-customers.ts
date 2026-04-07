@@ -4,6 +4,7 @@ import { users, orders, wishlists, reviews, products } from "@workspace/db/schem
 import { eq, desc, sql, and, or, ilike, gte, lte, count, sum, inArray } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 
 const router = Router();
 
@@ -144,7 +145,7 @@ router.post("/admin/customers/:id/reset-password", requireAuth, requireAdmin, as
   if (target.role === "SUPER_ADMIN" && caller.role !== "SUPER_ADMIN") {
     res.status(403).json({ error: "Only Super Admins can reset a Super Admin password" }); return;
   }
-  const tempPassword = Math.random().toString(36).slice(2, 10) + "A1!";
+  const tempPassword = crypto.randomBytes(6).toString("base64url") + "A1!";
   const hash = await bcrypt.hash(tempPassword, 12);
   await db.update(users).set({ passwordHash: hash, updatedAt: new Date() }).where(eq(users.id, id));
   res.json({ success: true, tempPassword });
