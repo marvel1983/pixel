@@ -217,9 +217,11 @@ router.post("/auth/forgot-password", async (req, res) => {
     .where(eq(users.email, parsed.data.email.toLowerCase()))
     .limit(1);
 
+  let resetToken: string | undefined;
+
   if (user) {
-    const rawToken = crypto.randomBytes(32).toString("hex");
-    const tokenHashed = hashToken(rawToken);
+    resetToken = crypto.randomBytes(32).toString("hex");
+    const tokenHashed = hashToken(resetToken);
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
 
     await db.insert(passwordResets).values({
@@ -229,11 +231,9 @@ router.post("/auth/forgot-password", async (req, res) => {
     });
 
     logger.info({ userId: user.id }, "Password reset requested");
-
-    res.json({ ok: true, resetToken: rawToken });
-  } else {
-    res.json({ ok: true });
   }
+
+  res.json({ ok: true, resetToken });
 });
 
 router.post("/auth/reset-password", async (req, res) => {
