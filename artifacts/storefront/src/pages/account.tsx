@@ -19,6 +19,7 @@ import { SupportTab } from "@/components/account/support-tab";
 import { WalletTab } from "@/components/account/wallet-tab";
 
 function ProfileTab() {
+  const { t } = useTranslation();
   const { user, token, setAuth } = useAuthStore();
   const { toast } = useToast();
   const [form, setForm] = useState({
@@ -77,30 +78,30 @@ function ProfileTab() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Profile Information</CardTitle>
+        <CardTitle>{t("accountPage.profileInfo")}</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSave} className="space-y-4 max-w-md">
           <div>
-            <Label>Email</Label>
+            <Label>{t("auth.email")}</Label>
             <Input value={user?.email ?? ""} disabled className="bg-muted" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label htmlFor="firstName">First Name</Label>
+              <Label htmlFor="firstName">{t("auth.firstName")}</Label>
               <Input id="firstName" value={form.firstName} onChange={(e) => update("firstName", e.target.value)} />
             </div>
             <div>
-              <Label htmlFor="lastName">Last Name</Label>
+              <Label htmlFor="lastName">{t("auth.lastName")}</Label>
               <Input id="lastName" value={form.lastName} onChange={(e) => update("lastName", e.target.value)} />
             </div>
           </div>
 
           <div className="border-t pt-4 mt-4">
-            <p className="text-sm font-medium mb-3">Change Password</p>
+            <p className="text-sm font-medium mb-3">{t("accountPage.changePassword")}</p>
             <div className="space-y-3">
               <div>
-                <Label htmlFor="currentPassword">Current Password</Label>
+                <Label htmlFor="currentPassword">{t("accountPage.currentPassword")}</Label>
                 <Input
                   id="currentPassword"
                   type="password"
@@ -109,7 +110,7 @@ function ProfileTab() {
                 />
               </div>
               <div>
-                <Label htmlFor="newPassword">New Password</Label>
+                <Label htmlFor="newPassword">{t("accountPage.newPassword")}</Label>
                 <Input
                   id="newPassword"
                   type="password"
@@ -123,20 +124,13 @@ function ProfileTab() {
 
           <Button type="submit" disabled={saving}>
             {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-            Save Changes
+            {t("accountPage.saveChanges")}
           </Button>
         </form>
       </CardContent>
     </Card>
   );
 }
-
-const PlaceholderTab = ({ title, icon }: { title: string; icon: React.ReactNode }) => (
-  <Card><CardContent className="py-12 text-center text-muted-foreground">
-    <div className="flex justify-center mb-3">{icon}</div>
-    <p>Your {title.toLowerCase()} will appear here.</p>
-  </CardContent></Card>
-);
 
 export default function AccountPage() {
   const { t } = useTranslation();
@@ -156,85 +150,74 @@ export default function AccountPage() {
       <Breadcrumbs crumbs={[{ label: t("account.title") }]} />
 
       <h1 className="text-2xl font-bold mt-4 mb-6">
-        Welcome, {user.firstName ?? user.email}
+        {t("accountPage.welcome", { name: user.firstName ?? user.email })}
       </h1>
 
       <Tabs defaultValue={initialTab}>
         <TabsList className="mb-4 flex-wrap">
           <TabsTrigger value="profile" className="gap-1.5">
-            <User className="h-4 w-4" /> Profile
+            <User className="h-4 w-4" /> {t("accountPage.profile")}
           </TabsTrigger>
           <TabsTrigger value="orders" className="gap-1.5">
-            <ShoppingBag className="h-4 w-4" /> Orders
+            <ShoppingBag className="h-4 w-4" /> {t("accountPage.orders")}
           </TabsTrigger>
           <TabsTrigger value="rewards" className="gap-1.5">
-            <Trophy className="h-4 w-4" /> Rewards
+            <Trophy className="h-4 w-4" /> {t("accountPage.rewards")}
           </TabsTrigger>
           <TabsTrigger value="connected" className="gap-1.5">
-            <Shield className="h-4 w-4" /> Connected
+            <Shield className="h-4 w-4" /> {t("accountPage.connected")}
           </TabsTrigger>
           <TabsTrigger value="wishlist" className="gap-1.5">
-            <Heart className="h-4 w-4" /> Wishlist
+            <Heart className="h-4 w-4" /> {t("accountPage.wishlist")}
           </TabsTrigger>
           <TabsTrigger value="reviews" className="gap-1.5">
-            <Star className="h-4 w-4" /> Reviews
+            <Star className="h-4 w-4" /> {t("accountPage.reviews")}
           </TabsTrigger>
           <TabsTrigger value="gift-cards" className="gap-1.5">
-            <Gift className="h-4 w-4" /> Gift Cards
+            <Gift className="h-4 w-4" /> {t("accountPage.giftCards")}
           </TabsTrigger>
           <TabsTrigger value="affiliate" className="gap-1.5">
-            <Link2 className="h-4 w-4" /> Affiliate
+            <Link2 className="h-4 w-4" /> {t("accountPage.affiliate")}
           </TabsTrigger>
           <TabsTrigger value="newsletter" className="gap-1.5">
-            <Mail className="h-4 w-4" /> Newsletter
+            <Mail className="h-4 w-4" /> {t("accountPage.newsletter")}
           </TabsTrigger>
           <TabsTrigger value="wallet" className="gap-1.5">
-            <Wallet className="h-4 w-4" /> Wallet
+            <Wallet className="h-4 w-4" /> {t("accountPage.wallet")}
           </TabsTrigger>
           <TabsTrigger value="support" className="gap-1.5">
-            <Headphones className="h-4 w-4" /> Support
+            <Headphones className="h-4 w-4" /> {t("accountPage.support")}
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="profile">
-          <ProfileTab />
-        </TabsContent>
-        <TabsContent value="orders">
-          <AccountOrdersTab />
-        </TabsContent>
-        <TabsContent value="rewards">
-          <RewardsTab />
-        </TabsContent>
-        <TabsContent value="connected">
-          <ConnectedAccountsTab />
-        </TabsContent>
-        <TabsContent value="wishlist">
-          <PlaceholderTab title="Wishlist" icon={<Heart className="h-8 w-8" />} />
-        </TabsContent>
-        <TabsContent value="reviews">
-          <PlaceholderTab title="Reviews" icon={<Star className="h-8 w-8" />} />
-        </TabsContent>
-        <TabsContent value="gift-cards">
-          <GiftCardsTab />
-        </TabsContent>
-        <TabsContent value="affiliate">
-          <AffiliateTab />
-        </TabsContent>
-        <TabsContent value="newsletter">
-          <NewsletterTab />
-        </TabsContent>
-        <TabsContent value="wallet">
-          <WalletTab />
-        </TabsContent>
-        <TabsContent value="support">
-          <SupportTab />
-        </TabsContent>
+        <TabsContent value="profile"><ProfileTab /></TabsContent>
+        <TabsContent value="orders"><AccountOrdersTab /></TabsContent>
+        <TabsContent value="rewards"><RewardsTab /></TabsContent>
+        <TabsContent value="connected"><ConnectedAccountsTab /></TabsContent>
+        <TabsContent value="wishlist"><PlaceholderTab titleKey="accountPage.wishlist" icon={<Heart className="h-8 w-8" />} /></TabsContent>
+        <TabsContent value="reviews"><PlaceholderTab titleKey="accountPage.reviews" icon={<Star className="h-8 w-8" />} /></TabsContent>
+        <TabsContent value="gift-cards"><GiftCardsTab /></TabsContent>
+        <TabsContent value="affiliate"><AffiliateTab /></TabsContent>
+        <TabsContent value="newsletter"><NewsletterTab /></TabsContent>
+        <TabsContent value="wallet"><WalletTab /></TabsContent>
+        <TabsContent value="support"><SupportTab /></TabsContent>
       </Tabs>
     </div>
   );
 }
 
+const PlaceholderTab = ({ titleKey, icon }: { titleKey: string; icon: React.ReactNode }) => {
+  const { t } = useTranslation();
+  return (
+    <Card><CardContent className="py-12 text-center text-muted-foreground">
+      <div className="flex justify-center mb-3">{icon}</div>
+      <p>{t("accountPage.noOrdersYet")}</p>
+    </CardContent></Card>
+  );
+};
+
 function AccountOrdersTab() {
+  const { t } = useTranslation();
   const { token } = useAuthStore();
   const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -252,7 +235,6 @@ function AccountOrdersTab() {
           setOrders(data.orders);
         }
       } catch {
-        // ignore
       } finally {
         setLoading(false);
       }
@@ -262,7 +244,12 @@ function AccountOrdersTab() {
 
   if (loading) return <Card><CardContent className="py-8 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></CardContent></Card>;
 
-  if (orders.length === 0) return <Card><CardContent className="py-12 text-center text-muted-foreground"><ShoppingBag className="h-8 w-8 mx-auto mb-3" /><p>No orders yet.</p></CardContent></Card>;
+  if (orders.length === 0) return (
+    <Card><CardContent className="py-12 text-center text-muted-foreground">
+      <ShoppingBag className="h-8 w-8 mx-auto mb-3" />
+      <p>{t("accountPage.noOrdersYet")}</p>
+    </CardContent></Card>
+  );
 
   return (
     <Card>
@@ -272,7 +259,9 @@ function AccountOrdersTab() {
             <a key={o.orderNumber} href="/order-lookup" className="flex items-center justify-between p-4 hover:bg-muted/50 transition">
               <div>
                 <p className="font-medium">{o.orderNumber}</p>
-                <p className="text-sm text-muted-foreground">{o.firstProduct} {o.itemCount > 1 ? `+${o.itemCount - 1} more` : ""}</p>
+                <p className="text-sm text-muted-foreground">
+                  {o.firstProduct} {o.itemCount > 1 ? t("accountPage.moreItems", { count: o.itemCount - 1 }) : ""}
+                </p>
               </div>
               <div className="text-right">
                 <p className="font-medium">${o.totalUsd}</p>

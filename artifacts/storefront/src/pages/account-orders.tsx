@@ -123,9 +123,9 @@ export default function AccountOrdersPage() {
       <Breadcrumbs crumbs={[{ label: t("account.title"), href: "/account" }, { label: t("account.orders") }]} />
 
       <div className="max-w-3xl mx-auto">
-        <h1 className="text-2xl font-bold mb-2">My Orders</h1>
+        <h1 className="text-2xl font-bold mb-2">{t("accountPage.myOrders")}</h1>
         <p className="text-muted-foreground mb-6">
-          View your past orders and license keys.
+          {t("accountPage.viewOrdersDesc")}
         </p>
 
         {loading ? (
@@ -135,7 +135,7 @@ export default function AccountOrdersPage() {
         ) : selectedOrder ? (
           <div>
             <Button variant="ghost" size="sm" onClick={() => setSelectedOrder(null)} className="mb-4">
-              &larr; Back to orders
+              &larr; {t("accountPage.backToOrders")}
             </Button>
             <OrderDetail
               order={selectedOrder.order}
@@ -159,7 +159,7 @@ export default function AccountOrdersPage() {
                   </div>
                   <p className="text-xs text-muted-foreground truncate">
                     {order.firstProduct}
-                    {order.itemCount > 1 && ` +${order.itemCount - 1} more`}
+                    {order.itemCount > 1 && ` ${t("accountPage.moreItems", { count: order.itemCount - 1 })}`}
                   </p>
                 </div>
                 <div className="text-right shrink-0">
@@ -175,7 +175,7 @@ export default function AccountOrdersPage() {
         ) : (
           <div className="text-center py-12 text-muted-foreground">
             <Package className="h-10 w-10 mx-auto mb-3 opacity-40" />
-            <p>No orders found.</p>
+            <p>{t("accountPage.noOrdersFound")}</p>
           </div>
         )}
 
