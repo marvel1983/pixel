@@ -4,6 +4,10 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SiteLayout } from "@/components/layout/site-layout";
 import HomePage from "@/pages/home";
+import ShopPage from "@/pages/shop";
+import CategoryPage from "@/pages/category";
+import OutletPage from "@/pages/outlet";
+import HotOffersPage from "@/pages/hot-offers";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -13,6 +17,10 @@ function Router() {
     <SiteLayout>
       <Switch>
         <Route path="/" component={HomePage} />
+        <Route path="/shop" component={ShopPage} />
+        <Route path="/category/:slug" component={CategoryPage} />
+        <Route path="/outlet" component={OutletPage} />
+        <Route path="/hot-offers" component={HotOffersPage} />
         <Route component={NotFound} />
       </Switch>
     </SiteLayout>
