@@ -19,6 +19,7 @@ import { EmptyCart } from "@/components/cart/empty-cart";
 import { GiftCardInput, type AppliedGiftCard } from "@/components/checkout/gift-card-input";
 import { LoyaltyRedeem } from "@/components/checkout/loyalty-redeem";
 import { WalletPayment } from "@/components/checkout/wallet-payment";
+import { CheckoutServices } from "@/components/checkout/checkout-services";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -53,6 +54,8 @@ export default function CheckoutPage() {
   const [loyaltyPoints, setLoyaltyPoints] = useState(0);
   const [loyaltyDiscount, setLoyaltyDiscount] = useState(0);
   const [walletAmount, setWalletAmount] = useState(0);
+  const [selectedServiceIds, setSelectedServiceIds] = useState<number[]>([]);
+  const [servicePrices, setServicePrices] = useState<Map<number, number>>(new Map());
   const [newsletterOptIn, setNewsletterOptIn] = useState(true);
 
   const capturedRef = useRef("");
@@ -100,6 +103,17 @@ export default function CheckoutPage() {
     if (billingErrors[field]) setBillingErrors((prev) => ({ ...prev, [field]: undefined }));
   }
 
+  const servicesTotal = Array.from(servicePrices.entries())
+    .filter(([id]) => selectedServiceIds.includes(id))
+    .reduce((s, [, p]) => s + p, 0);
+
+  function handleServiceToggle(id: number, price: number) {
+    setSelectedServiceIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+    setServicePrices((prev) => new Map(prev).set(id, price));
+  }
+
   function handlePaymentChange(field: keyof PaymentData, value: string) {
     setPayment((prev) => ({ ...prev, [field]: value }));
     if (paymentErrors[field]) setPaymentErrors((prev) => ({ ...prev, [field]: undefined }));
@@ -112,7 +126,7 @@ export default function CheckoutPage() {
     const subtotal = getTotal();
     const discount = coupon ? subtotal * (coupon.pct / 100) : 0;
     const cpp = cppSelected ? getCppAmount(subtotal) : 0;
-    const beforeTax = subtotal - discount - loyaltyDiscount + cpp;
+    const beforeTax = subtotal - discount - loyaltyDiscount + cpp + servicesTotal;
     const isInclusive = taxInfo.priceDisplay === "inclusive";
     const taxAmount = taxInfo.taxRate > 0
       ? isInclusive
@@ -147,6 +161,7 @@ export default function CheckoutPage() {
           giftCards: appliedGiftCards.map((c) => ({ code: c.code, amount: c.applied })),
           loyaltyPointsUsed: loyaltyPoints || undefined,
           walletAmountUsd: walletAmount > 0 ? walletAmount : undefined,
+          serviceIds: selectedServiceIds.length > 0 ? selectedServiceIds : undefined,
           payment: { cardToken },
           guestPassword: guestPassword || undefined,
         }),
@@ -190,12 +205,14 @@ export default function CheckoutPage() {
           <Separator />
           <CppSection selected={cppSelected} onToggle={setCppSelected} subtotal={getTotal()} />
           <Separator />
+          <CheckoutServices selectedIds={selectedServiceIds} onToggle={handleServiceToggle} />
+          <Separator />
           <GiftCardInput
             appliedCards={appliedGiftCards}
             remainingTotal={(() => {
               const s = getTotal();
               const d = coupon ? s * (coupon.pct / 100) : 0;
-              const beforeTax = s - d - loyaltyDiscount + (cppSelected ? getCppAmount(s) : 0);
+              const beforeTax = s - d - loyaltyDiscount + (cppSelected ? getCppAmount(s) : 0) + servicesTotal;
               const tr = taxInfo.taxRate || 0;
               const tax = taxInfo.priceDisplay === "inclusive" ? 0 : Math.round(beforeTax * (tr / 100) * 100) / 100;
               return Math.max(0, beforeTax + tax - appliedGiftCards.reduce((a, c) => a + c.applied, 0));
@@ -209,7 +226,7 @@ export default function CheckoutPage() {
           />
           <WalletPayment orderTotal={(() => {
             const s = getTotal(); const d = coupon ? s * (coupon.pct / 100) : 0;
-            const bt = s - d - loyaltyDiscount + (cppSelected ? getCppAmount(s) : 0);
+            const bt = s - d - loyaltyDiscount + (cppSelected ? getCppAmount(s) : 0) + servicesTotal;
             const tr = taxInfo.taxRate || 0;
             const tax = taxInfo.priceDisplay === "inclusive" ? 0 : Math.round(bt * (tr / 100) * 100) / 100;
             return Math.max(0, bt + tax - appliedGiftCards.reduce((a, c) => a + c.applied, 0));
@@ -230,7 +247,7 @@ export default function CheckoutPage() {
         </div>
 
         <div className="space-y-4">
-          <CheckoutSummary cppSelected={cppSelected} taxRate={taxInfo.taxRate} taxLabel={taxInfo.taxLabel} priceDisplay={taxInfo.priceDisplay} gcDeduction={appliedGiftCards.reduce((s, c) => s + c.applied, 0)} loyaltyDiscount={loyaltyDiscount} />
+          <CheckoutSummary cppSelected={cppSelected} taxRate={taxInfo.taxRate} taxLabel={taxInfo.taxLabel} priceDisplay={taxInfo.priceDisplay} gcDeduction={appliedGiftCards.reduce((s, c) => s + c.applied, 0)} loyaltyDiscount={loyaltyDiscount} servicesTotal={servicesTotal} />
           <ProductUpsell />
         </div>
       </div>

@@ -35,3 +35,4 @@ export * from "./newsletter";
 export * from "./flash-sales";
 export * from "./loyalty";
 export * from "./bundles";
+export * from "./checkout-services";

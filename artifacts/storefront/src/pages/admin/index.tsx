@@ -43,6 +43,7 @@ import AdminFlashSalesPage from "./flash-sales";
 import AdminBundlesPage from "./bundles";
 import AdminSupportPage from "./support";
 import AdminSupportDetailPage from "./support-detail";
+import AdminCheckoutServicesPage from "./checkout-services";
 
 function AdminPlaceholder({ title }: { title: string }) {
   return (
@@ -81,6 +82,7 @@ export default function AdminRoot() {
           <Route path="/admin/discounts/:id" component={DiscountFormPage} />
           <Route path="/admin/discounts" component={AdminDiscountsPage} />
           <Route path="/admin/checkout-upsell" component={CheckoutUpsellPage} />
+          <Route path="/admin/checkout-services" component={AdminCheckoutServicesPage} />
           <Route path="/admin/customers/:id" component={CustomerDetailPage} />
           <Route path="/admin/customers" component={AdminCustomersPage} />
           <Route path="/admin/reviews" component={AdminReviewsPage} />

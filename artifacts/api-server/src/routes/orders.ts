@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { inArray, eq, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { productVariants, taxSettings, taxRates } from "@workspace/db/schema";
+import { productVariants, taxSettings, taxRates, checkoutServices } from "@workspace/db/schema";
 import { executeOrderPipeline } from "../services/order-pipeline";
 import { validateCouponServerSide } from "../services/coupon-service";
 import { validateGiftCards, loadGiftCardBalances } from "../services/gift-card-service";
@@ -40,6 +40,7 @@ const orderSchema = z.object({
   guestPassword: z.string().min(8).optional(),
   giftCards: z.array(z.object({ code: z.string(), amount: z.number().positive() })).optional(),
   loyaltyPointsUsed: z.number().int().min(0).optional(),
+  serviceIds: z.array(z.number().int().positive()).max(10).optional(),
 });
 
 const CPP_RATE = 0.05;
@@ -134,21 +135,13 @@ router.post("/orders", async (req, res) => {
 
   for (const item of items) {
     if (item.variantId <= 0) {
-      if (!item.platform?.startsWith("GIFTCARD|") || item.productId !== -1) {
-        res.status(400).json({ error: "Invalid item in order" }); return;
-      }
+      if (!item.platform?.startsWith("GIFTCARD|") || item.productId !== -1) { res.status(400).json({ error: "Invalid item in order" }); return; }
       const amt = parseFloat(item.priceUsd);
-      if (amt < 5 || amt > 500) {
-        res.status(400).json({ error: "Gift card amount must be $5–$500" }); return;
-      }
+      if (amt < 5 || amt > 500) { res.status(400).json({ error: "Gift card amount must be $5–$500" }); return; }
     }
   }
-
   const { error: priceError, flashVariantMap, prices: serverPrices } = await validateAndPriceItems(items);
-  if (priceError) {
-    res.status(400).json({ error: priceError });
-    return;
-  }
+  if (priceError) { res.status(400).json({ error: priceError }); return; }
 
   let serverCoupon: { code: string; pct: number; label: string } | null = null;
   if (coupon?.code) {
@@ -162,28 +155,19 @@ router.post("/orders", async (req, res) => {
   let serverGiftCards: Array<{ code: string; amount: number }> = [];
   if (gcInput?.length) {
     const deduped = new Map<string, number>();
-    for (const gc of gcInput) {
-      const code = gc.code.trim().toUpperCase();
-      deduped.set(code, (deduped.get(code) ?? 0) + gc.amount);
-    }
+    for (const gc of gcInput) deduped.set(gc.code.trim().toUpperCase(), (deduped.get(gc.code.trim().toUpperCase()) ?? 0) + gc.amount);
     const dedupedList = Array.from(deduped, ([code, amount]) => ({ code, amount }));
     const gcResult = await validateGiftCards(dedupedList);
     if (!gcResult.valid) { res.status(400).json({ error: gcResult.error }); return; }
     const balances = await loadGiftCardBalances(dedupedList.map((g) => g.code));
-    serverGiftCards = dedupedList.map((gc) => ({
-      code: gc.code,
-      amount: Math.min(gc.amount, balances.get(gc.code) ?? 0),
-    }));
+    serverGiftCards = dedupedList.map((gc) => ({ code: gc.code, amount: Math.min(gc.amount, balances.get(gc.code) ?? 0) }));
   }
 
-  const subtotal = items.reduce(
-    (sum, it) => {
-      const lk = `${it.bundleId ?? "s"}-${it.variantId}`;
-      const price = (serverPrices && it.variantId > 0) ? serverPrices.get(lk) ?? it.priceUsd : it.priceUsd;
-      return sum + parseFloat(price) * it.quantity;
-    },
-    0,
-  );
+  const subtotal = items.reduce((sum, it) => {
+    const lk = `${it.bundleId ?? "s"}-${it.variantId}`;
+    const price = (serverPrices && it.variantId > 0) ? serverPrices.get(lk) ?? it.priceUsd : it.priceUsd;
+    return sum + parseFloat(price) * it.quantity;
+  }, 0);
   const couponDiscount = subtotal * ((serverCoupon?.pct ?? 0) / 100);
   let loyaltyDisc = 0, loyaltyPtsUsed = 0;
   const reqPts = parsed.data.loyaltyPointsUsed ?? 0;
@@ -199,6 +183,18 @@ router.post("/orders", async (req, res) => {
       }
     }
   }
+  let servicesAmount = 0;
+  let validatedServices: Array<{ id: number; name: string; priceUsd: string }> = [];
+  if (parsed.data.serviceIds?.length) {
+    const dbServices = await db.select().from(checkoutServices)
+      .where(inArray(checkoutServices.id, parsed.data.serviceIds));
+    const enabledServices = dbServices.filter((s) => s.enabled);
+    if (enabledServices.length !== parsed.data.serviceIds.length) {
+      res.status(400).json({ error: "One or more selected services are unavailable" }); return;
+    }
+    validatedServices = enabledServices.map((s) => ({ id: s.id, name: s.name, priceUsd: s.priceUsd }));
+    servicesAmount = enabledServices.reduce((s, svc) => s + parseFloat(svc.priceUsd), 0);
+  }
   const discountAmount = couponDiscount + loyaltyDisc;
   const cppAmount = cppSelected ? Math.round(subtotal * CPP_RATE * 100) / 100 : 0;
 
@@ -213,7 +209,7 @@ router.post("/orders", async (req, res) => {
       const country = billing.country.toUpperCase();
       const [cr] = await db.select().from(taxRates).where(eq(taxRates.countryCode, country));
       if (cr?.isEnabled) taxRate = parseFloat(cr.rate);
-      const beforeTax = subtotal - discountAmount + cppAmount;
+      const beforeTax = subtotal - discountAmount + cppAmount + servicesAmount;
       if (taxConfig.priceDisplay === "inclusive") {
         taxAmount = Math.round((beforeTax - beforeTax / (1 + taxRate / 100)) * 100) / 100;
       } else {
@@ -223,7 +219,9 @@ router.post("/orders", async (req, res) => {
   }
 
   const isInclusive = taxConfig?.priceDisplay === "inclusive";
-  const preGcTotal = isInclusive ? subtotal - discountAmount + cppAmount : subtotal - discountAmount + cppAmount + taxAmount;
+  const preGcTotal = isInclusive
+    ? subtotal - discountAmount + cppAmount + servicesAmount
+    : subtotal - discountAmount + cppAmount + servicesAmount + taxAmount;
   const gcDeduction = serverGiftCards.reduce((s, c) => s + c.amount, 0);
   if (gcDeduction > preGcTotal + 0.01) {
     res.status(400).json({ error: "Gift card amount exceeds order total" });
@@ -281,6 +279,8 @@ router.post("/orders", async (req, res) => {
       loyaltyDiscount: loyaltyDisc || undefined,
       walletAmountUsd: walletDeduction > 0 ? walletDeduction : undefined,
       userId,
+      services: validatedServices.length > 0 ? validatedServices : undefined,
+      servicesAmount,
     });
 
     res.status(201).json({
