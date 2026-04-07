@@ -4,6 +4,7 @@ import { siteSettings, currencyRates, emailQueue } from "@workspace/db/schema";
 import { eq, sql, desc } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { encrypt, decrypt } from "../lib/encryption";
+import { invalidateMailerCache } from "../lib/email/mailer";
 
 const router = Router();
 
@@ -44,6 +45,9 @@ router.get("/admin/settings/currencies", requireAuth, requireAdmin, async (_req,
 router.put("/admin/settings/currencies/default", requireAuth, requireAdmin, async (req, res) => {
   const code = String(req.body.defaultCurrency || "USD").toUpperCase();
   if (code.length !== 3) { res.status(400).json({ error: "Invalid currency code" }); return; }
+  const [currency] = await db.select().from(currencyRates).where(eq(currencyRates.currencyCode, code));
+  if (!currency) { res.status(400).json({ error: "Currency not found in rates table" }); return; }
+  if (!currency.enabled) { res.status(400).json({ error: "Cannot set disabled currency as default" }); return; }
   const [existing] = await db.select({ id: siteSettings.id }).from(siteSettings);
   if (existing) { await db.update(siteSettings).set({ defaultCurrency: code, updatedAt: new Date() }).where(eq(siteSettings.id, existing.id)); }
   else { await db.insert(siteSettings).values({ defaultCurrency: code }); }
@@ -120,6 +124,7 @@ router.put("/admin/settings/smtp", requireAuth, requireAdmin, async (req, res) =
   }
   if (existing) { await db.update(siteSettings).set(data).where(eq(siteSettings.id, existing.id)); }
   else { await db.insert(siteSettings).values(data as Record<string, unknown>); }
+  invalidateMailerCache();
   res.json({ success: true });
 });
 
