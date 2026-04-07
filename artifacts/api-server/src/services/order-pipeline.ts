@@ -1,15 +1,13 @@
-import { eq, and, gte } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   orders,
   orderItems,
   users,
   orderStatusEnum,
-  giftCards,
-  giftCardRedemptions,
 } from "@workspace/db/schema";
 import { processPayment } from "./payment";
-import { createGiftCardForOrder, sendGiftCardEmails } from "./gift-card-service";
+import { createGiftCardForOrder, sendGiftCardEmails, redeemGiftCards } from "./gift-card-service";
 import { getMetenziConfig } from "../lib/metenzi-config";
 import { createOrder as metenziCreateOrder } from "../lib/metenzi-endpoints";
 import { logger } from "../lib/logger";
@@ -135,29 +133,7 @@ export async function executeOrderPipeline(input: OrderInput) {
       }
 
       if (input.giftCards?.length) {
-        for (const gc of input.giftCards) {
-          const code = gc.code.trim().toUpperCase();
-          const [card] = await tx.select().from(giftCards)
-            .where(and(eq(giftCards.code, code), eq(giftCards.status, "ACTIVE")));
-          if (!card) throw new Error(`Gift card ${code} is no longer valid`);
-          const balanceBefore = parseFloat(card.balanceUsd);
-          const deductAmount = Math.min(gc.amount, balanceBefore);
-          if (deductAmount <= 0) throw new Error(`Gift card ${code} has no balance`);
-          const balanceAfter = Math.max(0, balanceBefore - deductAmount);
-          const updated = await tx.update(giftCards).set({
-            balanceUsd: balanceAfter.toFixed(2),
-            status: balanceAfter <= 0 ? "REDEEMED" : "ACTIVE",
-          }).where(and(eq(giftCards.id, card.id), gte(giftCards.balanceUsd, deductAmount.toFixed(2))))
-            .returning({ id: giftCards.id });
-          if (!updated.length) throw new Error(`Gift card ${code} insufficient balance`);
-          await tx.insert(giftCardRedemptions).values({
-            giftCardId: card.id, orderId: order.id,
-            amountUsd: deductAmount.toFixed(2),
-            balanceBefore: balanceBefore.toFixed(2),
-            balanceAfter: balanceAfter.toFixed(2),
-          });
-          logger.info({ code, orderId: order.id, deducted: deductAmount }, "Gift card redeemed");
-        }
+        await redeemGiftCards(order.id, input.giftCards, tx as typeof db);
       }
 
       return { insertedItems: inserted, createdCards: cards };

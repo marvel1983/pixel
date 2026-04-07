@@ -9,9 +9,10 @@ interface CheckoutSummaryProps {
   taxRate?: number;
   taxLabel?: string;
   priceDisplay?: string;
+  gcDeduction?: number;
 }
 
-export function CheckoutSummary({ cppSelected, taxRate = 0, taxLabel = "VAT", priceDisplay = "exclusive" }: CheckoutSummaryProps) {
+export function CheckoutSummary({ cppSelected, taxRate = 0, taxLabel = "VAT", priceDisplay = "exclusive", gcDeduction = 0 }: CheckoutSummaryProps) {
   const items = useCartStore((s) => s.items);
   const coupon = useCartStore((s) => s.coupon);
   const getTotal = useCartStore((s) => s.getTotal);
@@ -28,7 +29,8 @@ export function CheckoutSummary({ cppSelected, taxRate = 0, taxLabel = "VAT", pr
       ? Math.round((beforeTax - beforeTax / (1 + taxRate / 100)) * 100) / 100
       : Math.round(beforeTax * (taxRate / 100) * 100) / 100
     : 0;
-  const total = isInclusive ? beforeTax : beforeTax + taxAmount;
+  const preGcTotal = isInclusive ? beforeTax : beforeTax + taxAmount;
+  const total = Math.max(0, preGcTotal - gcDeduction);
 
   return (
     <div className="border rounded-lg p-5 space-y-4 bg-muted/10 sticky top-24">
@@ -96,6 +98,12 @@ export function CheckoutSummary({ cppSelected, taxRate = 0, taxLabel = "VAT", pr
           <div className="flex justify-between">
             <span className="text-muted-foreground">{isInclusive ? `Incl. ${taxLabel}` : taxLabel} ({taxRate}%)</span>
             <span>{isInclusive ? "" : "+"}{format(taxAmount)}</span>
+          </div>
+        )}
+        {gcDeduction > 0 && (
+          <div className="flex justify-between text-green-600">
+            <span>Gift Card</span>
+            <span>-{format(gcDeduction)}</span>
           </div>
         )}
       </div>

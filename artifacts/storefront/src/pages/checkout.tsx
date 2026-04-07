@@ -153,7 +153,10 @@ export default function CheckoutPage() {
             remainingTotal={(() => {
               const s = getTotal();
               const d = coupon ? s * (coupon.pct / 100) : 0;
-              return Math.max(0, s - d + (cppSelected ? getCppAmount(s) : 0) - appliedGiftCards.reduce((a, c) => a + c.applied, 0));
+              const beforeTax = s - d + (cppSelected ? getCppAmount(s) : 0);
+              const tr = taxInfo.taxRate || 0;
+              const tax = taxInfo.priceDisplay === "inclusive" ? 0 : Math.round(beforeTax * (tr / 100) * 100) / 100;
+              return Math.max(0, beforeTax + tax - appliedGiftCards.reduce((a, c) => a + c.applied, 0));
             })()}
             onApply={(c) => setAppliedGiftCards((p) => [...p, c])}
             onRemove={(code) => setAppliedGiftCards((p) => p.filter((c) => c.code !== code))}
@@ -170,7 +173,7 @@ export default function CheckoutPage() {
         </div>
 
         <div className="space-y-4">
-          <CheckoutSummary cppSelected={cppSelected} taxRate={taxInfo.taxRate} taxLabel={taxInfo.taxLabel} priceDisplay={taxInfo.priceDisplay} />
+          <CheckoutSummary cppSelected={cppSelected} taxRate={taxInfo.taxRate} taxLabel={taxInfo.taxLabel} priceDisplay={taxInfo.priceDisplay} gcDeduction={appliedGiftCards.reduce((s, c) => s + c.applied, 0)} />
           <ProductUpsell />
         </div>
       </div>

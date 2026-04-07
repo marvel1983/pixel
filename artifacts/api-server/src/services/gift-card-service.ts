@@ -36,38 +36,37 @@ export async function loadGiftCardBalances(codes: string[]): Promise<Map<string,
   return result;
 }
 
-export async function redeemGiftCards(orderId: number, cards: GiftCardApply[]): Promise<void> {
-  await db.transaction(async (tx) => {
-    for (const gc of cards) {
-      const code = gc.code.trim().toUpperCase();
-      const [card] = await tx.select().from(giftCards)
-        .where(and(eq(giftCards.code, code), eq(giftCards.status, "ACTIVE")));
-      if (!card) throw new Error(`Gift card ${code} is no longer valid`);
+export async function redeemGiftCards(orderId: number, cards: GiftCardApply[], txDb?: typeof db): Promise<void> {
+  const conn = txDb || db;
+  for (const gc of cards) {
+    const code = gc.code.trim().toUpperCase();
+    const [card] = await conn.select().from(giftCards)
+      .where(and(eq(giftCards.code, code), eq(giftCards.status, "ACTIVE")));
+    if (!card) throw new Error(`Gift card ${code} is no longer valid`);
 
-      const balanceBefore = parseFloat(card.balanceUsd);
-      const deductAmount = Math.min(gc.amount, balanceBefore);
-      if (deductAmount <= 0) throw new Error(`Gift card ${code} has no balance`);
-      const balanceAfter = Math.max(0, balanceBefore - deductAmount);
+    const balanceBefore = parseFloat(card.balanceUsd);
+    const deductAmount = Math.min(gc.amount, balanceBefore);
+    if (deductAmount <= 0) throw new Error(`Gift card ${code} has no balance`);
+    const balanceAfter = Math.max(0, balanceBefore - deductAmount);
 
-      const updated = await tx.update(giftCards).set({
-        balanceUsd: balanceAfter.toFixed(2),
-        status: balanceAfter <= 0 ? "REDEEMED" : "ACTIVE",
-      }).where(and(
-        eq(giftCards.id, card.id),
-        gte(giftCards.balanceUsd, deductAmount.toFixed(2)),
-      )).returning({ id: giftCards.id });
+    const updated = await conn.update(giftCards).set({
+      balanceUsd: balanceAfter.toFixed(2),
+      status: balanceAfter <= 0 ? "REDEEMED" : "ACTIVE",
+    }).where(and(
+      eq(giftCards.id, card.id),
+      gte(giftCards.balanceUsd, deductAmount.toFixed(2)),
+    )).returning({ id: giftCards.id });
 
-      if (!updated.length) throw new Error(`Gift card ${code} has insufficient balance (concurrent use)`);
+    if (!updated.length) throw new Error(`Gift card ${code} insufficient balance (concurrent use)`);
 
-      await tx.insert(giftCardRedemptions).values({
-        giftCardId: card.id, orderId,
-        amountUsd: deductAmount.toFixed(2),
-        balanceBefore: balanceBefore.toFixed(2),
-        balanceAfter: balanceAfter.toFixed(2),
-      });
-      logger.info({ code, orderId, deducted: deductAmount, remaining: balanceAfter }, "Gift card redeemed");
-    }
-  });
+    await conn.insert(giftCardRedemptions).values({
+      giftCardId: card.id, orderId,
+      amountUsd: deductAmount.toFixed(2),
+      balanceBefore: balanceBefore.toFixed(2),
+      balanceAfter: balanceAfter.toFixed(2),
+    });
+    logger.info({ code, orderId, deducted: deductAmount, remaining: balanceAfter }, "Gift card redeemed");
+  }
 }
 
 export async function createGiftCardForOrder(
