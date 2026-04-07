@@ -1,14 +1,14 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { productQuestions, productAnswers, products } from "@workspace/db/schema";
-import { eq, and, desc, count, ilike, or, type SQL } from "drizzle-orm";
+import { eq, and, desc, count, ilike, or, inArray, type SQL } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import { enqueueEmail } from "../lib/email/queue";
 import { qaAnsweredEmail } from "../services/qa-emails";
 
 const router = Router();
-const guard = [requireAuth, requireAdmin, requirePermission("manageOrders")];
+const guard = [requireAuth, requireAdmin, requirePermission("manageProducts")];
 
 router.get("/admin/qa/stats", ...guard, async (_req, res) => {
   const [pendingRow] = await db.select({ c: count() }).from(productQuestions)
@@ -68,8 +68,8 @@ router.get("/admin/qa", ...guard, async (req, res) => {
   type AnswerRow = typeof productAnswers.$inferSelect;
   let answers: AnswerRow[] = [];
   if (qIds.length > 0) {
-    const allAnswers = await db.select().from(productAnswers);
-    answers = allAnswers.filter((a) => qIds.includes(a.questionId));
+    answers = await db.select().from(productAnswers)
+      .where(inArray(productAnswers.questionId, qIds));
   }
 
   const result = rows.map((r) => ({
@@ -80,14 +80,21 @@ router.get("/admin/qa", ...guard, async (req, res) => {
   res.json({ questions: result, total: totalRow?.c ?? 0, page, limit });
 });
 
+function parseId(raw: string): number | null {
+  const id = parseInt(raw);
+  return isNaN(id) || id <= 0 ? null : id;
+}
+
 router.patch("/admin/qa/:id/status", ...guard, async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseId(req.params.id);
+  if (!id) { res.status(400).json({ error: "Invalid question ID" }); return; }
   const { status } = req.body;
   if (!["APPROVED", "REJECTED"].includes(status)) {
     res.status(400).json({ error: "Invalid status" }); return;
   }
-  await db.update(productQuestions).set({ status, updatedAt: new Date() })
-    .where(eq(productQuestions.id, id));
+  const [updated] = await db.update(productQuestions).set({ status, updatedAt: new Date() })
+    .where(eq(productQuestions.id, id)).returning({ id: productQuestions.id });
+  if (!updated) { res.status(404).json({ error: "Question not found" }); return; }
   res.json({ success: true });
 });
 
@@ -104,11 +111,16 @@ router.post("/admin/qa/bulk-status", ...guard, async (req, res) => {
 });
 
 router.post("/admin/qa/:id/answer", ...guard, async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseId(req.params.id);
+  if (!id) { res.status(400).json({ error: "Invalid question ID" }); return; }
   const { answer } = req.body;
   if (!answer || typeof answer !== "string" || answer.length < 1) {
     res.status(400).json({ error: "Answer is required" }); return;
   }
+
+  const [exists] = await db.select({ id: productQuestions.id }).from(productQuestions)
+    .where(eq(productQuestions.id, id));
+  if (!exists) { res.status(404).json({ error: "Question not found" }); return; }
 
   await db.insert(productAnswers).values({
     questionId: id,
@@ -147,8 +159,11 @@ router.post("/admin/qa/:id/answer", ...guard, async (req, res) => {
 });
 
 router.delete("/admin/qa/:id", ...guard, async (req, res) => {
-  const id = parseInt(req.params.id);
-  await db.delete(productQuestions).where(eq(productQuestions.id, id));
+  const id = parseId(req.params.id);
+  if (!id) { res.status(400).json({ error: "Invalid question ID" }); return; }
+  const [deleted] = await db.delete(productQuestions).where(eq(productQuestions.id, id))
+    .returning({ id: productQuestions.id });
+  if (!deleted) { res.status(404).json({ error: "Question not found" }); return; }
   res.json({ success: true });
 });
 

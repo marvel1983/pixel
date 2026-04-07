@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { productQuestions, productAnswers, products } from "@workspace/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, inArray } from "drizzle-orm";
 import { optionalAuth } from "../middleware/auth";
 import { z } from "zod";
 
@@ -67,9 +67,8 @@ router.get("/qa/product/:productId", async (req, res) => {
       isAdmin: productAnswers.isAdmin,
       authorName: productAnswers.authorName,
       createdAt: productAnswers.createdAt,
-    }).from(productAnswers);
-
-    answers = answers.filter((a) => qIds.includes(a.questionId));
+    }).from(productAnswers)
+      .where(inArray(productAnswers.questionId, qIds));
   }
 
   const result = questions.map((q) => ({
