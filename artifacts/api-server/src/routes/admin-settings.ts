@@ -7,6 +7,18 @@ import { encrypt, decrypt } from "../lib/encryption";
 
 const router = Router();
 
+const VALID_FIELDS: Record<string, string[]> = {
+  metenzi: ["apiKey", "hmacSecret"],
+  checkout: ["publicKey", "secretKey"],
+};
+
+function validateProviderField(provider: string, field: string): string | null {
+  const allowed = VALID_FIELDS[provider];
+  if (!allowed) return "Unknown provider";
+  if (!allowed.includes(field)) return `Invalid field for ${provider}`;
+  return null;
+}
+
 router.get("/admin/settings/general", requireAuth, requireAdmin, async (_req, res) => {
   const rows = await db.select().from(siteSettings);
   if (rows.length === 0) { res.json({ settings: null }); return; }
@@ -71,6 +83,8 @@ router.get("/admin/settings/api-keys", requireAuth, requireAdmin, async (_req, r
 
 router.post("/admin/settings/api-keys/reveal", requireAuth, requireAdmin, async (req, res) => {
   const { provider, field } = req.body;
+  const err = validateProviderField(provider, field);
+  if (err) { res.status(400).json({ error: err }); return; }
   const adminEmail = req.user?.email ?? "unknown";
   console.log(`[AUDIT] API key reveal: provider=${provider}, field=${field}, admin=${adminEmail}, ip=${req.ip}, time=${new Date().toISOString()}`);
   if (provider === "metenzi") {
@@ -90,6 +104,8 @@ router.post("/admin/settings/api-keys/reveal", requireAuth, requireAdmin, async 
 
 router.put("/admin/settings/api-keys", requireAuth, requireAdmin, async (req, res) => {
   const { provider, field, value } = req.body;
+  const fieldErr = validateProviderField(provider, field);
+  if (fieldErr) { res.status(400).json({ error: fieldErr }); return; }
   if (!value || typeof value !== "string") { res.status(400).json({ error: "Value required" }); return; }
   const encrypted = encrypt(value.trim());
   if (provider === "metenzi") {
@@ -123,7 +139,8 @@ router.post("/admin/settings/api-keys/test", requireAuth, requireAdmin, async (r
     try {
       const sk = decrypt(row.secretKeyEncrypted);
       const r = await fetch("https://api.checkout.com/instruments", { method: "GET", headers: { Authorization: `Bearer ${sk}` } });
-      res.json({ success: r.status !== 401, message: r.status === 401 ? "Invalid credentials" : `Connected (${r.status})` });
+      const ok = r.status >= 200 && r.status < 300;
+      res.json({ success: ok, message: ok ? "Connected successfully" : r.status === 401 ? "Invalid credentials" : `API returned ${r.status}` });
     } catch (e) { res.json({ success: false, message: `Connection failed: ${(e as Error).message}` }); }
   } else { res.status(400).json({ error: "Unknown provider" }); }
 });
