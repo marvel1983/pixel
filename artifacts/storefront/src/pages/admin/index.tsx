@@ -6,6 +6,8 @@ import AnalyticsPage from "./analytics";
 import AdminProductsPage from "./products";
 import ProductEditPage from "./product-edit";
 import AdminCategoriesPage from "./categories";
+import AdminOrdersPage from "./orders";
+import OrderDetailPage from "./order-detail";
 
 function AdminPlaceholder({ title }: { title: string }) {
   return (
@@ -31,12 +33,8 @@ export default function AdminRoot() {
           <Route path="/admin/platforms">
             <AdminPlaceholder title="Platforms" />
           </Route>
-          <Route path="/admin/orders/:id">
-            <AdminPlaceholder title="Order Detail" />
-          </Route>
-          <Route path="/admin/orders">
-            <AdminPlaceholder title="Orders" />
-          </Route>
+          <Route path="/admin/orders/:id" component={OrderDetailPage} />
+          <Route path="/admin/orders" component={AdminOrdersPage} />
           <Route path="/admin/transactions">
             <AdminPlaceholder title="Transactions" />
           </Route>

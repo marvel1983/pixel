@@ -1,0 +1,231 @@
+import { Router } from "express";
+import { db } from "@workspace/db";
+import { orders, orderItems, licenseKeys, users, coupons } from "@workspace/db/schema";
+import { eq, desc, sql, and, or, ilike, gte, lte, inArray, count, sum } from "drizzle-orm";
+import { requireAuth, requireAdmin } from "../middleware/auth";
+import { decrypt } from "../lib/encryption";
+import { logger } from "../lib/logger";
+
+const router = Router();
+
+router.get("/admin/orders/export", requireAuth, requireAdmin, async (req, res) => {
+  const idsParam = req.query.ids as string | undefined;
+  const statusFilter = req.query.status as string | undefined;
+  const conditions = buildFilters(req.query);
+
+  if (idsParam) {
+    const ids = idsParam.split(",").map(Number).filter(Number.isInteger);
+    if (ids.length > 0) conditions.push(inArray(orders.id, ids));
+  }
+
+  const rows = await db
+    .select({
+      orderNumber: orders.orderNumber,
+      email: orders.guestEmail,
+      status: orders.status,
+      subtotal: orders.subtotalUsd,
+      discount: orders.discountUsd,
+      total: orders.totalUsd,
+      payment: orders.paymentMethod,
+      currency: orders.currencyCode,
+      createdAt: orders.createdAt,
+    })
+    .from(orders)
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(desc(orders.createdAt));
+
+  const header = "Order #,Email,Status,Subtotal,Discount,Total,Payment,Currency,Date\n";
+  const csv = rows.map((r) =>
+    [r.orderNumber, r.email, r.status, r.subtotal, r.discount, r.total, r.payment, r.currency, r.createdAt?.toISOString()].join(",")
+  ).join("\n");
+
+  res.setHeader("Content-Type", "text/csv");
+  res.setHeader("Content-Disposition", `attachment; filename=orders-${Date.now()}.csv`);
+  res.send(header + csv);
+});
+
+router.get("/admin/orders", requireAuth, requireAdmin, async (req, res) => {
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const limit = Math.min(100, Math.max(10, Number(req.query.limit) || 25));
+  const offset = (page - 1) * limit;
+  const conditions = buildFilters(req.query);
+
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const [{ total: totalCount }] = await db
+    .select({ total: count() })
+    .from(orders)
+    .where(whereClause);
+
+  const [{ revenue }] = await db
+    .select({ revenue: sum(orders.totalUsd) })
+    .from(orders)
+    .where(whereClause);
+
+  const rows = await db
+    .select({
+      id: orders.id,
+      orderNumber: orders.orderNumber,
+      guestEmail: orders.guestEmail,
+      userId: orders.userId,
+      status: orders.status,
+      paymentMethod: orders.paymentMethod,
+      subtotalUsd: orders.subtotalUsd,
+      discountUsd: orders.discountUsd,
+      totalUsd: orders.totalUsd,
+      couponId: orders.couponId,
+      currencyCode: orders.currencyCode,
+      createdAt: orders.createdAt,
+    })
+    .from(orders)
+    .where(whereClause)
+    .orderBy(desc(orders.createdAt))
+    .limit(limit)
+    .offset(offset);
+
+  const orderIds = rows.map((r) => r.id);
+  let itemsByOrder: Record<number, { productName: string; quantity: number }[]> = {};
+  if (orderIds.length > 0) {
+    const items = await db
+      .select({ orderId: orderItems.orderId, productName: orderItems.productName, quantity: orderItems.quantity })
+      .from(orderItems)
+      .where(inArray(orderItems.orderId, orderIds));
+    for (const item of items) {
+      (itemsByOrder[item.orderId] ??= []).push({ productName: item.productName, quantity: item.quantity });
+    }
+  }
+
+  const result = rows.map((r) => ({
+    ...r,
+    items: itemsByOrder[r.id] ?? [],
+    itemCount: (itemsByOrder[r.id] ?? []).reduce((s, i) => s + i.quantity, 0),
+  }));
+
+  res.json({ orders: result, total: totalCount, revenue: revenue ?? "0", page, limit });
+});
+
+router.get("/admin/orders/:id", requireAuth, requireAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    res.status(400).json({ error: "Invalid order ID" });
+    return;
+  }
+
+  const [order] = await db.select().from(orders).where(eq(orders.id, id));
+  if (!order) {
+    res.status(404).json({ error: "Order not found" });
+    return;
+  }
+
+  const items = await db.select().from(orderItems).where(eq(orderItems.orderId, id));
+
+  const itemIds = items.map((i) => i.id);
+  let keys: { orderItemId: number; id: number; keyValue: string; status: string; soldAt: Date | null }[] = [];
+  if (itemIds.length > 0) {
+    keys = await db
+      .select({ orderItemId: licenseKeys.orderItemId, id: licenseKeys.id, keyValue: licenseKeys.keyValue, status: licenseKeys.status, soldAt: licenseKeys.soldAt })
+      .from(licenseKeys)
+      .where(inArray(licenseKeys.orderItemId, itemIds));
+  }
+
+  const decryptedKeys = keys.map((k) => ({
+    ...k,
+    keyValue: safeDecrypt(k.keyValue),
+  }));
+
+  let customer = null;
+  if (order.userId) {
+    const [u] = await db
+      .select({ id: users.id, email: users.email, firstName: users.firstName, lastName: users.lastName, createdAt: users.createdAt })
+      .from(users)
+      .where(eq(users.id, order.userId));
+    customer = u ?? null;
+  }
+
+  let coupon = null;
+  if (order.couponId) {
+    const [c] = await db
+      .select({ id: coupons.id, code: coupons.code, discountPercent: coupons.discountPercent })
+      .from(coupons)
+      .where(eq(coupons.id, order.couponId));
+    coupon = c ?? null;
+  }
+
+  res.json({ order, items, licenseKeys: decryptedKeys, customer, coupon });
+});
+
+router.patch("/admin/orders/:id/status", requireAuth, requireAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    res.status(400).json({ error: "Invalid order ID" });
+    return;
+  }
+  const validStatuses = ["PENDING", "PROCESSING", "COMPLETED", "FAILED", "REFUNDED", "PARTIALLY_REFUNDED"];
+  const { status } = req.body;
+  if (!validStatuses.includes(status)) {
+    res.status(400).json({ error: "Invalid status" });
+    return;
+  }
+
+  const [order] = await db.select({ id: orders.id }).from(orders).where(eq(orders.id, id));
+  if (!order) {
+    res.status(404).json({ error: "Order not found" });
+    return;
+  }
+
+  await db.update(orders).set({ status, updatedAt: new Date() }).where(eq(orders.id, id));
+  res.json({ success: true });
+});
+
+router.post("/admin/orders/bulk-status", requireAuth, requireAdmin, async (req, res) => {
+  const { ids, status } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    res.status(400).json({ error: "No order IDs provided" });
+    return;
+  }
+  const validStatuses = ["COMPLETED", "FAILED"];
+  if (!validStatuses.includes(status)) {
+    res.status(400).json({ error: "Invalid bulk status" });
+    return;
+  }
+
+  const intIds = ids.map(Number).filter(Number.isInteger);
+  await db.update(orders).set({ status, updatedAt: new Date() }).where(inArray(orders.id, intIds));
+  res.json({ success: true, updated: intIds.length });
+});
+
+router.patch("/admin/orders/:id/notes", requireAuth, requireAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    res.status(400).json({ error: "Invalid order ID" });
+    return;
+  }
+  const { notes } = req.body;
+  await db.update(orders).set({ notes: notes ?? null, updatedAt: new Date() }).where(eq(orders.id, id));
+  res.json({ success: true });
+});
+
+function buildFilters(query: Record<string, unknown>) {
+  const conditions = [];
+  const search = query.search as string | undefined;
+  if (search?.trim()) {
+    conditions.push(or(ilike(orders.orderNumber, `%${search}%`), ilike(orders.guestEmail, `%${search}%`)));
+  }
+  const status = query.status as string | undefined;
+  if (status && status !== "ALL") {
+    conditions.push(eq(orders.status, status as typeof orders.$inferSelect.status));
+  }
+  const from = query.from as string | undefined;
+  if (from) conditions.push(gte(orders.createdAt, new Date(from)));
+  const to = query.to as string | undefined;
+  if (to) conditions.push(lte(orders.createdAt, new Date(to)));
+  const hasCoupon = query.hasCoupon as string | undefined;
+  if (hasCoupon === "true") conditions.push(sql`${orders.couponId} IS NOT NULL`);
+  return conditions;
+}
+
+function safeDecrypt(value: string): string {
+  try { return decrypt(value); } catch { return value; }
+}
+
+export default router;
