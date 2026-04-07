@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { z } from "zod";
-import { inArray, eq } from "drizzle-orm";
+import { inArray, eq, and, sql, lte, gte } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { productVariants, taxSettings, taxRates } from "@workspace/db/schema";
+import { productVariants, taxSettings, taxRates, flashSales, flashSaleProducts } from "@workspace/db/schema";
 import { executeOrderPipeline } from "../services/order-pipeline";
 import { validateCouponServerSide } from "../services/coupon-service";
 import { validateGiftCards, loadGiftCardBalances } from "../services/gift-card-service";
@@ -64,6 +64,30 @@ function generateOrderNumber() {
   return `PC-${ts}-${rand}`;
 }
 
+async function getFlashSalePrices(variantIds: number[]): Promise<Map<number, string>> {
+  if (variantIds.length === 0) return new Map();
+  const now = new Date();
+  const rows = await db.select({
+    variantId: flashSaleProducts.variantId,
+    salePriceUsd: flashSaleProducts.salePriceUsd,
+    soldCount: flashSaleProducts.soldCount,
+    maxQuantity: flashSaleProducts.maxQuantity,
+  }).from(flashSaleProducts)
+    .innerJoin(flashSales, eq(flashSaleProducts.flashSaleId, flashSales.id))
+    .where(and(
+      inArray(flashSaleProducts.variantId, variantIds),
+      eq(flashSales.status, "ACTIVE"),
+      eq(flashSales.isActive, true),
+      lte(flashSales.startsAt, now),
+      gte(flashSales.endsAt, now),
+    ));
+  const map = new Map<number, string>();
+  for (const r of rows) {
+    if (r.soldCount < r.maxQuantity) map.set(r.variantId, r.salePriceUsd);
+  }
+  return map;
+}
+
 async function validateAndPriceItems(items: z.infer<typeof orderSchema>["items"]) {
   const variantIds = items.filter((i) => i.variantId > 0).map((i) => i.variantId);
   const dbVariants = await db
@@ -72,23 +96,30 @@ async function validateAndPriceItems(items: z.infer<typeof orderSchema>["items"]
     .where(inArray(productVariants.id, variantIds));
 
   if (dbVariants.length === 0) {
-    return { prices: null, error: null };
+    return { prices: null, flashVariantIds: [] as number[], error: null };
   }
 
   const priceMap = new Map(dbVariants.map((v) => [v.id, v.priceUsd]));
 
   if (dbVariants.length !== variantIds.length) {
     const missing = variantIds.filter((id) => !priceMap.has(id));
-    return { prices: null, error: `Variant(s) not found: ${missing.join(", ")}` };
+    return { prices: null, flashVariantIds: [] as number[], error: `Variant(s) not found: ${missing.join(", ")}` };
   }
+
+  const flashPrices = await getFlashSalePrices(variantIds);
+  const flashVariantIds: number[] = [];
 
   for (const item of items) {
     const dbPrice = priceMap.get(item.variantId);
-    if (dbPrice && dbPrice !== item.priceUsd) {
-      return { prices: null, error: `Price changed for ${item.productName}` };
+    if (!dbPrice) continue;
+    const flashPrice = flashPrices.get(item.variantId);
+    if (flashPrice && item.priceUsd === flashPrice) {
+      flashVariantIds.push(item.variantId);
+    } else if (dbPrice !== item.priceUsd) {
+      return { prices: null, flashVariantIds: [] as number[], error: `Price changed for ${item.productName}` };
     }
   }
-  return { prices: priceMap, error: null };
+  return { prices: priceMap, flashVariantIds, error: null };
 }
 
 router.post("/orders", async (req, res) => {
@@ -112,7 +143,7 @@ router.post("/orders", async (req, res) => {
     }
   }
 
-  const { error: priceError } = await validateAndPriceItems(items);
+  const { error: priceError, flashVariantIds } = await validateAndPriceItems(items);
   if (priceError) {
     res.status(400).json({ error: priceError });
     return;
@@ -203,6 +234,7 @@ router.post("/orders", async (req, res) => {
       guestPassword: parsed.data.guestPassword,
       giftCards: serverGiftCards,
       affiliateRefCode: getRefCookie(req),
+      flashVariantIds: flashVariantIds || [],
     });
 
     res.status(201).json({

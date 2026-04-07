@@ -1,10 +1,11 @@
-import { eq } from "drizzle-orm";
+import { eq, and, inArray, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   orders,
   orderItems,
   users,
   orderStatusEnum,
+  flashSaleProducts,
 } from "@workspace/db/schema";
 import { processPayment } from "./payment";
 import { createGiftCardForOrder, sendGiftCardEmails, redeemGiftCards } from "./gift-card-service";
@@ -50,6 +51,7 @@ interface OrderInput {
   guestPassword?: string;
   giftCards?: Array<{ code: string; amount: number }>;
   affiliateRefCode?: string;
+  flashVariantIds?: number[];
 }
 
 export async function executeOrderPipeline(input: OrderInput) {
@@ -158,6 +160,12 @@ export async function executeOrderPipeline(input: OrderInput) {
       await triggerOrderEmails(billing, orderNumber, order.id, items, total);
     }
 
+    if (input.flashVariantIds?.length) {
+      incrementFlashSaleSoldCounts(input.flashVariantIds, items).catch((err) => {
+        logger.error({ err, orderNumber }, "Failed to increment flash sale sold counts (non-fatal)");
+      });
+    }
+
     if (input.affiliateRefCode) {
       createCommissionForOrder(input.affiliateRefCode, order.id, total).catch((err) => {
         logger.error({ err, orderNumber }, "Failed to create affiliate commission (non-fatal)");
@@ -231,4 +239,22 @@ async function createGuestAccount(billing: OrderInput["billing"], password: stri
   } catch (err) {
     logger.error({ err }, "Failed to create guest account (non-fatal)");
   }
+}
+
+async function incrementFlashSaleSoldCounts(
+  flashVariantIds: number[],
+  items: OrderInput["items"],
+) {
+  const qtyMap = new Map<number, number>();
+  for (const item of items) {
+    if (flashVariantIds.includes(item.variantId)) {
+      qtyMap.set(item.variantId, (qtyMap.get(item.variantId) || 0) + item.quantity);
+    }
+  }
+  for (const [variantId, qty] of qtyMap) {
+    await db.update(flashSaleProducts)
+      .set({ soldCount: sql`${flashSaleProducts.soldCount} + ${qty}` })
+      .where(eq(flashSaleProducts.variantId, variantId));
+  }
+  logger.info({ variantIds: flashVariantIds }, "Flash sale sold counts incremented");
 }

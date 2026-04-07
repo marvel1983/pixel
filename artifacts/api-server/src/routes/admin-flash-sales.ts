@@ -171,6 +171,7 @@ router.get("/admin/flash-sales/:id/analytics", ...guard, async (req, res) => {
   if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
 
   const items = await db.select({
+    variantId: flashSaleProducts.variantId,
     productName: products.name,
     variantName: productVariants.name,
     salePriceUsd: flashSaleProducts.salePriceUsd,
@@ -183,10 +184,14 @@ router.get("/admin/flash-sales/:id/analytics", ...guard, async (req, res) => {
     .innerJoin(productVariants, eq(flashSaleProducts.variantId, productVariants.id))
     .where(eq(flashSaleProducts.flashSaleId, id));
 
+  const enriched = items.map((i) => ({
+    ...i,
+    revenue: (i.soldCount * parseFloat(i.salePriceUsd)).toFixed(2),
+  }));
   const totalSold = items.reduce((s, i) => s + i.soldCount, 0);
   const totalRevenue = items.reduce((s, i) => s + i.soldCount * parseFloat(i.salePriceUsd), 0);
 
-  res.json({ items, totalSold, totalRevenue: totalRevenue.toFixed(2) });
+  res.json({ items: enriched, totalSold, totalRevenue: totalRevenue.toFixed(2) });
 });
 
 export default router;
