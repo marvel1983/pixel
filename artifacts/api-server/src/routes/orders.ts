@@ -4,6 +4,7 @@ import { inArray } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { productVariants } from "@workspace/db/schema";
 import { executeOrderPipeline } from "../services/order-pipeline";
+import { validateCouponServerSide } from "../services/coupon-service";
 import { logger } from "../lib/logger";
 
 const router = Router();
@@ -31,24 +32,20 @@ const itemSchema = z.object({
   platform: z.string().optional(),
 });
 
-const paymentDataSchema = z.object({
-  cardToken: z.string().min(1),
-});
-
 const orderSchema = z.object({
   billing: billingSchema,
   items: z.array(itemSchema).min(1).max(50),
   coupon: z
     .object({
       code: z.string().min(1).max(50),
-      pct: z.number().min(0).max(100),
+      pct: z.number(),
       label: z.string(),
     })
     .nullable()
     .optional(),
   cppSelected: z.boolean().optional(),
   total: currencyStr,
-  payment: paymentDataSchema,
+  payment: z.object({ cardToken: z.string().min(1) }),
   guestPassword: z.string().min(8).optional(),
 });
 
@@ -60,48 +57,59 @@ function generateOrderNumber() {
   return `PC-${ts}-${rand}`;
 }
 
-async function validatePricesFromDb(items: z.infer<typeof orderSchema>["items"]) {
+async function validateAndPriceItems(items: z.infer<typeof orderSchema>["items"]) {
   const variantIds = items.map((i) => i.variantId);
   const dbVariants = await db
     .select({ id: productVariants.id, priceUsd: productVariants.priceUsd })
     .from(productVariants)
     .where(inArray(productVariants.id, variantIds));
 
-  if (dbVariants.length === 0) return null;
+  if (dbVariants.length === 0) return { prices: null, error: null };
 
   const priceMap = new Map(dbVariants.map((v) => [v.id, v.priceUsd]));
+
   for (const item of items) {
     const dbPrice = priceMap.get(item.variantId);
-    if (dbPrice && dbPrice !== item.priceUsd) {
-      return `Price mismatch for ${item.productName}: expected ${dbPrice}`;
+    if (!dbPrice) {
+      return { prices: null, error: `Variant ${item.variantId} not found` };
+    }
+    if (dbPrice !== item.priceUsd) {
+      return { prices: null, error: `Price changed for ${item.productName}` };
     }
   }
-  return null;
+  return { prices: priceMap, error: null };
 }
 
 router.post("/orders", async (req, res) => {
   const parsed = orderSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({
-      error: "Invalid order data",
-      details: parsed.error.flatten(),
-    });
+    res.status(400).json({ error: "Invalid order data", details: parsed.error.flatten() });
     return;
   }
 
   const { billing, items, coupon, cppSelected, total, payment } = parsed.data;
 
-  const priceError = await validatePricesFromDb(items);
+  const { error: priceError } = await validateAndPriceItems(items);
   if (priceError) {
     res.status(400).json({ error: priceError });
     return;
+  }
+
+  let serverCoupon: { code: string; pct: number; label: string } | null = null;
+  if (coupon?.code) {
+    serverCoupon = await validateCouponServerSide(coupon.code);
+    if (!serverCoupon) {
+      res.status(400).json({ error: "Invalid or expired coupon code" });
+      return;
+    }
   }
 
   const subtotal = items.reduce(
     (sum, it) => sum + parseFloat(it.priceUsd) * it.quantity,
     0,
   );
-  const discountAmount = coupon ? subtotal * (coupon.pct / 100) : 0;
+  const discountPct = serverCoupon?.pct ?? 0;
+  const discountAmount = subtotal * (discountPct / 100);
   const cppAmount = cppSelected ? Math.round(subtotal * CPP_RATE * 100) / 100 : 0;
   const computedTotal = subtotal - discountAmount + cppAmount;
 
@@ -114,7 +122,7 @@ router.post("/orders", async (req, res) => {
     const result = await executeOrderPipeline({
       billing,
       items,
-      coupon: coupon ?? null,
+      coupon: serverCoupon,
       cppSelected: cppSelected ?? false,
       subtotal,
       discountAmount,
@@ -131,8 +139,8 @@ router.post("/orders", async (req, res) => {
     });
   } catch (err) {
     logger.error({ err }, "Order pipeline failed");
-    const message = err instanceof Error ? err.message : "Failed to process order";
-    res.status(500).json({ error: message });
+    const msg = err instanceof Error ? err.message : "Failed to process order";
+    res.status(500).json({ error: msg });
   }
 });
 

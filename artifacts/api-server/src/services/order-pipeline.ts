@@ -1,12 +1,20 @@
 import { eq } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { orders, orderItems, users, licenseKeys } from "@workspace/db/schema";
+import {
+  orders,
+  orderItems,
+  users,
+  licenseKeys,
+  orderStatusEnum,
+} from "@workspace/db/schema";
 import { processPayment } from "./payment";
 import { getMetenziConfig } from "../lib/metenzi-config";
 import { createOrder as metenziCreateOrder } from "../lib/metenzi-endpoints";
 import { encrypt } from "../lib/encryption";
 import { logger } from "../lib/logger";
 import bcrypt from "bcryptjs";
+
+type OrderStatus = (typeof orderStatusEnum.enumValues)[number];
 
 interface OrderInput {
   billing: {
@@ -104,10 +112,10 @@ export async function executeOrderPipeline(input: OrderInput) {
   }
 }
 
-async function updateOrderStatus(orderId: number, status: string) {
+async function updateOrderStatus(orderId: number, status: OrderStatus) {
   await db
     .update(orders)
-    .set({ status: status as any, updatedAt: new Date() })
+    .set({ status, updatedAt: new Date() })
     .where(eq(orders.id, orderId));
 }
 
