@@ -21,6 +21,8 @@ interface Review {
   body: string | null; isApproved: boolean; isVerifiedPurchase: boolean; helpfulCount: number; createdAt: string;
 }
 interface Stats { totalSpent: string; orderCount: number; avgRating: number }
+interface LoyaltyAccount { pointsBalance: number; lifetimePoints: number; tier: string; tierMultiplier: string }
+interface LoyaltyTx { id: number; type: string; points: number; balance: number; description: string; createdAt: string }
 
 const STATUS_COLORS: Record<string, string> = {
   PENDING: "bg-yellow-100 text-yellow-800", PROCESSING: "bg-blue-100 text-blue-800",
@@ -40,7 +42,7 @@ export default function CustomerDetailPage() {
   const [loading, setLoading] = useState(true);
   const [notes, setNotes] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
-  const [loyalty, setLoyalty] = useState<{ account: any; transactions: any[] } | null>(null);
+  const [loyalty, setLoyalty] = useState<{ account: LoyaltyAccount | null; transactions: LoyaltyTx[] } | null>(null);
   const [adjustPts, setAdjustPts] = useState("");
   const [adjustNote, setAdjustNote] = useState("");
   const [adjusting, setAdjusting] = useState(false);
@@ -219,7 +221,7 @@ export default function CustomerDetailPage() {
                 {loyalty.transactions.length > 0 && (
                   <div className="border-t pt-3 space-y-1 max-h-48 overflow-y-auto">
                     <p className="text-xs font-medium mb-2">Recent Transactions</p>
-                    {loyalty.transactions.slice(0, 10).map((tx: any) => (
+                    {loyalty.transactions.slice(0, 10).map((tx) => (
                       <div key={tx.id} className="flex justify-between text-xs">
                         <span className="truncate flex-1 mr-2">{tx.description}</span>
                         <span className={tx.points > 0 ? "text-green-600" : "text-red-600"}>

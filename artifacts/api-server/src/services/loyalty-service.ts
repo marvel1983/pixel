@@ -1,4 +1,4 @@
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql, gte } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   loyaltyAccounts,
@@ -74,23 +74,20 @@ export async function addPoints(
 }
 
 export async function redeemPoints(accountId: number, points: number, orderId?: number) {
-  const [account] = await db
-    .select()
-    .from(loyaltyAccounts)
-    .where(eq(loyaltyAccounts.id, accountId))
-    .limit(1);
-  if (!account) throw new Error("Loyalty account not found");
-  if (account.pointsBalance < points) throw new Error("Insufficient points");
-
   const config = await getLoyaltyConfig();
   if (!config?.enabled) throw new Error("Loyalty program not active");
   if (points < config.minRedeemPoints) throw new Error("Below minimum redemption");
 
-  const newBalance = account.pointsBalance - points;
-  await db
+  const [updated] = await db
     .update(loyaltyAccounts)
-    .set({ pointsBalance: newBalance, updatedAt: new Date() })
-    .where(eq(loyaltyAccounts.id, accountId));
+    .set({
+      pointsBalance: sql`${loyaltyAccounts.pointsBalance} - ${points}`,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(loyaltyAccounts.id, accountId), gte(loyaltyAccounts.pointsBalance, points)))
+    .returning({ newBalance: loyaltyAccounts.pointsBalance });
+
+  if (!updated) throw new Error("Insufficient points");
 
   const [tx] = await db
     .insert(loyaltyTransactions)
@@ -98,7 +95,7 @@ export async function redeemPoints(accountId: number, points: number, orderId?: 
       accountId,
       type: "REDEEM",
       points: -points,
-      balance: newBalance,
+      balance: updated.newBalance,
       description: `Redeemed ${points} points at checkout`,
       orderId,
     })

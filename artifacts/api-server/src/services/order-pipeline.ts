@@ -82,6 +82,11 @@ export async function executeOrderPipeline(input: OrderInput) {
     .returning({ id: orders.id });
 
   try {
+    if (input.loyaltyPointsUsed && input.loyaltyPointsUsed > 0 && input.userId) {
+      const acct = await getOrCreateAccount(input.userId);
+      await redeemPoints(acct.id, input.loyaltyPointsUsed, order.id);
+    }
+
     await updateOrderStatus(order.id, "PROCESSING");
 
     const paymentResult = await processPayment({
@@ -179,11 +184,6 @@ export async function executeOrderPipeline(input: OrderInput) {
     markCartRecovered(billing.email, order.id).catch((err) => {
       logger.error({ err, orderNumber }, "Failed to mark cart recovered (non-fatal)");
     });
-
-    if (input.loyaltyPointsUsed && input.loyaltyPointsUsed > 0 && input.userId) {
-      const acct = await getOrCreateAccount(input.userId);
-      await redeemPoints(acct.id, input.loyaltyPointsUsed, order.id);
-    }
 
     if (input.userId) {
       awardOrderPoints(input.userId, order.id, total).catch((err) => {
