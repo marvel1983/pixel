@@ -62,6 +62,17 @@ export const siteSettings = pgTable("site_settings", {
   googleOAuthEnabled: boolean("google_oauth_enabled").notNull().default(false),
   googleClientId: varchar("google_client_id", { length: 500 }),
   googleClientSecret: text("google_client_secret"),
+  spViewersEnabled: boolean("sp_viewers_enabled").notNull().default(true),
+  spViewersMin: integer("sp_viewers_min").notNull().default(3),
+  spSoldEnabled: boolean("sp_sold_enabled").notNull().default(true),
+  spSoldMin: integer("sp_sold_min").notNull().default(5),
+  spToastEnabled: boolean("sp_toast_enabled").notNull().default(true),
+  spToastIntervalMin: integer("sp_toast_interval_min").notNull().default(45),
+  spToastIntervalMax: integer("sp_toast_interval_max").notNull().default(90),
+  spToastMaxPerSession: integer("sp_toast_max_per_session").notNull().default(3),
+  spStockUrgencyEnabled: boolean("sp_stock_urgency_enabled").notNull().default(true),
+  spStockLowThreshold: integer("sp_stock_low_threshold").notNull().default(10),
+  spStockCriticalThreshold: integer("sp_stock_critical_threshold").notNull().default(3),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 

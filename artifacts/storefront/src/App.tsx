@@ -44,6 +44,7 @@ import NewsletterUnsubscribePage from "@/pages/newsletter-unsubscribe";
 import AuthGoogleSuccessPage from "@/pages/auth-google-success";
 import { useReferralTracking } from "@/hooks/use-referral";
 import { ExitIntentPopup } from "@/components/newsletter/exit-intent-popup";
+import { PurchaseToastProvider } from "@/components/social-proof/purchase-toast";
 import StaticPageView from "@/pages/static-page";
 import AdminRoot from "@/pages/admin/index";
 import AcceptInvitePage from "@/pages/admin/accept-invite";
@@ -96,6 +97,7 @@ function StorefrontWithMaintenance() {
         <Route component={StaticPageView} />
       </Switch>
       <ExitIntentPopup />
+      <PurchaseToastProvider />
     </SiteLayout>
   );
 }

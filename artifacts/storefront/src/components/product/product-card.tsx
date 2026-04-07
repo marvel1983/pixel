@@ -10,6 +10,8 @@ import { useFlashSaleStore } from "@/stores/flash-sale-store";
 import { useLoyaltyStore } from "@/stores/loyalty-store";
 import { addToRecentlyViewed } from "@/components/home/recently-viewed";
 import { useToast } from "@/hooks/use-toast";
+import { StockUrgencyBadge } from "@/components/social-proof/stock-urgency";
+import { SoldBadge } from "@/components/social-proof/sold-badge";
 import type { MockProduct } from "@/lib/mock-data";
 
 interface ProductCardProps {
@@ -135,10 +137,12 @@ export function ProductCard({ product, flashSalePrice: flashSalePriceProp }: Pro
             <span className="text-[10px] text-muted-foreground">({product.reviewCount})</span>
           </div>
 
-          <div className="flex items-center gap-1.5 mb-1">
+          <div className="flex items-center gap-1.5 mb-1 flex-wrap">
             <span className={`text-xs ${inStock ? "text-green-600" : "text-destructive"}`}>
               {inStock ? "In Stock" : "Out of Stock"}
             </span>
+            <StockUrgencyBadge stockCount={variant.stockCount} compact />
+            <SoldBadge productId={product.id} compact />
           </div>
 
           <div className="mt-auto pt-2 flex items-end justify-between">

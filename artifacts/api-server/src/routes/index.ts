@@ -62,6 +62,8 @@ import checkoutServicesRouter from "./checkout-services";
 import adminCheckoutServicesRouter from "./admin-checkout-services";
 import searchRouter from "./search";
 import trustpilotRouter from "./trustpilot";
+import socialProofRouter from "./social-proof";
+import adminSocialProofRouter from "./admin-social-proof";
 
 const router: IRouter = Router();
 
@@ -128,5 +130,7 @@ router.use(checkoutServicesRouter);
 router.use(adminCheckoutServicesRouter);
 router.use(searchRouter);
 router.use(trustpilotRouter);
+router.use(socialProofRouter);
+router.use(adminSocialProofRouter);
 
 export default router;

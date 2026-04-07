@@ -46,6 +46,21 @@ Tables split across `lib/db/src/schema/`:
 - `loyalty.ts` — loyaltyAccounts, loyaltyTransactions, loyaltySettings (points, tiers, bonuses)
 - `bundles.ts` — bundles, bundleItems (curated product bundles with discounted package pricing)
 - `checkout-services.ts` — checkoutServices, orderServices (add-on services at checkout)
+- `social-proof.ts` — socialProofEvents (VIEW/PURCHASE events with indexes)
+
+## Social Proof Widgets
+
+- Settings in `site_settings`: `sp_viewers_enabled`, `sp_viewers_min`, `sp_sold_enabled`, `sp_sold_min`, `sp_toast_enabled`, `sp_toast_interval_min/max`, `sp_toast_max_per_session`, `sp_stock_urgency_enabled`, `sp_stock_low_threshold`, `sp_stock_critical_threshold`
+- Public API: GET `/social-proof/config`, POST `/social-proof/view`, GET `/social-proof/viewers/:productId`, GET `/social-proof/sold/:productId`, GET `/social-proof/recent-purchases`
+- Admin API: GET/PUT `/admin/social-proof`
+- Frontend components in `artifacts/storefront/src/components/social-proof/`:
+  - `ViewerCount` — "X people are viewing this right now" (>= min threshold, polled 30s)
+  - `SoldBadge` — "X sold in the last 24 hours" (compact for cards, full for detail)
+  - `StockUrgencyBadge` — "Only N left!" amber / "Almost gone!" red
+  - `PurchaseToastProvider` — recent purchase notification toasts (bottom-left, 45-90s interval, max 3/session)
+- Hook: `useSocialProofConfig()`, `useViewerCount()`, `useSoldCount()`, `useStockUrgency()`, `useRecentPurchases()`
+- Order pipeline records PURCHASE events via `recordPurchaseEvents()` service
+- Admin: Settings > Social Proof tab for all toggles and thresholds
 
 ## Trustpilot Integration
 

@@ -37,3 +37,4 @@ export * from "./loyalty";
 export * from "./bundles";
 export * from "./checkout-services";
 export * from "./trustpilot";
+export * from "./social-proof";

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ShoppingCart, Zap, Heart, GitCompareArrows, Star, Eye, Minus, Plus } from "lucide-react";
+import { ShoppingCart, Zap, Heart, GitCompareArrows, Star, Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useCurrencyStore } from "@/stores/currency-store";
@@ -8,6 +8,9 @@ import { useWishlistStore } from "@/stores/wishlist-store";
 import { useCompareStore } from "@/stores/compare-store";
 import { useToast } from "@/hooks/use-toast";
 import { CountdownTimer } from "@/components/flash-sale/countdown-timer";
+import { ViewerCount } from "@/components/social-proof/viewer-count";
+import { SoldBadge } from "@/components/social-proof/sold-badge";
+import { StockUrgencyBadge } from "@/components/social-proof/stock-urgency";
 import type { MockProduct, MockVariant } from "@/lib/mock-data";
 
 interface ProductInfoProps {
@@ -90,7 +93,8 @@ export function ProductInfo({ product }: ProductInfoProps) {
         </span>
       </div>
 
-      <SocialProofBadge />
+      <ViewerCount productId={product.id} />
+      <SoldBadge productId={product.id} />
 
       <div className="flex items-baseline gap-3">
         {flashSale ? (
@@ -160,6 +164,7 @@ export function ProductInfo({ product }: ProductInfoProps) {
         <span className={`text-sm ${inStock ? "text-green-600" : "text-red-500"}`}>
           {inStock ? `In Stock (${selectedVariant.stockCount})` : "Out of Stock"}
         </span>
+        <StockUrgencyBadge stockCount={selectedVariant.stockCount} />
       </div>
 
       <div className="flex gap-3">
@@ -216,12 +221,3 @@ export function ProductInfo({ product }: ProductInfoProps) {
   );
 }
 
-function SocialProofBadge() {
-  const [viewers] = useState(() => Math.floor(Math.random() * 30) + 5);
-  return (
-    <div className="flex items-center gap-1.5 text-sm text-orange-600">
-      <Eye className="h-4 w-4" />
-      <span>{viewers} people are viewing this right now</span>
-    </div>
-  );
-}

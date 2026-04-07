@@ -19,6 +19,7 @@ import { createOrder as metenziCreateOrder } from "../lib/metenzi-endpoints";
 import { logger } from "../lib/logger";
 import { sendOrderConfirmationOnly, triggerOrderEmails } from "./order-emails";
 import { scheduleTrustpilotInvite } from "./trustpilot-service";
+import { recordPurchaseEvents } from "./social-proof-service";
 import bcrypt from "bcryptjs";
 
 type OrderStatus = (typeof orderStatusEnum.enumValues)[number];
@@ -206,6 +207,10 @@ export async function executeOrderPipeline(input: OrderInput) {
 
     scheduleTrustpilotInvite({ email: billing.email, name: `${billing.firstName} ${billing.lastName}`, orderNumber })
       .catch((err) => logger.error({ err, orderNumber }, "Trustpilot invite failed (non-fatal)"));
+    recordPurchaseEvents(
+      items.map((i) => ({ productId: i.productId, productName: i.productName })),
+      `${billing.firstName}`, billing.city,
+    ).catch((err) => logger.error({ err, orderNumber }, "Social proof record failed (non-fatal)"));
     logger.info({ orderNumber, total: total.toFixed(2) }, "Order pipeline complete");
     return { orderNumber, status: "COMPLETED" };
   } catch (err) {
@@ -233,54 +238,26 @@ async function updateOrderStatus(orderId: number, status: OrderStatus) {
     .where(eq(orders.id, orderId));
 }
 
-async function fulfillFromMetenzi(
-  orderId: number,
-  items: OrderInput["items"],
-  _insertedItems: { id: number; variantId: number }[],
-): Promise<boolean> {
+async function fulfillFromMetenzi(orderId: number, items: OrderInput["items"], _insertedItems: { id: number; variantId: number }[]): Promise<boolean> {
   try {
     const config = await getMetenziConfig();
-    if (!config) {
-      logger.warn({ orderId }, "Metenzi not configured, skipping fulfillment");
-      return false;
-    }
-
-    const metenziItems = items.map((it) => ({
-      variantId: String(it.variantId),
-      quantity: it.quantity,
-    }));
-
+    if (!config) { logger.warn({ orderId }, "Metenzi not configured, skipping fulfillment"); return false; }
+    const metenziItems = items.map((it) => ({ variantId: String(it.variantId), quantity: it.quantity }));
     const metenziOrder = await metenziCreateOrder(config, metenziItems);
-    await db
-      .update(orders)
-      .set({ externalOrderId: metenziOrder.id })
-      .where(eq(orders.id, orderId));
-    logger.info(
-      { orderId, metenziOrderId: metenziOrder.id },
-      "Metenzi order placed, awaiting fulfillment webhook",
-    );
-
+    await db.update(orders).set({ externalOrderId: metenziOrder.id }).where(eq(orders.id, orderId));
+    logger.info({ orderId, metenziOrderId: metenziOrder.id }, "Metenzi order placed, awaiting fulfillment webhook");
     return true;
-  } catch (err) {
-    logger.error({ err, orderId }, "Metenzi fulfillment failed (non-fatal)");
-    return false;
-  }
+  } catch (err) { logger.error({ err, orderId }, "Metenzi fulfillment failed (non-fatal)"); return false; }
 }
 
 async function createGuestAccount(billing: OrderInput["billing"], password: string) {
   try {
-    const existing = await db.select({ id: users.id }).from(users)
-      .where(eq(users.email, billing.email)).limit(1);
+    const existing = await db.select({ id: users.id }).from(users).where(eq(users.email, billing.email)).limit(1);
     if (existing.length > 0) return;
-    const passwordHash = await bcrypt.hash(password, 12);
-    await db.insert(users).values({
-      email: billing.email, passwordHash,
-      firstName: billing.firstName, lastName: billing.lastName, role: "CUSTOMER",
-    });
+    const hash = await bcrypt.hash(password, 12);
+    await db.insert(users).values({ email: billing.email, passwordHash: hash, firstName: billing.firstName, lastName: billing.lastName, role: "CUSTOMER" });
     logger.info({ email: billing.email }, "Guest account created");
-  } catch (err) {
-    logger.error({ err }, "Failed to create guest account (non-fatal)");
-  }
+  } catch (err) { logger.error({ err }, "Failed to create guest account (non-fatal)"); }
 }
 
 async function incrementFlashSaleSoldCounts(flashVariantMap: Map<number, number>, items: OrderInput["items"]) {
