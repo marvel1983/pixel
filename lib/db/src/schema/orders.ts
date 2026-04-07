@@ -53,6 +53,7 @@ export const orders = pgTable("orders", {
     .default("1"),
   couponId: integer("coupon_id").references(() => coupons.id),
   paymentIntentId: varchar("payment_intent_id", { length: 255 }),
+  externalOrderId: varchar("external_order_id", { length: 255 }),
   ipAddress: varchar("ip_address", { length: 45 }),
   userAgent: text("user_agent"),
   notes: text("notes"),

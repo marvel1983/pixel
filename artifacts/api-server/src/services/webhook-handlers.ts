@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   orders,
@@ -53,12 +53,16 @@ async function logAuditEvent(
 }
 
 async function findOrderByMetenziId(metenziOrderId: string) {
-  const allOrders = await db
-    .select({ id: orders.id, orderNumber: orders.orderNumber, guestEmail: orders.guestEmail })
+  const [order] = await db
+    .select({
+      id: orders.id,
+      orderNumber: orders.orderNumber,
+      guestEmail: orders.guestEmail,
+    })
     .from(orders)
-    .limit(100);
-
-  return allOrders.find((o) => o.orderNumber.includes(metenziOrderId)) ?? null;
+    .where(eq(orders.externalOrderId, metenziOrderId))
+    .limit(1);
+  return order ?? null;
 }
 
 async function handleOrderFulfilled(data: FulfilledData) {
@@ -70,12 +74,12 @@ async function handleOrderFulfilled(data: FulfilledData) {
 
   for (const item of data.items) {
     const variantId = parseInt(item.variantId, 10);
-    if (Number.isNaN(variantId)) continue;
+    if (Number.isNaN(variantId) || !order) continue;
 
     const dbItems = await db
       .select({ id: orderItems.id, productName: orderItems.productName, variantName: orderItems.variantName })
       .from(orderItems)
-      .where(eq(orderItems.variantId, variantId))
+      .where(and(eq(orderItems.orderId, order.id), eq(orderItems.variantId, variantId)))
       .limit(1);
 
     const dbItem = dbItems[0];

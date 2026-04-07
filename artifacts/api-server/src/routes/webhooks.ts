@@ -67,7 +67,7 @@ router.post("/webhooks/metenzi", async (req, res) => {
     return;
   }
 
-  const rawBody = JSON.stringify(req.body);
+  const rawBody = req.rawBody ?? JSON.stringify(req.body);
   let valid: boolean;
   try {
     valid = verifySignature(rawBody, timestamp, signature, config.hmacSecret);

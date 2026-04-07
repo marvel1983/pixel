@@ -138,6 +138,10 @@ async function fulfillFromMetenzi(
     }));
 
     const metenziOrder = await metenziCreateOrder(config, metenziItems);
+    await db
+      .update(orders)
+      .set({ externalOrderId: metenziOrder.id })
+      .where(eq(orders.id, orderId));
     logger.info(
       { orderId, metenziOrderId: metenziOrder.id },
       "Metenzi order created",
