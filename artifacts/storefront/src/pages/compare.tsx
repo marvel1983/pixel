@@ -35,6 +35,10 @@ const ATTRS: { label: string; render: (p: MockProduct) => React.ReactNode }[] = 
     ),
   },
   {
+    label: "Description",
+    render: (p) => <span className="text-xs text-muted-foreground">{p.description ?? "—"}</span>,
+  },
+  {
     label: "Price",
     render: (p) => {
       const v = p.variants[0];
@@ -44,6 +48,10 @@ const ATTRS: { label: string; render: (p: MockProduct) => React.ReactNode }[] = 
   },
   { label: "Category", render: (p) => <span className="text-sm capitalize">{p.categorySlug.replace(/-/g, " ")}</span> },
   { label: "Platform", render: (p) => <span className="text-sm">{p.variants[0]?.platform ?? "—"}</span> },
+  {
+    label: "Warranty",
+    render: (p) => <span className="text-sm">{p.warranty ?? "—"}</span>,
+  },
   {
     label: "Stock",
     render: (p) => {

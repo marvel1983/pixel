@@ -1,8 +1,11 @@
+import { useEffect } from "react";
 import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SiteLayout } from "@/components/layout/site-layout";
+import { useAuthStore } from "@/stores/auth-store";
+import { useWishlistStore } from "@/stores/wishlist-store";
 import HomePage from "@/pages/home";
 import ShopPage from "@/pages/shop";
 import CategoryPage from "@/pages/category";
@@ -53,11 +56,22 @@ function Router() {
   );
 }
 
+function AuthSyncEffect() {
+  const token = useAuthStore((s) => s.token);
+  useEffect(() => {
+    if (token) {
+      useWishlistStore.getState().syncWithServer(token);
+    }
+  }, [token]);
+  return null;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+          <AuthSyncEffect />
           <Router />
         </WouterRouter>
         <Toaster />

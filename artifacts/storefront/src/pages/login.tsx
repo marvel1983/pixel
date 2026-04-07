@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthStore } from "@/stores/auth-store";
+import { useWishlistStore } from "@/stores/wishlist-store";
 import { Breadcrumbs } from "@/components/shop/breadcrumbs";
 import { LogIn, Eye, EyeOff, Loader2 } from "lucide-react";
 
@@ -35,6 +36,7 @@ export default function LoginPage() {
       if (!res.ok) throw new Error(data.error ?? "Login failed");
 
       setAuth(data.user, data.token);
+      useWishlistStore.getState().syncWithServer(data.token);
       toast({ title: "Welcome back!" });
       setLocation("/");
     } catch (err) {

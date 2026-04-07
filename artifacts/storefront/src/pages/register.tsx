@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthStore } from "@/stores/auth-store";
+import { useWishlistStore } from "@/stores/wishlist-store";
 import { Breadcrumbs } from "@/components/shop/breadcrumbs";
 import { UserPlus, Eye, EyeOff, Loader2 } from "lucide-react";
 
@@ -61,6 +62,7 @@ export default function RegisterPage() {
       if (!res.ok) throw new Error(data.error ?? "Registration failed");
 
       setAuth(data.user, data.token);
+      useWishlistStore.getState().syncWithServer(data.token);
       toast({ title: "Account created!" });
       setLocation("/");
     } catch (err) {

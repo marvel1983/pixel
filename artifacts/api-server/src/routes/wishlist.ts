@@ -45,9 +45,8 @@ router.post("/wishlist", requireAuth, async (req, res) => {
 });
 
 router.delete("/wishlist/:productId", requireAuth, async (req, res) => {
-  const raw = req.params.productId;
-  const productId = parseInt(Array.isArray(raw) ? raw[0] : raw, 10);
-  if (isNaN(productId) || productId <= 0) {
+  const productId = Number(req.params.productId);
+  if (!Number.isInteger(productId) || productId <= 0) {
     res.status(400).json({ error: "Invalid product ID" });
     return;
   }
