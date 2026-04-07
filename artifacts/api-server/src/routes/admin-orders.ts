@@ -27,8 +27,9 @@ router.get("/admin/orders/export", requireAuth, requireAdmin, async (req, res) =
     .orderBy(desc(orders.createdAt));
 
   const header = "Order #,Email,Status,Subtotal,Discount,CPP,CPP Amount,Total,Payment,Currency,Date\n";
+  const esc = (v: unknown) => { const s = String(v ?? ""); return s.includes(",") || s.includes('"') ? `"${s.replace(/"/g, '""')}"` : s; };
   const csv = rows.map((r) =>
-    [r.orderNumber, r.email, r.status, r.subtotal, r.discount, r.cpp ? "Yes" : "No", r.cppAmount, r.total, r.payment, r.currency, r.createdAt?.toISOString()].join(",")
+    [r.orderNumber, r.email, r.status, r.subtotal, r.discount, r.cpp ? "Yes" : "No", r.cppAmount, r.total, r.payment, r.currency, r.createdAt?.toISOString()].map(esc).join(",")
   ).join("\n");
 
   res.setHeader("Content-Type", "text/csv");
@@ -178,7 +179,11 @@ function buildFilters(query: Record<string, unknown>) {
   const from = query.from as string | undefined;
   if (from) conditions.push(gte(orders.createdAt, new Date(from)));
   const to = query.to as string | undefined;
-  if (to) conditions.push(lte(orders.createdAt, new Date(to)));
+  if (to) {
+    const endOfDay = new Date(to);
+    endOfDay.setHours(23, 59, 59, 999);
+    conditions.push(lte(orders.createdAt, endOfDay));
+  }
   const hasCoupon = query.hasCoupon as string | undefined;
   if (hasCoupon === "true") conditions.push(sql`${orders.couponId} IS NOT NULL`);
   const hasCpp = query.hasCpp as string | undefined;

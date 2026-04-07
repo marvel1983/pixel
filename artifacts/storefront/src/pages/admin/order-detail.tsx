@@ -95,7 +95,7 @@ export default function OrderDetailPage() {
           <CheckCircle className="mr-1 h-4 w-4" /> Mark Completed
         </Button>
         <Button size="sm" variant="outline" onClick={() => updateStatus("FAILED")} disabled={order.status === "FAILED"}>
-          <XCircle className="mr-1 h-4 w-4" /> Mark Cancelled
+          <XCircle className="mr-1 h-4 w-4" /> Mark Failed
         </Button>
         <Button size="sm" variant="outline" onClick={() => updateStatus("REFUNDED")} disabled={order.status === "REFUNDED"}>Issue Refund</Button>
         <Button size="sm" variant="outline" onClick={resendEmail}><Send className="mr-1 h-4 w-4" /> Resend Email</Button>

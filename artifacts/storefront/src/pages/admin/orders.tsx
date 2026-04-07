@@ -128,7 +128,7 @@ export default function AdminOrdersPage() {
           <div className="flex items-center gap-2 ml-auto">
             <span>{selected.size} selected</span>
             <Button size="sm" variant="outline" onClick={() => handleBulk("COMPLETED")}>Mark Completed</Button>
-            <Button size="sm" variant="outline" onClick={() => handleBulk("FAILED")}>Mark Cancelled</Button>
+            <Button size="sm" variant="outline" onClick={() => handleBulk("FAILED")}>Mark Failed</Button>
           </div>
         )}
       </div>
