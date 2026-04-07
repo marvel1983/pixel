@@ -26,6 +26,7 @@ export interface ProductData {
   keyFeatures: string[];
   systemRequirements: Record<string, string>;
   relatedProductIds: number[];
+  crossSellProductIds: number[];
 }
 
 export interface VariantData {
@@ -35,6 +36,7 @@ export interface VariantData {
   platform: string | null;
   priceUsd: string;
   compareAtPriceUsd: string | null;
+  priceOverrideUsd: string | null;
   stockCount: number;
   isActive: boolean;
 }
@@ -45,7 +47,7 @@ export interface ProductOption { id: number; name: string; }
 export default function ProductEditPage() {
   const [, params] = useRoute("/admin/products/:id");
   const [, setLocation] = useLocation();
-  const token = useAuthStore((s) => s.token);
+  const token = useAuthStore((s) => s.token) ?? "";
   const [product, setProduct] = useState<ProductData | null>(null);
   const [variants, setVariants] = useState<VariantData[]>([]);
   const [cats, setCats] = useState<CategoryOption[]>([]);
@@ -68,6 +70,7 @@ export default function ProductEditPage() {
           keyFeatures: d.product.keyFeatures ?? [],
           systemRequirements: d.product.systemRequirements ?? {},
           relatedProductIds: d.product.relatedProductIds ?? [],
+          crossSellProductIds: d.product.crossSellProductIds ?? [],
         });
         setVariants(d.variants);
         setCats(d.categories);
@@ -80,6 +83,10 @@ export default function ProductEditPage() {
   const updateField = <K extends keyof ProductData>(key: K, value: ProductData[K]) => {
     setProduct((prev) => prev ? { ...prev, [key]: value } : prev);
     setSaved(false);
+  };
+
+  const handleVariantUpdate = (variantId: number, override: string | null) => {
+    setVariants((prev) => prev.map((v) => v.id === variantId ? { ...v, priceOverrideUsd: override } : v));
   };
 
   const handleSave = async () => {
@@ -131,10 +138,17 @@ export default function ProductEditPage() {
             product={product}
             variants={variants}
             allProducts={allProducts}
+            token={token}
             onUpdate={updateField}
+            onVariantUpdate={handleVariantUpdate}
           />
         </div>
-        <ProductEditSidebar product={product} categories={cats} onUpdate={updateField} />
+        <ProductEditSidebar
+          product={product}
+          categories={cats}
+          allProducts={allProducts}
+          onUpdate={updateField}
+        />
       </div>
     </div>
   );

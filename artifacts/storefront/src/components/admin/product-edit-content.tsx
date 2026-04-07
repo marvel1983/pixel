@@ -2,16 +2,21 @@ import { useState } from "react";
 import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { RichTextEditor } from "./rich-text-editor";
 import type { ProductData, VariantData, ProductOption } from "@/pages/admin/product-edit";
+
+const API_URL = import.meta.env.VITE_API_URL ?? "/api";
 
 interface Props {
   product: ProductData;
   variants: VariantData[];
   allProducts: ProductOption[];
+  token: string;
   onUpdate: <K extends keyof ProductData>(key: K, value: ProductData[K]) => void;
+  onVariantUpdate: (id: number, override: string | null) => void;
 }
 
-export function ProductEditContent({ product, variants, allProducts, onUpdate }: Props) {
+export function ProductEditContent({ product, variants, allProducts, token, onUpdate, onVariantUpdate }: Props) {
   const [newFeature, setNewFeature] = useState("");
   const [newReqKey, setNewReqKey] = useState("");
   const [newReqVal, setNewReqVal] = useState("");
@@ -39,11 +44,14 @@ export function ProductEditContent({ product, variants, allProducts, onUpdate }:
     onUpdate("systemRequirements", copy);
   };
 
-  const toggleRelated = (id: number) => {
-    const ids = product.relatedProductIds.includes(id)
-      ? product.relatedProductIds.filter((x) => x !== id)
-      : [...product.relatedProductIds, id];
-    onUpdate("relatedProductIds", ids);
+  const handlePriceOverride = async (variantId: number, value: string) => {
+    const override = value.trim() || null;
+    await fetch(`${API_URL}/admin/variants/${variantId}/price-override`, {
+      method: "PATCH",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ priceOverrideUsd: override }),
+    });
+    onVariantUpdate(variantId, override);
   };
 
   return (
@@ -66,9 +74,9 @@ export function ProductEditContent({ product, variants, allProducts, onUpdate }:
             value={product.shortDescription ?? ""} onChange={(e) => onUpdate("shortDescription", e.target.value)} />
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium">Description (Markdown supported)</label>
-          <textarea className="w-full rounded-md border px-3 py-2 text-sm font-mono" rows={8}
-            value={product.description ?? ""} onChange={(e) => onUpdate("description", e.target.value)} />
+          <label className="mb-1 block text-sm font-medium">Description</label>
+          <RichTextEditor content={product.description ?? ""} onChange={(html) => onUpdate("description", html)}
+            placeholder="Write product description..." />
         </div>
       </div>
 
@@ -114,8 +122,8 @@ export function ProductEditContent({ product, variants, allProducts, onUpdate }:
       </div>
 
       <div className="rounded-lg border bg-white p-6 space-y-4">
-        <h2 className="font-semibold">Pricing &amp; Variants (Synced from Metenzi)</h2>
-        <p className="text-xs text-muted-foreground">Prices and stock are managed via Metenzi and cannot be overridden here.</p>
+        <h2 className="font-semibold">Pricing &amp; Variants</h2>
+        <p className="text-xs text-muted-foreground">Base prices synced from Metenzi. Use the Override column to set custom prices.</p>
         {variants.length === 0 ? (
           <p className="text-muted-foreground text-sm">No variants.</p>
         ) : (
@@ -123,22 +131,27 @@ export function ProductEditContent({ product, variants, allProducts, onUpdate }:
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left">
-                  <th className="py-2 pr-4 font-medium text-muted-foreground">SKU</th>
-                  <th className="py-2 pr-4 font-medium text-muted-foreground">Name</th>
-                  <th className="py-2 pr-4 font-medium text-muted-foreground">Platform</th>
-                  <th className="py-2 pr-4 font-medium text-muted-foreground">Price</th>
-                  <th className="py-2 pr-4 font-medium text-muted-foreground">Compare At</th>
+                  <th className="py-2 pr-3 font-medium text-muted-foreground">SKU</th>
+                  <th className="py-2 pr-3 font-medium text-muted-foreground">Name</th>
+                  <th className="py-2 pr-3 font-medium text-muted-foreground">Metenzi Price</th>
+                  <th className="py-2 pr-3 font-medium text-muted-foreground">Override</th>
+                  <th className="py-2 pr-3 font-medium text-muted-foreground">Compare At</th>
                   <th className="py-2 font-medium text-muted-foreground">Stock</th>
                 </tr>
               </thead>
               <tbody>
                 {variants.map((v) => (
                   <tr key={v.id} className="border-b last:border-0">
-                    <td className="py-2 pr-4 font-mono text-xs">{v.sku}</td>
-                    <td className="py-2 pr-4">{v.name}</td>
-                    <td className="py-2 pr-4 text-muted-foreground">{v.platform ?? "—"}</td>
-                    <td className="py-2 pr-4 font-medium">${v.priceUsd}</td>
-                    <td className="py-2 pr-4 text-muted-foreground">
+                    <td className="py-2 pr-3 font-mono text-xs">{v.sku}</td>
+                    <td className="py-2 pr-3">{v.name}</td>
+                    <td className="py-2 pr-3 text-muted-foreground">${v.priceUsd}</td>
+                    <td className="py-2 pr-3">
+                      <input className="w-24 rounded border px-2 py-1 text-sm"
+                        placeholder="—"
+                        defaultValue={v.priceOverrideUsd ?? ""}
+                        onBlur={(e) => handlePriceOverride(v.id, e.target.value)} />
+                    </td>
+                    <td className="py-2 pr-3 text-muted-foreground">
                       {v.compareAtPriceUsd ? <span className="line-through">${v.compareAtPriceUsd}</span> : "—"}
                     </td>
                     <td className="py-2">{v.stockCount}</td>
@@ -162,28 +175,6 @@ export function ProductEditContent({ product, variants, allProducts, onUpdate }:
           <textarea className="w-full rounded-md border px-3 py-2 text-sm" rows={3}
             value={product.metaDescription ?? ""} onChange={(e) => onUpdate("metaDescription", e.target.value)} />
         </div>
-      </div>
-
-      <div className="rounded-lg border bg-white p-6 space-y-4">
-        <h2 className="font-semibold">Related Products / Cross-sells</h2>
-        <div className="flex flex-wrap gap-2 mb-2">
-          {product.relatedProductIds.map((id) => {
-            const rp = allProducts.find((p) => p.id === id);
-            return rp ? (
-              <Badge key={id} variant="secondary" className="gap-1">
-                {rp.name}
-                <button onClick={() => toggleRelated(id)}><X className="h-3 w-3" /></button>
-              </Badge>
-            ) : null;
-          })}
-        </div>
-        <select className="w-full rounded-md border px-3 py-2 text-sm"
-          value="" onChange={(e) => e.target.value && toggleRelated(Number(e.target.value))}>
-          <option value="">Add related product...</option>
-          {allProducts.filter((p) => !product.relatedProductIds.includes(p.id)).map((p) => (
-            <option key={p.id} value={p.id}>{p.name}</option>
-          ))}
-        </select>
       </div>
     </>
   );

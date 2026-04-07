@@ -233,6 +233,7 @@ router.put("/admin/products/:id", requireAuth, requireAdmin, async (req, res) =>
       keyFeatures: body.keyFeatures ?? [],
       systemRequirements: body.systemRequirements ?? {},
       relatedProductIds: body.relatedProductIds ?? [],
+      crossSellProductIds: body.crossSellProductIds ?? [],
       sortOrder: body.sortOrder,
       updatedAt: new Date(),
     })
@@ -260,6 +261,20 @@ router.patch("/admin/products/:id/toggle", requireAuth, requireAdmin, async (req
     .set({ isActive: !product.isActive, updatedAt: new Date() })
     .where(eq(products.id, id));
   res.json({ isActive: !product.isActive });
+});
+
+router.patch("/admin/variants/:id/price-override", requireAuth, requireAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    res.status(400).json({ error: "Invalid variant ID" });
+    return;
+  }
+  const { priceOverrideUsd } = req.body as { priceOverrideUsd: string | null };
+  await db
+    .update(productVariants)
+    .set({ priceOverrideUsd: priceOverrideUsd || null, updatedAt: new Date() })
+    .where(eq(productVariants.id, id));
+  res.json({ success: true });
 });
 
 export default router;
