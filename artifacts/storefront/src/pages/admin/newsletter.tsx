@@ -83,8 +83,16 @@ export default function AdminNewsletterPage() {
     fetchData();
   };
 
-  const handleExport = () => {
-    window.open(`${API}/admin/newsletter/export?token=${token}`, "_blank");
+  const handleExport = async () => {
+    try {
+      const r = await fetch(`${API}/admin/newsletter/export`, { headers });
+      if (!r.ok) throw new Error("Export failed");
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = "newsletter-subscribers.csv"; a.click();
+      URL.revokeObjectURL(url);
+    } catch { toast({ title: "Export failed", variant: "destructive" }); }
   };
 
   const handleImport = async () => {

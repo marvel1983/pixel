@@ -4,11 +4,12 @@ import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/stores/auth-store";
 import { useToast } from "@/hooks/use-toast";
 import { Mail, Check, X, Loader2 } from "lucide-react";
+type AuthHeaders = Record<string, string>;
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
 export function NewsletterTab() {
-  const { user } = useAuthStore();
+  const { user, token } = useAuthStore();
   const { toast } = useToast();
   const [subscribed, setSubscribed] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
@@ -28,9 +29,11 @@ export function NewsletterTab() {
     setToggling(true);
     try {
       if (subscribed) {
+        const hdrs: AuthHeaders = { "Content-Type": "application/json" };
+        if (token) hdrs["Authorization"] = `Bearer ${token}`;
         const res = await fetch(`${API}/newsletter/unsubscribe-account`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: hdrs,
           body: JSON.stringify({ email: user.email }),
         });
         const data = await res.json();

@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { newsletterSubscribers, newsletterSettings, coupons } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
-import { optionalAuth } from "../middleware/auth";
+import { optionalAuth, requireAuth } from "../middleware/auth";
 import { z } from "zod";
 import crypto from "crypto";
 import { enqueueEmail } from "../lib/email/queue";
@@ -158,9 +158,13 @@ router.get("/newsletter/unsubscribe", async (req, res) => {
   res.json({ success: true, message: "You have been unsubscribed." });
 });
 
-router.post("/newsletter/unsubscribe-account", async (req, res) => {
+router.post("/newsletter/unsubscribe-account", requireAuth, async (req, res) => {
+  const userEmail = req.user?.email;
   const { email } = req.body;
-  if (!email) { res.status(400).json({ error: "Email required" }); return; }
+  if (!email || email.toLowerCase() !== userEmail?.toLowerCase()) {
+    res.status(403).json({ error: "You can only unsubscribe your own email." });
+    return;
+  }
 
   const [sub] = await db.select().from(newsletterSubscribers)
     .where(eq(newsletterSubscribers.email, email.toLowerCase()));
