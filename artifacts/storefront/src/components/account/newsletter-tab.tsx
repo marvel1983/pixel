@@ -48,8 +48,9 @@ export function NewsletterTab() {
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
-        toast({ title: "Subscribed", description: data.message });
-        setSubscribed(true);
+        const needsConfirm = data.message?.includes("check your email");
+        toast({ title: needsConfirm ? "Check your email" : "Subscribed", description: data.message });
+        if (!needsConfirm) setSubscribed(true);
       }
     } catch (err) {
       toast({ title: "Error", description: err instanceof Error ? err.message : "Failed", variant: "destructive" });
