@@ -10,6 +10,8 @@ const API = import.meta.env.VITE_API_URL ?? "/api";
 interface ReviewRow {
   id: number; productId: number; userId: number; rating: number;
   title: string | null; body: string | null; isVerifiedPurchase: boolean;
+  ratingGameplay: number | null; ratingGraphics: number | null;
+  ratingValue: number | null; ratingSupport: number | null;
   status: string; helpfulCount: number; adminReply: string | null;
   adminReplyAt: string | null; createdAt: string;
   productName: string; userEmail: string; userFirstName: string | null; userLastName: string | null;
@@ -124,6 +126,7 @@ export default function AdminReviewsPage() {
               <th className="px-3 py-3 font-medium text-muted-foreground">Product</th>
               <th className="px-3 py-3 font-medium text-muted-foreground">Reviewer</th>
               <th className="px-3 py-3 font-medium text-muted-foreground">Rating</th>
+              <th className="px-3 py-3 font-medium text-muted-foreground">Sub-Ratings</th>
               <th className="px-3 py-3 font-medium text-muted-foreground">Review</th>
               <th className="px-3 py-3 font-medium text-muted-foreground">Status</th>
               <th className="px-3 py-3 font-medium text-muted-foreground">Date</th>
@@ -136,6 +139,13 @@ export default function AdminReviewsPage() {
                   <td className="px-3 py-3 text-xs font-medium max-w-[160px] truncate">{r.productName}</td>
                   <td className="px-3 py-3 text-xs text-muted-foreground max-w-[140px] truncate">{reviewer(r)}{r.isVerifiedPurchase && <Badge variant="secondary" className="ml-1 text-[10px]">Verified</Badge>}</td>
                   <td className="px-3 py-3"><Stars n={r.rating} /></td>
+                  <td className="px-3 py-3 text-[10px] text-muted-foreground leading-tight">
+                    {r.ratingGameplay != null && <span>GP:{r.ratingGameplay} </span>}
+                    {r.ratingGraphics != null && <span>GX:{r.ratingGraphics} </span>}
+                    {r.ratingValue != null && <span>VL:{r.ratingValue} </span>}
+                    {r.ratingSupport != null && <span>SP:{r.ratingSupport}</span>}
+                    {r.ratingGameplay == null && r.ratingGraphics == null && r.ratingValue == null && r.ratingSupport == null && "—"}
+                  </td>
                   <td className="px-3 py-3 text-xs max-w-[220px]">
                     {r.title && <span className="font-semibold">{r.title} </span>}
                     <span className="text-muted-foreground line-clamp-1">{r.body ?? ""}</span>
@@ -153,7 +163,7 @@ export default function AdminReviewsPage() {
                   </td>
                 </tr>
               ))}
-              {rows.length === 0 && <tr><td colSpan={8} className="px-3 py-12 text-center text-muted-foreground">No reviews found</td></tr>}
+              {rows.length === 0 && <tr><td colSpan={9} className="px-3 py-12 text-center text-muted-foreground">No reviews found</td></tr>}
             </tbody>
           </table>
         </div>
@@ -178,6 +188,14 @@ export default function AdminReviewsPage() {
               <button onClick={() => setDetail(null)}><X className="h-5 w-5" /></button>
             </div>
             <div className="flex items-center gap-2"><Stars n={detail.rating} /><span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[detail.status]}`}>{detail.status}</span></div>
+            {(detail.ratingGameplay != null || detail.ratingGraphics != null || detail.ratingValue != null || detail.ratingSupport != null) && (
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                {detail.ratingGameplay != null && <span>Gameplay: <strong>{detail.ratingGameplay}/5</strong></span>}
+                {detail.ratingGraphics != null && <span>Graphics: <strong>{detail.ratingGraphics}/5</strong></span>}
+                {detail.ratingValue != null && <span>Value: <strong>{detail.ratingValue}/5</strong></span>}
+                {detail.ratingSupport != null && <span>Support: <strong>{detail.ratingSupport}/5</strong></span>}
+              </div>
+            )}
             {detail.title && <h3 className="font-semibold">{detail.title}</h3>}
             <p className="text-sm whitespace-pre-wrap">{detail.body ?? "No review text"}</p>
             <p className="text-xs text-muted-foreground">Helpful: {detail.helpfulCount} &middot; {new Date(detail.createdAt).toLocaleString()}</p>

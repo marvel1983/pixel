@@ -23,6 +23,8 @@ router.get("/admin/reviews", requireAuth, requireAdmin, async (req, res) => {
   const rows = await db.select({
     id: reviews.id, productId: reviews.productId, userId: reviews.userId,
     rating: reviews.rating, title: reviews.title, body: reviews.body,
+    ratingGameplay: reviews.ratingGameplay, ratingGraphics: reviews.ratingGraphics,
+    ratingValue: reviews.ratingValue, ratingSupport: reviews.ratingSupport,
     isVerifiedPurchase: reviews.isVerifiedPurchase, isApproved: reviews.isApproved,
     status: reviews.status, helpfulCount: reviews.helpfulCount,
     adminReply: reviews.adminReply, adminReplyAt: reviews.adminReplyAt,
@@ -52,6 +54,8 @@ router.get("/admin/reviews/:id", requireAuth, requireAdmin, async (req, res) => 
   const [review] = await db.select({
     id: reviews.id, productId: reviews.productId, userId: reviews.userId,
     rating: reviews.rating, title: reviews.title, body: reviews.body,
+    ratingGameplay: reviews.ratingGameplay, ratingGraphics: reviews.ratingGraphics,
+    ratingValue: reviews.ratingValue, ratingSupport: reviews.ratingSupport,
     isVerifiedPurchase: reviews.isVerifiedPurchase, isApproved: reviews.isApproved,
     status: reviews.status, helpfulCount: reviews.helpfulCount,
     adminReply: reviews.adminReply, adminReplyAt: reviews.adminReplyAt,
