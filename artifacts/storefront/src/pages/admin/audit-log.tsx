@@ -70,6 +70,8 @@ export default function AuditLogPage() {
   const exportCsv = () => {
     const params = new URLSearchParams();
     if (action !== "all") params.set("action", action);
+    if (userId !== "all") params.set("userId", userId);
+    if (search) params.set("search", search);
     if (dateFrom) params.set("from", dateFrom);
     if (dateTo) params.set("to", dateTo);
     fetch(`${API}/admin/audit-log/export?${params}`, { headers })

@@ -20,7 +20,8 @@ function endOfDay(dateStr: string): Date {
 }
 
 function csvEscape(val: string | null | undefined): string {
-  const s = val ?? "";
+  let s = val ?? "";
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
   if (s.includes(",") || s.includes('"') || s.includes("\n")) {
     return `"${s.replace(/"/g, '""')}"`;
   }
@@ -55,6 +56,8 @@ router.get("/admin/audit-log", requireAuth, requireAdmin, async (req, res) => {
 router.get("/admin/audit-log/export", requireAuth, requireAdmin, async (req, res) => {
   const conditions = [];
   if (typeof req.query.action === "string" && isValidAction(req.query.action)) conditions.push(eq(auditLog.action, req.query.action));
+  if (typeof req.query.userId === "string" && !isNaN(Number(req.query.userId))) conditions.push(eq(auditLog.userId, Number(req.query.userId)));
+  if (typeof req.query.search === "string") conditions.push(ilike(auditLog.entityType, `%${req.query.search}%`));
   if (typeof req.query.from === "string") conditions.push(gte(auditLog.createdAt, new Date(req.query.from)));
   if (typeof req.query.to === "string") conditions.push(lte(auditLog.createdAt, endOfDay(req.query.to)));
   const where = conditions.length > 0 ? and(...conditions) : undefined;
