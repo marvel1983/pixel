@@ -8,6 +8,7 @@ import checkoutOffersRouter from "./checkout-offers";
 import orderLookupRouter from "./order-lookup";
 import wishlistRouter from "./wishlist";
 import currenciesRouter from "./currencies";
+import webhooksRouter from "./webhooks";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use(checkoutOffersRouter);
 router.use(orderLookupRouter);
 router.use(wishlistRouter);
 router.use(currenciesRouter);
+router.use(webhooksRouter);
 
 export default router;
