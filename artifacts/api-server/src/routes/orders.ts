@@ -5,6 +5,7 @@ import { db } from "@workspace/db";
 import { productVariants, taxSettings, taxRates } from "@workspace/db/schema";
 import { executeOrderPipeline } from "../services/order-pipeline";
 import { validateCouponServerSide } from "../services/coupon-service";
+import { validateGiftCards } from "../services/gift-card-service";
 import { logger } from "../lib/logger";
 
 const router = Router();
@@ -22,8 +23,8 @@ const billingSchema = z.object({
 });
 
 const itemSchema = z.object({
-  variantId: z.number().int().positive(),
-  productId: z.number().int().positive(),
+  variantId: z.number().int(),
+  productId: z.number().int(),
   productName: z.string().min(1),
   variantName: z.string().min(1),
   imageUrl: z.string().nullable(),
@@ -48,6 +49,10 @@ const orderSchema = z.object({
   total: currencyStr,
   payment: z.object({ cardToken: z.string().min(1) }),
   guestPassword: z.string().min(8).optional(),
+  giftCards: z.array(z.object({
+    code: z.string(),
+    amount: z.number().positive(),
+  })).optional(),
 });
 
 const CPP_RATE = 0.05;
@@ -59,7 +64,7 @@ function generateOrderNumber() {
 }
 
 async function validateAndPriceItems(items: z.infer<typeof orderSchema>["items"]) {
-  const variantIds = items.map((i) => i.variantId);
+  const variantIds = items.filter((i) => i.variantId > 0).map((i) => i.variantId);
   const dbVariants = await db
     .select({ id: productVariants.id, priceUsd: productVariants.priceUsd })
     .from(productVariants)
@@ -92,7 +97,7 @@ router.post("/orders", async (req, res) => {
     return;
   }
 
-  const { billing, items, coupon, cppSelected, vatNumber, total, payment } = parsed.data;
+  const { billing, items, coupon, cppSelected, vatNumber, total, payment, giftCards: gcInput } = parsed.data;
 
   const { error: priceError } = await validateAndPriceItems(items);
   if (priceError) {
@@ -105,6 +110,14 @@ router.post("/orders", async (req, res) => {
     serverCoupon = await validateCouponServerSide(coupon.code);
     if (!serverCoupon) {
       res.status(400).json({ error: "Invalid or expired coupon code" });
+      return;
+    }
+  }
+
+  if (gcInput?.length) {
+    const gcResult = await validateGiftCards(gcInput);
+    if (!gcResult.valid) {
+      res.status(400).json({ error: gcResult.error });
       return;
     }
   }
@@ -138,7 +151,13 @@ router.post("/orders", async (req, res) => {
   }
 
   const isInclusive = taxConfig?.priceDisplay === "inclusive";
-  const computedTotal = isInclusive ? subtotal - discountAmount + cppAmount : subtotal - discountAmount + cppAmount + taxAmount;
+  const preGcTotal = isInclusive ? subtotal - discountAmount + cppAmount : subtotal - discountAmount + cppAmount + taxAmount;
+  const gcDeduction = gcInput?.reduce((s, c) => s + c.amount, 0) ?? 0;
+  if (gcDeduction > preGcTotal + 0.01) {
+    res.status(400).json({ error: "Gift card amount exceeds order total" });
+    return;
+  }
+  const computedTotal = Math.max(0, preGcTotal - gcDeduction);
 
   if (Math.abs(computedTotal - parseFloat(total)) > 0.02) {
     res.status(400).json({ error: "Total mismatch. Please refresh and try again." });
@@ -160,6 +179,7 @@ router.post("/orders", async (req, res) => {
       orderNumber: generateOrderNumber(),
       cardToken: payment.cardToken,
       guestPassword: parsed.data.guestPassword,
+      giftCards: gcInput || [],
     });
 
     res.status(201).json({

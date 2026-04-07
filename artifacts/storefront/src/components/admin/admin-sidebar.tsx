@@ -67,6 +67,7 @@ const sections: NavSection[] = [
       { label: "Refunds", href: "/admin/refunds", icon: Wallet },
       { label: "Discounts", href: "/admin/discounts", icon: Ticket },
       { label: "Checkout Upsell", href: "/admin/checkout-upsell", icon: Gift },
+      { label: "Gift Cards", href: "/admin/gift-cards", icon: Gift },
     ],
   },
   {

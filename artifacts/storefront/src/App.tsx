@@ -26,6 +26,8 @@ import ResetPasswordPage from "@/pages/reset-password";
 import AccountPage from "@/pages/account";
 import WishlistPage from "@/pages/wishlist";
 import ComparePage from "@/pages/compare";
+import GiftCardsPage from "@/pages/gift-cards";
+import AccountGiftCardsPage from "@/pages/account-gift-cards";
 import SearchPage from "@/pages/search";
 import StaticPageView from "@/pages/static-page";
 import AdminRoot from "@/pages/admin/index";
@@ -50,6 +52,8 @@ function StorefrontWithMaintenance() {
         <Route path="/outlet" component={OutletPage} />
         <Route path="/hot-offers" component={HotOffersPage} />
         <Route path="/product/:slug" component={ProductDetailPage} />
+        <Route path="/gift-cards" component={GiftCardsPage} />
+        <Route path="/account/gift-cards" component={AccountGiftCardsPage} />
         <Route path="/cart" component={CartPage} />
         <Route path="/checkout" component={CheckoutPage} />
         <Route path="/order-complete/:orderNumber" component={OrderCompletePage} />

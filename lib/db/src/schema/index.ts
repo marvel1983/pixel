@@ -26,3 +26,4 @@ export * from "./tax-settings";
 export * from "./admin-permissions";
 export * from "./refunds";
 export * from "./notification-preferences";
+export * from "./gift-cards";

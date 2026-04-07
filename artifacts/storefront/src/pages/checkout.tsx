@@ -16,6 +16,7 @@ import { ProductUpsell } from "@/components/checkout/product-upsell";
 import { validateBilling, validatePayment } from "@/lib/checkout-validation";
 import { getCppAmount } from "@/components/checkout/cpp-section";
 import { EmptyCart } from "@/components/cart/empty-cart";
+import { GiftCardInput, type AppliedGiftCard } from "@/components/checkout/gift-card-input";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -46,6 +47,7 @@ export default function CheckoutPage() {
   const [guestPassword, setGuestPassword] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [taxInfo, setTaxInfo] = useState<TaxInfo>({ taxRate: 0, taxLabel: "VAT", exempt: false, b2bEnabled: false, priceDisplay: "exclusive" });
+  const [appliedGiftCards, setAppliedGiftCards] = useState<AppliedGiftCard[]>([]);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -96,7 +98,9 @@ export default function CheckoutPage() {
           ? Math.round((beforeTax - beforeTax / (1 + taxInfo.taxRate / 100)) * 100) / 100
           : Math.round(beforeTax * (taxInfo.taxRate / 100) * 100) / 100
         : 0;
-      const total = isInclusive ? beforeTax : beforeTax + taxAmount;
+      const preGcTotal = isInclusive ? beforeTax : beforeTax + taxAmount;
+      const gcTotal = appliedGiftCards.reduce((s, c) => s + c.applied, 0);
+      const total = Math.max(0, preGcTotal - gcTotal);
 
       const cardDigits = payment.cardNumber.replace(/\s/g, "");
       const cardToken = `tok_${cardDigits.slice(-4)}_${Date.now()}`;
@@ -108,6 +112,7 @@ export default function CheckoutPage() {
           billing, items, coupon, cppSelected,
           vatNumber: billing.vatNumber || undefined,
           total: total.toFixed(2),
+          giftCards: appliedGiftCards.map((c) => ({ code: c.code, amount: c.applied })),
           payment: { cardToken },
           guestPassword: guestPassword || undefined,
         }),
@@ -142,6 +147,17 @@ export default function CheckoutPage() {
           <GuestAccount onPasswordChange={setGuestPassword} />
           <Separator />
           <CppSection selected={cppSelected} onToggle={setCppSelected} subtotal={getTotal()} />
+          <Separator />
+          <GiftCardInput
+            appliedCards={appliedGiftCards}
+            remainingTotal={(() => {
+              const s = getTotal();
+              const d = coupon ? s * (coupon.pct / 100) : 0;
+              return Math.max(0, s - d + (cppSelected ? getCppAmount(s) : 0) - appliedGiftCards.reduce((a, c) => a + c.applied, 0));
+            })()}
+            onApply={(c) => setAppliedGiftCards((p) => [...p, c])}
+            onRemove={(code) => setAppliedGiftCards((p) => p.filter((c) => c.code !== code))}
+          />
           <Separator />
           <PaymentForm data={payment} errors={paymentErrors} onChange={handlePaymentChange} />
           <Button size="lg" className="w-full" disabled={submitting} onClick={handleSubmit}>

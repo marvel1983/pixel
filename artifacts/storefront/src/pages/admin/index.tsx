@@ -32,6 +32,7 @@ import EmailTemplateEditPage from "./email-template-edit";
 import TaxSettingsPage from "./tax-settings";
 import AdminUsersPage from "./admin-users";
 import RefundsPage from "./refunds";
+import AdminGiftCardsPage from "./gift-cards";
 
 function AdminPlaceholder({ title }: { title: string }) {
   return (
@@ -80,6 +81,7 @@ export default function AdminRoot() {
           <Route path="/admin/tax-settings" component={TaxSettingsPage} />
           <Route path="/admin/banners" component={AdminBannersPage} />
           <Route path="/admin/refunds" component={RefundsPage} />
+          <Route path="/admin/gift-cards" component={AdminGiftCardsPage} />
           <Route path="/admin/admin-users" component={AdminUsersPage} />
           <Route path="/admin/notifications">
             <AdminPlaceholder title="Notifications" />

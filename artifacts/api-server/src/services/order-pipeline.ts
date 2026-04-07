@@ -8,6 +8,7 @@ import {
   orderStatusEnum,
 } from "@workspace/db/schema";
 import { processPayment } from "./payment";
+import { redeemGiftCards, createGiftCardForOrder } from "./gift-card-service";
 import { getMetenziConfig } from "../lib/metenzi-config";
 import { createOrder as metenziCreateOrder } from "../lib/metenzi-endpoints";
 import { decrypt } from "../lib/encryption";
@@ -34,6 +35,7 @@ interface OrderInput {
     variantName: string;
     priceUsd: string;
     quantity: number;
+    platform?: string;
   }>;
   coupon: { code: string; pct: number; label: string } | null;
   cppSelected: boolean;
@@ -46,6 +48,7 @@ interface OrderInput {
   orderNumber: string;
   cardToken: string;
   guestPassword?: string;
+  giftCards?: Array<{ code: string; amount: number }>;
 }
 
 export async function executeOrderPipeline(input: OrderInput) {
@@ -91,10 +94,27 @@ export async function executeOrderPipeline(input: OrderInput) {
       .set({ paymentIntentId: paymentResult.paymentIntentId })
       .where(eq(orders.id, order.id));
 
-    const insertedItems = await db
+    if (input.giftCards?.length) {
+      await redeemGiftCards(order.id, input.giftCards);
+    }
+
+    const realItems = items.filter((i) => i.variantId > 0);
+    const giftCardItems = items.filter((i) => i.platform?.startsWith("GIFTCARD|"));
+
+    for (const gcItem of giftCardItems) {
+      const parts = (gcItem.platform || "").split("|");
+      const [, recipientEmail, recipientName, senderName, personalMessage] = parts;
+      await createGiftCardForOrder(
+        order.id, null, gcItem.priceUsd,
+        recipientEmail || billing.email, recipientName || "", senderName || "", personalMessage || "",
+      );
+    }
+
+    const insertableItems = realItems.length ? realItems : [];
+    const insertedItems = insertableItems.length ? await db
       .insert(orderItems)
       .values(
-        items.map((item) => ({
+        insertableItems.map((item) => ({
           orderId: order.id,
           variantId: item.variantId,
           productName: item.productName,
@@ -103,9 +123,11 @@ export async function executeOrderPipeline(input: OrderInput) {
           quantity: item.quantity,
         })),
       )
-      .returning({ id: orderItems.id, variantId: orderItems.variantId });
+      .returning({ id: orderItems.id, variantId: orderItems.variantId }) : [];
 
-    const metenziFulfilled = await fulfillFromMetenzi(order.id, items, insertedItems);
+    const metenziFulfilled = insertedItems.length
+      ? await fulfillFromMetenzi(order.id, realItems, insertedItems)
+      : false;
 
     if (metenziFulfilled) {
       await updateOrderStatus(order.id, "PROCESSING");
@@ -248,31 +270,16 @@ async function triggerOrderEmails(
   }
 }
 
-async function createGuestAccount(
-  billing: OrderInput["billing"],
-  password: string,
-) {
+async function createGuestAccount(billing: OrderInput["billing"], password: string) {
   try {
-    const existing = await db
-      .select({ id: users.id })
-      .from(users)
-      .where(eq(users.email, billing.email))
-      .limit(1);
-
-    if (existing.length > 0) {
-      logger.info({ email: billing.email }, "Guest account already exists");
-      return;
-    }
-
+    const existing = await db.select({ id: users.id }).from(users)
+      .where(eq(users.email, billing.email)).limit(1);
+    if (existing.length > 0) return;
     const passwordHash = await bcrypt.hash(password, 12);
     await db.insert(users).values({
-      email: billing.email,
-      passwordHash,
-      firstName: billing.firstName,
-      lastName: billing.lastName,
-      role: "CUSTOMER",
+      email: billing.email, passwordHash,
+      firstName: billing.firstName, lastName: billing.lastName, role: "CUSTOMER",
     });
-
     logger.info({ email: billing.email }, "Guest account created");
   } catch (err) {
     logger.error({ err }, "Failed to create guest account (non-fatal)");
