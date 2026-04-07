@@ -28,6 +28,8 @@ export const banners = pgTable("banners", {
   position: bannerPositionEnum("position").notNull().default("TOP"),
   backgroundColor: varchar("background_color", { length: 20 }),
   textColor: varchar("text_color", { length: 20 }),
+  ctaText: varchar("cta_text", { length: 100 }),
+  ctaColor: varchar("cta_color", { length: 20 }),
   sortOrder: integer("sort_order").notNull().default(0),
   isActive: boolean("is_active").notNull().default(true),
   startsAt: timestamp("starts_at"),

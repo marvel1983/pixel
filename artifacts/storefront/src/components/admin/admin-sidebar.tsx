@@ -71,7 +71,7 @@ const sections: NavSection[] = [
     title: "CONTENT",
     items: [
       { label: "Pages", href: "/admin/pages", icon: FileText },
-      { label: "Media", href: "/admin/media", icon: Image },
+      { label: "Banners", href: "/admin/banners", icon: Image },
     ],
   },
   {
