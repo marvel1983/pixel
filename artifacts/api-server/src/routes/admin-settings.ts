@@ -1,0 +1,129 @@
+import { Router } from "express";
+import { db } from "@workspace/db";
+import { siteSettings, apiProviders, apiCredentials } from "@workspace/db/schema";
+import { eq } from "drizzle-orm";
+import { requireAuth, requireAdmin } from "../middleware/auth";
+import { encrypt, decrypt } from "../lib/encryption";
+
+const router = Router();
+
+router.get("/admin/settings/general", requireAuth, requireAdmin, async (_req, res) => {
+  const rows = await db.select().from(siteSettings);
+  if (rows.length === 0) { res.json({ settings: null }); return; }
+  const s = rows[0];
+  res.json({
+    settings: {
+      siteName: s.siteName, siteDescription: s.siteDescription, logoUrl: s.logoUrl,
+      faviconUrl: s.faviconUrl, contactEmail: s.contactEmail, supportEmail: s.supportEmail,
+      fromEmail: s.fromEmail, phone: s.phone, companyName: s.companyName,
+      tagline: s.tagline, copyright: s.copyright, socialLinks: s.socialLinks,
+      announcementBar: s.announcementBar, maintenanceMode: s.maintenanceMode,
+      defaultCurrency: s.defaultCurrency, enabledCurrencies: s.enabledCurrencies,
+      metaTitleTemplate: s.metaTitleTemplate, metaDescription: s.metaDescription,
+    },
+  });
+});
+
+router.put("/admin/settings/general", requireAuth, requireAdmin, async (req, res) => {
+  const rows = await db.select({ id: siteSettings.id }).from(siteSettings);
+  const data = {
+    siteName: String(req.body.siteName ?? "PixelCodes"),
+    siteDescription: req.body.siteDescription ?? null,
+    logoUrl: req.body.logoUrl ?? null,
+    faviconUrl: req.body.faviconUrl ?? null,
+    contactEmail: req.body.contactEmail ?? null,
+    supportEmail: req.body.supportEmail ?? null,
+    fromEmail: req.body.fromEmail ?? null,
+    phone: req.body.phone ?? null,
+    companyName: req.body.companyName ?? null,
+    tagline: req.body.tagline ?? null,
+    copyright: req.body.copyright ?? null,
+    socialLinks: req.body.socialLinks ?? {},
+    announcementBar: req.body.announcementBar ?? null,
+    metaTitleTemplate: req.body.metaTitleTemplate ?? null,
+    metaDescription: req.body.metaDescription ?? null,
+    updatedAt: new Date(),
+  };
+  if (rows.length > 0) {
+    await db.update(siteSettings).set(data).where(eq(siteSettings.id, rows[0].id));
+  } else {
+    await db.insert(siteSettings).values(data);
+  }
+  res.json({ success: true });
+});
+
+router.get("/admin/settings/api-keys", requireAuth, requireAdmin, async (_req, res) => {
+  const [metenzi] = await db.select().from(apiProviders).where(eq(apiProviders.slug, "metenzi"));
+  const [checkout] = await db.select().from(apiCredentials).where(eq(apiCredentials.provider, "checkout"));
+  res.json({
+    metenzi: {
+      hasApiKey: !!metenzi?.apiKeyEncrypted,
+      hasSigningSecret: !!metenzi?.hmacSecretEncrypted,
+      isActive: metenzi?.isActive ?? false,
+    },
+    checkout: {
+      hasPublicKey: !!checkout?.publicKeyEncrypted,
+      hasSecretKey: !!checkout?.secretKeyEncrypted,
+      isActive: checkout?.isActive ?? false,
+    },
+  });
+});
+
+router.post("/admin/settings/api-keys/reveal", requireAuth, requireAdmin, async (req, res) => {
+  const { provider, field } = req.body;
+  if (provider === "metenzi") {
+    const [row] = await db.select().from(apiProviders).where(eq(apiProviders.slug, "metenzi"));
+    if (!row) { res.status(404).json({ error: "Provider not found" }); return; }
+    const enc = field === "apiKey" ? row.apiKeyEncrypted : row.hmacSecretEncrypted;
+    if (!enc) { res.json({ value: "" }); return; }
+    try { res.json({ value: decrypt(enc) }); } catch { res.status(500).json({ error: "Decryption failed" }); }
+  } else if (provider === "checkout") {
+    const [row] = await db.select().from(apiCredentials).where(eq(apiCredentials.provider, "checkout"));
+    if (!row) { res.json({ value: "" }); return; }
+    const enc = field === "publicKey" ? row.publicKeyEncrypted : row.secretKeyEncrypted;
+    if (!enc) { res.json({ value: "" }); return; }
+    try { res.json({ value: decrypt(enc) }); } catch { res.status(500).json({ error: "Decryption failed" }); }
+  } else { res.status(400).json({ error: "Unknown provider" }); }
+});
+
+router.put("/admin/settings/api-keys", requireAuth, requireAdmin, async (req, res) => {
+  const { provider, field, value } = req.body;
+  if (!value || typeof value !== "string") { res.status(400).json({ error: "Value required" }); return; }
+  const encrypted = encrypt(value.trim());
+  if (provider === "metenzi") {
+    const col = field === "apiKey" ? "apiKeyEncrypted" : "hmacSecretEncrypted";
+    const [row] = await db.select({ id: apiProviders.id }).from(apiProviders).where(eq(apiProviders.slug, "metenzi"));
+    if (row) { await db.update(apiProviders).set({ [col]: encrypted, updatedAt: new Date() }).where(eq(apiProviders.id, row.id)); }
+    else { await db.insert(apiProviders).values({ name: "Metenzi", slug: "metenzi", baseUrl: "https://metenzi.com/api", [col]: encrypted }); }
+  } else if (provider === "checkout") {
+    const col = field === "publicKey" ? "publicKeyEncrypted" : "secretKeyEncrypted";
+    const [row] = await db.select({ id: apiCredentials.id }).from(apiCredentials).where(eq(apiCredentials.provider, "checkout"));
+    if (row) { await db.update(apiCredentials).set({ [col]: encrypted, updatedAt: new Date() }).where(eq(apiCredentials.id, row.id)); }
+    else { await db.insert(apiCredentials).values({ provider: "checkout", [col]: encrypted }); }
+  } else { res.status(400).json({ error: "Unknown provider" }); return; }
+  res.json({ success: true });
+});
+
+router.post("/admin/settings/api-keys/test", requireAuth, requireAdmin, async (req, res) => {
+  const { provider } = req.body;
+  if (provider === "metenzi") {
+    const [row] = await db.select().from(apiProviders).where(eq(apiProviders.slug, "metenzi"));
+    if (!row?.apiKeyEncrypted) { res.json({ success: false, message: "No API key configured" }); return; }
+    try {
+      const apiKey = decrypt(row.apiKeyEncrypted);
+      const r = await fetch("https://metenzi.com/api/balance", { headers: { Authorization: `Bearer ${apiKey}` } });
+      if (r.ok) { const d = await r.json(); res.json({ success: true, message: `Connected! Balance: ${d.balance ?? "N/A"}` }); }
+      else { res.json({ success: false, message: `API returned ${r.status}` }); }
+    } catch (e) { res.json({ success: false, message: `Connection failed: ${(e as Error).message}` }); }
+  } else if (provider === "checkout") {
+    const [row] = await db.select().from(apiCredentials).where(eq(apiCredentials.provider, "checkout"));
+    if (!row?.secretKeyEncrypted) { res.json({ success: false, message: "No secret key configured" }); return; }
+    try {
+      const sk = decrypt(row.secretKeyEncrypted);
+      const r = await fetch("https://api.checkout.com/instruments", { method: "GET", headers: { Authorization: `Bearer ${sk}` } });
+      res.json({ success: r.status !== 401, message: r.status === 401 ? "Invalid credentials" : `Connected (${r.status})` });
+    } catch (e) { res.json({ success: false, message: `Connection failed: ${(e as Error).message}` }); }
+  } else { res.status(400).json({ error: "Unknown provider" }); }
+});
+
+export default router;

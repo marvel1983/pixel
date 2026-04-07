@@ -19,6 +19,11 @@ export const siteSettings = pgTable("site_settings", {
   faviconUrl: text("favicon_url"),
   contactEmail: varchar("contact_email", { length: 255 }),
   supportEmail: varchar("support_email", { length: 255 }),
+  fromEmail: varchar("from_email", { length: 255 }),
+  phone: varchar("phone", { length: 50 }),
+  companyName: varchar("company_name", { length: 200 }),
+  tagline: text("tagline"),
+  copyright: text("copyright"),
   socialLinks: jsonb("social_links")
     .$type<Record<string, string>>()
     .default({}),

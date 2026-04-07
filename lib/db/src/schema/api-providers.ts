@@ -6,6 +6,7 @@ import {
   boolean,
   timestamp,
   integer,
+  jsonb,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -29,5 +30,16 @@ export const insertApiProviderSchema = createInsertSchema(apiProviders).omit({
   updatedAt: true,
 });
 
+export const apiCredentials = pgTable("api_credentials", {
+  id: serial("id").primaryKey(),
+  provider: varchar("provider", { length: 100 }).notNull().unique(),
+  publicKeyEncrypted: text("public_key_encrypted"),
+  secretKeyEncrypted: text("secret_key_encrypted"),
+  extra: jsonb("extra").$type<Record<string, string>>().default({}),
+  isActive: boolean("is_active").notNull().default(false),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 export type InsertApiProvider = z.infer<typeof insertApiProviderSchema>;
 export type ApiProvider = typeof apiProviders.$inferSelect;
+export type ApiCredential = typeof apiCredentials.$inferSelect;

@@ -21,6 +21,7 @@ import AdminBannersPage from "./banners";
 import AdminStaticPagesPage from "./static-pages";
 import PageEditPage from "./page-edit";
 import FaqEditorPage from "./faq-editor";
+import AdminSettingsPage from "./settings";
 
 function AdminPlaceholder({ title }: { title: string }) {
   return (
@@ -75,9 +76,7 @@ export default function AdminRoot() {
           <Route path="/admin/media">
             <AdminPlaceholder title="Media" />
           </Route>
-          <Route path="/admin/settings">
-            <AdminPlaceholder title="Settings" />
-          </Route>
+          <Route path="/admin/settings" component={AdminSettingsPage} />
           <Route path="/admin/security">
             <AdminPlaceholder title="Security" />
           </Route>
