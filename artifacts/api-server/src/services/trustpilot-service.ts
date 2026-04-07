@@ -1,7 +1,7 @@
 import { db } from "@workspace/db";
 import { siteSettings, trustpilotInvites } from "@workspace/db/schema";
 import { decrypt } from "../lib/encryption";
-import { lte, isNull, eq, and } from "drizzle-orm";
+import { lte, isNull, eq, and, lt, sql } from "drizzle-orm";
 import { logger } from "../lib/logger";
 
 interface InviteParams {
@@ -38,6 +38,7 @@ export async function processPendingInvites() {
       lte(trustpilotInvites.scheduledAt, new Date()),
       isNull(trustpilotInvites.sentAt),
       eq(trustpilotInvites.failed, false),
+      lt(trustpilotInvites.attempts, trustpilotInvites.maxAttempts),
     ))
     .limit(10);
 
@@ -77,13 +78,21 @@ export async function processPendingInvites() {
         await db.update(trustpilotInvites).set({ sentAt: new Date() }).where(eq(trustpilotInvites.id, invite.id));
       } else {
         const errText = await response.text();
-        await db.update(trustpilotInvites).set({ failed: true, lastError: errText.slice(0, 500) })
-          .where(eq(trustpilotInvites.id, invite.id));
+        const newAttempts = invite.attempts + 1;
+        const isFinal = newAttempts >= invite.maxAttempts;
+        await db.update(trustpilotInvites).set({
+          attempts: newAttempts, failed: isFinal, lastError: errText.slice(0, 500),
+          scheduledAt: isFinal ? invite.scheduledAt : new Date(Date.now() + 30 * 60 * 1000),
+        }).where(eq(trustpilotInvites.id, invite.id));
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Unknown error";
-      await db.update(trustpilotInvites).set({ failed: true, lastError: msg.slice(0, 500) })
-        .where(eq(trustpilotInvites.id, invite.id));
+      const newAttempts = invite.attempts + 1;
+      const isFinal = newAttempts >= invite.maxAttempts;
+      await db.update(trustpilotInvites).set({
+        attempts: newAttempts, failed: isFinal, lastError: msg.slice(0, 500),
+        scheduledAt: isFinal ? invite.scheduledAt : new Date(Date.now() + 30 * 60 * 1000),
+      }).where(eq(trustpilotInvites.id, invite.id));
       logger.error({ err, inviteId: invite.id }, "Trustpilot invite send failed");
     }
   }
