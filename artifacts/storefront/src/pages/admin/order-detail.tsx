@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "wouter";
-import { ArrowLeft, Send, CheckCircle, XCircle, Copy, Save, Clock } from "lucide-react";
+import { ArrowLeft, Send, CheckCircle, XCircle, Copy, Save, Clock, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthStore } from "@/stores/auth-store";
+import { RefundModal } from "@/components/admin/refund-modal";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -36,6 +37,7 @@ export default function OrderDetailPage() {
   const [loading, setLoading] = useState(true);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+  const [refundOpen, setRefundOpen] = useState(false);
   const token = useAuthStore((s) => s.token);
 
   const reload = () => {
@@ -97,7 +99,9 @@ export default function OrderDetailPage() {
         <Button size="sm" variant="outline" onClick={() => updateStatus("FAILED")} disabled={order.status === "FAILED"}>
           <XCircle className="mr-1 h-4 w-4" /> Mark Failed
         </Button>
-        <Button size="sm" variant="outline" onClick={() => updateStatus("REFUNDED")} disabled={order.status === "REFUNDED"}>Issue Refund</Button>
+        <Button size="sm" variant="outline" onClick={() => setRefundOpen(true)} disabled={order.status === "REFUNDED"}>
+          <RotateCcw className="mr-1 h-4 w-4" /> Issue Refund
+        </Button>
         <Button size="sm" variant="outline" onClick={resendEmail}><Send className="mr-1 h-4 w-4" /> Resend Email</Button>
       </div>
 
@@ -226,6 +230,17 @@ export default function OrderDetailPage() {
           </Section>
         </div>
       </div>
+
+      {data && (
+        <RefundModal
+          orderId={data.order.id}
+          orderNumber={data.order.orderNumber}
+          orderTotal={data.order.totalUsd}
+          open={refundOpen}
+          onClose={() => setRefundOpen(false)}
+          onSuccess={reload}
+        />
+      )}
     </div>
   );
 }

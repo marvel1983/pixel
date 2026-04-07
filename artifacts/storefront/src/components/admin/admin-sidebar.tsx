@@ -64,6 +64,7 @@ const sections: NavSection[] = [
       { label: "Transactions", href: "/admin/transactions", icon: Receipt },
       { label: "Fulfillment", href: "/admin/fulfillment", icon: Truck },
       { label: "Claims", href: "/admin/claims", icon: Flag },
+      { label: "Refunds", href: "/admin/refunds", icon: Wallet },
       { label: "Discounts", href: "/admin/discounts", icon: Ticket },
       { label: "Checkout Upsell", href: "/admin/checkout-upsell", icon: Gift },
     ],
