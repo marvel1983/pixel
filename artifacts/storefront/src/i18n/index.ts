@@ -2,11 +2,22 @@ import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import LanguageDetector from "i18next-browser-languagedetector";
 
-import en from "./locales/en.json";
-import pl from "./locales/pl.json";
-import de from "./locales/de.json";
-import fr from "./locales/fr.json";
-import cs from "./locales/cs.json";
+import enCore from "./locales/en.json";
+import enPages from "./locales/en-pages.json";
+import plCore from "./locales/pl.json";
+import plPages from "./locales/pl-pages.json";
+import deCore from "./locales/de.json";
+import dePages from "./locales/de-pages.json";
+import frCore from "./locales/fr.json";
+import frPages from "./locales/fr-pages.json";
+import csCore from "./locales/cs.json";
+import csPages from "./locales/cs-pages.json";
+
+const en = { ...enCore, ...enPages };
+const pl = { ...plCore, ...plPages };
+const de = { ...deCore, ...dePages };
+const fr = { ...frCore, ...frPages };
+const cs = { ...csCore, ...csPages };
 
 export const SUPPORTED_LOCALES = [
   { code: "en", name: "English", flag: "🇬🇧" },

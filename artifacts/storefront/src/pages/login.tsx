@@ -31,7 +31,7 @@ export default function LoginPage() {
     const params = new URLSearchParams(window.location.search);
     const error = params.get("error");
     if (error) {
-      toast({ title: "Sign in failed", description: error, variant: "destructive" });
+      toast({ title: t("auth.signInFailed"), description: error, variant: "destructive" });
       window.history.replaceState({}, "", "/login");
     }
   }, [toast]);
@@ -57,8 +57,8 @@ export default function LoginPage() {
       setLocation("/");
     } catch (err) {
       toast({
-        title: "Login failed",
-        description: err instanceof Error ? err.message : "Please try again.",
+        title: t("auth.signInFailed"),
+        description: err instanceof Error ? err.message : t("checkout.tryAgain"),
         variant: "destructive",
       });
     } finally {
@@ -99,7 +99,7 @@ export default function LoginPage() {
                     type={showPw ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter your password"
+                    placeholder={t("auth.enterPassword")}
                     required
                   />
                   <button

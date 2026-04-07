@@ -75,8 +75,8 @@ export default function RegisterPage() {
       setLocation("/");
     } catch (err) {
       toast({
-        title: "Registration failed",
-        description: err instanceof Error ? err.message : "Please try again.",
+        title: t("auth.registrationFailed"),
+        description: err instanceof Error ? err.message : t("checkout.tryAgain"),
         variant: "destructive",
       });
     } finally {
@@ -138,7 +138,7 @@ export default function RegisterPage() {
                     type={showPw ? "text" : "password"}
                     value={form.password}
                     onChange={(e) => update("password", e.target.value)}
-                    placeholder="Min. 8 characters"
+                    placeholder={t("resetPassword.minChars")}
                     minLength={8}
                     required
                   />
@@ -185,7 +185,7 @@ export default function RegisterPage() {
               <div className="relative flex justify-center text-xs uppercase"><span className="bg-card px-2 text-muted-foreground">{t("common.or")}</span></div>
             </div>
 
-            <GoogleButton label="Sign up with Google" />
+            <GoogleButton label={t("auth.signUpWithGoogle")} />
 
             <p className="text-center text-sm text-muted-foreground mt-4">
               {t("auth.haveAccount")}{" "}
