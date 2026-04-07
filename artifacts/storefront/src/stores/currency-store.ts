@@ -43,16 +43,19 @@ export const useCurrencyStore = create<CurrencyState>()(
       convert: (usdAmount) => {
         const { code, rates } = get();
         if (code === "USD") return usdAmount;
-        const rate = rates[code] ?? 1;
+        const rate = rates[code];
+        if (!rate) return usdAmount;
         return usdAmount * rate;
       },
 
       format: (usdAmount) => {
-        const { code, convert } = get();
-        const converted = convert(usdAmount);
-        const currency = SUPPORTED_CURRENCIES.find((c) => c.code === code);
-        if (code === "HUF" || code === "CZK") {
-          return `${Math.round(converted)} ${currency?.symbol ?? code}`;
+        const { code, rates } = get();
+        const hasRate = code === "USD" || !!rates[code];
+        const displayCode = hasRate ? code : "USD";
+        const converted = get().convert(usdAmount);
+        const currency = SUPPORTED_CURRENCIES.find((c) => c.code === displayCode);
+        if (displayCode === "HUF" || displayCode === "CZK") {
+          return `${Math.round(converted)} ${currency?.symbol ?? displayCode}`;
         }
         return `${currency?.symbol ?? "$"}${converted.toFixed(2)}`;
       },
