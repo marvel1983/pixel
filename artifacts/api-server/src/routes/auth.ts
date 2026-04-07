@@ -129,6 +129,10 @@ router.post("/auth/login", async (req, res) => {
     return;
   }
 
+  if (user.passwordHash.startsWith("GOOGLE_OAUTH_NO_PASSWORD::")) {
+    res.status(401).json({ error: "This account uses Google sign-in. Use \"Continue with Google\" or set a password in account settings." });
+    return;
+  }
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) {
     res.status(401).json({ error: "Invalid email or password" });
@@ -281,15 +285,8 @@ router.post("/auth/reset-password", async (req, res) => {
   const passwordHash = await bcrypt.hash(parsed.data.password, 12);
 
   await db.transaction(async (tx) => {
-    await tx
-      .update(users)
-      .set({ passwordHash, updatedAt: new Date() })
-      .where(eq(users.id, entry.userId));
-
-    await tx
-      .update(passwordResets)
-      .set({ usedAt: new Date() })
-      .where(eq(passwordResets.id, entry.id));
+    await tx.update(users).set({ passwordHash, updatedAt: new Date() }).where(eq(users.id, entry.userId));
+    await tx.update(passwordResets).set({ usedAt: new Date() }).where(eq(passwordResets.id, entry.id));
   });
 
   logger.info({ userId: entry.userId }, "Password reset completed");

@@ -248,6 +248,15 @@ router.post("/auth/set-password", requireAuth, async (req, res) => {
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Password must be at least 8 characters" }); return; }
 
+  const [user] = await db.select({ passwordHash: users.passwordHash, googleId: users.googleId })
+    .from(users).where(eq(users.id, req.user!.userId)).limit(1);
+  if (!user) { res.status(404).json({ error: "User not found" }); return; }
+
+  if (!isPlaceholderPassword(user.passwordHash)) {
+    res.status(403).json({ error: "Use profile settings to change an existing password" });
+    return;
+  }
+
   const passwordHash = await bcrypt.hash(parsed.data.password, 12);
   await db.update(users).set({ passwordHash, updatedAt: new Date() }).where(eq(users.id, req.user!.userId));
   res.json({ ok: true });
