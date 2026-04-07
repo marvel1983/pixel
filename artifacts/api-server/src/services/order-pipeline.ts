@@ -82,11 +82,6 @@ export async function executeOrderPipeline(input: OrderInput) {
     .returning({ id: orders.id });
 
   try {
-    if (input.loyaltyPointsUsed && input.loyaltyPointsUsed > 0 && input.userId) {
-      const acct = await getOrCreateAccount(input.userId);
-      await redeemPoints(acct.id, input.loyaltyPointsUsed, order.id);
-    }
-
     await updateOrderStatus(order.id, "PROCESSING");
 
     const paymentResult = await processPayment({
@@ -105,6 +100,15 @@ export async function executeOrderPipeline(input: OrderInput) {
       .update(orders)
       .set({ paymentIntentId: paymentResult.paymentIntentId })
       .where(eq(orders.id, order.id));
+
+    if (input.loyaltyPointsUsed && input.loyaltyPointsUsed > 0 && input.userId) {
+      try {
+        const acct = await getOrCreateAccount(input.userId);
+        await redeemPoints(acct.id, input.loyaltyPointsUsed, order.id);
+      } catch (err) {
+        logger.error({ err, orderNumber }, "Loyalty redemption failed after payment; points not deducted");
+      }
+    }
 
     if (input.guestPassword) {
       await createGuestAccount(billing, input.guestPassword);
