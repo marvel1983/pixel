@@ -37,6 +37,8 @@ import SearchPage from "@/pages/search";
 import FlashSalePage from "@/pages/flash-sale";
 import BundlesPage from "@/pages/bundles";
 import BundleDetailPage from "@/pages/bundle-detail";
+import SupportNewPage from "@/pages/support-new";
+import SupportTicketPage from "@/pages/support-ticket";
 import NewsletterConfirmPage from "@/pages/newsletter-confirm";
 import NewsletterUnsubscribePage from "@/pages/newsletter-unsubscribe";
 import AuthGoogleSuccessPage from "@/pages/auth-google-success";
@@ -87,6 +89,8 @@ function StorefrontWithMaintenance() {
         <Route path="/account" component={AccountPage} />
         <Route path="/wishlist" component={WishlistPage} />
         <Route path="/compare" component={ComparePage} />
+        <Route path="/support/new" component={SupportNewPage} />
+        <Route path="/support/tickets/:ticketNumber" component={SupportTicketPage} />
         <Route path="/newsletter/confirm" component={NewsletterConfirmPage} />
         <Route path="/newsletter/unsubscribe" component={NewsletterUnsubscribePage} />
         <Route component={StaticPageView} />

@@ -41,6 +41,8 @@ import AdminQAPage from "./qa";
 import AdminNewsletterPage from "./newsletter";
 import AdminFlashSalesPage from "./flash-sales";
 import AdminBundlesPage from "./bundles";
+import AdminSupportPage from "./support";
+import AdminSupportDetailPage from "./support-detail";
 
 function AdminPlaceholder({ title }: { title: string }) {
   return (
@@ -96,6 +98,8 @@ export default function AdminRoot() {
           <Route path="/admin/newsletter" component={AdminNewsletterPage} />
           <Route path="/admin/flash-sales" component={AdminFlashSalesPage} />
           <Route path="/admin/bundles" component={AdminBundlesPage} />
+          <Route path="/admin/support/:ticketNumber" component={AdminSupportDetailPage} />
+          <Route path="/admin/support" component={AdminSupportPage} />
           <Route path="/admin/abandoned-carts" component={AdminAbandonedCartsPage} />
           <Route path="/admin/abandoned-cart-settings" component={AbandonedCartSettingsPage} />
           <Route path="/admin/admin-users" component={AdminUsersPage} />

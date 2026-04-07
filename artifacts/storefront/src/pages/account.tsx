@@ -8,12 +8,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthStore } from "@/stores/auth-store";
 import { Breadcrumbs } from "@/components/shop/breadcrumbs";
-import { User, ShoppingBag, Heart, Star, Gift, Link2, Mail, Loader2, Shield, Trophy } from "lucide-react";
+import { User, ShoppingBag, Heart, Star, Gift, Link2, Mail, Loader2, Shield, Trophy, Headphones } from "lucide-react";
 import { GiftCardsTab } from "@/components/account/gift-cards-tab";
 import { AffiliateTab } from "@/components/account/affiliate-tab";
 import { NewsletterTab } from "@/components/account/newsletter-tab";
 import { ConnectedAccountsTab } from "@/components/account/connected-accounts";
 import { RewardsTab } from "@/components/account/rewards-tab";
+import { SupportTab } from "@/components/account/support-tab";
 
 function ProfileTab() {
   const { user, token, setAuth } = useAuthStore();
@@ -85,19 +86,11 @@ function ProfileTab() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label htmlFor="firstName">First Name</Label>
-              <Input
-                id="firstName"
-                value={form.firstName}
-                onChange={(e) => update("firstName", e.target.value)}
-              />
+              <Input id="firstName" value={form.firstName} onChange={(e) => update("firstName", e.target.value)} />
             </div>
             <div>
               <Label htmlFor="lastName">Last Name</Label>
-              <Input
-                id="lastName"
-                value={form.lastName}
-                onChange={(e) => update("lastName", e.target.value)}
-              />
+              <Input id="lastName" value={form.lastName} onChange={(e) => update("lastName", e.target.value)} />
             </div>
           </div>
 
@@ -192,6 +185,9 @@ export default function AccountPage() {
           <TabsTrigger value="newsletter" className="gap-1.5">
             <Mail className="h-4 w-4" /> Newsletter
           </TabsTrigger>
+          <TabsTrigger value="support" className="gap-1.5">
+            <Headphones className="h-4 w-4" /> Support
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="profile">
@@ -220,6 +216,9 @@ export default function AccountPage() {
         </TabsContent>
         <TabsContent value="newsletter">
           <NewsletterTab />
+        </TabsContent>
+        <TabsContent value="support">
+          <SupportTab />
         </TabsContent>
       </Tabs>
     </div>

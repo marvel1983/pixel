@@ -1,0 +1,168 @@
+import { Router } from "express";
+import { randomBytes } from "crypto";
+import { z } from "zod";
+import { eq, desc, and, sql, count } from "drizzle-orm";
+import { db } from "@workspace/db";
+import { supportTickets, ticketMessages, users, orders } from "@workspace/db/schema";
+import { requireAuth } from "../middleware/auth";
+import { enqueueEmail } from "../lib/email/queue";
+import { logger } from "../lib/logger";
+
+const router = Router();
+
+function generateTicketNumber(): string {
+  const hex = randomBytes(4).toString("hex").toUpperCase().slice(0, 6);
+  return `TKT-${hex}`;
+}
+
+const createSchema = z.object({
+  subject: z.string().min(1).max(300),
+  category: z.enum(["ORDER_ISSUE", "KEY_PROBLEM", "PAYMENT", "REFUND", "ACCOUNT", "TECHNICAL", "OTHER"]),
+  message: z.string().min(1).max(5000),
+  orderId: z.number().int().optional(),
+});
+
+router.post("/support/tickets", requireAuth, async (req, res) => {
+  const parsed = createSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Invalid data" }); return; }
+  const { subject, category, message, orderId } = parsed.data;
+  const userId = req.user!.userId;
+
+  try {
+    if (orderId) {
+      const [ownOrder] = await db.select({ id: orders.id }).from(orders)
+        .where(and(eq(orders.id, orderId), eq(orders.userId, userId))).limit(1);
+      if (!ownOrder) { res.status(403).json({ error: "Order not found or not yours" }); return; }
+    }
+
+    let ticketNumber = generateTicketNumber();
+    let retries = 3;
+    let ticket;
+    while (retries > 0) {
+      try {
+        const [row] = await db.insert(supportTickets).values({
+          ticketNumber, userId, subject, category, orderId: orderId ?? null,
+        }).returning();
+        ticket = row;
+        break;
+      } catch (e: any) {
+        if (e?.code === "23505" && retries > 1) { ticketNumber = generateTicketNumber(); retries--; continue; }
+        throw e;
+      }
+    }
+    if (!ticket) throw new Error("Failed to generate unique ticket number");
+
+    await db.insert(ticketMessages).values({
+      ticketId: ticket.id, senderId: userId, isStaff: false, isInternal: false, body: message,
+    });
+
+    try {
+      const admins = await db.select({ email: users.email }).from(users).where(eq(users.role, "ADMIN"));
+      for (const admin of admins) {
+        await enqueueEmail(admin.email, `New Support Ticket: ${ticketNumber}`,
+          `<h2>New Support Ticket</h2><p><strong>${ticketNumber}</strong> - ${subject}</p><p>Category: ${category}</p><p>${message.substring(0, 500)}</p>`);
+      }
+    } catch (e) { logger.error(e, "Failed to enqueue ticket notification"); }
+
+    res.status(201).json(ticket);
+  } catch (err) {
+    logger.error(err, "Failed to create ticket");
+    res.status(500).json({ error: "Failed to create ticket" });
+  }
+});
+
+router.get("/support/tickets", requireAuth, async (req, res) => {
+  const userId = req.user!.userId;
+  const status = req.query.status as string | undefined;
+
+  const conditions = [eq(supportTickets.userId, userId)];
+  if (status && status !== "ALL") {
+    conditions.push(eq(supportTickets.status, status as "OPEN"));
+  }
+
+  const tickets = await db.select({
+    id: supportTickets.id, ticketNumber: supportTickets.ticketNumber,
+    subject: supportTickets.subject, status: supportTickets.status,
+    priority: supportTickets.priority, category: supportTickets.category,
+    createdAt: supportTickets.createdAt, updatedAt: supportTickets.updatedAt,
+  }).from(supportTickets)
+    .where(and(...conditions))
+    .orderBy(desc(supportTickets.createdAt))
+    .limit(50);
+
+  res.json(tickets);
+});
+
+router.get("/support/tickets/:ticketNumber", requireAuth, async (req, res) => {
+  const userId = req.user!.userId;
+  const [ticket] = await db.select().from(supportTickets)
+    .where(and(eq(supportTickets.ticketNumber, req.params.ticketNumber), eq(supportTickets.userId, userId)))
+    .limit(1);
+  if (!ticket) { res.status(404).json({ error: "Ticket not found" }); return; }
+
+  const messages = await db.select({
+    id: ticketMessages.id, body: ticketMessages.body, isStaff: ticketMessages.isStaff,
+    createdAt: ticketMessages.createdAt,
+    senderName: sql<string>`COALESCE(${users.firstName} || ' ' || ${users.lastName}, ${users.email})`,
+  }).from(ticketMessages)
+    .leftJoin(users, eq(ticketMessages.senderId, users.id))
+    .where(and(eq(ticketMessages.ticketId, ticket.id), eq(ticketMessages.isInternal, false)))
+    .orderBy(ticketMessages.createdAt);
+
+  res.json({ ticket, messages });
+});
+
+const replySchema = z.object({ message: z.string().min(1).max(5000) });
+
+router.post("/support/tickets/:ticketNumber/reply", requireAuth, async (req, res) => {
+  const parsed = replySchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Invalid message" }); return; }
+  const userId = req.user!.userId;
+
+  const [ticket] = await db.select().from(supportTickets)
+    .where(and(eq(supportTickets.ticketNumber, req.params.ticketNumber), eq(supportTickets.userId, userId)))
+    .limit(1);
+  if (!ticket) { res.status(404).json({ error: "Ticket not found" }); return; }
+
+  const [msg] = await db.insert(ticketMessages).values({
+    ticketId: ticket.id, senderId: userId, isStaff: false, isInternal: false, body: parsed.data.message,
+  }).returning();
+
+  await db.update(supportTickets).set({ status: "OPEN", updatedAt: new Date() }).where(eq(supportTickets.id, ticket.id));
+
+  try {
+    if (ticket.assigneeId) {
+      const [assignee] = await db.select({ email: users.email }).from(users).where(eq(users.id, ticket.assigneeId));
+      if (assignee) {
+        await enqueueEmail(assignee.email, `Customer Reply: ${ticket.ticketNumber}`,
+          `<h2>Customer Reply</h2><p>Ticket <strong>${ticket.ticketNumber}</strong> has a new customer reply.</p><p>${parsed.data.message.substring(0, 500)}</p>`);
+      }
+    }
+  } catch (e) { logger.error(e, "Failed to enqueue reply notification"); }
+
+  res.json(msg);
+});
+
+router.post("/support/tickets/:ticketNumber/resolve", requireAuth, async (req, res) => {
+  const userId = req.user!.userId;
+  const [ticket] = await db.select().from(supportTickets)
+    .where(and(eq(supportTickets.ticketNumber, req.params.ticketNumber), eq(supportTickets.userId, userId)))
+    .limit(1);
+  if (!ticket) { res.status(404).json({ error: "Ticket not found" }); return; }
+
+  await db.update(supportTickets).set({ status: "RESOLVED", updatedAt: new Date() }).where(eq(supportTickets.id, ticket.id));
+  res.json({ success: true });
+});
+
+router.post("/support/tickets/:ticketNumber/reopen", requireAuth, async (req, res) => {
+  const userId = req.user!.userId;
+  const [ticket] = await db.select().from(supportTickets)
+    .where(and(eq(supportTickets.ticketNumber, req.params.ticketNumber), eq(supportTickets.userId, userId)))
+    .limit(1);
+  if (!ticket) { res.status(404).json({ error: "Ticket not found" }); return; }
+
+  await db.update(supportTickets).set({ status: "OPEN", updatedAt: new Date() }).where(eq(supportTickets.id, ticket.id));
+  res.json({ success: true });
+});
+
+export default router;

@@ -8,6 +8,7 @@ import {
   TrendingUp,
   CalendarDays,
   HelpCircle,
+  Headphones,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthStore } from "@/stores/auth-store";
@@ -22,6 +23,7 @@ interface DashboardStats {
   activeProducts: number;
   pendingOrders: number;
   pendingQA: number;
+  openTickets: number;
   metenziBalance: number | null;
 }
 
@@ -124,6 +126,12 @@ export function DashboardStatsSection() {
       value: String(stats.pendingQA),
       icon: <HelpCircle className="h-5 w-5 text-pink-600" />,
       color: "bg-pink-50",
+    },
+    {
+      label: "Open Tickets",
+      value: String(stats.openTickets),
+      icon: <Headphones className="h-5 w-5 text-indigo-600" />,
+      color: "bg-indigo-50",
     },
     {
       label: "Metenzi Balance",

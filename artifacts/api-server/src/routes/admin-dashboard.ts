@@ -8,6 +8,7 @@ import {
   reviews,
   users,
   productQuestions,
+  supportTickets,
 } from "@workspace/db/schema";
 import { eq, sql, and, gte, lte, count, sum, desc, lt, inArray } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
@@ -68,6 +69,11 @@ router.get(
       .from(productQuestions)
       .where(eq(productQuestions.status, "PENDING"));
 
+    const [openTickets] = await db
+      .select({ count: count() })
+      .from(supportTickets)
+      .where(eq(supportTickets.status, "OPEN"));
+
     let metenziBalance: number | null = null;
     try {
       const config = await getMetenziConfig();
@@ -87,6 +93,7 @@ router.get(
       activeProducts: activeProducts?.count ?? 0,
       pendingOrders: pendingOrders?.count ?? 0,
       pendingQA: pendingQA?.count ?? 0,
+      openTickets: openTickets?.count ?? 0,
       metenziBalance,
     });
   },
