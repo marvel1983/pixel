@@ -7,6 +7,7 @@ import {
   Wallet,
   TrendingUp,
   CalendarDays,
+  HelpCircle,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthStore } from "@/stores/auth-store";
@@ -20,6 +21,7 @@ interface DashboardStats {
   monthRevenue: number;
   activeProducts: number;
   pendingOrders: number;
+  pendingQA: number;
   metenziBalance: number | null;
 }
 
@@ -116,6 +118,12 @@ export function DashboardStatsSection() {
       value: String(stats.pendingOrders),
       icon: <Clock className="h-5 w-5 text-yellow-600" />,
       color: "bg-yellow-50",
+    },
+    {
+      label: "Pending Q&A",
+      value: String(stats.pendingQA),
+      icon: <HelpCircle className="h-5 w-5 text-pink-600" />,
+      color: "bg-pink-50",
     },
     {
       label: "Metenzi Balance",

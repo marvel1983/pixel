@@ -158,8 +158,9 @@ function AskForm({ productId, userName, userEmail, onSubmitted }: AskFormProps) 
       if (!res.ok) throw new Error(data.error);
       toast({ title: "Question Submitted", description: data.message });
       onSubmitted();
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to submit question";
+      toast({ title: "Error", description: message, variant: "destructive" });
     } finally {
       setSubmitting(false);
     }

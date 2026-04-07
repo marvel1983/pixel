@@ -65,7 +65,8 @@ router.get("/admin/qa", ...guard, async (req, res) => {
     : await db.select({ c: count() }).from(productQuestions);
 
   const qIds = rows.map((r) => r.question.id);
-  let answers: any[] = [];
+  type AnswerRow = typeof productAnswers.$inferSelect;
+  let answers: AnswerRow[] = [];
   if (qIds.length > 0) {
     const allAnswers = await db.select().from(productAnswers);
     answers = allAnswers.filter((a) => qIds.includes(a.questionId));

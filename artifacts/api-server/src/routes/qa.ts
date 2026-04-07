@@ -23,6 +23,13 @@ router.post("/qa/ask", optionalAuth, async (req, res) => {
   const { productId, name, email, question } = parsed.data;
   const userId = req.user?.userId ?? null;
 
+  const [product] = await db.select({ id: products.id }).from(products)
+    .where(eq(products.id, productId)).limit(1);
+  if (!product) {
+    res.status(400).json({ error: "Product not found" });
+    return;
+  }
+
   await db.insert(productQuestions).values({
     productId,
     userId,
