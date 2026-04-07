@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import { Link } from "wouter";
+import { useTranslation } from "react-i18next";
 import { ChevronRight, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/product/product-card";
@@ -20,6 +21,7 @@ export function BrandPartnerSection({
   bgColor,
   products,
 }: BrandPartnerSectionProps) {
+  const { t } = useTranslation();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   if (products.length === 0) return null;
@@ -45,7 +47,7 @@ export function BrandPartnerSection({
             variant="outline"
             className="border-white text-white hover:bg-white/20 w-fit"
           >
-            Shop {brandName}
+            {t("home.shopBrand", { brand: brandName })}
             <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
         </Link>

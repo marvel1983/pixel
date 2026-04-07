@@ -1,4 +1,5 @@
 import { Link } from "wouter";
+import { useTranslation } from "react-i18next";
 import { ChevronRight } from "lucide-react";
 import { ProductCard } from "@/components/product/product-card";
 import type { MockProduct } from "@/lib/mock-data";
@@ -14,6 +15,7 @@ export function CategorySection({
   categorySlug,
   products,
 }: CategorySectionProps) {
+  const { t } = useTranslation();
   if (products.length === 0) return null;
 
   return (
@@ -24,7 +26,7 @@ export function CategorySection({
           href={`/category/${categorySlug}`}
           className="text-sm text-primary font-medium flex items-center gap-1 hover:underline"
         >
-          View All
+          {t("common.viewAll")}
           <ChevronRight className="h-4 w-4" />
         </Link>
       </div>

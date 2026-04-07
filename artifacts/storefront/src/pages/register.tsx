@@ -125,7 +125,7 @@ export default function RegisterPage() {
                   type="email"
                   value={form.email}
                   onChange={(e) => update("email", e.target.value)}
-                  placeholder="you@example.com"
+                  placeholder={t("auth.emailPlaceholder")}
                   required
                 />
               </div>

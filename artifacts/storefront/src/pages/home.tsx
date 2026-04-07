@@ -24,21 +24,21 @@ const featuredProducts = MOCK_PRODUCTS.filter((p) => p.isFeatured);
 
 const ALL_TYPES = ["HERO_SLIDER", "CATEGORY_ROW", "BRAND_SECTIONS", "NEW_ADDITIONS", "PRODUCT_SPOTLIGHT", "FEATURED_TEXT_BANNER", "FEATURED_BUNDLES"];
 
-function renderSection(type: string) {
+function renderSection(type: string, t: (key: string, opts?: Record<string, string>) => string) {
   switch (type) {
     case "HERO_SLIDER": return <HeroBanner key={type} />;
     case "CATEGORY_ROW": return (
       <div key={type} className="space-y-8">
-        <CategorySection title="Windows Operating Systems" categorySlug="operating-systems" products={windowsProducts} />
-        <CategorySection title="Office & Productivity" categorySlug="office-productivity" products={officeProducts} />
-        <CategorySection title="Antivirus & Security" categorySlug="antivirus-security" products={antivirusProducts} />
+        <CategorySection title={t("home.windowsOS")} categorySlug="operating-systems" products={windowsProducts} />
+        <CategorySection title={t("home.officeProductivity")} categorySlug="office-productivity" products={officeProducts} />
+        <CategorySection title={t("home.antivirusSecurity")} categorySlug="antivirus-security" products={antivirusProducts} />
       </div>
     );
     case "BRAND_SECTIONS": return (
       <div key={type} className="space-y-8">
-        <BrandPartnerSection brandName="Microsoft Office" tagline="Lifetime licenses at unbeatable prices. Word, Excel, PowerPoint & more."
+        <BrandPartnerSection brandName="Microsoft Office" tagline={t("home.msOfficeTagline")}
           ctaLink="/category/office-productivity" bgColor="bg-gradient-to-br from-orange-500 to-red-600" products={officeProducts} />
-        <BrandPartnerSection brandName="PC Games" tagline="Steam, Origin & Epic keys. Instant delivery to your inbox."
+        <BrandPartnerSection brandName="PC Games" tagline={t("home.pcGamesTagline")}
           ctaLink="/category/games" bgColor="bg-gradient-to-br from-purple-600 to-indigo-700" products={gameProducts} />
       </div>
     );
@@ -69,7 +69,7 @@ export default function HomePage() {
 
   return (
     <div className="container mx-auto px-4 py-6 space-y-8">
-      {sectionTypes.map((type) => renderSection(type))}
+      {sectionTypes.map((type) => renderSection(type, t))}
       <TrustpilotCarousel />
       <RecentlyViewed />
     </div>

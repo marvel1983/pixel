@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/stores/cart-store";
@@ -9,6 +10,7 @@ import { Loader2, ShoppingCart, XCircle, CheckCircle } from "lucide-react";
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
 export default function CartRecoverPage() {
+  const { t } = useTranslation();
   const { token } = useParams<{ token: string }>();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -63,7 +65,7 @@ export default function CartRecoverPage() {
         }
 
         setStatus("restored");
-        toast({ title: "Cart Restored!", description: "Your items have been added back to your cart." });
+        toast({ title: t("home.cartRestored"), description: t("home.cartRestoredDesc") });
         setTimeout(() => setLocation("/cart"), 2000);
       } catch { setStatus("error"); }
       finally { setLoading(false); }
@@ -74,16 +76,16 @@ export default function CartRecoverPage() {
     return (
       <div className="max-w-lg mx-auto px-4 py-20 text-center">
         <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
-        <p className="text-muted-foreground">Restoring your cart...</p>
+        <p className="text-muted-foreground">{t("home.restoringCart")}</p>
       </div>
     );
   }
 
   const states = {
-    restored: { icon: CheckCircle, color: "text-green-600", title: "Cart Restored!", desc: "Redirecting you to your cart...", action: () => setLocation("/cart"), btn: "Go to Cart" },
-    unsubscribed: { icon: CheckCircle, color: "text-green-600", title: "Unsubscribed", desc: "You won't receive any more cart reminder emails.", action: () => setLocation("/"), btn: "Go to Homepage" },
-    expired: { icon: XCircle, color: "text-amber-600", title: "Cart Expired", desc: "This cart recovery link has expired or was already used.", action: () => setLocation("/shop"), btn: "Browse Products" },
-    error: { icon: XCircle, color: "text-red-600", title: "Something Went Wrong", desc: "We couldn't restore your cart. Please try again or browse our products.", action: () => setLocation("/shop"), btn: "Browse Products" },
+    restored: { icon: CheckCircle, color: "text-green-600", title: t("home.cartRestored"), desc: t("home.redirectingToCart"), action: () => setLocation("/cart"), btn: t("home.goToCart") },
+    unsubscribed: { icon: CheckCircle, color: "text-green-600", title: t("home.unsubscribed"), desc: t("home.unsubscribedDesc"), action: () => setLocation("/"), btn: t("home.goToHomepage") },
+    expired: { icon: XCircle, color: "text-amber-600", title: t("home.cartExpired"), desc: t("home.cartExpiredDesc"), action: () => setLocation("/shop"), btn: t("home.browseProducts") },
+    error: { icon: XCircle, color: "text-red-600", title: t("common.somethingWentWrong"), desc: t("home.cartRecoverError"), action: () => setLocation("/shop"), btn: t("home.browseProducts") },
   };
 
   const s = states[status as keyof typeof states] || states.error;

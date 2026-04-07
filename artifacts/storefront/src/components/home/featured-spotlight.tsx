@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { ProductCard } from "@/components/product/product-card";
 import type { MockProduct } from "@/lib/mock-data";
 
@@ -6,38 +7,35 @@ interface FeaturedSpotlightProps {
   products: MockProduct[];
 }
 
-const TABS = ["Popular", "Best Value", "Top Rated"] as const;
+const TAB_KEYS = ["home.popular", "home.bestValue", "home.topRated"] as const;
 
 export function FeaturedSpotlight({ products }: FeaturedSpotlightProps) {
-  const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("Popular");
+  const { t } = useTranslation();
+  const [activeTab, setActiveTab] = useState(0);
 
   const sortedProducts = [...products];
-  if (activeTab === "Best Value") {
-    sortedProducts.sort((a, b) => {
-      const aDiscount = getDiscount(a);
-      const bDiscount = getDiscount(b);
-      return bDiscount - aDiscount;
-    });
-  } else if (activeTab === "Top Rated") {
+  if (activeTab === 1) {
+    sortedProducts.sort((a, b) => getDiscount(b) - getDiscount(a));
+  } else if (activeTab === 2) {
     sortedProducts.sort((a, b) => b.avgRating - a.avgRating);
   }
 
   return (
     <section>
       <div className="flex items-center gap-6 mb-4">
-        <h2 className="text-lg font-bold text-foreground">Featured Products</h2>
+        <h2 className="text-lg font-bold text-foreground">{t("home.featuredProducts")}</h2>
         <div className="flex gap-1">
-          {TABS.map((tab) => (
+          {TAB_KEYS.map((key, i) => (
             <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
+              key={key}
+              onClick={() => setActiveTab(i)}
               className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                activeTab === tab
+                activeTab === i
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:bg-muted"
               }`}
             >
-              {tab}
+              {t(key)}
             </button>
           ))}
         </div>
