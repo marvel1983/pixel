@@ -174,13 +174,13 @@ function UserMenu() {
             My Account
           </DropdownMenuItem>
         </Link>
-        <Link href="/orders">
+        <Link href="/account/orders">
           <DropdownMenuItem>
             <Package className="mr-2 h-4 w-4" />
             My Orders
           </DropdownMenuItem>
         </Link>
-        <Link href="/account/settings">
+        <Link href="/account">
           <DropdownMenuItem>
             <Settings className="mr-2 h-4 w-4" />
             Settings

@@ -14,6 +14,11 @@ import CheckoutPage from "@/pages/checkout";
 import OrderCompletePage from "@/pages/order-complete";
 import OrderLookupPage from "@/pages/order-lookup";
 import AccountOrdersPage from "@/pages/account-orders";
+import LoginPage from "@/pages/login";
+import RegisterPage from "@/pages/register";
+import ForgotPasswordPage from "@/pages/forgot-password";
+import ResetPasswordPage from "@/pages/reset-password";
+import AccountPage from "@/pages/account";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -33,6 +38,11 @@ function Router() {
         <Route path="/order-complete/:orderNumber" component={OrderCompletePage} />
         <Route path="/order-lookup" component={OrderLookupPage} />
         <Route path="/account/orders" component={AccountOrdersPage} />
+        <Route path="/login" component={LoginPage} />
+        <Route path="/register" component={RegisterPage} />
+        <Route path="/forgot-password" component={ForgotPasswordPage} />
+        <Route path="/reset-password/:token" component={ResetPasswordPage} />
+        <Route path="/account" component={AccountPage} />
         <Route component={NotFound} />
       </Switch>
     </SiteLayout>

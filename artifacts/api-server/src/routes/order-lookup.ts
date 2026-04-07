@@ -1,10 +1,11 @@
 import { Router } from "express";
 import { z } from "zod";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, or } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { orders, orderItems, licenseKeys, type Order } from "@workspace/db/schema";
 import { decrypt } from "../lib/encryption";
 import { logger } from "../lib/logger";
+import { requireAuth } from "../middleware/auth";
 
 const router = Router();
 
@@ -140,18 +141,19 @@ router.get("/orders/:orderNumber", async (req, res) => {
   }
 });
 
-router.get("/account/orders", async (req, res) => {
-  const emailParsed = emailSchema.safeParse(req.query.email);
-  if (!emailParsed.success) {
-    res.status(400).json({ error: "Valid email is required" });
-    return;
-  }
+router.get("/account/orders", requireAuth, async (req, res) => {
+  const userEmail = req.user!.email;
 
   try {
     const userOrders = await db
       .select()
       .from(orders)
-      .where(eq(orders.guestEmail, emailParsed.data))
+      .where(
+        or(
+          eq(orders.userId, req.user!.userId),
+          eq(orders.guestEmail, userEmail),
+        ),
+      )
       .orderBy(desc(orders.createdAt));
 
     const result = await Promise.all(
