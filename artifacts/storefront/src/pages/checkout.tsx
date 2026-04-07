@@ -94,6 +94,7 @@ export default function CheckoutPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Order failed");
 
+      sessionStorage.setItem("checkout_email", billing.email);
       clearCart();
       setLocation(`/order-complete/${data.orderNumber}`);
     } catch (err) {

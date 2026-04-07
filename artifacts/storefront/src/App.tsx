@@ -12,6 +12,8 @@ import ProductDetailPage from "@/pages/product-detail";
 import CartPage from "@/pages/cart";
 import CheckoutPage from "@/pages/checkout";
 import OrderCompletePage from "@/pages/order-complete";
+import OrderLookupPage from "@/pages/order-lookup";
+import AccountOrdersPage from "@/pages/account-orders";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -29,6 +31,8 @@ function Router() {
         <Route path="/cart" component={CartPage} />
         <Route path="/checkout" component={CheckoutPage} />
         <Route path="/order-complete/:orderNumber" component={OrderCompletePage} />
+        <Route path="/order-lookup" component={OrderLookupPage} />
+        <Route path="/account/orders" component={AccountOrdersPage} />
         <Route component={NotFound} />
       </Switch>
     </SiteLayout>
