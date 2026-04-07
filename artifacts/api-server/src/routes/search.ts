@@ -101,12 +101,13 @@ router.get("/search", async (req: Request, res: Response) => {
     .leftJoin(categories, eq(products.categoryId, categories.id))
     .where(fullWhere);
 
+  const minPriceSub = sql`(SELECT MIN(pv.price_usd) FROM product_variants pv WHERE pv.product_id = products.id AND pv.is_active = true)`;
   const orderClauses = [];
   switch (sort) {
     case "name-asc": orderClauses.push(asc(products.name)); break;
     case "name-desc": orderClauses.push(desc(products.name)); break;
-    case "price-asc": orderClauses.push(asc(products.avgRating)); break;
-    case "price-desc": orderClauses.push(desc(products.avgRating)); break;
+    case "price-asc": orderClauses.push(sql`${minPriceSub} ASC NULLS LAST`); break;
+    case "price-desc": orderClauses.push(sql`${minPriceSub} DESC NULLS LAST`); break;
     default:
       orderClauses.push(
         sql`CASE WHEN ${products.name} ILIKE ${pattern} THEN 0 ELSE 1 END`,
