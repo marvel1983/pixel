@@ -71,6 +71,8 @@ router.get("/admin/settings/api-keys", requireAuth, requireAdmin, async (_req, r
 
 router.post("/admin/settings/api-keys/reveal", requireAuth, requireAdmin, async (req, res) => {
   const { provider, field } = req.body;
+  const adminEmail = req.user?.email ?? "unknown";
+  console.log(`[AUDIT] API key reveal: provider=${provider}, field=${field}, admin=${adminEmail}, ip=${req.ip}, time=${new Date().toISOString()}`);
   if (provider === "metenzi") {
     const [row] = await db.select().from(apiProviders).where(eq(apiProviders.slug, "metenzi"));
     if (!row) { res.status(404).json({ error: "Provider not found" }); return; }

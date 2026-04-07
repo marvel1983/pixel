@@ -26,9 +26,20 @@ export default function SettingsApiKeysTab() {
   const load = useCallback(() => { api("/admin/settings/api-keys").then((d) => { if (d) setStatus(d); }); }, [api]);
   useEffect(() => { load(); }, [load]);
 
+  const [confirmReveal, setConfirmReveal] = useState<{ provider: string; field: string; label: string } | null>(null);
+
   const doReveal = async (provider: string, field: string) => {
     const key = `${provider}.${field}`;
     if (reveal[key] !== undefined) { setReveal((p) => { const n = { ...p }; delete n[key]; return n; }); return; }
+    const label = `${provider === "metenzi" ? "Metenzi" : "Checkout.com"} ${field === "apiKey" ? "API Key" : field === "hmacSecret" ? "Signing Secret" : field === "publicKey" ? "Public Key" : "Secret Key"}`;
+    setConfirmReveal({ provider, field, label });
+  };
+
+  const confirmAndReveal = async () => {
+    if (!confirmReveal) return;
+    const { provider, field } = confirmReveal;
+    const key = `${provider}.${field}`;
+    setConfirmReveal(null);
     const d = await api("/admin/settings/api-keys/reveal", { method: "POST", body: JSON.stringify({ provider, field }) });
     if (d) setReveal((p) => ({ ...p, [key]: d.value || "(empty)" }));
   };
@@ -75,6 +86,16 @@ export default function SettingsApiKeysTab() {
           {testResult.checkout && <span className={`text-xs ${testResult.checkout.success ? "text-green-600" : "text-red-600"}`}>{testResult.checkout.message}</span>}
         </div>
       </ProviderCard>
+
+      {confirmReveal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setConfirmReveal(null)}>
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-sm p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between"><h3 className="font-bold">Reveal Secret</h3><button onClick={() => setConfirmReveal(null)}><X className="h-5 w-5" /></button></div>
+            <p className="text-sm text-muted-foreground">Are you sure you want to reveal <strong>{confirmReveal.label}</strong>? This action is logged for security purposes.</p>
+            <div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setConfirmReveal(null)}>Cancel</Button><Button variant="destructive" onClick={confirmAndReveal}><Eye className="h-4 w-4 mr-1" /> Reveal</Button></div>
+          </div>
+        </div>
+      )}
 
       {modal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setModal(null)}>
