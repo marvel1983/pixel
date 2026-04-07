@@ -32,7 +32,10 @@ import AffiliatesPage from "@/pages/affiliates";
 import AffiliateApplyPage from "@/pages/affiliate-apply";
 import CartRecoverPage from "@/pages/cart-recover";
 import SearchPage from "@/pages/search";
+import NewsletterConfirmPage from "@/pages/newsletter-confirm";
+import NewsletterUnsubscribePage from "@/pages/newsletter-unsubscribe";
 import { useReferralTracking } from "@/hooks/use-referral";
+import { ExitIntentPopup } from "@/components/newsletter/exit-intent-popup";
 import StaticPageView from "@/pages/static-page";
 import AdminRoot from "@/pages/admin/index";
 import AcceptInvitePage from "@/pages/admin/accept-invite";
@@ -74,8 +77,11 @@ function StorefrontWithMaintenance() {
         <Route path="/account" component={AccountPage} />
         <Route path="/wishlist" component={WishlistPage} />
         <Route path="/compare" component={ComparePage} />
+        <Route path="/newsletter/confirm" component={NewsletterConfirmPage} />
+        <Route path="/newsletter/unsubscribe" component={NewsletterUnsubscribePage} />
         <Route component={StaticPageView} />
       </Switch>
+      <ExitIntentPopup />
     </SiteLayout>
   );
 }

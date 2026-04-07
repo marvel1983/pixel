@@ -38,6 +38,7 @@ import AffiliateSettingsPage from "./affiliate-settings";
 import AdminAbandonedCartsPage from "./abandoned-carts";
 import AbandonedCartSettingsPage from "./abandoned-cart-settings";
 import AdminQAPage from "./qa";
+import AdminNewsletterPage from "./newsletter";
 
 function AdminPlaceholder({ title }: { title: string }) {
   return (
@@ -90,6 +91,7 @@ export default function AdminRoot() {
           <Route path="/admin/affiliates" component={AdminAffiliatesPage} />
           <Route path="/admin/affiliate-settings" component={AffiliateSettingsPage} />
           <Route path="/admin/qa" component={AdminQAPage} />
+          <Route path="/admin/newsletter" component={AdminNewsletterPage} />
           <Route path="/admin/abandoned-carts" component={AdminAbandonedCartsPage} />
           <Route path="/admin/abandoned-cart-settings" component={AbandonedCartSettingsPage} />
           <Route path="/admin/admin-users" component={AdminUsersPage} />

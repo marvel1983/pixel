@@ -31,3 +31,4 @@ export * from "./affiliates";
 export * from "./abandoned-carts";
 export * from "./product-alerts";
 export * from "./product-qa";
+export * from "./newsletter";

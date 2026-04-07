@@ -9,7 +9,7 @@ import {
   Layers,
   ShoppingCart,
   ShoppingBag,
-  Mail,
+  Mail as MailIcon,
   Receipt,
   Users,
   FileText,
@@ -85,6 +85,7 @@ const sections: NavSection[] = [
     title: "CUSTOMERS",
     items: [
       { label: "Customers", href: "/admin/customers", icon: Users },
+      { label: "Newsletter", href: "/admin/newsletter", icon: MailIcon },
       { label: "Notifications", href: "/admin/notifications", icon: Bell },
     ],
   },

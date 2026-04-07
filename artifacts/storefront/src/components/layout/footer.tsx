@@ -1,8 +1,11 @@
+import { useState } from "react";
 import { Link } from "wouter";
-import { Mail } from "lucide-react";
+import { Mail, Loader2, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+
+const API = import.meta.env.VITE_API_URL ?? "/api";
 
 const QUICK_LINKS = [
   { label: "Best Sellers", href: "/best-sellers" },
@@ -102,19 +105,7 @@ export function Footer() {
             <p className="text-sm text-slate-400 mb-3">
               Get deals and updates straight to your inbox.
             </p>
-            <form
-              className="flex gap-2"
-              onSubmit={(e) => e.preventDefault()}
-            >
-              <Input
-                type="email"
-                placeholder="Your email"
-                className="h-9 bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 flex-1"
-              />
-              <Button size="sm" className="shrink-0">
-                <Mail className="h-4 w-4" />
-              </Button>
-            </form>
+            <FooterNewsletter />
           </div>
         </div>
 
@@ -150,6 +141,58 @@ export function Footer() {
         </p>
       </div>
     </footer>
+  );
+}
+
+function FooterNewsletter() {
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`${API}/newsletter/subscribe`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, source: "footer" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setMessage(data.message);
+      setEmail("");
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (message) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-green-400">
+        <Check className="h-4 w-4" />
+        <span>{message}</span>
+      </div>
+    );
+  }
+
+  return (
+    <form className="flex gap-2" onSubmit={handleSubmit}>
+      <Input
+        type="email"
+        placeholder="Your email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        className="h-9 bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 flex-1"
+        required
+      />
+      <Button size="sm" className="shrink-0" type="submit" disabled={loading}>
+        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+      </Button>
+    </form>
   );
 }
 

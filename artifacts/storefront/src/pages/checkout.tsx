@@ -48,6 +48,7 @@ export default function CheckoutPage() {
   const [submitting, setSubmitting] = useState(false);
   const [taxInfo, setTaxInfo] = useState<TaxInfo>({ taxRate: 0, taxLabel: "VAT", exempt: false, b2bEnabled: false, priceDisplay: "exclusive" });
   const [appliedGiftCards, setAppliedGiftCards] = useState<AppliedGiftCard[]>([]);
+  const [newsletterOptIn, setNewsletterOptIn] = useState(true);
 
   const capturedRef = useRef("");
 
@@ -142,6 +143,14 @@ export default function CheckoutPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Order failed");
 
+      if (newsletterOptIn && billing.email) {
+        fetch(`${API}/newsletter/subscribe`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: billing.email, source: "checkout" }),
+        }).catch(() => {});
+      }
+
       sessionStorage.setItem("checkout_email", billing.email);
       clearCart();
       setLocation(`/order-complete/${data.orderNumber}`);
@@ -184,6 +193,10 @@ export default function CheckoutPage() {
           />
           <Separator />
           <PaymentForm data={payment} errors={paymentErrors} onChange={handlePaymentChange} />
+          <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+            <input type="checkbox" checked={newsletterOptIn} onChange={(e) => setNewsletterOptIn(e.target.checked)} />
+            Subscribe to our newsletter for deals and updates
+          </label>
           <Button size="lg" className="w-full" disabled={submitting} onClick={handleSubmit}>
             {submitting ? (
               <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing...</>
