@@ -2,16 +2,21 @@ import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { SiteLayout } from "@/components/layout/site-layout";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
 
 function Home() {
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
+    <div className="container mx-auto px-4 py-12">
       <div className="text-center">
-        <h1 className="text-2xl font-bold text-gray-900">Replit Agent is building...</h1>
-        <p className="mt-2 text-sm text-gray-600">Your app will appear here once it's ready.</p>
+        <h1 className="text-3xl font-bold text-foreground">
+          Welcome to PixelCodes
+        </h1>
+        <p className="mt-2 text-muted-foreground">
+          Your trusted source for digital software license keys
+        </p>
       </div>
     </div>
   );
@@ -19,10 +24,12 @@ function Home() {
 
 function Router() {
   return (
-    <Switch>
-      <Route path="/" component={Home} />
-      <Route component={NotFound} />
-    </Switch>
+    <SiteLayout>
+      <Switch>
+        <Route path="/" component={Home} />
+        <Route component={NotFound} />
+      </Switch>
+    </SiteLayout>
   );
 }
 
