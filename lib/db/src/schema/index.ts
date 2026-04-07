@@ -14,3 +14,4 @@ export * from "./support";
 export * from "./banners";
 export * from "./currency-rates";
 export * from "./audit-log";
+export * from "./compare-sessions";
