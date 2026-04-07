@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { z } from "zod";
-import { eq, desc, and, sql, count, ne } from "drizzle-orm";
+import { eq, desc, and, sql, count } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { supportTickets, ticketMessages, users, orders } from "@workspace/db/schema";
+import { supportTickets, ticketMessages, ticketStatusHistory, users, orders } from "@workspace/db/schema";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import { enqueueEmail } from "../lib/email/queue";
@@ -92,7 +92,17 @@ router.get("/admin/support/tickets/:ticketNumber", ...auth, async (req, res) => 
     ? (await db.select({ firstName: users.firstName, lastName: users.lastName, email: users.email }).from(users).where(eq(users.id, ticket.assigneeId)).limit(1))[0] ?? null
     : null;
 
-  res.json({ ticket, messages, order, assignee });
+  const timeline = await db.select({
+    id: ticketStatusHistory.id, fromStatus: ticketStatusHistory.fromStatus,
+    toStatus: ticketStatusHistory.toStatus, note: ticketStatusHistory.note,
+    createdAt: ticketStatusHistory.createdAt,
+    changedBy: sql<string>`COALESCE(${users.firstName} || ' ' || ${users.lastName}, ${users.email})`,
+  }).from(ticketStatusHistory)
+    .leftJoin(users, eq(ticketStatusHistory.changedById, users.id))
+    .where(eq(ticketStatusHistory.ticketId, ticket.id))
+    .orderBy(ticketStatusHistory.createdAt);
+
+  res.json({ ticket, messages, order, assignee, timeline });
 });
 
 const replySchema = z.object({
@@ -105,20 +115,27 @@ router.post("/admin/support/tickets/:ticketNumber/reply", ...auth, async (req, r
   const parsed = replySchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid data" }); return; }
   const { message, isInternal, status } = parsed.data;
+  const adminId = req.user!.userId;
 
   const [ticket] = await db.select().from(supportTickets)
     .where(eq(supportTickets.ticketNumber, req.params.ticketNumber)).limit(1);
   if (!ticket) { res.status(404).json({ error: "Not found" }); return; }
 
   const [msg] = await db.insert(ticketMessages).values({
-    ticketId: ticket.id, senderId: req.user!.userId,
+    ticketId: ticket.id, senderId: adminId,
     isStaff: true, isInternal: isInternal ?? false, body: message,
   }).returning();
 
-  const updates: Record<string, unknown> = { updatedAt: new Date() };
-  if (status) updates.status = status;
-  else if (!isInternal) updates.status = "AWAITING_CUSTOMER";
-  await db.update(supportTickets).set(updates).where(eq(supportTickets.id, ticket.id));
+  const newStatus = status ?? (isInternal ? undefined : "AWAITING_CUSTOMER");
+  if (newStatus && newStatus !== ticket.status) {
+    await db.update(supportTickets).set({ status: newStatus, updatedAt: new Date() }).where(eq(supportTickets.id, ticket.id));
+    await db.insert(ticketStatusHistory).values({
+      ticketId: ticket.id, fromStatus: ticket.status, toStatus: newStatus,
+      changedById: adminId, note: isInternal ? "Internal note with status change" : "Admin reply",
+    });
+  } else {
+    await db.update(supportTickets).set({ updatedAt: new Date() }).where(eq(supportTickets.id, ticket.id));
+  }
 
   if (!isInternal && ticket.userId) {
     try {
@@ -127,7 +144,7 @@ router.post("/admin/support/tickets/:ticketNumber/reply", ...auth, async (req, r
         await enqueueEmail(customer.email, `Reply to Your Ticket: ${ticket.ticketNumber}`,
           `<h2>Support Update</h2><p>Your ticket <strong>${ticket.ticketNumber}</strong> has a new reply.</p><p>${message.substring(0, 500)}</p><p>Log in to view the full conversation.</p>`);
       }
-    } catch (e) { logger.error(e, "Failed to enqueue admin reply notification"); }
+    } catch (emailErr) { logger.error(emailErr, "Failed to enqueue admin reply notification"); }
   }
 
   res.json(msg);
@@ -142,6 +159,7 @@ const updateSchema = z.object({
 router.patch("/admin/support/tickets/:ticketNumber", ...auth, async (req, res) => {
   const parsed = updateSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid data" }); return; }
+  const adminId = req.user!.userId;
 
   const [ticket] = await db.select().from(supportTickets)
     .where(eq(supportTickets.ticketNumber, req.params.ticketNumber)).limit(1);
@@ -153,6 +171,14 @@ router.patch("/admin/support/tickets/:ticketNumber", ...auth, async (req, res) =
   if (parsed.data.assigneeId !== undefined) updates.assigneeId = parsed.data.assigneeId;
 
   await db.update(supportTickets).set(updates).where(eq(supportTickets.id, ticket.id));
+
+  if (parsed.data.status && parsed.data.status !== ticket.status) {
+    await db.insert(ticketStatusHistory).values({
+      ticketId: ticket.id, fromStatus: ticket.status, toStatus: parsed.data.status,
+      changedById: adminId, note: "Status updated by admin",
+    });
+  }
+
   res.json({ success: true });
 });
 

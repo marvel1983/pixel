@@ -1,18 +1,22 @@
 import { Router } from "express";
-import { randomBytes } from "crypto";
 import { z } from "zod";
 import { eq, desc, and, sql, count } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { supportTickets, ticketMessages, users, orders } from "@workspace/db/schema";
+import { supportTickets, ticketMessages, ticketStatusHistory, users, orders } from "@workspace/db/schema";
 import { requireAuth } from "../middleware/auth";
 import { enqueueEmail } from "../lib/email/queue";
 import { logger } from "../lib/logger";
 
 const router = Router();
 
-function generateTicketNumber(): string {
-  const hex = randomBytes(4).toString("hex").toUpperCase().slice(0, 6);
-  return `TKT-${hex}`;
+async function nextTicketNumber(): Promise<string> {
+  const [row] = await db.select({ c: count() }).from(supportTickets);
+  const seq = (row?.c ?? 0) + 1;
+  return `TKT-${String(seq).padStart(5, "0")}`;
+}
+
+function isDbUniqueError(err: unknown): boolean {
+  return typeof err === "object" && err !== null && "code" in err && (err as { code: string }).code === "23505";
 }
 
 const createSchema = z.object({
@@ -35,7 +39,7 @@ router.post("/support/tickets", requireAuth, async (req, res) => {
       if (!ownOrder) { res.status(403).json({ error: "Order not found or not yours" }); return; }
     }
 
-    let ticketNumber = generateTicketNumber();
+    let ticketNumber = await nextTicketNumber();
     let retries = 3;
     let ticket;
     while (retries > 0) {
@@ -45,9 +49,13 @@ router.post("/support/tickets", requireAuth, async (req, res) => {
         }).returning();
         ticket = row;
         break;
-      } catch (e: any) {
-        if (e?.code === "23505" && retries > 1) { ticketNumber = generateTicketNumber(); retries--; continue; }
-        throw e;
+      } catch (err: unknown) {
+        if (isDbUniqueError(err) && retries > 1) {
+          ticketNumber = await nextTicketNumber();
+          retries--;
+          continue;
+        }
+        throw err;
       }
     }
     if (!ticket) throw new Error("Failed to generate unique ticket number");
@@ -56,13 +64,18 @@ router.post("/support/tickets", requireAuth, async (req, res) => {
       ticketId: ticket.id, senderId: userId, isStaff: false, isInternal: false, body: message,
     });
 
+    await db.insert(ticketStatusHistory).values({
+      ticketId: ticket.id, fromStatus: null, toStatus: "OPEN", changedById: userId,
+      note: "Ticket created",
+    });
+
     try {
       const admins = await db.select({ email: users.email }).from(users).where(eq(users.role, "ADMIN"));
       for (const admin of admins) {
         await enqueueEmail(admin.email, `New Support Ticket: ${ticketNumber}`,
           `<h2>New Support Ticket</h2><p><strong>${ticketNumber}</strong> - ${subject}</p><p>Category: ${category}</p><p>${message.substring(0, 500)}</p>`);
       }
-    } catch (e) { logger.error(e, "Failed to enqueue ticket notification"); }
+    } catch (emailErr) { logger.error(emailErr, "Failed to enqueue ticket notification"); }
 
     res.status(201).json(ticket);
   } catch (err) {
@@ -109,7 +122,11 @@ router.get("/support/tickets/:ticketNumber", requireAuth, async (req, res) => {
     .where(and(eq(ticketMessages.ticketId, ticket.id), eq(ticketMessages.isInternal, false)))
     .orderBy(ticketMessages.createdAt);
 
-  res.json({ ticket, messages });
+  const timeline = await db.select().from(ticketStatusHistory)
+    .where(eq(ticketStatusHistory.ticketId, ticket.id))
+    .orderBy(ticketStatusHistory.createdAt);
+
+  res.json({ ticket, messages, timeline });
 });
 
 const replySchema = z.object({ message: z.string().min(1).max(5000) });
@@ -128,7 +145,14 @@ router.post("/support/tickets/:ticketNumber/reply", requireAuth, async (req, res
     ticketId: ticket.id, senderId: userId, isStaff: false, isInternal: false, body: parsed.data.message,
   }).returning();
 
+  const oldStatus = ticket.status;
   await db.update(supportTickets).set({ status: "OPEN", updatedAt: new Date() }).where(eq(supportTickets.id, ticket.id));
+  if (oldStatus !== "OPEN") {
+    await db.insert(ticketStatusHistory).values({
+      ticketId: ticket.id, fromStatus: oldStatus, toStatus: "OPEN", changedById: userId,
+      note: "Customer replied",
+    });
+  }
 
   try {
     if (ticket.assigneeId) {
@@ -138,7 +162,7 @@ router.post("/support/tickets/:ticketNumber/reply", requireAuth, async (req, res
           `<h2>Customer Reply</h2><p>Ticket <strong>${ticket.ticketNumber}</strong> has a new customer reply.</p><p>${parsed.data.message.substring(0, 500)}</p>`);
       }
     }
-  } catch (e) { logger.error(e, "Failed to enqueue reply notification"); }
+  } catch (emailErr) { logger.error(emailErr, "Failed to enqueue reply notification"); }
 
   res.json(msg);
 });
@@ -151,6 +175,10 @@ router.post("/support/tickets/:ticketNumber/resolve", requireAuth, async (req, r
   if (!ticket) { res.status(404).json({ error: "Ticket not found" }); return; }
 
   await db.update(supportTickets).set({ status: "RESOLVED", updatedAt: new Date() }).where(eq(supportTickets.id, ticket.id));
+  await db.insert(ticketStatusHistory).values({
+    ticketId: ticket.id, fromStatus: ticket.status, toStatus: "RESOLVED", changedById: userId,
+    note: "Customer resolved ticket",
+  });
   res.json({ success: true });
 });
 
@@ -162,6 +190,10 @@ router.post("/support/tickets/:ticketNumber/reopen", requireAuth, async (req, re
   if (!ticket) { res.status(404).json({ error: "Ticket not found" }); return; }
 
   await db.update(supportTickets).set({ status: "OPEN", updatedAt: new Date() }).where(eq(supportTickets.id, ticket.id));
+  await db.insert(ticketStatusHistory).values({
+    ticketId: ticket.id, fromStatus: ticket.status, toStatus: "OPEN", changedById: userId,
+    note: "Customer reopened ticket",
+  });
   res.json({ success: true });
 });
 

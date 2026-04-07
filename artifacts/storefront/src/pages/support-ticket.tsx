@@ -18,6 +18,10 @@ interface Ticket {
   id: number; ticketNumber: string; subject: string; status: string;
   priority: string; category: string; createdAt: string; updatedAt: string;
 }
+interface TimelineEntry {
+  id: number; fromStatus: string | null; toStatus: string;
+  note: string | null; createdAt: string;
+}
 
 const STATUS_COLORS: Record<string, string> = {
   OPEN: "bg-blue-100 text-blue-800", IN_PROGRESS: "bg-yellow-100 text-yellow-800",
@@ -31,6 +35,7 @@ export default function SupportTicketPage() {
   const { toast } = useToast();
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [timeline, setTimeline] = useState<TimelineEntry[]>([]);
   const [reply, setReply] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -47,6 +52,7 @@ export default function SupportTicketPage() {
       const data = await res.json();
       setTicket(data.ticket);
       setMessages(data.messages);
+      setTimeline(data.timeline ?? []);
     } catch { toast({ title: "Error", description: "Ticket not found", variant: "destructive" }); }
     finally { setLoading(false); }
   }
@@ -119,6 +125,19 @@ export default function SupportTicketPage() {
               </div>
             ))}
           </div>
+          {timeline.length > 0 && (
+            <div className="border-t pt-3">
+              <p className="text-sm font-medium mb-2">Status History</p>
+              <div className="space-y-1">
+                {timeline.map((t) => (
+                  <p key={t.id} className="text-xs text-muted-foreground">
+                    {t.fromStatus ? `${t.fromStatus.replace(/_/g, " ")} → ` : ""}{t.toStatus.replace(/_/g, " ")}
+                    {t.note ? ` — ${t.note}` : ""} · {new Date(t.createdAt).toLocaleString()}
+                  </p>
+                ))}
+              </div>
+            </div>
+          )}
           {canReply && (
             <form onSubmit={handleReply} className="space-y-3 border-t pt-4">
               <Textarea value={reply} onChange={(e) => setReply(e.target.value)} placeholder="Type your reply..." rows={4} maxLength={5000} required />

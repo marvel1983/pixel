@@ -44,6 +44,18 @@ export const ticketMessages = pgTable("ticket_messages", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+export const ticketStatusHistory = pgTable("ticket_status_history", {
+  id: serial("id").primaryKey(),
+  ticketId: integer("ticket_id")
+    .notNull()
+    .references(() => supportTickets.id, { onDelete: "cascade" }),
+  fromStatus: varchar("from_status", { length: 50 }),
+  toStatus: varchar("to_status", { length: 50 }).notNull(),
+  changedById: integer("changed_by_id").references(() => users.id),
+  note: text("note"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export const insertSupportTicketSchema = createInsertSchema(supportTickets).omit({
   id: true, createdAt: true, updatedAt: true,
 });
@@ -56,3 +68,4 @@ export type InsertSupportTicket = z.infer<typeof insertSupportTicketSchema>;
 export type SupportTicket = typeof supportTickets.$inferSelect;
 export type InsertTicketMessage = z.infer<typeof insertTicketMessageSchema>;
 export type TicketMessage = typeof ticketMessages.$inferSelect;
+export type TicketStatusHistoryEntry = typeof ticketStatusHistory.$inferSelect;

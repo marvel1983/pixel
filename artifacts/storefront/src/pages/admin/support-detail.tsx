@@ -17,6 +17,10 @@ interface Message {
   id: number; body: string; isStaff: boolean; isInternal: boolean;
   createdAt: string; senderName: string;
 }
+interface TimelineEntry {
+  id: number; fromStatus: string | null; toStatus: string;
+  note: string | null; createdAt: string; changedBy: string;
+}
 interface TicketData {
   ticket: {
     id: number; ticketNumber: string; subject: string; status: string;
@@ -28,6 +32,7 @@ interface TicketData {
   messages: Message[];
   order: { orderNumber: string; totalUsd: string; status: string } | null;
   assignee: { firstName: string | null; lastName: string | null; email: string } | null;
+  timeline: TimelineEntry[];
 }
 interface Assignee { id: number; firstName: string | null; lastName: string | null; email: string; }
 
@@ -195,6 +200,20 @@ export default function AdminSupportDetailPage() {
             <CardContent className="space-y-2 text-sm">
               <p className="font-mono">{order.orderNumber}</p>
               <p>${order.totalUsd} — <Badge variant="secondary">{order.status}</Badge></p>
+            </CardContent>
+          </Card>
+        )}
+        {data.timeline.length > 0 && (
+          <Card>
+            <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Status Timeline</CardTitle></CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              {data.timeline.map((t) => (
+                <div key={t.id} className="border-l-2 border-blue-200 pl-3">
+                  <p className="font-medium">{t.fromStatus ? `${t.fromStatus} → ${t.toStatus}` : t.toStatus}</p>
+                  {t.note && <p className="text-muted-foreground text-xs">{t.note}</p>}
+                  <p className="text-xs text-muted-foreground">{t.changedBy} · {new Date(t.createdAt).toLocaleString()}</p>
+                </div>
+              ))}
             </CardContent>
           </Card>
         )}
