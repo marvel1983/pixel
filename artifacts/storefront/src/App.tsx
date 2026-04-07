@@ -8,6 +8,7 @@ import ShopPage from "@/pages/shop";
 import CategoryPage from "@/pages/category";
 import OutletPage from "@/pages/outlet";
 import HotOffersPage from "@/pages/hot-offers";
+import ProductDetailPage from "@/pages/product-detail";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -21,6 +22,7 @@ function Router() {
         <Route path="/category/:slug" component={CategoryPage} />
         <Route path="/outlet" component={OutletPage} />
         <Route path="/hot-offers" component={HotOffersPage} />
+        <Route path="/product/:slug" component={ProductDetailPage} />
         <Route component={NotFound} />
       </Switch>
     </SiteLayout>

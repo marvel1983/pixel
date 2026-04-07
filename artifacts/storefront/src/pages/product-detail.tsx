@@ -1,0 +1,107 @@
+import { useEffect, useMemo } from "react";
+import { useParams } from "wouter";
+import { MOCK_PRODUCTS } from "@/lib/mock-data";
+import { Breadcrumbs } from "@/components/shop/breadcrumbs";
+import { ProductImage } from "@/components/product-detail/product-image";
+import { ProductInfo } from "@/components/product-detail/product-info";
+import { CrossSell } from "@/components/product-detail/cross-sell";
+import { TrustBadges } from "@/components/product-detail/trust-badges";
+import { SocialShare } from "@/components/product-detail/social-share";
+import { ProductTabs } from "@/components/product-detail/product-tabs";
+import { ReviewsSection } from "@/components/product-detail/reviews-section";
+import { RelatedProducts } from "@/components/product-detail/related-products";
+import { PaymentIcons } from "@/components/product-detail/payment-icons";
+import { addToRecentlyViewed } from "@/components/home/recently-viewed";
+import { Separator } from "@/components/ui/separator";
+
+const CATEGORY_NAMES: Record<string, string> = {
+  "operating-systems": "Operating Systems",
+  "office-productivity": "Office & Productivity",
+  "antivirus-security": "Antivirus & Security",
+  games: "Games",
+  "servers-development": "Servers & Development",
+};
+
+export default function ProductDetailPage() {
+  const params = useParams<{ slug: string }>();
+  const slug = params.slug ?? "";
+
+  const product = useMemo(
+    () => MOCK_PRODUCTS.find((p) => p.slug === slug),
+    [slug],
+  );
+
+  const relatedProducts = useMemo(() => {
+    if (!product) return [];
+    return MOCK_PRODUCTS.filter(
+      (p) => p.categorySlug === product.categorySlug && p.id !== product.id,
+    );
+  }, [product]);
+
+  useEffect(() => {
+    if (product) {
+      addToRecentlyViewed(product.id);
+      document.title = `${product.name} | PixelCodes`;
+    }
+    return () => {
+      document.title = "PixelCodes";
+    };
+  }, [product]);
+
+  if (!product) {
+    return (
+      <div className="container mx-auto px-4 py-16 text-center">
+        <h1 className="text-2xl font-bold mb-2">Product Not Found</h1>
+        <p className="text-muted-foreground">
+          The product you're looking for doesn't exist.
+        </p>
+      </div>
+    );
+  }
+
+  const categoryName = CATEGORY_NAMES[product.categorySlug] ?? product.categorySlug;
+
+  return (
+    <div className="container mx-auto px-4 py-6 space-y-8">
+      <Breadcrumbs
+        crumbs={[
+          { label: "Shop", href: "/shop" },
+          { label: categoryName, href: `/category/${product.categorySlug}` },
+          { label: product.name },
+        ]}
+      />
+
+      <div className="grid gap-8 lg:grid-cols-2">
+        <ProductImage imageUrl={product.imageUrl} productName={product.name} />
+
+        <div className="space-y-5">
+          <ProductInfo product={product} />
+          <SocialShare productName={product.name} />
+          <Separator />
+          <CrossSell
+            currentProduct={product}
+            relatedProducts={relatedProducts}
+          />
+          <TrustBadges />
+          <PaymentIcons />
+        </div>
+      </div>
+
+      <ProductTabs
+        productName={product.name}
+        platform={product.variants[0]?.platform ?? "WINDOWS"}
+      />
+
+      <Separator />
+
+      <ReviewsSection
+        avgRating={product.avgRating}
+        reviewCount={product.reviewCount}
+      />
+
+      <Separator />
+
+      <RelatedProducts products={relatedProducts} />
+    </div>
+  );
+}
