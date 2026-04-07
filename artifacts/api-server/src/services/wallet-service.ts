@@ -30,12 +30,17 @@ export async function creditWallet(
 ): Promise<{ wallet: WalletAccount; tx: typeof walletTransactions.$inferSelect }> {
   const wallet = await getOrCreateWallet(userId);
 
+  const isDeposit = type === "TOPUP";
   return db.transaction(async (tx) => {
-    const [updated] = await tx.update(walletAccounts).set({
+    const setFields: Record<string, any> = {
       balanceUsd: sql`${walletAccounts.balanceUsd}::numeric + ${amount.toFixed(2)}::numeric`,
-      totalDeposited: sql`${walletAccounts.totalDeposited}::numeric + ${amount.toFixed(2)}::numeric`,
       updatedAt: new Date(),
-    }).where(eq(walletAccounts.id, wallet.id)).returning();
+    };
+    if (isDeposit) {
+      setFields.totalDeposited = sql`${walletAccounts.totalDeposited}::numeric + ${amount.toFixed(2)}::numeric`;
+    }
+    const [updated] = await tx.update(walletAccounts).set(setFields)
+      .where(eq(walletAccounts.id, wallet.id)).returning();
 
     const [txn] = await tx.insert(walletTransactions).values({
       userId, type, amountUsd: amount.toFixed(2),

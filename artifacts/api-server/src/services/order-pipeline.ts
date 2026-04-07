@@ -95,10 +95,6 @@ export async function executeOrderPipeline(input: OrderInput) {
         email: billing.email,
       });
       if (!paymentResult.success) {
-        if (walletDebited && input.userId && input.walletAmountUsd) {
-          await creditWallet(input.userId, input.walletAmountUsd, "REFUND",
-            `Reversed: card declined for ${orderNumber}`, `reversal:${order.id}`);
-        }
         throw new Error(paymentResult.error ?? "Payment declined");
       }
       paymentIntentId = paymentResult.paymentIntentId;
@@ -208,6 +204,12 @@ export async function executeOrderPipeline(input: OrderInput) {
     logger.info({ orderNumber, total: total.toFixed(2) }, "Order pipeline complete");
     return { orderNumber, status: "COMPLETED" };
   } catch (err) {
+    if (walletDebited && input.userId && input.walletAmountUsd) {
+      await creditWallet(input.userId, input.walletAmountUsd, "REFUND",
+        `Reversed: order ${orderNumber} failed`, `reversal:${order.id}`).catch((wErr) => {
+        logger.error({ wErr, orderNumber }, "Failed to restore wallet on order failure");
+      });
+    }
     if (loyaltyRedeemed && loyaltyAccountId && input.loyaltyPointsUsed) {
       await restorePoints(loyaltyAccountId, input.loyaltyPointsUsed,
         `Points restored: order ${orderNumber} failed`, order.id).catch((restoreErr) => {
