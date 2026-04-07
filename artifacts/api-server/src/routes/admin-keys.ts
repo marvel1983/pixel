@@ -22,15 +22,17 @@ router.get("/admin/keys", requireAuth, requireAdmin, async (req, res) => {
     .where(whereClause);
 
   const stats = await db
-    .select({
-      status: licenseKeys.status,
-      cnt: count(),
-    })
+    .select({ status: licenseKeys.status, cnt: count() })
     .from(licenseKeys)
     .groupBy(licenseKeys.status);
 
   const statsMap: Record<string, number> = {};
   for (const s of stats) statsMap[s.status] = s.cnt;
+
+  const [{ claimed }] = await db
+    .select({ claimed: count() })
+    .from(licenseKeys)
+    .where(sql`${licenseKeys.revokeReason} LIKE 'CLAIM:%'`);
 
   const rows = await db
     .select({
@@ -62,10 +64,18 @@ router.get("/admin/keys", requireAuth, requireAdmin, async (req, res) => {
     stats: {
       total: Object.values(statsMap).reduce((a, b) => a + b, 0),
       delivered: statsMap["SOLD"] ?? 0,
-      available: statsMap["AVAILABLE"] ?? 0,
-      revoked: statsMap["REVOKED"] ?? 0,
+      pending: (statsMap["AVAILABLE"] ?? 0) + (statsMap["RESERVED"] ?? 0),
+      claimed: claimed,
     },
   });
+});
+
+router.get("/admin/keys/products", requireAuth, requireAdmin, async (_req, res) => {
+  const prods = await db
+    .select({ id: products.id, name: products.name })
+    .from(products)
+    .orderBy(products.name);
+  res.json({ products: prods });
 });
 
 router.post("/admin/keys/:id/reveal", requireAuth, requireAdmin, async (req, res) => {
@@ -181,7 +191,6 @@ function buildFilters(query: Record<string, unknown>) {
   const search = query.search as string | undefined;
   if (search?.trim()) {
     conditions.push(or(
-      ilike(licenseKeys.keyValue, `%${search}%`),
       ilike(orders.orderNumber, `%${search}%`),
       ilike(products.name, `%${search}%`),
       ilike(productVariants.sku, `%${search}%`),

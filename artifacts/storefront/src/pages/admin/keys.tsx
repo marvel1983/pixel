@@ -14,7 +14,7 @@ interface KeyRow {
   soldAt: string | null; createdAt: string;
 }
 
-interface Stats { total: number; delivered: number; available: number; revoked: number }
+interface Stats { total: number; delivered: number; pending: number; claimed: number }
 
 const STATUS_COLORS: Record<string, string> = {
   AVAILABLE: "bg-green-100 text-green-800", SOLD: "bg-blue-100 text-blue-800",
@@ -23,14 +23,16 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function AdminKeysPage() {
   const [rows, setRows] = useState<KeyRow[]>([]);
-  const [stats, setStats] = useState<Stats>({ total: 0, delivered: 0, available: 0, revoked: 0 });
+  const [stats, setStats] = useState<Stats>({ total: 0, delivered: 0, pending: 0, claimed: 0 });
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("ALL");
+  const [productId, setProductId] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [productOptions, setProductOptions] = useState<{ id: number; name: string }[]>([]);
   const [revealed, setRevealed] = useState<Record<number, string>>({});
   const [claimId, setClaimId] = useState<number | null>(null);
   const [claimReason, setClaimReason] = useState("");
@@ -40,11 +42,19 @@ export default function AdminKeysPage() {
   const token = useAuthStore((s) => s.token);
   const limit = 50;
 
+  useEffect(() => {
+    fetch(`${API}/admin/keys/products`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((d) => setProductOptions(d.products))
+      .catch(() => {});
+  }, [token]);
+
   const fetchKeys = useCallback(() => {
     setLoading(true);
     const params = new URLSearchParams({ page: String(page), limit: String(limit) });
     if (search) params.set("search", search);
     if (status !== "ALL") params.set("status", status);
+    if (productId) params.set("productId", productId);
     if (from) params.set("from", from);
     if (to) params.set("to", to);
 
@@ -53,7 +63,7 @@ export default function AdminKeysPage() {
       .then((d) => { setRows(d.keys); setTotal(d.total); setStats(d.stats); })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [token, page, search, status, from, to]);
+  }, [token, page, search, status, productId, from, to]);
 
   useEffect(() => { fetchKeys(); }, [fetchKeys]);
   useEffect(() => () => { Object.values(timers.current).forEach(clearTimeout); }, []);
@@ -80,9 +90,7 @@ export default function AdminKeysPage() {
 
   const copyKey = async (id: number, value: string) => {
     navigator.clipboard.writeText(value);
-    fetch(`${API}/admin/keys/${id}/copy-audit`, {
-      method: "POST", headers: { Authorization: `Bearer ${token}` },
-    });
+    fetch(`${API}/admin/keys/${id}/copy-audit`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
   };
 
   const submitClaim = async () => {
@@ -94,9 +102,7 @@ export default function AdminKeysPage() {
       body: JSON.stringify({ reason: claimReason, customerEmail: claimEmail }),
     });
     setSaving(false);
-    setClaimId(null);
-    setClaimReason("");
-    setClaimEmail("");
+    setClaimId(null); setClaimReason(""); setClaimEmail("");
     fetchKeys();
   };
 
@@ -104,28 +110,30 @@ export default function AdminKeysPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">License Keys</h1>
-      </div>
+      <h1 className="text-2xl font-bold tracking-tight">License Keys</h1>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCard label="Total Keys" value={stats.total} icon={<Key className="h-5 w-5 text-gray-400" />} />
         <StatCard label="Delivered" value={stats.delivered} icon={<span className="h-3 w-3 rounded-full bg-blue-500 inline-block" />} />
-        <StatCard label="Available" value={stats.available} icon={<span className="h-3 w-3 rounded-full bg-green-500 inline-block" />} />
-        <StatCard label="Revoked" value={stats.revoked} icon={<span className="h-3 w-3 rounded-full bg-red-500 inline-block" />} />
+        <StatCard label="Pending" value={stats.pending} icon={<span className="h-3 w-3 rounded-full bg-yellow-500 inline-block" />} />
+        <StatCard label="Claimed" value={stats.claimed} icon={<span className="h-3 w-3 rounded-full bg-red-500 inline-block" />} />
       </div>
 
       <div className="flex flex-wrap items-end gap-3 rounded-lg border bg-white p-3">
-        <div className="flex-1 min-w-[200px]">
+        <div className="flex-1 min-w-[180px]">
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <input className="w-full rounded-md border pl-9 pr-3 py-2 text-sm" placeholder="Search key, order #, product, SKU..."
+            <input className="w-full rounded-md border pl-9 pr-3 py-2 text-sm" placeholder="Search order #, product, SKU..."
               value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
           </div>
         </div>
         <select className="rounded-md border px-3 py-2 text-sm" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
           <option value="ALL">All Statuses</option>
           {Object.keys(STATUS_COLORS).map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>
+        <select className="rounded-md border px-3 py-2 text-sm max-w-[200px]" value={productId} onChange={(e) => { setProductId(e.target.value); setPage(1); }}>
+          <option value="">All Products</option>
+          {productOptions.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
         <input type="date" className="rounded-md border px-3 py-2 text-sm" value={from} onChange={(e) => { setFrom(e.target.value); setPage(1); }} />
         <input type="date" className="rounded-md border px-3 py-2 text-sm" value={to} onChange={(e) => { setTo(e.target.value); setPage(1); }} />
@@ -139,13 +147,13 @@ export default function AdminKeysPage() {
             <thead>
               <tr className="border-b bg-gray-50 text-left">
                 <th className="px-3 py-3 font-medium text-muted-foreground">Key</th>
-                <th className="px-3 py-3 font-medium text-muted-foreground">Source</th>
-                <th className="px-3 py-3 font-medium text-muted-foreground">Product</th>
-                <th className="px-3 py-3 font-medium text-muted-foreground">SKU</th>
+                <th className="px-3 py-3 font-medium text-muted-foreground">Type</th>
+                <th className="px-3 py-3 font-medium text-muted-foreground">Product / SKU</th>
                 <th className="px-3 py-3 font-medium text-muted-foreground">Order #</th>
                 <th className="px-3 py-3 font-medium text-muted-foreground">Customer</th>
                 <th className="px-3 py-3 font-medium text-muted-foreground">Status</th>
-                <th className="px-3 py-3 font-medium text-muted-foreground">Date</th>
+                <th className="px-3 py-3 font-medium text-muted-foreground">Created</th>
+                <th className="px-3 py-3 font-medium text-muted-foreground">Sold</th>
                 <th className="px-3 py-3 font-medium text-muted-foreground w-24">Actions</th>
               </tr>
             </thead>
@@ -153,17 +161,15 @@ export default function AdminKeysPage() {
               {rows.map((r) => (
                 <tr key={r.id} className="border-b last:border-0 hover:bg-gray-50">
                   <td className="px-3 py-3 font-mono text-xs">
-                    {revealed[r.id] ? (
-                      <span className="bg-yellow-50 px-1.5 py-0.5 rounded border border-yellow-200">{revealed[r.id]}</span>
-                    ) : r.maskedKey}
+                    {revealed[r.id] ? <span className="bg-yellow-50 px-1.5 py-0.5 rounded border border-yellow-200">{revealed[r.id]}</span> : r.maskedKey}
                   </td>
                   <td className="px-3 py-3"><Badge variant="outline" className="text-xs">{r.source}</Badge></td>
-                  <td className="px-3 py-3 text-xs max-w-[160px] truncate">{r.productName}</td>
-                  <td className="px-3 py-3 font-mono text-xs text-muted-foreground">{r.sku}</td>
+                  <td className="px-3 py-3 text-xs"><div className="max-w-[160px] truncate">{r.productName}</div><div className="text-muted-foreground font-mono">{r.sku}</div></td>
                   <td className="px-3 py-3 font-mono text-xs text-blue-600">{r.orderNumber ?? "—"}</td>
                   <td className="px-3 py-3 text-xs text-muted-foreground">{r.customerEmail ?? "—"}</td>
                   <td className="px-3 py-3"><span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[r.status] ?? "bg-gray-100"}`}>{r.status}</span></td>
                   <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">{new Date(r.createdAt).toLocaleDateString()}</td>
+                  <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">{r.soldAt ? new Date(r.soldAt).toLocaleDateString() : "—"}</td>
                   <td className="px-3 py-3">
                     <div className="flex gap-1">
                       <button onClick={() => revealKey(r.id)} className="p-1 rounded hover:bg-gray-200" title={revealed[r.id] ? "Hide" : "Reveal"}>
