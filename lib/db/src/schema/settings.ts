@@ -7,6 +7,7 @@ import {
   timestamp,
   jsonb,
   integer,
+  numeric,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -35,6 +36,12 @@ export const siteSettings = pgTable("site_settings", {
   enabledCurrencies: jsonb("enabled_currencies")
     .$type<string[]>()
     .default(["USD", "EUR", "GBP"]),
+  cppEnabled: boolean("cpp_enabled").notNull().default(false),
+  cppLabel: varchar("cpp_label", { length: 200 }).default("Checkout Protection Plan"),
+  cppPrice: numeric("cpp_price", { precision: 10, scale: 2 }).default("0.99"),
+  cppDescription: text("cpp_description").default("Protect your purchase with instant replacement if your key doesn't work."),
+  processingFeePercent: numeric("processing_fee_percent", { precision: 5, scale: 2 }).default("0"),
+  processingFeeFixed: numeric("processing_fee_fixed", { precision: 10, scale: 2 }).default("0"),
   trustpilotUrl: text("trustpilot_url"),
   metaTitleTemplate: varchar("meta_title_template", { length: 300 }),
   metaDescription: text("meta_description"),

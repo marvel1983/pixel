@@ -1,9 +1,17 @@
+import { lazy, Suspense } from "react";
 import { useSearch, useLocation } from "wouter";
-import SettingsGeneralTab from "./settings-general";
-import SettingsApiKeysTab from "./settings-apikeys";
+
+const SettingsGeneralTab = lazy(() => import("./settings-general"));
+const SettingsApiKeysTab = lazy(() => import("./settings-apikeys"));
+const SettingsCppFeesTab = lazy(() => import("./settings-cpp-fees"));
+const SettingsCurrenciesTab = lazy(() => import("./settings-currencies"));
+const SettingsSmtpTab = lazy(() => import("./settings-smtp"));
 
 const tabs = [
   { key: "general", label: "General" },
+  { key: "cpp-fees", label: "CPP & Fees" },
+  { key: "currencies", label: "Currencies" },
+  { key: "smtp", label: "SMTP" },
   { key: "api-keys", label: "API Keys" },
 ] as const;
 
@@ -18,15 +26,20 @@ export default function AdminSettingsPage() {
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-      <div className="flex gap-1 border-b">
+      <div className="flex gap-1 border-b overflow-x-auto">
         {tabs.map((t) => (
-          <button key={t.key} onClick={() => setTab(t.key)} className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${activeTab === t.key ? "border-blue-600 text-blue-600" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
+          <button key={t.key} onClick={() => setTab(t.key)} className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap ${activeTab === t.key ? "border-blue-600 text-blue-600" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
             {t.label}
           </button>
         ))}
       </div>
-      {activeTab === "general" && <SettingsGeneralTab />}
-      {activeTab === "api-keys" && <SettingsApiKeysTab />}
+      <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading...</div>}>
+        {activeTab === "general" && <SettingsGeneralTab />}
+        {activeTab === "cpp-fees" && <SettingsCppFeesTab />}
+        {activeTab === "currencies" && <SettingsCurrenciesTab />}
+        {activeTab === "smtp" && <SettingsSmtpTab />}
+        {activeTab === "api-keys" && <SettingsApiKeysTab />}
+      </Suspense>
     </div>
   );
 }
