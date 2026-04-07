@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Package, Search, Zap, Clock, Tag } from "lucide-react";
+import { useAuthStore } from "@/stores/auth-store";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -18,7 +19,8 @@ interface UpsellConfig {
 interface Product { id: number; name: string; imageUrl: string | null }
 
 export default function CheckoutUpsellPage() {
-  const [active, setActive] = useState<UpsellConfig | null>(null);
+  const token = useAuthStore((s) => s.token);
+  const [current, setCurrent] = useState<UpsellConfig | null>(null);
   const [history, setHistory] = useState<UpsellConfig[]>([]);
   const [productId, setProductId] = useState<number | null>(null);
   const [productName, setProductName] = useState("");
@@ -31,22 +33,21 @@ export default function CheckoutUpsellPage() {
   const [searchResults, setSearchResults] = useState<Product[]>([]);
   const [showSearch, setShowSearch] = useState(false);
   const [saving, setSaving] = useState(false);
-  const token = localStorage.getItem("token");
-  const headers: Record<string, string> = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+  const authHeaders: Record<string, string> = { Authorization: `Bearer ${token}` };
 
   const fetchData = useCallback(() => {
-    fetch(`${API}/admin/checkout-upsell`, { headers: { Authorization: `Bearer ${token}` } })
+    fetch(`${API}/admin/checkout-upsell`, { headers: authHeaders })
       .then((r) => r.json())
-      .then((d) => { setActive(d.active); setHistory(d.history); })
+      .then((d) => { setCurrent(d.current); setHistory(d.history); })
       .catch(() => {});
-  }, []);
+  }, [token]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
   useEffect(() => {
     if (searchQ.length < 2) { setSearchResults([]); return; }
     const t = setTimeout(() => {
-      fetch(`${API}/admin/products?q=${encodeURIComponent(searchQ)}`, { headers: { Authorization: `Bearer ${token}` } })
+      fetch(`${API}/admin/products?q=${encodeURIComponent(searchQ)}`, { headers: authHeaders })
         .then((r) => r.json())
         .then((d) => setSearchResults(d.products?.map((p: Product & { id: number }) => ({ id: p.id, name: p.name, imageUrl: p.imageUrl })) ?? []))
         .catch(() => {});
@@ -63,7 +64,7 @@ export default function CheckoutUpsellPage() {
     if (!productId) return;
     setSaving(true);
     await fetch(`${API}/admin/checkout-upsell`, {
-      method: "POST", headers,
+      method: "POST", headers: { ...authHeaders, "Content-Type": "application/json" },
       body: JSON.stringify({
         productId, displayPrice: displayPrice || null,
         strikethroughPrice: strikethroughPrice || null,
@@ -76,7 +77,7 @@ export default function CheckoutUpsellPage() {
   };
 
   const toggle = async (id: number) => {
-    await fetch(`${API}/admin/checkout-upsell/${id}/toggle`, { method: "PATCH", headers });
+    await fetch(`${API}/admin/checkout-upsell/${id}/toggle`, { method: "PATCH", headers: { ...authHeaders, "Content-Type": "application/json" } });
     fetchData();
   };
 
@@ -92,27 +93,27 @@ export default function CheckoutUpsellPage() {
         <h1 className="text-2xl font-bold tracking-tight">Checkout Upsell</h1>
         <p className="text-sm text-muted-foreground">Configure the featured product offer shown at checkout</p>
       </div>
-      {active ? (
+      {current ? (
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-base">Current Upsell Product</CardTitle>
             <div className="flex items-center gap-2">
-              <Badge className={active.isActive ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"} variant="secondary">{active.isActive ? "Active" : "Disabled"}</Badge>
-              <Switch checked={active.isActive} onCheckedChange={() => toggle(active.id)} />
+              <Badge className={current.isActive ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"} variant="secondary">{current.isActive ? "Active" : "Disabled"}</Badge>
+              <Switch checked={current.isActive} onCheckedChange={() => toggle(current.id)} />
             </div>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 rounded-lg border bg-gray-50 flex items-center justify-center">
-                {active.productImage ? <img src={active.productImage} alt="" className="w-full h-full object-contain rounded-lg" /> : <Package className="h-6 w-6 text-muted-foreground" />}
+                {current.productImage ? <img src={current.productImage} alt="" className="w-full h-full object-contain rounded-lg" /> : <Package className="h-6 w-6 text-muted-foreground" />}
               </div>
               <div className="flex-1">
-                <p className="font-medium">{active.productName}</p>
+                <p className="font-medium">{current.productName}</p>
                 <div className="flex gap-4 mt-1 text-sm text-muted-foreground">
-                  {active.displayPrice && <span>Price: ${active.displayPrice}</span>}
-                  {active.strikethroughPrice && <span className="line-through">Was: ${active.strikethroughPrice}</span>}
+                  {current.displayPrice && <span>Price: ${current.displayPrice}</span>}
+                  {current.strikethroughPrice && <span className="line-through">Was: ${current.strikethroughPrice}</span>}
                 </div>
-                {active.urgencyMessage && <p className="text-xs text-orange-600 mt-1 flex items-center gap-1"><Clock className="h-3 w-3" />{active.urgencyMessage}</p>}
+                {current.urgencyMessage && <p className="text-xs text-orange-600 mt-1 flex items-center gap-1"><Clock className="h-3 w-3" />{current.urgencyMessage}</p>}
               </div>
             </div>
           </CardContent>

@@ -25,9 +25,9 @@ router.get("/admin/checkout-upsell", requireAuth, requireAdmin, async (_req, res
     .innerJoin(products, eq(checkoutUpsell.productId, products.id))
     .orderBy(desc(checkoutUpsell.updatedAt));
 
-  const active = rows.find((r) => r.isActive) ?? null;
-  const history = rows.filter((r) => !r.isActive).slice(0, 3);
-  res.json({ active, history });
+  const current = rows.length > 0 ? rows[0] : null;
+  const history = rows.slice(1).slice(0, 3);
+  res.json({ current, history });
 });
 
 router.post("/admin/checkout-upsell", requireAuth, requireAdmin, async (req, res) => {
