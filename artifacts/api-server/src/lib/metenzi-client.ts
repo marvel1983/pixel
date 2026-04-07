@@ -63,10 +63,14 @@ export async function metenziRequest<T = unknown>(
   };
 
   let bodyStr: string | undefined;
-  if (body && isWrite) {
+  if (body) {
     bodyStr = JSON.stringify(body);
+  }
+
+  if (isWrite) {
     const timestamp = Math.floor(Date.now() / 1000).toString();
-    const signaturePayload = `${timestamp}.${bodyStr}`;
+    const payloadToSign = bodyStr ?? "";
+    const signaturePayload = `${timestamp}.${payloadToSign}`;
     const signature = signPayload(signaturePayload, config.hmacSecret);
     headers["X-Signature"] = signature;
     headers["X-Timestamp"] = timestamp;
@@ -95,7 +99,16 @@ export async function metenziRequest<T = unknown>(
         }
       }
 
-      const data = (await response.json()) as T;
+      let data: T;
+      const contentType = response.headers.get("content-type");
+      if (
+        response.status === 204 ||
+        !contentType?.includes("application/json")
+      ) {
+        data = {} as T;
+      } else {
+        data = (await response.json()) as T;
+      }
       return { ok: response.ok, status: response.status, data };
     } catch (error) {
       if (attempt < MAX_RETRIES) {

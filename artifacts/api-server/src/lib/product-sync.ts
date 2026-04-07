@@ -165,8 +165,12 @@ export async function syncProducts(): Promise<{
   let errors = 0;
 
   try {
-    const metenziProducts = await getProducts(config);
-    logger.info({ count: metenziProducts.length }, "Fetched Metenzi products");
+    const allProducts = await getProducts(config);
+    const metenziProducts = allProducts.filter((p) => p.isActive);
+    logger.info(
+      { total: allProducts.length, active: metenziProducts.length },
+      "Fetched Metenzi products",
+    );
 
     for (const mp of metenziProducts) {
       try {
