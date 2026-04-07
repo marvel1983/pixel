@@ -73,7 +73,7 @@ export default function AdminBannersPage() {
     if (!over || active.id === over.id) return;
     const oldIdx = rows.findIndex((r) => r.id === active.id);
     const newIdx = rows.findIndex((r) => r.id === over.id);
-    const reordered = arrayMove(rows, oldIdx, newIdx);
+    const reordered = arrayMove(rows, oldIdx, newIdx).map((r, i) => ({ ...r, sortOrder: i }));
     setRows(reordered);
     await api("/admin/banners/reorder", { method: "POST", body: JSON.stringify({ ids: reordered.map((r) => r.id) }) });
   };
