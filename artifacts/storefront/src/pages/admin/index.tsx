@@ -27,6 +27,8 @@ import MetenziBalancePage from "./metenzi-balance";
 import CheckoutUpsellPage from "./checkout-upsell";
 import HomepageSectionsPage from "./homepage-sections";
 import BrandSectionsPage from "./brand-sections";
+import EmailTemplatesPage from "./email-templates";
+import EmailTemplateEditPage from "./email-template-edit";
 
 function AdminPlaceholder({ title }: { title: string }) {
   return (
@@ -70,6 +72,8 @@ export default function AdminRoot() {
           <Route path="/admin/reviews" component={AdminReviewsPage} />
           <Route path="/admin/homepage-sections" component={HomepageSectionsPage} />
           <Route path="/admin/brand-sections" component={BrandSectionsPage} />
+          <Route path="/admin/email-templates/:id" component={EmailTemplateEditPage} />
+          <Route path="/admin/email-templates" component={EmailTemplatesPage} />
           <Route path="/admin/banners" component={AdminBannersPage} />
           <Route path="/admin/users">
             <AdminPlaceholder title="Users" />
