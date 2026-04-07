@@ -5,6 +5,7 @@ import { eq, desc, and, or, ilike, gte, lte, count } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import { processRefund, updateOrderRefundStatus } from "../lib/refund-service";
+import { creditWallet } from "../services/wallet-service";
 
 const router = Router();
 
@@ -79,47 +80,48 @@ router.get("/admin/refunds/order/:orderId", requireAuth, requireAdmin, requirePe
 });
 
 router.post("/admin/refunds", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
-  const { orderId, amount, reason, notes, notifyCustomer } = req.body;
+  const { orderId, amount, reason, notes, notifyCustomer, refundToWallet } = req.body;
   if (!orderId || !amount || !reason) {
     res.status(400).json({ error: "orderId, amount, and reason are required" }); return;
   }
-
   const parsedAmount = parseFloat(amount);
   if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
     res.status(400).json({ error: "Amount must be a positive number" }); return;
   }
   const roundedAmount = Math.round(parsedAmount * 100) / 100;
-
   const [order] = await db.select().from(orders).where(eq(orders.id, orderId));
   if (!order) { res.status(404).json({ error: "Order not found" }); return; }
 
-  const existingRefunds = await db.select().from(refunds)
-    .where(eq(refunds.orderId, orderId));
-  const refundedTotal = existingRefunds
-    .filter((r) => r.status !== "FAILED")
-    .reduce((sum, r) => sum + parseFloat(r.amountUsd), 0);
+  const existingRefunds = await db.select().from(refunds).where(eq(refunds.orderId, orderId));
+  const refundedTotal = existingRefunds.filter((r) => r.status !== "FAILED").reduce((sum, r) => sum + parseFloat(r.amountUsd), 0);
   const maxRefundable = parseFloat(order.totalUsd) - refundedTotal;
-
   if (roundedAmount > maxRefundable + 0.01) {
     res.status(400).json({ error: `Maximum refundable amount is $${maxRefundable.toFixed(2)}` }); return;
   }
 
-  const [refund] = await db.insert(refunds).values({
-    orderId, initiatedBy: req.user!.userId,
-    amountUsd: roundedAmount.toFixed(2),
-    reason, notes: notes || null,
-    notifyCustomer: notifyCustomer ?? true,
-    status: "PENDING",
-  }).returning();
-
-  const result = await processRefund(refund.id);
-
-  const [updated] = await db.select().from(refunds).where(eq(refunds.id, refund.id));
-
-  if (!result.success) {
-    res.status(500).json({ error: result.error, refund: updated }); return;
+  if (refundToWallet) {
+    const orderUser = order.guestEmail
+      ? await db.select({ id: users.id }).from(users).where(eq(users.email, order.guestEmail)).limit(1)
+      : [];
+    if (!orderUser.length) { res.status(400).json({ error: "No user account found for wallet refund" }); return; }
+    await creditWallet(orderUser[0].id, roundedAmount, "REFUND",
+      `Refund for order ${order.orderNumber}`, `refund:order:${orderId}`);
+    const [refund] = await db.insert(refunds).values({
+      orderId, initiatedBy: req.user!.userId, amountUsd: roundedAmount.toFixed(2),
+      reason, notes: `[Wallet Refund] ${notes || ""}`.trim(), notifyCustomer: notifyCustomer ?? true, status: "COMPLETED",
+    }).returning();
+    await updateOrderRefundStatus(orderId);
+    res.json({ success: true, refund });
+    return;
   }
 
+  const [refund] = await db.insert(refunds).values({
+    orderId, initiatedBy: req.user!.userId, amountUsd: roundedAmount.toFixed(2),
+    reason, notes: notes || null, notifyCustomer: notifyCustomer ?? true, status: "PENDING",
+  }).returning();
+  const result = await processRefund(refund.id);
+  const [updated] = await db.select().from(refunds).where(eq(refunds.id, refund.id));
+  if (!result.success) { res.status(500).json({ error: result.error, refund: updated }); return; }
   res.json({ success: true, refund: updated });
 });
 

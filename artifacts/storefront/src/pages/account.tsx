@@ -8,13 +8,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthStore } from "@/stores/auth-store";
 import { Breadcrumbs } from "@/components/shop/breadcrumbs";
-import { User, ShoppingBag, Heart, Star, Gift, Link2, Mail, Loader2, Shield, Trophy, Headphones } from "lucide-react";
+import { User, ShoppingBag, Heart, Star, Gift, Link2, Mail, Loader2, Shield, Trophy, Headphones, Wallet } from "lucide-react";
 import { GiftCardsTab } from "@/components/account/gift-cards-tab";
 import { AffiliateTab } from "@/components/account/affiliate-tab";
 import { NewsletterTab } from "@/components/account/newsletter-tab";
 import { ConnectedAccountsTab } from "@/components/account/connected-accounts";
 import { RewardsTab } from "@/components/account/rewards-tab";
 import { SupportTab } from "@/components/account/support-tab";
+import { WalletTab } from "@/components/account/wallet-tab";
 
 function ProfileTab() {
   const { user, token, setAuth } = useAuthStore();
@@ -185,6 +186,9 @@ export default function AccountPage() {
           <TabsTrigger value="newsletter" className="gap-1.5">
             <Mail className="h-4 w-4" /> Newsletter
           </TabsTrigger>
+          <TabsTrigger value="wallet" className="gap-1.5">
+            <Wallet className="h-4 w-4" /> Wallet
+          </TabsTrigger>
           <TabsTrigger value="support" className="gap-1.5">
             <Headphones className="h-4 w-4" /> Support
           </TabsTrigger>
@@ -216,6 +220,9 @@ export default function AccountPage() {
         </TabsContent>
         <TabsContent value="newsletter">
           <NewsletterTab />
+        </TabsContent>
+        <TabsContent value="wallet">
+          <WalletTab />
         </TabsContent>
         <TabsContent value="support">
           <SupportTab />
@@ -260,22 +267,14 @@ function AccountOrdersTab() {
       <CardContent className="p-0">
         <div className="divide-y">
           {orders.map((o) => (
-            <a
-              key={o.orderNumber}
-              href={`/order-lookup`}
-              className="flex items-center justify-between p-4 hover:bg-muted/50 transition"
-            >
+            <a key={o.orderNumber} href="/order-lookup" className="flex items-center justify-between p-4 hover:bg-muted/50 transition">
               <div>
                 <p className="font-medium">{o.orderNumber}</p>
-                <p className="text-sm text-muted-foreground">
-                  {o.firstProduct} {o.itemCount > 1 ? `+${o.itemCount - 1} more` : ""}
-                </p>
+                <p className="text-sm text-muted-foreground">{o.firstProduct} {o.itemCount > 1 ? `+${o.itemCount - 1} more` : ""}</p>
               </div>
               <div className="text-right">
                 <p className="font-medium">${o.totalUsd}</p>
-                <p className="text-xs text-muted-foreground">
-                  {new Date(o.createdAt).toLocaleDateString()}
-                </p>
+                <p className="text-xs text-muted-foreground">{new Date(o.createdAt).toLocaleDateString()}</p>
               </div>
             </a>
           ))}

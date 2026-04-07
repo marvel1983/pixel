@@ -12,6 +12,7 @@ import { getRefCookie } from "../middleware/referral";
 import { verifyToken } from "../middleware/auth";
 import { logger } from "../lib/logger";
 import { getLoyaltyConfig, getOrCreateAccount, pointsToDiscount } from "../services/loyalty-service";
+import { getWalletBalance } from "../services/wallet-service";
 
 const router = Router();
 
@@ -34,7 +35,8 @@ const orderSchema = z.object({
   coupon: z.object({ code: z.string().min(1).max(50), pct: z.number(), label: z.string() }).nullable().optional(),
   cppSelected: z.boolean().optional(),
   vatNumber: z.string().max(50).optional(), total: currencyStr,
-  payment: z.object({ cardToken: z.string().min(1) }),
+  payment: z.object({ cardToken: z.string().optional() }),
+  walletAmountUsd: z.number().min(0).optional(),
   guestPassword: z.string().min(8).optional(),
   giftCards: z.array(z.object({ code: z.string(), amount: z.number().positive() })).optional(),
   loyaltyPointsUsed: z.number().int().min(0).optional(),
@@ -121,12 +123,9 @@ async function validateAndPriceItems(items: z.infer<typeof orderSchema>["items"]
 router.post("/orders", async (req, res) => {
   const parsed = orderSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: "Invalid order data", details: parsed.error.flatten() });
-    return;
+    res.status(400).json({ error: "Invalid order data", details: parsed.error.flatten() }); return;
   }
-
   const { billing, items, coupon, cppSelected, vatNumber, total, payment, giftCards: gcInput } = parsed.data;
-
   let userId: number | undefined;
   try {
     const authToken = req.cookies?.token || req.headers.authorization?.replace("Bearer ", "");
@@ -237,6 +236,21 @@ router.post("/orders", async (req, res) => {
     return;
   }
 
+  let walletDeduction = 0;
+  const reqWallet = parsed.data.walletAmountUsd ?? 0;
+  if (reqWallet > 0) {
+    if (!userId) { res.status(400).json({ error: "Wallet payment requires login" }); return; }
+    const bal = await getWalletBalance(userId);
+    walletDeduction = Math.min(reqWallet, bal, computedTotal);
+    if (walletDeduction < reqWallet - 0.01) {
+      res.status(400).json({ error: "Insufficient wallet balance" }); return;
+    }
+  }
+  const cardTotal = Math.max(0, computedTotal - walletDeduction);
+  if (cardTotal > 0.01 && !payment.cardToken) {
+    res.status(400).json({ error: "Card payment required for remaining amount" }); return;
+  }
+
   try {
     const pricedItems = items.map((it) => {
       if (serverPrices && it.variantId > 0) {
@@ -258,13 +272,14 @@ router.post("/orders", async (req, res) => {
       vatNumber: vatNumber ?? null,
       total: computedTotal,
       orderNumber: generateOrderNumber(),
-      cardToken: payment.cardToken,
+      cardToken: payment.cardToken ?? "",
       guestPassword: parsed.data.guestPassword,
       giftCards: serverGiftCards,
       affiliateRefCode: getRefCookie(req),
       flashVariantMap: flashVariantMap.size > 0 ? flashVariantMap : undefined,
       loyaltyPointsUsed: loyaltyPtsUsed || undefined,
       loyaltyDiscount: loyaltyDisc || undefined,
+      walletAmountUsd: walletDeduction > 0 ? walletDeduction : undefined,
       userId,
     });
 

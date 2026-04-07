@@ -38,7 +38,7 @@ Tables split across `lib/db/src/schema/`:
 - `settings.ts` — site_settings, pages (CMS), faqs
 - `api-providers.ts` — external API providers (metenzi)
 - `wishlists.ts` — user wishlists
-- `wallet.ts` — wallet transactions
+- `wallet.ts` — walletAccounts (balance per user) + walletTransactions (credit/debit/topup/purchase/refund/bonus)
 - `blog.ts` — blog posts
 - `support.ts` — support tickets + ticket messages
 - `affiliates.ts` — affiliate_profiles, affiliate_clicks, affiliate_commissions, affiliate_settings
@@ -67,6 +67,19 @@ Located in `artifacts/storefront/src/stores/`:
 - Admin: customer detail page shows loyalty info with point adjustment controls
 - Schema: loyaltyAccounts, loyaltyTransactions, loyaltySettings tables
 - Service: `loyalty-service.ts` (earn, redeem, tier calculation, config)
+
+## Store Wallet / Balance System
+
+- walletAccounts: one per user (unique userId), tracks balance/totalDeposited/totalSpent
+- walletTransactions: all movements with type (CREDIT, DEBIT, REFUND, BONUS, TOPUP, PURCHASE), balanceAfter snapshot, referenceId
+- Customer APIs: GET /wallet/balance, GET /wallet/transactions, POST /wallet/topup
+- Admin APIs: GET /admin/wallet/:userId, POST /admin/wallet/:userId/adjust (credit/debit with reason)
+- Service: `wallet-service.ts` (getOrCreateWallet, creditWallet, debitWallet)
+- Checkout integration: walletAmountUsd field in order schema, wallet covers partial/full payment
+- If wallet covers full order total, card payment is skipped entirely
+- Refund to wallet: admin refund modal has "Refund to customer wallet" checkbox
+- Account page: Wallet tab with balance display, quick top-up ($10/$25/$50/$100), transaction history
+- Admin customer detail: Wallet section with balance, credit/debit controls, transaction log
 - Routes: `loyalty.ts` (customer), `admin-loyalty.ts` (admin settings + customer adjustments)
 
 ## Product Bundles

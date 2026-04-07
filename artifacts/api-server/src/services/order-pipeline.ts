@@ -12,6 +12,7 @@ import { createGiftCardForOrder, sendGiftCardEmails, redeemGiftCards } from "./g
 import { createCommissionForOrder } from "./affiliate-service";
 import { markCartRecovered } from "./abandoned-cart-service";
 import { awardOrderPoints, redeemPoints, getOrCreateAccount, restorePoints } from "./loyalty-service";
+import { debitWallet, creditWallet } from "./wallet-service";
 import { getMetenziConfig } from "../lib/metenzi-config";
 import { createOrder as metenziCreateOrder } from "../lib/metenzi-endpoints";
 import { logger } from "../lib/logger";
@@ -20,43 +21,25 @@ import bcrypt from "bcryptjs";
 
 type OrderStatus = (typeof orderStatusEnum.enumValues)[number];
 
+interface BillingInfo {
+  email: string; firstName: string; lastName: string;
+  country: string; city: string; address: string; zip: string;
+}
+interface OrderItem {
+  variantId: number; productId: number; productName: string; variantName: string;
+  priceUsd: string; quantity: number; platform?: string; bundleId?: number;
+}
 interface OrderInput {
-  billing: {
-    email: string;
-    firstName: string;
-    lastName: string;
-    country: string;
-    city: string;
-    address: string;
-    zip: string;
-  };
-  items: Array<{
-    variantId: number;
-    productId: number;
-    productName: string;
-    variantName: string;
-    priceUsd: string;
-    quantity: number;
-    platform?: string;
-    bundleId?: number;
-  }>;
+  billing: BillingInfo;
+  items: OrderItem[];
   coupon: { code: string; pct: number; label: string } | null;
-  cppSelected: boolean;
-  subtotal: number;
-  discountAmount: number;
-  taxRate: number;
-  taxAmount: number;
-  vatNumber: string | null;
-  total: number;
-  orderNumber: string;
-  cardToken: string;
-  guestPassword?: string;
-  giftCards?: Array<{ code: string; amount: number }>;
-  affiliateRefCode?: string;
-  flashVariantMap?: Map<number, number>;
-  loyaltyPointsUsed?: number;
-  loyaltyDiscount?: number;
-  userId?: number;
+  cppSelected: boolean; subtotal: number; discountAmount: number;
+  taxRate: number; taxAmount: number; vatNumber: string | null;
+  total: number; orderNumber: string; cardToken: string;
+  guestPassword?: string; giftCards?: Array<{ code: string; amount: number }>;
+  affiliateRefCode?: string; flashVariantMap?: Map<number, number>;
+  loyaltyPointsUsed?: number; loyaltyDiscount?: number;
+  walletAmountUsd?: number; userId?: number;
 }
 
 export async function executeOrderPipeline(input: OrderInput) {
@@ -94,20 +77,39 @@ export async function executeOrderPipeline(input: OrderInput) {
 
     await updateOrderStatus(order.id, "PROCESSING");
 
-    const paymentResult = await processPayment({
-      amount: total.toFixed(2),
-      currency: "USD",
-      cardToken: input.cardToken,
-      email: billing.email,
-    });
+    let walletDebited = false;
+    if (input.walletAmountUsd && input.walletAmountUsd > 0 && input.userId) {
+      await debitWallet(input.userId, input.walletAmountUsd, "PURCHASE",
+        `Order ${orderNumber}`, `order:${order.id}`);
+      walletDebited = true;
+    }
 
-    if (!paymentResult.success) {
-      throw new Error(paymentResult.error ?? "Payment declined");
+    const cardAmount = input.walletAmountUsd
+      ? Math.max(0, total - input.walletAmountUsd) : total;
+
+    let paymentIntentId = "";
+    if (cardAmount > 0.01 && input.cardToken) {
+      const paymentResult = await processPayment({
+        amount: cardAmount.toFixed(2),
+        currency: "USD",
+        cardToken: input.cardToken,
+        email: billing.email,
+      });
+      if (!paymentResult.success) {
+        if (walletDebited && input.userId && input.walletAmountUsd) {
+          await creditWallet(input.userId, input.walletAmountUsd, "REFUND",
+            `Reversed: card declined for ${orderNumber}`, `reversal:${order.id}`);
+        }
+        throw new Error(paymentResult.error ?? "Payment declined");
+      }
+      paymentIntentId = paymentResult.paymentIntentId;
+    } else if (walletDebited) {
+      paymentIntentId = `wallet_${Date.now()}`;
     }
 
     await db
       .update(orders)
-      .set({ paymentIntentId: paymentResult.paymentIntentId })
+      .set({ paymentIntentId })
       .where(eq(orders.id, order.id));
 
     if (input.guestPassword) {
@@ -275,23 +277,19 @@ async function createGuestAccount(billing: OrderInput["billing"], password: stri
   }
 }
 
-async function incrementFlashSaleSoldCounts(
-  flashVariantMap: Map<number, number>,
-  items: OrderInput["items"],
-) {
+async function incrementFlashSaleSoldCounts(flashVariantMap: Map<number, number>, items: OrderInput["items"]) {
   const qtyMap = new Map<string, { variantId: number; flashSaleId: number; qty: number }>();
   for (const item of items) {
-    const flashSaleId = flashVariantMap.get(item.variantId);
-    if (flashSaleId === undefined) continue;
-    const key = `${flashSaleId}-${item.variantId}`;
-    const existing = qtyMap.get(key);
-    if (existing) existing.qty += item.quantity;
-    else qtyMap.set(key, { variantId: item.variantId, flashSaleId, qty: item.quantity });
+    const fsId = flashVariantMap.get(item.variantId);
+    if (fsId === undefined) continue;
+    const key = `${fsId}-${item.variantId}`;
+    const ex = qtyMap.get(key);
+    if (ex) ex.qty += item.quantity;
+    else qtyMap.set(key, { variantId: item.variantId, flashSaleId: fsId, qty: item.quantity });
   }
   for (const { variantId, flashSaleId, qty } of qtyMap.values()) {
     await db.update(flashSaleProducts)
       .set({ soldCount: sql`LEAST(${flashSaleProducts.soldCount} + ${qty}, ${flashSaleProducts.maxQuantity})` })
       .where(and(eq(flashSaleProducts.variantId, variantId), eq(flashSaleProducts.flashSaleId, flashSaleId)));
   }
-  logger.info({ count: qtyMap.size }, "Flash sale sold counts incremented");
 }

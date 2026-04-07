@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { useRoute, useLocation } from "wouter";
-import { ArrowLeft, Star, Shield, Trash2, KeyRound, Ban, CheckCircle, Trophy } from "lucide-react";
+import { ArrowLeft, Star, Shield, Trash2, KeyRound, Ban, CheckCircle, Trophy, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthStore } from "@/stores/auth-store";
+import { CustomerWallet } from "@/components/admin/customer-wallet";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -237,6 +238,10 @@ export default function CustomerDetailPage() {
                 </div>
               )}
             </div>
+          </Section>
+
+          <Section title="Wallet">
+            <CustomerWallet userId={customer.id} />
           </Section>
 
           <Section title={`Reviews (${customerReviews.length})`}>

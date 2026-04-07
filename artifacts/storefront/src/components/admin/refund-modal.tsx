@@ -29,6 +29,7 @@ export function RefundModal({ orderId, orderNumber, orderTotal, open, onClose, o
   const [reason, setReason] = useState(REASONS[0]);
   const [notes, setNotes] = useState("");
   const [notifyCustomer, setNotifyCustomer] = useState(true);
+  const [refundToWallet, setRefundToWallet] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [existing, setExisting] = useState<ExistingRefund[]>([]);
@@ -59,7 +60,7 @@ export function RefundModal({ orderId, orderNumber, orderTotal, open, onClose, o
       const res = await fetch(`${API}/admin/refunds`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ orderId, amount: refundAmt.toFixed(2), reason, notes: notes.trim() || undefined, notifyCustomer }),
+        body: JSON.stringify({ orderId, amount: refundAmt.toFixed(2), reason, notes: notes.trim() || undefined, notifyCustomer, refundToWallet }),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error || "Refund failed"); return; }
@@ -116,6 +117,11 @@ export function RefundModal({ orderId, orderNumber, orderTotal, open, onClose, o
             <textarea className="w-full rounded-md border px-3 py-2 text-sm" rows={2} value={notes}
               onChange={(e) => setNotes(e.target.value)} placeholder="Internal notes about this refund..." />
           </div>
+
+          <label className="flex items-center gap-2 cursor-pointer">
+            <Checkbox checked={refundToWallet} onCheckedChange={(v) => setRefundToWallet(!!v)} />
+            <span className="text-sm">Refund to customer wallet</span>
+          </label>
 
           <label className="flex items-center gap-2 cursor-pointer">
             <Checkbox checked={notifyCustomer} onCheckedChange={(v) => setNotifyCustomer(!!v)} />

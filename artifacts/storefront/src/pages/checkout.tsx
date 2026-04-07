@@ -18,6 +18,7 @@ import { getCppAmount } from "@/components/checkout/cpp-section";
 import { EmptyCart } from "@/components/cart/empty-cart";
 import { GiftCardInput, type AppliedGiftCard } from "@/components/checkout/gift-card-input";
 import { LoyaltyRedeem } from "@/components/checkout/loyalty-redeem";
+import { WalletPayment } from "@/components/checkout/wallet-payment";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -51,6 +52,7 @@ export default function CheckoutPage() {
   const [appliedGiftCards, setAppliedGiftCards] = useState<AppliedGiftCard[]>([]);
   const [loyaltyPoints, setLoyaltyPoints] = useState(0);
   const [loyaltyDiscount, setLoyaltyDiscount] = useState(0);
+  const [walletAmount, setWalletAmount] = useState(0);
   const [newsletterOptIn, setNewsletterOptIn] = useState(true);
 
   const capturedRef = useRef("");
@@ -105,29 +107,34 @@ export default function CheckoutPage() {
 
   async function handleSubmit() {
     const bResult = validateBilling(billing);
-    const pResult = validatePayment(payment);
     setBillingErrors(bResult.errors);
-    setPaymentErrors(pResult.errors);
+
+    const subtotal = getTotal();
+    const discount = coupon ? subtotal * (coupon.pct / 100) : 0;
+    const cpp = cppSelected ? getCppAmount(subtotal) : 0;
+    const beforeTax = subtotal - discount - loyaltyDiscount + cpp;
+    const isInclusive = taxInfo.priceDisplay === "inclusive";
+    const taxAmount = taxInfo.taxRate > 0
+      ? isInclusive
+        ? Math.round((beforeTax - beforeTax / (1 + taxInfo.taxRate / 100)) * 100) / 100
+        : Math.round(beforeTax * (taxInfo.taxRate / 100) * 100) / 100
+      : 0;
+    const preGcTotal = isInclusive ? beforeTax : beforeTax + taxAmount;
+    const gcTotal = appliedGiftCards.reduce((s, c) => s + c.applied, 0);
+    const total = Math.max(0, preGcTotal - gcTotal);
+
+    const walletCoversAll = walletAmount >= total - 0.01;
+    const pResult = walletCoversAll ? { valid: true, errors: {} } : validatePayment(payment);
+    setPaymentErrors(pResult.errors as Partial<Record<keyof PaymentData, string>>);
     if (!bResult.valid || !pResult.valid) return;
 
     setSubmitting(true);
     try {
-      const subtotal = getTotal();
-      const discount = coupon ? subtotal * (coupon.pct / 100) : 0;
-      const cpp = cppSelected ? getCppAmount(subtotal) : 0;
-      const beforeTax = subtotal - discount - loyaltyDiscount + cpp;
-      const isInclusive = taxInfo.priceDisplay === "inclusive";
-      const taxAmount = taxInfo.taxRate > 0
-        ? isInclusive
-          ? Math.round((beforeTax - beforeTax / (1 + taxInfo.taxRate / 100)) * 100) / 100
-          : Math.round(beforeTax * (taxInfo.taxRate / 100) * 100) / 100
-        : 0;
-      const preGcTotal = isInclusive ? beforeTax : beforeTax + taxAmount;
-      const gcTotal = appliedGiftCards.reduce((s, c) => s + c.applied, 0);
-      const total = Math.max(0, preGcTotal - gcTotal);
-
-      const cardDigits = payment.cardNumber.replace(/\s/g, "");
-      const cardToken = `tok_${cardDigits.slice(-4)}_${Date.now()}`;
+      let cardToken: string | undefined;
+      if (!walletCoversAll) {
+        const cardDigits = payment.cardNumber.replace(/\s/g, "");
+        cardToken = `tok_${cardDigits.slice(-4)}_${Date.now()}`;
+      }
 
       const res = await fetch(`${API}/orders`, {
         method: "POST",
@@ -139,7 +146,7 @@ export default function CheckoutPage() {
           total: total.toFixed(2),
           giftCards: appliedGiftCards.map((c) => ({ code: c.code, amount: c.applied })),
           loyaltyPointsUsed: loyaltyPoints || undefined,
-          loyaltyDiscount: loyaltyDiscount || undefined,
+          walletAmountUsd: walletAmount > 0 ? walletAmount : undefined,
           payment: { cardToken },
           guestPassword: guestPassword || undefined,
         }),
@@ -200,6 +207,13 @@ export default function CheckoutPage() {
             subtotal={getTotal()}
             onRedeemChange={(pts, disc) => { setLoyaltyPoints(pts); setLoyaltyDiscount(disc); }}
           />
+          <WalletPayment orderTotal={(() => {
+            const s = getTotal(); const d = coupon ? s * (coupon.pct / 100) : 0;
+            const bt = s - d - loyaltyDiscount + (cppSelected ? getCppAmount(s) : 0);
+            const tr = taxInfo.taxRate || 0;
+            const tax = taxInfo.priceDisplay === "inclusive" ? 0 : Math.round(bt * (tr / 100) * 100) / 100;
+            return Math.max(0, bt + tax - appliedGiftCards.reduce((a, c) => a + c.applied, 0));
+          })()} onWalletChange={setWalletAmount} />
           <Separator />
           <PaymentForm data={payment} errors={paymentErrors} onChange={handlePaymentChange} />
           <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
