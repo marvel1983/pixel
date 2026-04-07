@@ -25,6 +25,7 @@ import ResetPasswordPage from "@/pages/reset-password";
 import AccountPage from "@/pages/account";
 import WishlistPage from "@/pages/wishlist";
 import ComparePage from "@/pages/compare";
+import SearchPage from "@/pages/search";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ function Router() {
     <SiteLayout>
       <Switch>
         <Route path="/" component={HomePage} />
+        <Route path="/search" component={SearchPage} />
         <Route path="/shop" component={ShopPage} />
         <Route path="/category/:slug" component={CategoryPage} />
         <Route path="/outlet" component={OutletPage} />

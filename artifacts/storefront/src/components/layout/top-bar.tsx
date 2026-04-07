@@ -1,6 +1,6 @@
-import { Search, Headset, Globe } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { Headset, Globe } from "lucide-react";
 import { Link } from "wouter";
+import { SearchAutocomplete } from "./search-autocomplete";
 
 export function TopBar() {
   return (
@@ -15,14 +15,7 @@ export function TopBar() {
           </span>
         </Link>
 
-        <div className="flex-1 max-w-xl mx-auto relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Search for software, games, keys..."
-            className="pl-9 h-10 bg-muted/50 border-border"
-          />
-        </div>
+        <SearchAutocomplete />
 
         <div className="hidden lg:flex items-center gap-6 shrink-0 text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
