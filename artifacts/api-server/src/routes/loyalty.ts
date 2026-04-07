@@ -41,6 +41,7 @@ router.get("/loyalty/account", requireAuth, async (req, res) => {
 
   const account = await getOrCreateAccount(req.user!.userId);
   const nextTier = getNextTier(account.tier, config);
+  const currentTierThreshold = getCurrentTierThreshold(account.tier, config);
 
   res.json({
     enabled: true,
@@ -48,6 +49,7 @@ router.get("/loyalty/account", requireAuth, async (req, res) => {
     lifetimePoints: account.lifetimePoints,
     tier: account.tier,
     tierMultiplier: account.tierMultiplier,
+    currentTierThreshold,
     nextTier: nextTier?.name ?? null,
     nextTierThreshold: nextTier?.threshold ?? null,
     pointsToNextTier: nextTier
@@ -107,18 +109,25 @@ router.post("/loyalty/preview-redeem", requireAuth, async (req, res) => {
   });
 });
 
-function getNextTier(
-  currentTier: string,
-  config: NonNullable<Awaited<ReturnType<typeof getLoyaltyConfig>>>,
-) {
-  const tiers = [
+function getTiers(config: NonNullable<Awaited<ReturnType<typeof getLoyaltyConfig>>>) {
+  return [
     { name: "BRONZE", threshold: config.bronzeThreshold },
     { name: "SILVER", threshold: config.silverThreshold },
     { name: "GOLD", threshold: config.goldThreshold },
     { name: "PLATINUM", threshold: config.platinumThreshold },
   ];
+}
+
+function getNextTier(currentTier: string, config: NonNullable<Awaited<ReturnType<typeof getLoyaltyConfig>>>) {
+  const tiers = getTiers(config);
   const idx = tiers.findIndex((t) => t.name === currentTier);
   return idx < tiers.length - 1 ? tiers[idx + 1] : null;
+}
+
+function getCurrentTierThreshold(currentTier: string, config: NonNullable<Awaited<ReturnType<typeof getLoyaltyConfig>>>) {
+  const tiers = getTiers(config);
+  const idx = tiers.findIndex((t) => t.name === currentTier);
+  return idx >= 0 ? tiers[idx].threshold : 0;
 }
 
 export default router;

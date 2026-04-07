@@ -72,8 +72,11 @@ export function RewardsTab() {
   if (loading) return <Card><CardContent className="py-8 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></CardContent></Card>;
   if (!account) return <Card><CardContent className="py-12 text-center text-muted-foreground"><Trophy className="h-8 w-8 mx-auto mb-3" /><p>Loyalty rewards are not available yet.</p></CardContent></Card>;
 
+  const currentThreshold = account.currentTierThreshold ?? 0;
+  const nextThreshold = account.nextTierThreshold ?? 1;
+  const bandRange = nextThreshold - currentThreshold;
   const progressPct = account.nextTier
-    ? Math.min(100, Math.max(0, ((account.lifetimePoints) / (account.nextTierThreshold ?? 1)) * 100))
+    ? Math.min(100, Math.max(0, ((account.lifetimePoints - currentThreshold) / (bandRange || 1)) * 100))
     : 100;
 
   return (

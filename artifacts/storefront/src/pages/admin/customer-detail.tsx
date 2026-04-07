@@ -191,49 +191,53 @@ export default function CustomerDetailPage() {
             </div>
           </Section>
 
-          {loyalty?.account && (
-            <Section title="Loyalty">
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Tier</span>
-                  <Badge variant="secondary">{loyalty.account.tier}</Badge>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Balance</span>
-                  <span className="font-bold">{loyalty.account.pointsBalance.toLocaleString()} pts</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Lifetime</span>
-                  <span className="font-bold">{loyalty.account.lifetimePoints.toLocaleString()} pts</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Multiplier</span>
-                  <span className="font-bold">{loyalty.account.tierMultiplier}x</span>
-                </div>
-                <div className="border-t pt-3 space-y-2">
-                  <p className="text-xs font-medium">Adjust Points</p>
-                  <Input type="number" placeholder="+100 or -50" value={adjustPts} onChange={(e) => setAdjustPts(e.target.value)} className="h-8 text-sm" />
-                  <Input placeholder="Note (optional)" value={adjustNote} onChange={(e) => setAdjustNote(e.target.value)} className="h-8 text-sm" />
-                  <Button size="sm" className="w-full" onClick={adjustLoyalty} disabled={adjusting}>
-                    <Trophy className="h-3.5 w-3.5 mr-1" /> {adjusting ? "Adjusting..." : "Adjust Points"}
-                  </Button>
-                </div>
-                {loyalty.transactions.length > 0 && (
-                  <div className="border-t pt-3 space-y-1 max-h-48 overflow-y-auto">
-                    <p className="text-xs font-medium mb-2">Recent Transactions</p>
-                    {loyalty.transactions.slice(0, 10).map((tx) => (
-                      <div key={tx.id} className="flex justify-between text-xs">
-                        <span className="truncate flex-1 mr-2">{tx.description}</span>
-                        <span className={tx.points > 0 ? "text-green-600" : "text-red-600"}>
-                          {tx.points > 0 ? "+" : ""}{tx.points}
-                        </span>
-                      </div>
-                    ))}
+          <Section title="Loyalty">
+            <div className="space-y-3 text-sm">
+              {loyalty?.account ? (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Tier</span>
+                    <Badge variant="secondary">{loyalty.account.tier}</Badge>
                   </div>
-                )}
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Balance</span>
+                    <span className="font-bold">{loyalty.account.pointsBalance.toLocaleString()} pts</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Lifetime</span>
+                    <span className="font-bold">{loyalty.account.lifetimePoints.toLocaleString()} pts</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Multiplier</span>
+                    <span className="font-bold">{loyalty.account.tierMultiplier}x</span>
+                  </div>
+                </>
+              ) : (
+                <p className="text-muted-foreground text-xs">No loyalty account yet. Use the form below to create one by adjusting points.</p>
+              )}
+              <div className="border-t pt-3 space-y-2">
+                <p className="text-xs font-medium">Adjust Points</p>
+                <Input type="number" placeholder="+100 or -50" value={adjustPts} onChange={(e) => setAdjustPts(e.target.value)} className="h-8 text-sm" />
+                <Input placeholder="Note (optional)" value={adjustNote} onChange={(e) => setAdjustNote(e.target.value)} className="h-8 text-sm" />
+                <Button size="sm" className="w-full" onClick={adjustLoyalty} disabled={adjusting}>
+                  <Trophy className="h-3.5 w-3.5 mr-1" /> {adjusting ? "Adjusting..." : "Adjust Points"}
+                </Button>
               </div>
-            </Section>
-          )}
+              {loyalty?.transactions && loyalty.transactions.length > 0 && (
+                <div className="border-t pt-3 space-y-1 max-h-48 overflow-y-auto">
+                  <p className="text-xs font-medium mb-2">Recent Transactions</p>
+                  {loyalty.transactions.slice(0, 10).map((tx) => (
+                    <div key={tx.id} className="flex justify-between text-xs">
+                      <span className="truncate flex-1 mr-2">{tx.description}</span>
+                      <span className={tx.points > 0 ? "text-green-600" : "text-red-600"}>
+                        {tx.points > 0 ? "+" : ""}{tx.points}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </Section>
 
           <Section title={`Reviews (${customerReviews.length})`}>
             {customerReviews.length > 0 ? (
