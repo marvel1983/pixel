@@ -72,11 +72,12 @@ export default function AdminSupportDetailPage() {
     if (!reply.trim() || !ticketNumber) return;
     setSending(true);
     try {
-      await fetch(`${API}/admin/support/tickets/${ticketNumber}/reply`, {
+      const res = await fetch(`${API}/admin/support/tickets/${ticketNumber}/reply`, {
         method: "POST",
         headers: { ...headers, "Content-Type": "application/json" }, credentials: "include",
         body: JSON.stringify({ message: reply, isInternal, status: replyStatus !== "NO_CHANGE" ? replyStatus : undefined }),
       });
+      if (!res.ok) throw new Error("Failed");
       setReply(""); setIsInternal(false); setReplyStatus("NO_CHANGE");
       load();
     } catch { toast({ title: "Error", description: "Failed to reply", variant: "destructive" }); }
@@ -85,11 +86,12 @@ export default function AdminSupportDetailPage() {
 
   async function updateTicket(updates: Record<string, unknown>) {
     if (!ticketNumber) return;
-    await fetch(`${API}/admin/support/tickets/${ticketNumber}`, {
+    const res = await fetch(`${API}/admin/support/tickets/${ticketNumber}`, {
       method: "PATCH",
       headers: { ...headers, "Content-Type": "application/json" }, credentials: "include",
       body: JSON.stringify(updates),
     });
+    if (!res.ok) { toast({ title: "Error", description: "Failed to update ticket", variant: "destructive" }); return; }
     load();
   }
 

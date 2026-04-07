@@ -163,6 +163,12 @@ router.post("/support/tickets/:ticketNumber/reply", requireAuth, async (req, res
         await enqueueEmail(assignee.email, `Customer Reply: ${ticket.ticketNumber}`,
           `<h2>Customer Reply</h2><p>Ticket <strong>${ticket.ticketNumber}</strong> has a new customer reply.</p><p>${parsed.data.message.substring(0, 500)}</p>`);
       }
+    } else {
+      const admins = await db.select({ email: users.email }).from(users).where(eq(users.role, "ADMIN"));
+      for (const admin of admins) {
+        await enqueueEmail(admin.email, `Customer Reply: ${ticket.ticketNumber}`,
+          `<h2>Customer Reply (Unassigned)</h2><p>Ticket <strong>${ticket.ticketNumber}</strong> has a new customer reply.</p><p>${parsed.data.message.substring(0, 500)}</p>`);
+      }
     }
   } catch (emailErr) { logger.error(emailErr, "Failed to enqueue reply notification"); }
 
