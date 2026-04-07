@@ -9,6 +9,7 @@ import {
 import { getProducts, type MetenziProduct } from "./metenzi-endpoints";
 import { getMetenziConfig } from "./metenzi-config";
 import { logger } from "./logger";
+import { checkPriceDropAlerts, checkBackInStockAlerts } from "../services/alert-service";
 
 async function findOrCreateCategory(categoryName: string): Promise<number> {
   const slug = categoryName
@@ -157,10 +158,21 @@ async function upsertVariant(
   };
 
   if (existing) {
+    const oldPrice = existing.priceUsd;
+    const oldStock = existing.stockCount;
+
     await db
       .update(productVariants)
       .set(data)
       .where(eq(productVariants.id, existing.id));
+
+    checkPriceDropAlerts(existing.id, oldPrice, data.priceUsd).catch((err) => {
+      logger.error({ err, variantId: existing.id }, "Price drop alert check failed");
+    });
+
+    checkBackInStockAlerts(existing.id, productId, oldStock, data.stockCount, data.priceUsd).catch((err) => {
+      logger.error({ err, variantId: existing.id }, "Back-in-stock alert check failed");
+    });
   } else {
     await db.insert(productVariants).values(data);
   }
