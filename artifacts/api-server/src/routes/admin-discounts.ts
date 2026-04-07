@@ -39,7 +39,11 @@ router.get("/admin/discounts", requireAuth, requireAdmin, async (req, res) => {
 router.get("/admin/discounts/check-code", requireAuth, requireAdmin, async (req, res) => {
   const code = (req.query.code as string)?.trim().toUpperCase();
   if (!code) { res.json({ available: false }); return; }
-  const [existing] = await db.select({ id: coupons.id }).from(coupons).where(eq(coupons.code, code));
+  const excludeId = req.query.excludeId ? Number(req.query.excludeId) : null;
+  const conds = excludeId
+    ? and(eq(coupons.code, code), sql`${coupons.id} != ${excludeId}`)
+    : eq(coupons.code, code);
+  const [existing] = await db.select({ id: coupons.id }).from(coupons).where(conds);
   res.json({ available: !existing });
 });
 
@@ -71,6 +75,7 @@ router.put("/admin/discounts/:id", requireAuth, requireAdmin, async (req, res) =
 
   const data = parseDiscountBody(req.body);
   if (!data) { res.status(400).json({ error: "Invalid discount data" }); return; }
+  delete (data as Record<string, unknown>).usedCount;
 
   const [dup] = await db.select({ id: coupons.id }).from(coupons)
     .where(and(eq(coupons.code, data.code), sql`${coupons.id} != ${id}`));

@@ -60,7 +60,8 @@ export default function DiscountFormPage() {
 
   const checkCode = async (code: string) => {
     if (!code.trim()) { setCodeAvailable(null); return; }
-    const r = await fetch(`${API}/admin/discounts/check-code?code=${encodeURIComponent(code)}`, {
+    const qs = `code=${encodeURIComponent(code)}${isEdit ? `&excludeId=${params.id}` : ""}`;
+    const r = await fetch(`${API}/admin/discounts/check-code?${qs}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const d = await r.json();
