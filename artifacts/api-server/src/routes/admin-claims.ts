@@ -115,8 +115,13 @@ router.get("/admin/claims/keys-for-order/:orderId", requireAuth, requireAdmin, a
 
 router.post("/admin/claims", requireAuth, requireAdmin, async (req, res) => {
   const { orderId, licenseKeyId, customerEmail, reason, notes } = req.body;
+  const validReasons = ["DEFECTIVE", "ALREADY_USED", "WRONG_PRODUCT", "NOT_RECEIVED", "OTHER"];
   if (!customerEmail?.trim() || !reason) {
     res.status(400).json({ error: "Customer email and reason are required" });
+    return;
+  }
+  if (!validReasons.includes(reason)) {
+    res.status(400).json({ error: "Invalid claim reason" });
     return;
   }
 
@@ -162,11 +167,14 @@ router.post("/admin/claims", requireAuth, requireAdmin, async (req, res) => {
   }).returning();
 
   if (licenseKeyId) {
-    await db.update(licenseKeys).set({
-      status: "REVOKED",
-      revokedAt: new Date(),
-      revokeReason: `CLAIM: ${reason} (${customerEmail})`,
-    }).where(eq(licenseKeys.id, Number(licenseKeyId)));
+    const [lk] = await db.select({ status: licenseKeys.status }).from(licenseKeys).where(eq(licenseKeys.id, Number(licenseKeyId)));
+    if (lk && lk.status !== "REVOKED") {
+      await db.update(licenseKeys).set({
+        status: "REVOKED",
+        revokedAt: new Date(),
+        revokeReason: `CLAIM: ${reason} (${customerEmail})`,
+      }).where(eq(licenseKeys.id, Number(licenseKeyId)));
+    }
   }
 
   res.json({ claim });
@@ -243,7 +251,11 @@ router.patch("/admin/claims/:id", requireAuth, requireAdmin, async (req, res) =>
   const { status, adminNotes } = req.body;
   const updates: Record<string, unknown> = { updatedAt: new Date() };
   const validStatuses = ["OPEN", "IN_REVIEW", "APPROVED", "DENIED", "RESOLVED"];
-  if (status && validStatuses.includes(status)) {
+  if (status && !validStatuses.includes(status)) {
+    res.status(400).json({ error: "Invalid claim status" });
+    return;
+  }
+  if (status) {
     updates.status = status;
     if (["APPROVED", "DENIED", "RESOLVED"].includes(status)) updates.resolvedAt = new Date();
   }
