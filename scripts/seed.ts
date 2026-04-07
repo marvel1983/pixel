@@ -6,6 +6,7 @@ import {
   productVariants,
   siteSettings,
   faqs,
+  pages,
   apiProviders,
   currencyRates,
 } from "@workspace/db/schema";
@@ -272,6 +273,20 @@ async function seed() {
       sortOrder: 4,
     },
   ]);
+
+  const defaultPages = [
+    { title: "About Us", slug: "about-us", content: "<h1>About Us</h1><p>Content coming soon.</p>", isPublished: true, sortOrder: 0 },
+    { title: "Terms of Service", slug: "terms", content: "<h1>Terms of Service</h1><p>Content coming soon.</p>", isPublished: true, sortOrder: 1 },
+    { title: "Privacy Policy", slug: "privacy-policy", content: "<h1>Privacy Policy</h1><p>Content coming soon.</p>", isPublished: true, sortOrder: 2 },
+    { title: "Refund Policy", slug: "refund-policy", content: "<h1>Refund Policy</h1><p>Content coming soon.</p>", isPublished: true, sortOrder: 3 },
+    { title: "Delivery Terms", slug: "delivery-terms", content: "<h1>Delivery Terms</h1><p>Content coming soon.</p>", isPublished: true, sortOrder: 4 },
+    { title: "Payment Methods", slug: "payment-methods", content: "<h1>Payment Methods</h1><p>Content coming soon.</p>", isPublished: true, sortOrder: 5 },
+    { title: "FAQ", slug: "faq", content: "<h1>FAQ</h1><p>Content coming soon.</p>", isPublished: true, sortOrder: 6 },
+    { title: "How to Buy", slug: "how-to-buy", content: "<h1>How to Buy</h1><p>Content coming soon.</p>", isPublished: true, sortOrder: 7 },
+    { title: "Reseller Application", slug: "reseller-application", content: "<h1>Reseller Application</h1><p>Content coming soon.</p>", isPublished: true, sortOrder: 8 },
+    { title: "Contact", slug: "contact", content: "<h1>Contact</h1><p>Content coming soon.</p>", isPublished: true, sortOrder: 9 },
+  ];
+  await db.insert(pages).values(defaultPages);
 
   await db.insert(apiProviders).values({
     name: "Metenzi",

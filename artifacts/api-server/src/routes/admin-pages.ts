@@ -28,8 +28,8 @@ router.put("/admin/pages/:id", requireAuth, requireAdmin, async (req, res) => {
   await db.update(pages).set({
     title: title.trim(),
     content: content ?? null,
-    metaTitle: metaTitle ? String(metaTitle).slice(0, 120) : null,
-    metaDescription: metaDescription ? String(metaDescription).slice(0, 320) : null,
+    metaTitle: metaTitle ? String(metaTitle).slice(0, 60) : null,
+    metaDescription: metaDescription ? String(metaDescription).slice(0, 160) : null,
     isPublished: isPublished !== false,
     sortOrder: Number(sortOrder) || 0,
     updatedAt: new Date(),
@@ -48,8 +48,8 @@ router.post("/admin/pages", requireAuth, requireAdmin, async (req, res) => {
     title: String(title).trim(),
     slug: String(slug).trim().toLowerCase().replace(/[^a-z0-9-]/g, ""),
     content: req.body.content ?? "",
-    metaTitle: req.body.metaTitle || null,
-    metaDescription: req.body.metaDescription || null,
+    metaTitle: req.body.metaTitle ? String(req.body.metaTitle).slice(0, 60) : null,
+    metaDescription: req.body.metaDescription ? String(req.body.metaDescription).slice(0, 160) : null,
     isPublished: req.body.isPublished !== false,
     sortOrder: Number(req.body.sortOrder) || 0,
   }).returning();

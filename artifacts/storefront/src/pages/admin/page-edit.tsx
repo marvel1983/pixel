@@ -6,8 +6,12 @@ import { useAuthStore } from "@/stores/auth-store";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
-import Image from "@tiptap/extension-image";
+import ImageExt from "@tiptap/extension-image";
 import Underline from "@tiptap/extension-underline";
+import Table from "@tiptap/extension-table";
+import TableRow from "@tiptap/extension-table-row";
+import TableCell from "@tiptap/extension-table-cell";
+import TableHeader from "@tiptap/extension-table-header";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -35,10 +39,11 @@ export default function PageEditPage() {
 
   const editor = useEditor({
     extensions: [
-      StarterKit,
-      Underline,
+      StarterKit, Underline,
       Link.configure({ openOnClick: false }),
-      Image.configure({ inline: false }),
+      ImageExt.configure({ inline: false }),
+      Table.configure({ resizable: true }),
+      TableRow, TableCell, TableHeader,
     ],
     content: "",
     editorProps: { attributes: { class: "prose prose-sm max-w-none min-h-[300px] p-4 focus:outline-none" } },
@@ -55,15 +60,10 @@ export default function PageEditPage() {
     api(`/admin/pages/${params.id}`).then((d) => {
       if (!d) return;
       const p = d.page;
-      setPage(p);
-      setTitle(p.title);
-      setSlug(p.slug);
-      setMetaTitle(p.metaTitle ?? "");
-      setMetaDesc(p.metaDescription ?? "");
-      setPublished(p.isPublished);
-      setSortOrder(String(p.sortOrder));
-      setHtml(p.content ?? "");
-      editor?.commands.setContent(p.content ?? "");
+      setPage(p); setTitle(p.title); setSlug(p.slug);
+      setMetaTitle(p.metaTitle ?? ""); setMetaDesc(p.metaDescription ?? "");
+      setPublished(p.isPublished); setSortOrder(String(p.sortOrder));
+      setHtml(p.content ?? ""); editor?.commands.setContent(p.content ?? "");
     });
   }, [params?.id, isNew, api, editor]);
 
@@ -72,32 +72,19 @@ export default function PageEditPage() {
     setSaving(true);
     const content = sourceMode ? html : (editor?.getHTML() ?? "");
     const body = { title: title.trim(), slug: slug.trim(), content, metaTitle, metaDescription: metaDesc, isPublished: published, sortOrder: Number(sortOrder) || 0 };
-    const url = isNew ? "/admin/pages" : `/admin/pages/${params?.id}`;
-    const method = isNew ? "POST" : "PUT";
-    const r = await api(url, { method, body: JSON.stringify(body) });
+    const r = await api(isNew ? "/admin/pages" : `/admin/pages/${params?.id}`, { method: isNew ? "POST" : "PUT", body: JSON.stringify(body) });
     setSaving(false);
     if (r) navigate("/admin/pages");
   };
 
   const toggleSource = () => {
-    if (sourceMode) {
-      editor?.commands.setContent(html);
-      setSourceMode(false);
-    } else {
-      setHtml(editor?.getHTML() ?? "");
-      setSourceMode(true);
-    }
+    if (sourceMode) { editor?.commands.setContent(html); setSourceMode(false); }
+    else { setHtml(editor?.getHTML() ?? ""); setSourceMode(true); }
   };
 
-  const addLink = () => {
-    const url = prompt("Enter URL:");
-    if (url) editor?.chain().focus().setLink({ href: url }).run();
-  };
-
-  const addImage = () => {
-    const url = prompt("Enter image URL:");
-    if (url) editor?.chain().focus().setImage({ src: url }).run();
-  };
+  const addLink = () => { const url = prompt("Enter URL:"); if (url) editor?.chain().focus().setLink({ href: url }).run(); };
+  const addImage = () => { const url = prompt("Enter image URL:"); if (url) editor?.chain().focus().setImage({ src: url }).run(); };
+  const addTable = () => { editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(); };
 
   return (
     <div className="space-y-4">
@@ -108,7 +95,6 @@ export default function PageEditPage() {
         </div>
         <Button onClick={save} disabled={saving || !title.trim()}><Save className="h-4 w-4 mr-1" /> {saving ? "Saving..." : "Save"}</Button>
       </div>
-
       <div className="grid grid-cols-3 gap-4">
         <div className="col-span-2 space-y-4">
           <div className="rounded-lg border bg-white p-4 space-y-3">
@@ -127,7 +113,7 @@ export default function PageEditPage() {
                 <textarea className="w-full rounded-md border px-3 py-2 text-sm font-mono min-h-[300px]" value={html} onChange={(e) => setHtml(e.target.value)} />
               ) : (
                 <div className="rounded-md border">
-                  <Toolbar editor={editor} onAddLink={addLink} onAddImage={addImage} />
+                  <Toolbar editor={editor} onAddLink={addLink} onAddImage={addImage} onAddTable={addTable} />
                   <EditorContent editor={editor} />
                 </div>
               )}
@@ -154,28 +140,29 @@ export default function PageEditPage() {
   );
 }
 
-function Toolbar({ editor, onAddLink, onAddImage }: { editor: ReturnType<typeof useEditor>; onAddLink: () => void; onAddImage: () => void }) {
+function Toolbar({ editor, onAddLink, onAddImage, onAddTable }: { editor: ReturnType<typeof useEditor>; onAddLink: () => void; onAddImage: () => void; onAddTable: () => void }) {
   if (!editor) return null;
-  const btn = (active: boolean) => `p-1.5 rounded text-xs ${active ? "bg-blue-100 text-blue-700" : "hover:bg-gray-100"}`;
+  const b = (active: boolean) => `p-1.5 rounded text-xs ${active ? "bg-blue-100 text-blue-700" : "hover:bg-gray-100"}`;
   return (
     <div className="flex flex-wrap gap-0.5 border-b px-2 py-1.5 bg-gray-50">
-      <button className={btn(editor.isActive("bold"))} onClick={() => editor.chain().focus().toggleBold().run()}>B</button>
-      <button className={btn(editor.isActive("italic"))} onClick={() => editor.chain().focus().toggleItalic().run()}>I</button>
-      <button className={btn(editor.isActive("underline"))} onClick={() => editor.chain().focus().toggleUnderline().run()}>U</button>
+      <button className={b(editor.isActive("bold"))} onClick={() => editor.chain().focus().toggleBold().run()}>B</button>
+      <button className={b(editor.isActive("italic"))} onClick={() => editor.chain().focus().toggleItalic().run()}>I</button>
+      <button className={b(editor.isActive("underline"))} onClick={() => editor.chain().focus().toggleUnderline().run()}>U</button>
       <span className="w-px h-6 bg-gray-200 mx-1" />
-      <button className={btn(editor.isActive("heading", { level: 1 }))} onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}>H1</button>
-      <button className={btn(editor.isActive("heading", { level: 2 }))} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}>H2</button>
-      <button className={btn(editor.isActive("heading", { level: 3 }))} onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}>H3</button>
+      <button className={b(editor.isActive("heading", { level: 1 }))} onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}>H1</button>
+      <button className={b(editor.isActive("heading", { level: 2 }))} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}>H2</button>
+      <button className={b(editor.isActive("heading", { level: 3 }))} onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}>H3</button>
       <span className="w-px h-6 bg-gray-200 mx-1" />
-      <button className={btn(editor.isActive("bulletList"))} onClick={() => editor.chain().focus().toggleBulletList().run()}>UL</button>
-      <button className={btn(editor.isActive("orderedList"))} onClick={() => editor.chain().focus().toggleOrderedList().run()}>OL</button>
-      <button className={btn(editor.isActive("blockquote"))} onClick={() => editor.chain().focus().toggleBlockquote().run()}>BQ</button>
+      <button className={b(editor.isActive("bulletList"))} onClick={() => editor.chain().focus().toggleBulletList().run()}>UL</button>
+      <button className={b(editor.isActive("orderedList"))} onClick={() => editor.chain().focus().toggleOrderedList().run()}>OL</button>
+      <button className={b(editor.isActive("blockquote"))} onClick={() => editor.chain().focus().toggleBlockquote().run()}>BQ</button>
       <span className="w-px h-6 bg-gray-200 mx-1" />
-      <button className={btn(false)} onClick={onAddLink}>Link</button>
-      <button className={btn(false)} onClick={onAddImage}>Img</button>
+      <button className={b(false)} onClick={onAddLink}>Link</button>
+      <button className={b(false)} onClick={onAddImage}>Img</button>
+      <button className={b(false)} onClick={onAddTable}>Table</button>
       <span className="w-px h-6 bg-gray-200 mx-1" />
-      <button className={btn(false)} onClick={() => editor.chain().focus().undo().run()}>Undo</button>
-      <button className={btn(false)} onClick={() => editor.chain().focus().redo().run()}>Redo</button>
+      <button className={b(false)} onClick={() => editor.chain().focus().undo().run()}>Undo</button>
+      <button className={b(false)} onClick={() => editor.chain().focus().redo().run()}>Redo</button>
     </div>
   );
 }
