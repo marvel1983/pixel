@@ -128,5 +128,34 @@
     "searchHint": "Szukaj oprogramowania, gier, kluczy licencyjnych i więcej.",
     "popularProducts": "Popularne produkty",
     "browseAll": "Pokaż wszystko"
+  },
+  "bundles": {
+    "noBundles": "Brak dostępnych pakietów",
+    "noBundlesDesc": "Sprawdź ponownie później, aby zobaczyć specjalne oferty.",
+    "title": "Pakiety produktów",
+    "subtitle": "Oszczędzaj więcej kupując razem",
+    "save": "Oszczędź {{pct}}%",
+    "featured": "Polecane",
+    "moreItems": "+{{count}} więcej",
+    "productCount": "{{count}} produktów",
+    "view": "Zobacz"
+  },
+  "accountPage": {
+    "profileUpdated": "Profil zaktualizowany",
+    "updateFailed": "Aktualizacja nie powiodła się",
+    "failedToLoad": "Nie udało się załadować zamówień",
+    "failedToLoadDetails": "Nie udało się załadować szczegółów",
+    "ticketNotFound": "Nie znaleziono zgłoszenia",
+    "failedToSendReply": "Nie udało się wysłać odpowiedzi"
+  },
+  "orderComplete": {
+    "checkout": "Kasa",
+    "orderComplete": "Zamówienie zakończone"
+  },
+  "newsletter": {
+    "confirmation": "Potwierdzenie newslettera",
+    "confirmationFailed": "Potwierdzenie nie powiodło się",
+    "unsubscribe": "Wypisz się",
+    "unsubscribeFailed": "Wypisanie nie powiodło się"
   }
 }

@@ -128,5 +128,34 @@
     "searchHint": "Hledejte software, hry, licenční klíče a více.",
     "popularProducts": "Populární produkty",
     "browseAll": "Zobrazit vše"
+  },
+  "bundles": {
+    "noBundles": "Žádné balíčky k dispozici",
+    "noBundlesDesc": "Zkuste to později pro speciální nabídky.",
+    "title": "Produktové balíčky",
+    "subtitle": "Ušetřete více nákupem společně",
+    "save": "Ušetřete {{pct}}%",
+    "featured": "Doporučené",
+    "moreItems": "+{{count}} dalších",
+    "productCount": "{{count}} produktů",
+    "view": "Zobrazit"
+  },
+  "accountPage": {
+    "profileUpdated": "Profil aktualizován",
+    "updateFailed": "Aktualizace selhala",
+    "failedToLoad": "Nepodařilo se načíst objednávky",
+    "failedToLoadDetails": "Nepodařilo se načíst detaily",
+    "ticketNotFound": "Tiket nenalezen",
+    "failedToSendReply": "Nepodařilo se odeslat odpověď"
+  },
+  "orderComplete": {
+    "checkout": "Pokladna",
+    "orderComplete": "Objednávka dokončena"
+  },
+  "newsletter": {
+    "confirmation": "Potvrzení newsletteru",
+    "confirmationFailed": "Potvrzení selhalo",
+    "unsubscribe": "Odhlásit se",
+    "unsubscribeFailed": "Odhlášení selhalo"
   }
 }

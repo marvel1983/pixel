@@ -128,5 +128,34 @@
     "searchHint": "Recherchez des logiciels, jeux, clés de licence et plus.",
     "popularProducts": "Produits populaires",
     "browseAll": "Tout parcourir"
+  },
+  "bundles": {
+    "noBundles": "Aucun pack disponible",
+    "noBundlesDesc": "Revenez plus tard pour des offres spéciales.",
+    "title": "Packs de produits",
+    "subtitle": "Économisez plus en achetant ensemble",
+    "save": "Économisez {{pct}}%",
+    "featured": "En vedette",
+    "moreItems": "+{{count}} autres",
+    "productCount": "{{count}} produits",
+    "view": "Voir"
+  },
+  "accountPage": {
+    "profileUpdated": "Profil mis à jour",
+    "updateFailed": "Échec de la mise à jour",
+    "failedToLoad": "Impossible de charger les commandes",
+    "failedToLoadDetails": "Impossible de charger les détails",
+    "ticketNotFound": "Ticket introuvable",
+    "failedToSendReply": "Échec de l'envoi de la réponse"
+  },
+  "orderComplete": {
+    "checkout": "Paiement",
+    "orderComplete": "Commande terminée"
+  },
+  "newsletter": {
+    "confirmation": "Confirmation de la newsletter",
+    "confirmationFailed": "Échec de la confirmation",
+    "unsubscribe": "Se désabonner",
+    "unsubscribeFailed": "Échec du désabonnement"
   }
 }

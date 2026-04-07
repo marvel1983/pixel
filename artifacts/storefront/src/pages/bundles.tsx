@@ -58,8 +58,8 @@ export default function BundlesPage() {
     return (
       <div className="container mx-auto px-4 py-12 text-center">
         <Package className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-        <h1 className="text-2xl font-bold mb-2">No Bundles Available</h1>
-        <p className="text-muted-foreground">Check back later for special bundle offers.</p>
+        <h1 className="text-2xl font-bold mb-2">{t("bundles.noBundles")}</h1>
+        <p className="text-muted-foreground">{t("bundles.noBundlesDesc")}</p>
       </div>
     );
   }
@@ -67,8 +67,8 @@ export default function BundlesPage() {
   return (
     <div className="container mx-auto px-4 py-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight">Product Bundles</h1>
-        <p className="text-muted-foreground mt-1">Save more when you buy together</p>
+        <h1 className="text-2xl font-bold tracking-tight">{t("bundles.title")}</h1>
+        <p className="text-muted-foreground mt-1">{t("bundles.subtitle")}</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -86,11 +86,11 @@ export default function BundlesPage() {
                   )}
                   {savingsPct > 0 && (
                     <Badge className="absolute top-3 right-3 bg-green-600 text-white text-sm px-2 py-1">
-                      Save {savingsPct}%
+                      {t("bundles.save", { pct: savingsPct })}
                     </Badge>
                   )}
                   {b.isFeatured && (
-                    <Badge className="absolute top-3 left-3 bg-amber-500 text-white">Featured</Badge>
+                    <Badge className="absolute top-3 left-3 bg-amber-500 text-white">{t("bundles.featured")}</Badge>
                   )}
                 </div>
                 <CardContent className="p-4 space-y-3">
@@ -111,9 +111,9 @@ export default function BundlesPage() {
                       ))}
                     </div>
                     {b.items.length > 4 && (
-                      <span className="text-xs text-muted-foreground">+{b.items.length - 4} more</span>
+                      <span className="text-xs text-muted-foreground">{t("bundles.moreItems", { count: b.items.length - 4 })}</span>
                     )}
-                    <Badge variant="secondary" className="text-xs ml-auto">{b.items.length} products</Badge>
+                    <Badge variant="secondary" className="text-xs ml-auto">{t("bundles.productCount", { count: b.items.length })}</Badge>
                   </div>
                   <div className="flex items-center justify-between pt-2 border-t">
                     <div>
@@ -121,7 +121,7 @@ export default function BundlesPage() {
                       <span className="text-sm text-muted-foreground line-through ml-2">{format(parseFloat(b.individualTotal))}</span>
                     </div>
                     <Button variant="ghost" size="sm" className="text-blue-600">
-                      View <ArrowRight className="h-4 w-4 ml-1" />
+                      {t("bundles.view")} <ArrowRight className="h-4 w-4 ml-1" />
                     </Button>
                   </div>
                 </CardContent>

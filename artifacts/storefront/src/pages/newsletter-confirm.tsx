@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Check, AlertCircle, Loader2 } from "lucide-react";
 import { Breadcrumbs } from "@/components/shop/breadcrumbs";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
 export default function NewsletterConfirmPage() {
+  const { t } = useTranslation();
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [message, setMessage] = useState("");
   const [discountCode, setDiscountCode] = useState<string | null>(null);
@@ -12,7 +14,7 @@ export default function NewsletterConfirmPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const token = params.get("token");
-    if (!token) { setStatus("error"); setMessage("Missing confirmation token."); return; }
+    if (!token) { setStatus("error"); setMessage(t("newsletter.confirmationFailed")); return; }
 
     fetch(`${API}/newsletter/confirm?token=${token}`)
       .then(async (r) => {
@@ -24,19 +26,19 @@ export default function NewsletterConfirmPage() {
       })
       .catch((err) => {
         setStatus("error");
-        setMessage(err instanceof Error ? err.message : "Confirmation failed");
+        setMessage(err instanceof Error ? err.message : t("newsletter.confirmationFailed"));
       });
   }, []);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-lg">
-      <Breadcrumbs crumbs={[{ label: "Home", href: "/" }, { label: "Newsletter Confirmation" }]} />
+      <Breadcrumbs crumbs={[{ label: t("nav.support"), href: "/" }, { label: t("newsletter.confirmation") }]} />
 
       <div className="mt-8 rounded-lg border bg-white p-8 text-center">
         {status === "loading" && (
           <div className="space-y-3">
             <Loader2 className="h-10 w-10 mx-auto animate-spin text-blue-600" />
-            <p className="text-muted-foreground">Confirming your subscription...</p>
+            <p className="text-muted-foreground">{t("common.loading")}</p>
           </div>
         )}
         {status === "success" && (
@@ -47,9 +49,7 @@ export default function NewsletterConfirmPage() {
             <h1 className="text-xl font-bold">{message}</h1>
             {discountCode && (
               <div className="bg-green-50 rounded-lg p-4 mt-4">
-                <p className="text-sm text-gray-500 mb-1">Your exclusive discount code:</p>
                 <p className="text-2xl font-bold text-green-700 tracking-widest">{discountCode}</p>
-                <p className="text-xs text-gray-400 mt-2">Use it at checkout for a special discount!</p>
               </div>
             )}
           </div>

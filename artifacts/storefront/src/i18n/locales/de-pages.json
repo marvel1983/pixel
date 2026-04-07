@@ -128,5 +128,34 @@
     "searchHint": "Suchen Sie nach Software, Spielen, Lizenzschlüsseln und mehr.",
     "popularProducts": "Beliebte Produkte",
     "browseAll": "Alle anzeigen"
+  },
+  "bundles": {
+    "noBundles": "Keine Bundles verfügbar",
+    "noBundlesDesc": "Schauen Sie später nach speziellen Bundle-Angeboten.",
+    "title": "Produkt-Bundles",
+    "subtitle": "Sparen Sie mehr beim gemeinsamen Kauf",
+    "save": "{{pct}}% sparen",
+    "featured": "Empfohlen",
+    "moreItems": "+{{count}} weitere",
+    "productCount": "{{count}} Produkte",
+    "view": "Ansehen"
+  },
+  "accountPage": {
+    "profileUpdated": "Profil aktualisiert",
+    "updateFailed": "Aktualisierung fehlgeschlagen",
+    "failedToLoad": "Bestellungen konnten nicht geladen werden",
+    "failedToLoadDetails": "Bestelldetails konnten nicht geladen werden",
+    "ticketNotFound": "Ticket nicht gefunden",
+    "failedToSendReply": "Antwort konnte nicht gesendet werden"
+  },
+  "orderComplete": {
+    "checkout": "Kasse",
+    "orderComplete": "Bestellung abgeschlossen"
+  },
+  "newsletter": {
+    "confirmation": "Newsletter-Bestätigung",
+    "confirmationFailed": "Bestätigung fehlgeschlagen",
+    "unsubscribe": "Abmelden",
+    "unsubscribeFailed": "Abmeldung fehlgeschlagen"
   }
 }

@@ -60,8 +60,8 @@ export default function OrderCompletePage() {
       <Breadcrumbs
         crumbs={[
           { label: "Cart", href: "/cart" },
-          { label: "Checkout", href: "/checkout" },
-          { label: "Order Complete" },
+          { label: t("orderComplete.checkout"), href: "/checkout" },
+          { label: t("orderComplete.orderComplete") },
         ]}
       />
       <CartProgress step={3} />

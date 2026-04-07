@@ -128,5 +128,34 @@
     "searchHint": "Search for software, games, license keys, and more.",
     "popularProducts": "Popular Products",
     "browseAll": "Browse all"
+  },
+  "bundles": {
+    "noBundles": "No Bundles Available",
+    "noBundlesDesc": "Check back later for special bundle offers.",
+    "title": "Product Bundles",
+    "subtitle": "Save more when you buy together",
+    "save": "Save {{pct}}%",
+    "featured": "Featured",
+    "moreItems": "+{{count}} more",
+    "productCount": "{{count}} products",
+    "view": "View"
+  },
+  "accountPage": {
+    "profileUpdated": "Profile updated",
+    "updateFailed": "Update failed",
+    "failedToLoad": "Failed to load orders",
+    "failedToLoadDetails": "Failed to load order details",
+    "ticketNotFound": "Ticket not found",
+    "failedToSendReply": "Failed to send reply"
+  },
+  "orderComplete": {
+    "checkout": "Checkout",
+    "orderComplete": "Order Complete"
+  },
+  "newsletter": {
+    "confirmation": "Newsletter Confirmation",
+    "confirmationFailed": "Confirmation failed",
+    "unsubscribe": "Unsubscribe",
+    "unsubscribeFailed": "Unsubscribe failed"
   }
 }

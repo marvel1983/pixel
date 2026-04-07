@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
+import { useTranslation } from "react-i18next";
 import { Loader2, Package, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Breadcrumbs } from "@/components/shop/breadcrumbs";
@@ -53,6 +54,7 @@ interface OrderFull {
 }
 
 export default function AccountOrdersPage() {
+  const { t } = useTranslation();
   const { user, token, isAuthenticated } = useAuthStore();
   const [, setLocation] = useLocation();
   const [orders, setOrders] = useState<OrderSummary[]>([]);
@@ -81,10 +83,10 @@ export default function AccountOrdersPage() {
         const data = await res.json();
         setOrders(data.orders);
       } else {
-        toast({ title: "Failed to load orders", variant: "destructive" });
+        toast({ title: t("accountPage.failedToLoad"), variant: "destructive" });
       }
     } catch {
-      toast({ title: "Failed to load orders", variant: "destructive" });
+      toast({ title: t("accountPage.failedToLoad"), variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -105,10 +107,10 @@ export default function AccountOrdersPage() {
       if (res.ok) {
         setSelectedOrder(await res.json());
       } else {
-        toast({ title: "Failed to load order details", variant: "destructive" });
+        toast({ title: t("accountPage.failedToLoadDetails"), variant: "destructive" });
       }
     } catch {
-      toast({ title: "Failed to load order", variant: "destructive" });
+      toast({ title: t("accountPage.failedToLoad"), variant: "destructive" });
     } finally {
       setLoadingDetail(false);
     }
@@ -118,7 +120,7 @@ export default function AccountOrdersPage() {
 
   return (
     <div className="container mx-auto px-4 py-6">
-      <Breadcrumbs crumbs={[{ label: "Account", href: "/account" }, { label: "Orders" }]} />
+      <Breadcrumbs crumbs={[{ label: t("account.title"), href: "/account" }, { label: t("account.orders") }]} />
 
       <div className="max-w-3xl mx-auto">
         <h1 className="text-2xl font-bold mb-2">My Orders</h1>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,15 +58,15 @@ function ProfileTab() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Update failed");
+      if (!res.ok) throw new Error(data.error ?? t("accountPage.updateFailed"));
 
       setAuth(data.user, token!);
       setForm((prev) => ({ ...prev, currentPassword: "", newPassword: "" }));
-      toast({ title: "Profile updated" });
+      toast({ title: t("accountPage.profileUpdated") });
     } catch (err) {
       toast({
-        title: "Update failed",
-        description: err instanceof Error ? err.message : "Please try again.",
+        title: t("accountPage.updateFailed"),
+        description: err instanceof Error ? err.message : t("checkout.tryAgain"),
         variant: "destructive",
       });
     } finally {
@@ -138,6 +139,7 @@ const PlaceholderTab = ({ title, icon }: { title: string; icon: React.ReactNode 
 );
 
 export default function AccountPage() {
+  const { t } = useTranslation();
   const { user, isAuthenticated } = useAuthStore();
   const [, setLocation] = useLocation();
   const params = new URLSearchParams(window.location.search);
@@ -151,7 +153,7 @@ export default function AccountPage() {
 
   return (
     <div className="container mx-auto px-4 py-6">
-      <Breadcrumbs crumbs={[{ label: "My Account" }]} />
+      <Breadcrumbs crumbs={[{ label: t("account.title") }]} />
 
       <h1 className="text-2xl font-bold mt-4 mb-6">
         Welcome, {user.firstName ?? user.email}
