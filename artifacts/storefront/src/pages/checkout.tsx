@@ -64,7 +64,8 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (!billing.email || !billing.email.includes("@") || items.length === 0) return;
     const total = getTotal();
-    const key = `${billing.email}:${items.length}:${total}:${coupon?.code || ""}`;
+    const itemKey = items.map((i) => `${i.variantId}:${i.quantity}`).join(",");
+    const key = `${billing.email}:${itemKey}:${total}:${coupon?.code || ""}`;
     if (capturedRef.current === key) return;
     const timer = setTimeout(() => {
       const cartItems = items.map((i) => ({ variantId: i.variantId, productId: i.productId, productName: i.productName, variantName: i.variantName, quantity: i.quantity, priceUsd: i.priceUsd, imageUrl: i.imageUrl }));

@@ -105,14 +105,15 @@ router.put("/admin/abandoned-cart-settings", ...settingsGuard, async (req, res) 
     email3DelayMinutes, discountPercent, expirationDays } = req.body;
 
   const [existing] = await db.select().from(abandonedCartSettings);
+  const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
   const values = {
     enabled: !!enabled,
-    minCartValue: String(minCartValue || "5.00"),
-    email1DelayMinutes: parseInt(email1DelayMinutes) || 60,
-    email2DelayMinutes: parseInt(email2DelayMinutes) || 1440,
-    email3DelayMinutes: parseInt(email3DelayMinutes) || 4320,
-    discountPercent: parseInt(discountPercent) || 10,
-    expirationDays: parseInt(expirationDays) || 7,
+    minCartValue: String(Math.max(0, parseFloat(minCartValue) || 5).toFixed(2)),
+    email1DelayMinutes: clamp(parseInt(email1DelayMinutes) || 60, 1, 10080),
+    email2DelayMinutes: clamp(parseInt(email2DelayMinutes) || 1440, 1, 10080),
+    email3DelayMinutes: clamp(parseInt(email3DelayMinutes) || 4320, 1, 20160),
+    discountPercent: clamp(parseInt(discountPercent) || 10, 1, 50),
+    expirationDays: clamp(parseInt(expirationDays) || 7, 1, 90),
     updatedAt: new Date(),
   };
 
