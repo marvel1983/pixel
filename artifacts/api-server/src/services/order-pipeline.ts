@@ -11,6 +11,7 @@ import { processPayment } from "./payment";
 import { createGiftCardForOrder, sendGiftCardEmails, redeemGiftCards } from "./gift-card-service";
 import { createCommissionForOrder } from "./affiliate-service";
 import { markCartRecovered } from "./abandoned-cart-service";
+import { awardOrderPoints, redeemPoints, getOrCreateAccount } from "./loyalty-service";
 import { getMetenziConfig } from "../lib/metenzi-config";
 import { createOrder as metenziCreateOrder } from "../lib/metenzi-endpoints";
 import { logger } from "../lib/logger";
@@ -52,6 +53,9 @@ interface OrderInput {
   giftCards?: Array<{ code: string; amount: number }>;
   affiliateRefCode?: string;
   flashVariantMap?: Map<number, number>;
+  loyaltyPointsUsed?: number;
+  loyaltyDiscount?: number;
+  userId?: number;
 }
 
 export async function executeOrderPipeline(input: OrderInput) {
@@ -175,6 +179,29 @@ export async function executeOrderPipeline(input: OrderInput) {
     markCartRecovered(billing.email, order.id).catch((err) => {
       logger.error({ err, orderNumber }, "Failed to mark cart recovered (non-fatal)");
     });
+
+    if (input.loyaltyPointsUsed && input.loyaltyPointsUsed > 0 && input.userId) {
+      try {
+        const acct = await getOrCreateAccount(input.userId);
+        await redeemPoints(acct.id, input.loyaltyPointsUsed, order.id);
+      } catch (err) {
+        logger.error({ err, orderNumber }, "Failed to redeem loyalty points (non-fatal)");
+      }
+    }
+
+    if (input.userId) {
+      awardOrderPoints(input.userId, order.id, total).catch((err) => {
+        logger.error({ err, orderNumber }, "Failed to award loyalty points (non-fatal)");
+      });
+    } else {
+      const [eu] = await db.select({ id: users.id }).from(users)
+        .where(eq(users.email, billing.email)).limit(1);
+      if (eu) {
+        awardOrderPoints(eu.id, order.id, total).catch((err) => {
+          logger.error({ err, orderNumber }, "Failed to award loyalty points (non-fatal)");
+        });
+      }
+    }
 
     logger.info({ orderNumber, total: total.toFixed(2) }, "Order pipeline complete");
     return { orderNumber, status: "COMPLETED" };

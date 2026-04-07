@@ -17,6 +17,7 @@ import { validateBilling, validatePayment } from "@/lib/checkout-validation";
 import { getCppAmount } from "@/components/checkout/cpp-section";
 import { EmptyCart } from "@/components/cart/empty-cart";
 import { GiftCardInput, type AppliedGiftCard } from "@/components/checkout/gift-card-input";
+import { LoyaltyRedeem } from "@/components/checkout/loyalty-redeem";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -48,6 +49,8 @@ export default function CheckoutPage() {
   const [submitting, setSubmitting] = useState(false);
   const [taxInfo, setTaxInfo] = useState<TaxInfo>({ taxRate: 0, taxLabel: "VAT", exempt: false, b2bEnabled: false, priceDisplay: "exclusive" });
   const [appliedGiftCards, setAppliedGiftCards] = useState<AppliedGiftCard[]>([]);
+  const [loyaltyPoints, setLoyaltyPoints] = useState(0);
+  const [loyaltyDiscount, setLoyaltyDiscount] = useState(0);
   const [newsletterOptIn, setNewsletterOptIn] = useState(true);
 
   const capturedRef = useRef("");
@@ -112,7 +115,7 @@ export default function CheckoutPage() {
       const subtotal = getTotal();
       const discount = coupon ? subtotal * (coupon.pct / 100) : 0;
       const cpp = cppSelected ? getCppAmount(subtotal) : 0;
-      const beforeTax = subtotal - discount + cpp;
+      const beforeTax = subtotal - discount - loyaltyDiscount + cpp;
       const isInclusive = taxInfo.priceDisplay === "inclusive";
       const taxAmount = taxInfo.taxRate > 0
         ? isInclusive
@@ -135,6 +138,8 @@ export default function CheckoutPage() {
           vatNumber: billing.vatNumber || undefined,
           total: total.toFixed(2),
           giftCards: appliedGiftCards.map((c) => ({ code: c.code, amount: c.applied })),
+          loyaltyPointsUsed: loyaltyPoints || undefined,
+          loyaltyDiscount: loyaltyDiscount || undefined,
           payment: { cardToken },
           guestPassword: guestPassword || undefined,
         }),
@@ -183,13 +188,17 @@ export default function CheckoutPage() {
             remainingTotal={(() => {
               const s = getTotal();
               const d = coupon ? s * (coupon.pct / 100) : 0;
-              const beforeTax = s - d + (cppSelected ? getCppAmount(s) : 0);
+              const beforeTax = s - d - loyaltyDiscount + (cppSelected ? getCppAmount(s) : 0);
               const tr = taxInfo.taxRate || 0;
               const tax = taxInfo.priceDisplay === "inclusive" ? 0 : Math.round(beforeTax * (tr / 100) * 100) / 100;
               return Math.max(0, beforeTax + tax - appliedGiftCards.reduce((a, c) => a + c.applied, 0));
             })()}
             onApply={(c) => setAppliedGiftCards((p) => [...p, c])}
             onRemove={(code) => setAppliedGiftCards((p) => p.filter((c) => c.code !== code))}
+          />
+          <LoyaltyRedeem
+            subtotal={getTotal()}
+            onRedeemChange={(pts, disc) => { setLoyaltyPoints(pts); setLoyaltyDiscount(disc); }}
           />
           <Separator />
           <PaymentForm data={payment} errors={paymentErrors} onChange={handlePaymentChange} />
@@ -207,7 +216,7 @@ export default function CheckoutPage() {
         </div>
 
         <div className="space-y-4">
-          <CheckoutSummary cppSelected={cppSelected} taxRate={taxInfo.taxRate} taxLabel={taxInfo.taxLabel} priceDisplay={taxInfo.priceDisplay} gcDeduction={appliedGiftCards.reduce((s, c) => s + c.applied, 0)} />
+          <CheckoutSummary cppSelected={cppSelected} taxRate={taxInfo.taxRate} taxLabel={taxInfo.taxLabel} priceDisplay={taxInfo.priceDisplay} gcDeduction={appliedGiftCards.reduce((s, c) => s + c.applied, 0)} loyaltyDiscount={loyaltyDiscount} />
           <ProductUpsell />
         </div>
       </div>

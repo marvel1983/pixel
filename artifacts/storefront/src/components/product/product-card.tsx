@@ -7,6 +7,7 @@ import { useCurrencyStore } from "@/stores/currency-store";
 import { useWishlistStore } from "@/stores/wishlist-store";
 import { useCompareStore } from "@/stores/compare-store";
 import { useFlashSaleStore } from "@/stores/flash-sale-store";
+import { useLoyaltyStore } from "@/stores/loyalty-store";
 import { addToRecentlyViewed } from "@/components/home/recently-viewed";
 import { useToast } from "@/hooks/use-toast";
 import type { MockProduct } from "@/lib/mock-data";
@@ -30,6 +31,7 @@ export function ProductCard({ product, flashSalePrice: flashSalePriceProp }: Pro
   const addCompare = useCompareStore((s) => s.addProduct);
   const removeCompare = useCompareStore((s) => s.removeProduct);
 
+  const loyaltyConfig = useLoyaltyStore((s) => s.config);
   const isWishlisted = wishlistIds.includes(product.id);
   const isComparing = compareIds.includes(product.id);
   if (!variant) return null;
@@ -159,6 +161,11 @@ export function ProductCard({ product, flashSalePrice: flashSalePriceProp }: Pro
               <ShoppingCart className="h-3 w-3 mr-1" /> Add
             </Button>
           </div>
+          {loyaltyConfig && (
+            <p className="text-[10px] text-yellow-600 mt-0.5">
+              Earn ~{Math.floor(price * loyaltyConfig.pointsPerDollar)} pts
+            </p>
+          )}
         </div>
       </div>
     </Link>

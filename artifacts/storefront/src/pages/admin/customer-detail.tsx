@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useRoute, useLocation } from "wouter";
-import { ArrowLeft, Star, Shield, Trash2, KeyRound, Ban, CheckCircle } from "lucide-react";
+import { ArrowLeft, Star, Shield, Trash2, KeyRound, Ban, CheckCircle, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -39,14 +40,21 @@ export default function CustomerDetailPage() {
   const [loading, setLoading] = useState(true);
   const [notes, setNotes] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
+  const [loyalty, setLoyalty] = useState<{ account: any; transactions: any[] } | null>(null);
+  const [adjustPts, setAdjustPts] = useState("");
+  const [adjustNote, setAdjustNote] = useState("");
+  const [adjusting, setAdjusting] = useState(false);
 
   useEffect(() => {
     if (!params?.id) return;
-    fetch(`${API}/admin/customers/${params.id}`, { headers: { Authorization: `Bearer ${token}` } })
+    const h = { Authorization: `Bearer ${token}` };
+    fetch(`${API}/admin/customers/${params.id}`, { headers: h })
       .then((r) => r.json()).then((d) => {
         setCustomer(d.customer); setOrders(d.orders); setWishlist(d.wishlist);
         setReviews(d.reviews); setStats(d.stats); setNotes(d.customer.adminNotes ?? "");
       }).catch(() => {}).finally(() => setLoading(false));
+    fetch(`${API}/admin/customers/${params.id}/loyalty`, { headers: h })
+      .then((r) => r.json()).then(setLoyalty).catch(() => {});
   }, [params?.id, token]);
 
   const api = async (path: string, opts?: RequestInit) => {
@@ -82,6 +90,22 @@ export default function CustomerDetailPage() {
     setSavingNotes(true);
     await api(`/admin/customers/${params!.id}/notes`, { method: "PATCH", body: JSON.stringify({ notes }) });
     setSavingNotes(false);
+  };
+
+  const adjustLoyalty = async () => {
+    const pts = parseInt(adjustPts);
+    if (!pts || isNaN(pts)) { alert("Enter a valid points value"); return; }
+    setAdjusting(true);
+    const r = await api(`/admin/customers/${params!.id}/loyalty/adjust`, {
+      method: "POST", body: JSON.stringify({ points: pts, note: adjustNote }),
+    });
+    if (r) {
+      const h = { Authorization: `Bearer ${token}` };
+      const lr = await fetch(`${API}/admin/customers/${params!.id}/loyalty`, { headers: h });
+      setLoyalty(await lr.json());
+      setAdjustPts(""); setAdjustNote("");
+    }
+    setAdjusting(false);
   };
 
   if (loading) return <div className="space-y-4"><Skeleton className="h-8 w-64" /><Skeleton className="h-64" /><Skeleton className="h-64" /></div>;
@@ -164,6 +188,50 @@ export default function CustomerDetailPage() {
               <div className="flex justify-between"><span className="text-muted-foreground">Avg Order Value</span><span className="font-bold">{stats.orderCount > 0 ? `$${(parseFloat(stats.totalSpent) / stats.orderCount).toFixed(2)}` : "—"}</span></div>
             </div>
           </Section>
+
+          {loyalty?.account && (
+            <Section title="Loyalty">
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Tier</span>
+                  <Badge variant="secondary">{loyalty.account.tier}</Badge>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Balance</span>
+                  <span className="font-bold">{loyalty.account.pointsBalance.toLocaleString()} pts</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Lifetime</span>
+                  <span className="font-bold">{loyalty.account.lifetimePoints.toLocaleString()} pts</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Multiplier</span>
+                  <span className="font-bold">{loyalty.account.tierMultiplier}x</span>
+                </div>
+                <div className="border-t pt-3 space-y-2">
+                  <p className="text-xs font-medium">Adjust Points</p>
+                  <Input type="number" placeholder="+100 or -50" value={adjustPts} onChange={(e) => setAdjustPts(e.target.value)} className="h-8 text-sm" />
+                  <Input placeholder="Note (optional)" value={adjustNote} onChange={(e) => setAdjustNote(e.target.value)} className="h-8 text-sm" />
+                  <Button size="sm" className="w-full" onClick={adjustLoyalty} disabled={adjusting}>
+                    <Trophy className="h-3.5 w-3.5 mr-1" /> {adjusting ? "Adjusting..." : "Adjust Points"}
+                  </Button>
+                </div>
+                {loyalty.transactions.length > 0 && (
+                  <div className="border-t pt-3 space-y-1 max-h-48 overflow-y-auto">
+                    <p className="text-xs font-medium mb-2">Recent Transactions</p>
+                    {loyalty.transactions.slice(0, 10).map((tx: any) => (
+                      <div key={tx.id} className="flex justify-between text-xs">
+                        <span className="truncate flex-1 mr-2">{tx.description}</span>
+                        <span className={tx.points > 0 ? "text-green-600" : "text-red-600"}>
+                          {tx.points > 0 ? "+" : ""}{tx.points}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </Section>
+          )}
 
           <Section title={`Reviews (${customerReviews.length})`}>
             {customerReviews.length > 0 ? (

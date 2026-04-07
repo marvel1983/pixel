@@ -43,6 +43,7 @@ Tables split across `lib/db/src/schema/`:
 - `support.ts` — support tickets + ticket messages
 - `affiliates.ts` — affiliate_profiles, affiliate_clicks, affiliate_commissions, affiliate_settings
 - `abandoned-carts.ts` — abandonedCarts, abandonedCartEmails, abandonedCartSettings (3-email recovery sequence)
+- `loyalty.ts` — loyaltyAccounts, loyaltyTransactions, loyaltySettings (points, tiers, bonuses)
 
 ## Frontend Stores (Zustand)
 
@@ -53,6 +54,19 @@ Located in `artifacts/storefront/src/stores/`:
 - `compare-store.ts` — product comparison (max 4)
 - `wishlist-store.ts` — wishlist with toggle
 - `flash-sale-store.ts` — active flash sale variant prices
+- `loyalty-store.ts` — loyalty config (enabled, pointsPerDollar, redemptionRate)
+
+## Loyalty Points & Rewards
+
+- Admin configurable via Settings > Loyalty tab (enable/disable, earning rates, tier thresholds)
+- Tiers: BRONZE → SILVER → GOLD → PLATINUM (based on lifetime points, each with multiplier)
+- Points earned on order completion, registration (welcome bonus), review approval (idempotent)
+- Checkout: authenticated users can redeem points for discounts (server-validated, not client-trusted)
+- Account page: Rewards tab shows tier, balance, progress bar, transaction history
+- Admin: customer detail page shows loyalty info with point adjustment controls
+- Schema: loyaltyAccounts, loyaltyTransactions, loyaltySettings tables
+- Service: `loyalty-service.ts` (earn, redeem, tier calculation, config)
+- Routes: `loyalty.ts` (customer), `admin-loyalty.ts` (admin settings + customer adjustments)
 
 ## Google OAuth
 

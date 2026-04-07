@@ -10,9 +10,10 @@ interface CheckoutSummaryProps {
   taxLabel?: string;
   priceDisplay?: string;
   gcDeduction?: number;
+  loyaltyDiscount?: number;
 }
 
-export function CheckoutSummary({ cppSelected, taxRate = 0, taxLabel = "VAT", priceDisplay = "exclusive", gcDeduction = 0 }: CheckoutSummaryProps) {
+export function CheckoutSummary({ cppSelected, taxRate = 0, taxLabel = "VAT", priceDisplay = "exclusive", gcDeduction = 0, loyaltyDiscount = 0 }: CheckoutSummaryProps) {
   const items = useCartStore((s) => s.items);
   const coupon = useCartStore((s) => s.coupon);
   const getTotal = useCartStore((s) => s.getTotal);
@@ -22,7 +23,7 @@ export function CheckoutSummary({ cppSelected, taxRate = 0, taxLabel = "VAT", pr
   const subtotal = getTotal();
   const discountAmount = coupon ? subtotal * (coupon.pct / 100) : 0;
   const cppAmount = cppSelected ? getCppAmount(subtotal) : 0;
-  const beforeTax = subtotal - discountAmount + cppAmount;
+  const beforeTax = subtotal - discountAmount - loyaltyDiscount + cppAmount;
   const isInclusive = priceDisplay === "inclusive";
   const taxAmount = taxRate > 0
     ? isInclusive
@@ -84,6 +85,13 @@ export function CheckoutSummary({ cppSelected, taxRate = 0, taxLabel = "VAT", pr
           <div className="flex justify-between text-green-600">
             <span>Discount ({coupon.label})</span>
             <span>-{format(discountAmount)}</span>
+          </div>
+        )}
+
+        {loyaltyDiscount > 0 && (
+          <div className="flex justify-between text-yellow-600">
+            <span>Loyalty Points</span>
+            <span>-{format(loyaltyDiscount)}</span>
           </div>
         )}
 

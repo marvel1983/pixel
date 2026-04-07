@@ -7,6 +7,7 @@ import { users, passwordResets, type User } from "@workspace/db/schema";
 import { signToken, requireAuth, type JwtPayload } from "../middleware/auth";
 import { logger } from "../lib/logger";
 import { sendWelcomeEmail, sendPasswordResetEmail } from "../lib/email";
+import { awardWelcomeBonus } from "../services/loyalty-service";
 import crypto from "node:crypto";
 
 const router = Router();
@@ -99,6 +100,9 @@ router.post("/auth/register", async (req, res) => {
 
   sendWelcomeEmail(user.email, firstName).catch((err) =>
     logger.error({ err, userId: user.id }, "Failed to enqueue welcome email"),
+  );
+  awardWelcomeBonus(user.id).catch((err) =>
+    logger.error({ err, userId: user.id }, "Failed to award welcome bonus (non-fatal)"),
   );
 
   res.status(201).json({ user: sanitizeUser(user), token });

@@ -33,3 +33,4 @@ export * from "./product-alerts";
 export * from "./product-qa";
 export * from "./newsletter";
 export * from "./flash-sales";
+export * from "./loyalty";

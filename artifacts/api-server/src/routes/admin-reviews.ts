@@ -4,6 +4,8 @@ import { reviews, products, users } from "@workspace/db/schema";
 import { eq, desc, sql, and, or, ilike, gte, lte, count, inArray } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
+import { awardReviewBonus } from "../services/loyalty-service";
+import { logger } from "../lib/logger";
 
 const router = Router();
 
@@ -79,6 +81,14 @@ router.patch("/admin/reviews/:id/status", requireAuth, requireAdmin, requirePerm
   if (!["PENDING", "APPROVED", "REJECTED"].includes(status)) { res.status(400).json({ error: "Invalid status" }); return; }
   const isApproved = status === "APPROVED";
   await db.update(reviews).set({ status, isApproved, updatedAt: new Date() }).where(eq(reviews.id, id));
+  if (isApproved) {
+    const [review] = await db.select({ userId: reviews.userId }).from(reviews).where(eq(reviews.id, id)).limit(1);
+    if (review?.userId) {
+      awardReviewBonus(review.userId, id).catch((err) =>
+        logger.error({ err, reviewId: id }, "Failed to award review loyalty bonus (non-fatal)"),
+      );
+    }
+  }
   res.json({ success: true });
 });
 

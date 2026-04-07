@@ -8,6 +8,7 @@ import { useAuthStore } from "@/stores/auth-store";
 import { useWishlistStore } from "@/stores/wishlist-store";
 import { useCurrencyStore } from "@/stores/currency-store";
 import { useFlashSaleStore } from "@/stores/flash-sale-store";
+import { useLoyaltyStore } from "@/stores/loyalty-store";
 import { useMaintenanceCheck, MaintenancePage } from "@/components/maintenance-page";
 import HomePage from "@/pages/home";
 import ShopPage from "@/pages/shop";
@@ -109,6 +110,7 @@ function AppInitEffect() {
   useEffect(() => {
     useCurrencyStore.getState().fetchRates();
     useFlashSaleStore.getState().load();
+    useLoyaltyStore.getState().load();
   }, []);
   useEffect(() => {
     if (token) {

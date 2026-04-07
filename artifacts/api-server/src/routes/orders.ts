@@ -7,7 +7,9 @@ import { executeOrderPipeline } from "../services/order-pipeline";
 import { validateCouponServerSide } from "../services/coupon-service";
 import { validateGiftCards, loadGiftCardBalances } from "../services/gift-card-service";
 import { getRefCookie } from "../middleware/referral";
+import { verifyToken } from "../middleware/auth";
 import { logger } from "../lib/logger";
+import { getLoyaltyConfig, getOrCreateAccount, pointsToDiscount } from "../services/loyalty-service";
 
 const router = Router();
 
@@ -54,6 +56,7 @@ const orderSchema = z.object({
     code: z.string(),
     amount: z.number().positive(),
   })).optional(),
+  loyaltyPointsUsed: z.number().int().min(0).optional(),
 });
 
 const CPP_RATE = 0.05;
@@ -98,15 +101,10 @@ async function validateAndPriceItems(items: z.infer<typeof orderSchema>["items"]
     .from(productVariants)
     .where(inArray(productVariants.id, variantIds));
 
-  if (dbVariants.length === 0) {
-    return { prices: null, flashVariantMap: new Map<number, number>(), error: null };
-  }
-
+  if (dbVariants.length === 0) return { prices: null, flashVariantMap: new Map<number, number>(), error: null };
   const priceMap = new Map(dbVariants.map((v) => [v.id, v.priceUsd]));
-
   if (dbVariants.length !== variantIds.length) {
-    const missing = variantIds.filter((id) => !priceMap.has(id));
-    return { prices: null, flashVariantMap: new Map<number, number>(), error: `Variant(s) not found: ${missing.join(", ")}` };
+    return { prices: null, flashVariantMap: new Map<number, number>(), error: `Variant(s) not found: ${variantIds.filter((id) => !priceMap.has(id)).join(", ")}` };
   }
 
   const flashInfo = await getFlashSaleInfo(variantIds);
@@ -145,6 +143,12 @@ router.post("/orders", async (req, res) => {
   }
 
   const { billing, items, coupon, cppSelected, vatNumber, total, payment, giftCards: gcInput } = parsed.data;
+
+  let userId: number | undefined;
+  try {
+    const authToken = req.cookies?.token || req.headers.authorization?.replace("Bearer ", "");
+    if (authToken) userId = verifyToken(authToken).userId;
+  } catch { /* guest checkout */ }
 
   for (const item of items) {
     if (item.variantId <= 0) {
@@ -197,8 +201,22 @@ router.post("/orders", async (req, res) => {
     },
     0,
   );
-  const discountPct = serverCoupon?.pct ?? 0;
-  const discountAmount = subtotal * (discountPct / 100);
+  const couponDiscount = subtotal * ((serverCoupon?.pct ?? 0) / 100);
+  let loyaltyDisc = 0, loyaltyPtsUsed = 0;
+  const reqPts = parsed.data.loyaltyPointsUsed ?? 0;
+  if (reqPts > 0 && userId) {
+    const lc = await getLoyaltyConfig();
+    if (lc?.enabled) {
+      const acc = await getOrCreateAccount(userId);
+      if (reqPts >= lc.minRedeemPoints && reqPts <= acc.pointsBalance) {
+        const raw = pointsToDiscount(reqPts, lc);
+        const max = subtotal * (lc.maxRedeemPercent / 100);
+        loyaltyDisc = Math.min(raw, max);
+        loyaltyPtsUsed = loyaltyDisc < raw ? Math.ceil(loyaltyDisc / parseFloat(lc.redemptionRate)) : reqPts;
+      }
+    }
+  }
+  const discountAmount = couponDiscount + loyaltyDisc;
   const cppAmount = cppSelected ? Math.round(subtotal * CPP_RATE * 100) / 100 : 0;
 
   let taxRate = 0;
@@ -260,6 +278,9 @@ router.post("/orders", async (req, res) => {
       giftCards: serverGiftCards,
       affiliateRefCode: getRefCookie(req),
       flashVariantMap: flashVariantMap.size > 0 ? flashVariantMap : undefined,
+      loyaltyPointsUsed: loyaltyPtsUsed || undefined,
+      loyaltyDiscount: loyaltyDisc || undefined,
+      userId,
     });
 
     res.status(201).json({
