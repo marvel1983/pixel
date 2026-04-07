@@ -48,7 +48,7 @@ export function PaymentForm({ data, errors, onChange }: PaymentFormProps) {
             id="cardName"
             value={data.cardName}
             onChange={(e) => onChange("cardName", e.target.value)}
-            placeholder="John Doe"
+            placeholder={t("checkout.cardNamePlaceholder")}
             className={errors.cardName ? "border-destructive" : ""}
           />
           {errors.cardName && <p className="text-xs text-destructive mt-1">{errors.cardName}</p>}
@@ -60,7 +60,7 @@ export function PaymentForm({ data, errors, onChange }: PaymentFormProps) {
             id="cardNumber"
             value={data.cardNumber}
             onChange={(e) => onChange("cardNumber", formatCardNumber(e.target.value))}
-            placeholder="4242 4242 4242 4242"
+            placeholder={t("checkout.cardNumberPlaceholder")}
             className={errors.cardNumber ? "border-destructive" : ""}
           />
           {errors.cardNumber && <p className="text-xs text-destructive mt-1">{errors.cardNumber}</p>}
@@ -73,18 +73,18 @@ export function PaymentForm({ data, errors, onChange }: PaymentFormProps) {
               id="expiry"
               value={data.expiry}
               onChange={(e) => onChange("expiry", formatExpiry(e.target.value))}
-              placeholder="MM/YY"
+              placeholder={t("checkout.expiryPlaceholder")}
               className={errors.expiry ? "border-destructive" : ""}
             />
             {errors.expiry && <p className="text-xs text-destructive mt-1">{errors.expiry}</p>}
           </div>
           <div>
-            <Label htmlFor="cvc">CVC *</Label>
+            <Label htmlFor="cvc">{t("checkout.cvc")} *</Label>
             <Input
               id="cvc"
               value={data.cvc}
               onChange={(e) => onChange("cvc", e.target.value.replace(/\D/g, "").slice(0, 4))}
-              placeholder="123"
+              placeholder={t("checkout.cvcPlaceholder")}
               className={errors.cvc ? "border-destructive" : ""}
             />
             {errors.cvc && <p className="text-xs text-destructive mt-1">{errors.cvc}</p>}

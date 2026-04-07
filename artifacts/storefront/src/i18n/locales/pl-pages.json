@@ -180,5 +180,28 @@
     "confirmationFailed": "Potwierdzenie nie powiodło się",
     "unsubscribe": "Wypisz się",
     "unsubscribeFailed": "Wypisanie nie powiodło się"
+  },
+  "hotOffers": {
+    "title": "Gorące oferty",
+    "subtitle": "Produkty wybrane specjalnie dla Ciebie"
+  },
+  "wallet": {
+    "availableBalance": "Dostępne saldo",
+    "addFunds": "Doładuj",
+    "totalDeposited": "Łącznie wpłacono",
+    "totalSpent": "Łącznie wydano",
+    "amount": "Kwota",
+    "amountPlaceholder": "Kwota (5–500 $)",
+    "amountRange": "Kwota musi wynosić od 5 do 500 $",
+    "validCard": "Wpisz prawidłowy numer karty",
+    "validExpiry": "Wpisz datę w formacie MM/RR",
+    "validCvc": "Wpisz prawidłowy CVC",
+    "topUpSuccess": "Dodano {{amount}} $ do portfela",
+    "topUpFailed": "Doładowanie nie powiodło się",
+    "processing": "Przetwarzanie...",
+    "topUp": "Doładuj {{amount}} $",
+    "transactionHistory": "Historia transakcji",
+    "noTransactions": "Brak transakcji",
+    "balance": "Saldo: {{amount}} $"
   }
 }

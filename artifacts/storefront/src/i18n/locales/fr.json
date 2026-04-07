@@ -86,7 +86,18 @@
     "securedBy": "Sécurisé par Checkout.com",
     "createAccountLabel": "Créer un compte pour un paiement plus rapide",
     "createPasswordPlaceholder": "Créer un mot de passe (min 8 caractères)",
-    "accountEmailNote": "Votre compte sera créé avec l'e-mail de facturation"
+    "accountEmailNote": "Votre compte sera créé avec l'e-mail de facturation",
+    "cardNamePlaceholder": "Jean Dupont",
+    "cardNumberPlaceholder": "4242 4242 4242 4242",
+    "expiryPlaceholder": "MM/AA",
+    "cvcPlaceholder": "123",
+    "networkError": "Erreur réseau",
+    "haveGiftCard": "Vous avez une carte cadeau ?",
+    "alreadyApplied": "Cette carte cadeau est déjà appliquée",
+    "invalidGiftCard": "Carte cadeau invalide",
+    "remaining": "{{amount}} restant",
+    "apply": "Appliquer",
+    "tryAgain": "Veuillez réessayer"
   },
   "product": {
     "addToCart": "Ajouter au panier",

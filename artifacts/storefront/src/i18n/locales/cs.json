@@ -86,7 +86,18 @@
     "securedBy": "Zabezpečeno Checkout.com",
     "createAccountLabel": "Vytvořte si účet pro rychlejší platby",
     "createPasswordPlaceholder": "Vytvořte heslo (min. 8 znaků)",
-    "accountEmailNote": "Účet bude vytvořen s fakturační e-mailovou adresou"
+    "accountEmailNote": "Účet bude vytvořen s fakturační e-mailovou adresou",
+    "cardNamePlaceholder": "Jan Novák",
+    "cardNumberPlaceholder": "4242 4242 4242 4242",
+    "expiryPlaceholder": "MM/RR",
+    "cvcPlaceholder": "123",
+    "networkError": "Chyba sítě",
+    "haveGiftCard": "Máte dárkovou kartu?",
+    "alreadyApplied": "Tato dárková karta je již použita",
+    "invalidGiftCard": "Neplatná dárková karta",
+    "remaining": "{{amount}} zbývá",
+    "apply": "Použít",
+    "tryAgain": "Zkuste to prosím znovu"
   },
   "product": {
     "addToCart": "Přidat do košíku",

@@ -86,7 +86,18 @@
     "securedBy": "Gesichert durch Checkout.com",
     "createAccountLabel": "Konto erstellen für schnelleres Bezahlen",
     "createPasswordPlaceholder": "Passwort erstellen (mind. 8 Zeichen)",
-    "accountEmailNote": "Ihr Konto wird mit der oben angegebenen E-Mail erstellt"
+    "accountEmailNote": "Ihr Konto wird mit der oben angegebenen E-Mail erstellt",
+    "cardNamePlaceholder": "Max Mustermann",
+    "cardNumberPlaceholder": "4242 4242 4242 4242",
+    "expiryPlaceholder": "MM/JJ",
+    "cvcPlaceholder": "123",
+    "networkError": "Netzwerkfehler",
+    "haveGiftCard": "Haben Sie eine Geschenkkarte?",
+    "alreadyApplied": "Diese Geschenkkarte wurde bereits eingelöst",
+    "invalidGiftCard": "Ungültige Geschenkkarte",
+    "remaining": "{{amount}} übrig",
+    "apply": "Einlösen",
+    "tryAgain": "Bitte versuchen Sie es erneut"
   },
   "product": {
     "addToCart": "In den Warenkorb",

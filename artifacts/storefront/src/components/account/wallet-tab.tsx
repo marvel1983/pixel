@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +16,7 @@ interface WalletTx {
 }
 
 export function WalletTab() {
+  const { t } = useTranslation();
   const { token } = useAuthStore();
   const { toast } = useToast();
   const [balance, setBalance] = useState("0.00");
@@ -51,17 +53,17 @@ export function WalletTab() {
     e.preventDefault();
     const amt = parseFloat(topUpAmount);
     if (!amt || amt < 5 || amt > 500) {
-      toast({ title: "Amount must be between $5 and $500", variant: "destructive" }); return;
+      toast({ title: t("wallet.amountRange"), variant: "destructive" }); return;
     }
     const digits = cardNumber.replace(/\s/g, "");
     if (digits.length < 13 || digits.length > 19) {
-      toast({ title: "Enter a valid card number", variant: "destructive" }); return;
+      toast({ title: t("wallet.validCard"), variant: "destructive" }); return;
     }
     if (!/^\d{2}\/\d{2}$/.test(cardExpiry)) {
-      toast({ title: "Enter expiry as MM/YY", variant: "destructive" }); return;
+      toast({ title: t("wallet.validExpiry"), variant: "destructive" }); return;
     }
     if (!/^\d{3,4}$/.test(cardCvc)) {
-      toast({ title: "Enter a valid CVC", variant: "destructive" }); return;
+      toast({ title: t("wallet.validCvc"), variant: "destructive" }); return;
     }
     const cardToken = `tok_${digits.slice(-4)}_${Date.now()}`;
     setTopping(true);
@@ -72,12 +74,12 @@ export function WalletTab() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      toast({ title: `$${amt.toFixed(2)} added to wallet` });
+      toast({ title: t("wallet.topUpSuccess", { amount: amt.toFixed(2) }) });
       setTopUpAmount(""); setCardNumber(""); setCardExpiry(""); setCardCvc("");
       setShowTopUp(false);
       loadData();
     } catch (err) {
-      toast({ title: err instanceof Error ? err.message : "Top-up failed", variant: "destructive" });
+      toast({ title: err instanceof Error ? err.message : t("wallet.topUpFailed"), variant: "destructive" });
     } finally { setTopping(false); }
   }
 
@@ -93,21 +95,21 @@ export function WalletTab() {
                 <Wallet className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Available Balance</p>
+                <p className="text-sm text-muted-foreground">{t("wallet.availableBalance")}</p>
                 <p className="text-3xl font-bold">${parseFloat(balance).toFixed(2)}</p>
               </div>
             </div>
             <Button onClick={() => setShowTopUp(!showTopUp)} className="gap-1.5">
-              <Plus className="h-4 w-4" /> Add Funds
+              <Plus className="h-4 w-4" /> {t("wallet.addFunds")}
             </Button>
           </div>
           <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t">
             <div>
-              <p className="text-xs text-muted-foreground">Total Deposited</p>
+              <p className="text-xs text-muted-foreground">{t("wallet.totalDeposited")}</p>
               <p className="font-medium text-green-600">${parseFloat(totalDeposited).toFixed(2)}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Total Spent</p>
+              <p className="text-xs text-muted-foreground">{t("wallet.totalSpent")}</p>
               <p className="font-medium text-orange-600">${parseFloat(totalSpent).toFixed(2)}</p>
             </div>
           </div>
@@ -116,12 +118,12 @@ export function WalletTab() {
 
       {showTopUp && (
         <Card>
-          <CardHeader><CardTitle className="text-base flex items-center gap-2"><CreditCard className="h-4 w-4" /> Add Funds</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base flex items-center gap-2"><CreditCard className="h-4 w-4" /> {t("wallet.addFunds")}</CardTitle></CardHeader>
           <CardContent>
             <form onSubmit={handleTopUp} className="space-y-3">
               <div>
-                <Label className="text-sm">Amount</Label>
-                <Input type="number" min="5" max="500" step="0.01" placeholder="Amount ($5–$500)"
+                <Label className="text-sm">{t("wallet.amount")}</Label>
+                <Input type="number" min="5" max="500" step="0.01" placeholder={t("wallet.amountPlaceholder")}
                   value={topUpAmount} onChange={(e) => setTopUpAmount(e.target.value)} />
                 <div className="flex gap-2 mt-2">
                   {[10, 25, 50, 100].map((v) => (
@@ -130,25 +132,25 @@ export function WalletTab() {
                 </div>
               </div>
               <div>
-                <Label className="text-sm">Card Number</Label>
-                <Input placeholder="4242 4242 4242 4242" value={cardNumber}
+                <Label className="text-sm">{t("checkout.cardNumber")}</Label>
+                <Input placeholder={t("checkout.cardNumberPlaceholder")} value={cardNumber}
                   onChange={(e) => setCardNumber(e.target.value)} maxLength={19} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-sm">Expiry</Label>
-                  <Input placeholder="MM/YY" value={cardExpiry}
+                  <Label className="text-sm">{t("checkout.expiry")}</Label>
+                  <Input placeholder={t("checkout.expiryPlaceholder")} value={cardExpiry}
                     onChange={(e) => setCardExpiry(e.target.value)} maxLength={5} />
                 </div>
                 <div>
-                  <Label className="text-sm">CVC</Label>
-                  <Input placeholder="123" value={cardCvc}
+                  <Label className="text-sm">{t("checkout.cvc")}</Label>
+                  <Input placeholder={t("checkout.cvcPlaceholder")} value={cardCvc}
                     onChange={(e) => setCardCvc(e.target.value)} maxLength={4} />
                 </div>
               </div>
               <Button type="submit" className="w-full" disabled={topping}>
                 {topping ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                {topping ? "Processing..." : `Top Up $${parseFloat(topUpAmount || "0").toFixed(2)}`}
+                {topping ? t("wallet.processing") : t("wallet.topUp", { amount: parseFloat(topUpAmount || "0").toFixed(2) })}
               </Button>
             </form>
           </CardContent>
@@ -156,10 +158,10 @@ export function WalletTab() {
       )}
 
       <Card>
-        <CardHeader><CardTitle className="text-base">Transaction History</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base">{t("wallet.transactionHistory")}</CardTitle></CardHeader>
         <CardContent className="p-0">
           {transactions.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">No transactions yet</p>
+            <p className="text-center text-muted-foreground py-8">{t("wallet.noTransactions")}</p>
           ) : (
             <div className="divide-y">
               {transactions.map((tx) => {
@@ -177,7 +179,7 @@ export function WalletTab() {
                       <p className={`font-medium ${isCredit ? "text-green-600" : "text-orange-600"}`}>
                         {isCredit ? "+" : ""}${Math.abs(parseFloat(tx.amountUsd)).toFixed(2)}
                       </p>
-                      <p className="text-xs text-muted-foreground">Bal: ${parseFloat(tx.balanceAfter).toFixed(2)}</p>
+                      <p className="text-xs text-muted-foreground">{t("wallet.balance", { amount: parseFloat(tx.balanceAfter).toFixed(2) })}</p>
                     </div>
                   </div>
                 );

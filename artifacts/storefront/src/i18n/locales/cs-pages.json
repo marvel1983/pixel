@@ -180,5 +180,28 @@
     "confirmationFailed": "Potvrzení selhalo",
     "unsubscribe": "Odhlásit se",
     "unsubscribeFailed": "Odhlášení selhalo"
+  },
+  "hotOffers": {
+    "title": "Horké nabídky",
+    "subtitle": "Produkty vybrané přímo pro vás"
+  },
+  "wallet": {
+    "availableBalance": "Dostupný zůstatek",
+    "addFunds": "Přidat prostředky",
+    "totalDeposited": "Celkem vloženo",
+    "totalSpent": "Celkem utraceno",
+    "amount": "Částka",
+    "amountPlaceholder": "Částka (5–500 $)",
+    "amountRange": "Částka musí být mezi 5 a 500 $",
+    "validCard": "Zadejte platné číslo karty",
+    "validExpiry": "Zadejte datum jako MM/RR",
+    "validCvc": "Zadejte platný CVC",
+    "topUpSuccess": "{{amount}} $ přidáno do peněženky",
+    "topUpFailed": "Dobíjení selhalo",
+    "processing": "Zpracování...",
+    "topUp": "Dobít {{amount}} $",
+    "transactionHistory": "Historie transakcí",
+    "noTransactions": "Zatím žádné transakce",
+    "balance": "Zůst: {{amount}} $"
   }
 }

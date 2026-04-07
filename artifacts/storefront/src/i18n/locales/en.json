@@ -86,7 +86,18 @@
     "securedBy": "Secured by Checkout.com",
     "createAccountLabel": "Create an account for faster checkout next time",
     "createPasswordPlaceholder": "Create a password (min 8 characters)",
-    "accountEmailNote": "Your account will be created with the billing email above"
+    "accountEmailNote": "Your account will be created with the billing email above",
+    "cardNamePlaceholder": "John Doe",
+    "cardNumberPlaceholder": "4242 4242 4242 4242",
+    "expiryPlaceholder": "MM/YY",
+    "cvcPlaceholder": "123",
+    "networkError": "Network error",
+    "haveGiftCard": "Have a gift card?",
+    "alreadyApplied": "This gift card is already applied",
+    "invalidGiftCard": "Invalid gift card",
+    "remaining": "{{amount}} remaining",
+    "apply": "Apply",
+    "tryAgain": "Please try again"
   },
   "product": {
     "addToCart": "Add to Cart",

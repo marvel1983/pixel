@@ -180,5 +180,28 @@
     "confirmationFailed": "Échec de la confirmation",
     "unsubscribe": "Se désabonner",
     "unsubscribeFailed": "Échec du désabonnement"
+  },
+  "hotOffers": {
+    "title": "Offres du moment",
+    "subtitle": "Produits sélectionnés pour vous"
+  },
+  "wallet": {
+    "availableBalance": "Solde disponible",
+    "addFunds": "Ajouter des fonds",
+    "totalDeposited": "Total déposé",
+    "totalSpent": "Total dépensé",
+    "amount": "Montant",
+    "amountPlaceholder": "Montant (5–500 $)",
+    "amountRange": "Le montant doit être entre 5 et 500 $",
+    "validCard": "Entrez un numéro de carte valide",
+    "validExpiry": "Entrez la date au format MM/AA",
+    "validCvc": "Entrez un CVC valide",
+    "topUpSuccess": "{{amount}} $ ajoutés au portefeuille",
+    "topUpFailed": "Rechargement échoué",
+    "processing": "Traitement...",
+    "topUp": "Recharger {{amount}} $",
+    "transactionHistory": "Historique des transactions",
+    "noTransactions": "Aucune transaction",
+    "balance": "Solde: {{amount}} $"
   }
 }

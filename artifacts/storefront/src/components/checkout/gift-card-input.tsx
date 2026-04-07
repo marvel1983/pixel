@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Gift, X, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +20,7 @@ interface Props {
 }
 
 export function GiftCardInput({ appliedCards, onApply, onRemove, remainingTotal }: Props) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
@@ -30,7 +32,7 @@ export function GiftCardInput({ appliedCards, onApply, onRemove, remainingTotal 
     const trimmed = code.trim().toUpperCase();
     if (!trimmed) return;
     if (appliedCards.some((c) => c.code === trimmed)) {
-      setError("This gift card is already applied"); return;
+      setError(t("checkout.alreadyApplied")); return;
     }
     setLoading(true);
     setError("");
@@ -41,12 +43,12 @@ export function GiftCardInput({ appliedCards, onApply, onRemove, remainingTotal 
         body: JSON.stringify({ code: trimmed }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data.error || "Invalid gift card"); return; }
+      if (!res.ok) { setError(data.error || t("checkout.invalidGiftCard")); return; }
       const balance = parseFloat(data.balance);
       const toApply = Math.min(balance, remainingTotal);
       onApply({ code: data.code, balance, applied: toApply });
       setCode("");
-    } catch { setError("Network error"); } finally { setLoading(false); }
+    } catch { setError(t("checkout.networkError")); } finally { setLoading(false); }
   };
 
   return (
@@ -54,7 +56,7 @@ export function GiftCardInput({ appliedCards, onApply, onRemove, remainingTotal 
       <button className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium" onClick={() => setOpen(!open)}>
         <span className="flex items-center gap-2">
           <Gift className="h-4 w-4 text-blue-600" />
-          Have a gift card?
+          {t("checkout.haveGiftCard")}
           {totalApplied > 0 && <Badge variant="secondary" className="bg-green-50 text-green-700">-${totalApplied.toFixed(2)}</Badge>}
         </span>
         {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -66,7 +68,7 @@ export function GiftCardInput({ appliedCards, onApply, onRemove, remainingTotal 
               <div>
                 <span className="font-mono font-medium">{c.code}</span>
                 <span className="text-muted-foreground ml-2">-${c.applied.toFixed(2)}</span>
-                {c.balance > c.applied && <span className="text-xs text-muted-foreground ml-1">(${(c.balance - c.applied).toFixed(2)} remaining)</span>}
+                {c.balance > c.applied && <span className="text-xs text-muted-foreground ml-1">({t("checkout.remaining", { amount: `$${(c.balance - c.applied).toFixed(2)}` })})</span>}
               </div>
               <button onClick={() => onRemove(c.code)} className="text-red-500 hover:text-red-700"><X className="h-4 w-4" /></button>
             </div>
@@ -76,7 +78,7 @@ export function GiftCardInput({ appliedCards, onApply, onRemove, remainingTotal 
               value={code} onChange={(e) => setCode(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleApply()} />
             <Button variant="outline" size="sm" onClick={handleApply} disabled={loading || !code.trim()}>
-              {loading ? "..." : "Apply"}
+              {loading ? "..." : t("checkout.apply")}
             </Button>
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}

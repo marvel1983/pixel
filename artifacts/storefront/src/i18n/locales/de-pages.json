@@ -180,5 +180,28 @@
     "confirmationFailed": "Bestätigung fehlgeschlagen",
     "unsubscribe": "Abmelden",
     "unsubscribeFailed": "Abmeldung fehlgeschlagen"
+  },
+  "hotOffers": {
+    "title": "Heiße Angebote",
+    "subtitle": "Handverlesene Produkte für Sie"
+  },
+  "wallet": {
+    "availableBalance": "Verfügbares Guthaben",
+    "addFunds": "Guthaben aufladen",
+    "totalDeposited": "Gesamt eingezahlt",
+    "totalSpent": "Gesamt ausgegeben",
+    "amount": "Betrag",
+    "amountPlaceholder": "Betrag (5–500 $)",
+    "amountRange": "Betrag muss zwischen 5 und 500 $ liegen",
+    "validCard": "Gültige Kartennummer eingeben",
+    "validExpiry": "Ablaufdatum als MM/JJ eingeben",
+    "validCvc": "Gültigen CVC eingeben",
+    "topUpSuccess": "{{amount}} $ zum Wallet hinzugefügt",
+    "topUpFailed": "Aufladen fehlgeschlagen",
+    "processing": "Verarbeitung...",
+    "topUp": "Aufladen {{amount}} $",
+    "transactionHistory": "Transaktionsverlauf",
+    "noTransactions": "Noch keine Transaktionen",
+    "balance": "Saldo: {{amount}} $"
   }
 }

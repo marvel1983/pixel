@@ -180,5 +180,28 @@
     "confirmationFailed": "Confirmation failed",
     "unsubscribe": "Unsubscribe",
     "unsubscribeFailed": "Unsubscribe failed"
+  },
+  "hotOffers": {
+    "title": "Hot Offers",
+    "subtitle": "Featured products handpicked for you"
+  },
+  "wallet": {
+    "availableBalance": "Available Balance",
+    "addFunds": "Add Funds",
+    "totalDeposited": "Total Deposited",
+    "totalSpent": "Total Spent",
+    "amount": "Amount",
+    "amountPlaceholder": "Amount ($5–$500)",
+    "amountRange": "Amount must be between $5 and $500",
+    "validCard": "Enter a valid card number",
+    "validExpiry": "Enter expiry as MM/YY",
+    "validCvc": "Enter a valid CVC",
+    "topUpSuccess": "${{amount}} added to wallet",
+    "topUpFailed": "Top-up failed",
+    "processing": "Processing...",
+    "topUp": "Top Up ${{amount}}",
+    "transactionHistory": "Transaction History",
+    "noTransactions": "No transactions yet",
+    "balance": "Bal: ${{amount}}"
   }
 }
