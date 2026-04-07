@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
+import QRCode from "react-qr-code";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuthStore } from "@/stores/auth-store";
 import { useToast } from "@/hooks/use-toast";
-import { Copy, ExternalLink, DollarSign, MousePointer, ShoppingCart, Loader2 } from "lucide-react";
+import { Copy, DollarSign, MousePointer, ShoppingCart, Loader2 } from "lucide-react";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -117,12 +118,17 @@ export function AffiliateTab() {
             <code className="flex-1 bg-muted px-3 py-2 rounded text-sm truncate">{refUrl}</code>
             <Button size="sm" variant="outline" onClick={copyLink}><Copy className="h-4 w-4" /></Button>
           </div>
-          <div className="flex gap-2">
-            <p className="text-xs text-muted-foreground">Code: <strong>{profile.referralCode}</strong> · Rate: {profile.commissionRate}%</p>
+          <div className="flex items-start gap-4">
+            <div className="space-y-2 flex-1">
+              <p className="text-xs text-muted-foreground">Code: <strong>{profile.referralCode}</strong> · Rate: {profile.commissionRate}%</p>
+              <Button size="sm" onClick={requestPayout} disabled={available < minPayout}>
+                Request Payout {available < minPayout && `(min $${minPayout})`}
+              </Button>
+            </div>
+            <div className="bg-white p-2 rounded border">
+              <QRCode value={refUrl} size={80} />
+            </div>
           </div>
-          <Button size="sm" onClick={requestPayout} disabled={available < minPayout}>
-            Request Payout {available < minPayout && `(min $${minPayout})`}
-          </Button>
         </CardContent>
       </Card>
 

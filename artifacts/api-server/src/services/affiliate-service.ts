@@ -58,7 +58,7 @@ export async function reverseCommissionsForOrder(orderId: number): Promise<void>
 
   for (const comm of commissions) {
     const amount = parseFloat(comm.commissionAmount);
-    const wasPaid = comm.status === "PAID";
+    const prevStatus = comm.status;
 
     await db.update(affiliateCommissions).set({
       status: "REVERSED",
@@ -66,14 +66,23 @@ export async function reverseCommissionsForOrder(orderId: number): Promise<void>
       reversalReason: "Order refunded",
     }).where(eq(affiliateCommissions.id, comm.id));
 
-    const balanceField = wasPaid ? affiliateProfiles.totalPaid : affiliateProfiles.pendingBalance;
-    await db.update(affiliateProfiles).set({
-      [wasPaid ? "totalPaid" : "pendingBalance"]: sql`${balanceField} - ${amount.toFixed(2)}::numeric`,
-      totalEarned: sql`${affiliateProfiles.totalEarned} - ${amount.toFixed(2)}::numeric`,
-      updatedAt: new Date(),
-    }).where(eq(affiliateProfiles.id, comm.affiliateId));
+    const updates: Record<string, ReturnType<typeof sql>> = {
+      updatedAt: sql`NOW()`,
+    };
 
-    logger.info({ commissionId: comm.id, orderId, amount }, "Commission reversed");
+    if (prevStatus === "HELD" || prevStatus === "PENDING") {
+      updates.pendingBalance = sql`${affiliateProfiles.pendingBalance} - ${amount.toFixed(2)}::numeric`;
+    } else if (prevStatus === "APPROVED") {
+      updates.totalEarned = sql`${affiliateProfiles.totalEarned} - ${amount.toFixed(2)}::numeric`;
+    } else if (prevStatus === "PAID") {
+      updates.totalEarned = sql`${affiliateProfiles.totalEarned} - ${amount.toFixed(2)}::numeric`;
+      updates.totalPaid = sql`${affiliateProfiles.totalPaid} - ${amount.toFixed(2)}::numeric`;
+    }
+
+    await db.update(affiliateProfiles).set(updates)
+      .where(eq(affiliateProfiles.id, comm.affiliateId));
+
+    logger.info({ commissionId: comm.id, orderId, amount, prevStatus }, "Commission reversed");
   }
 }
 

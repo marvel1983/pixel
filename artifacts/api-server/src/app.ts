@@ -5,6 +5,7 @@ import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { maintenanceMiddleware } from "./middleware/maintenance";
+import { referralTracking } from "./middleware/referral";
 
 declare global {
   namespace Express {
@@ -48,6 +49,6 @@ app.use(
 );
 app.use(express.urlencoded({ extended: true }));
 
-app.use("/api", maintenanceMiddleware, router);
+app.use("/api", referralTracking, maintenanceMiddleware, router);
 
 export default app;
