@@ -33,9 +33,13 @@ router.get("/admin/qa", ...guard, async (req, res) => {
   const limit = Math.min(100, parseInt(lm as string) || 25);
   const offset = (page - 1) * limit;
 
+  const validStatuses = ["PENDING", "APPROVED", "REJECTED"] as const;
   const conditions: SQL[] = [];
   if (status && status !== "ALL") {
-    conditions.push(eq(productQuestions.status, status as "PENDING" | "APPROVED" | "REJECTED"));
+    if (!validStatuses.includes(status as typeof validStatuses[number])) {
+      res.status(400).json({ error: "Invalid status filter" }); return;
+    }
+    conditions.push(eq(productQuestions.status, status as typeof validStatuses[number]));
   }
   if (search) {
     const s = `%${search}%`;
