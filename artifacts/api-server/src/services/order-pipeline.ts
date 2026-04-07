@@ -81,9 +81,9 @@ export async function executeOrderPipeline(input: OrderInput) {
     })
     .returning({ id: orders.id });
 
+  let loyaltyRedeemed = false;
+  let loyaltyAccountId: number | undefined;
   try {
-    let loyaltyRedeemed = false;
-    let loyaltyAccountId: number | undefined;
     if (input.loyaltyPointsUsed && input.loyaltyPointsUsed > 0 && input.userId) {
       const acct = await getOrCreateAccount(input.userId);
       loyaltyAccountId = acct.id;
@@ -101,11 +101,6 @@ export async function executeOrderPipeline(input: OrderInput) {
     });
 
     if (!paymentResult.success) {
-      if (loyaltyRedeemed && loyaltyAccountId && input.loyaltyPointsUsed) {
-        await restorePoints(loyaltyAccountId, input.loyaltyPointsUsed,
-          `Points restored: payment failed for order ${orderNumber}`, order.id);
-      }
-      await updateOrderStatus(order.id, "FAILED");
       throw new Error(paymentResult.error ?? "Payment declined");
     }
 
@@ -210,6 +205,12 @@ export async function executeOrderPipeline(input: OrderInput) {
     logger.info({ orderNumber, total: total.toFixed(2) }, "Order pipeline complete");
     return { orderNumber, status: "COMPLETED" };
   } catch (err) {
+    if (loyaltyRedeemed && loyaltyAccountId && input.loyaltyPointsUsed) {
+      await restorePoints(loyaltyAccountId, input.loyaltyPointsUsed,
+        `Points restored: order ${orderNumber} failed`, order.id).catch((restoreErr) => {
+        logger.error({ restoreErr, orderNumber }, "Failed to restore loyalty points on order failure");
+      });
+    }
     await updateOrderStatus(order.id, "FAILED");
     throw err;
   }
