@@ -20,10 +20,36 @@ interface OrderSummary {
   firstProduct: string;
 }
 
+interface OrderData {
+  orderNumber: string;
+  status: string;
+  subtotalUsd: string;
+  discountUsd: string;
+  totalUsd: string;
+  paymentMethod: string;
+  createdAt: string;
+}
+
+interface OrderItem {
+  id: number;
+  productName: string;
+  variantName: string;
+  priceUsd: string;
+  quantity: number;
+}
+
+interface KeyGroup {
+  orderItemId: number;
+  productName: string;
+  variantName: string;
+  quantity: number;
+  keys: { id: number; value: string; status: string }[];
+}
+
 interface OrderFull {
-  order: any;
-  items: any[];
-  licenseKeys: any[];
+  order: OrderData;
+  items: OrderItem[];
+  licenseKeys: KeyGroup[];
 }
 
 export default function AccountOrdersPage() {

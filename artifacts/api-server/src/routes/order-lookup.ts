@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { eq, and, desc } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { orders, orderItems, licenseKeys } from "@workspace/db/schema";
+import { orders, orderItems, licenseKeys, type Order } from "@workspace/db/schema";
 import { decrypt } from "../lib/encryption";
 import { logger } from "../lib/logger";
 
@@ -54,7 +54,7 @@ async function fetchOrderWithKeys(orderId: number) {
   };
 }
 
-function formatOrderResponse(order: any) {
+function formatOrderResponse(order: Order) {
   return {
     id: order.id,
     orderNumber: order.orderNumber,
