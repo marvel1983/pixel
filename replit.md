@@ -42,6 +42,7 @@ Tables split across `lib/db/src/schema/`:
 - `blog.ts` — blog posts
 - `support.ts` — support tickets + ticket messages
 - `affiliates.ts` — affiliate_profiles, affiliate_clicks, affiliate_commissions, affiliate_settings
+- `abandoned-carts.ts` — abandonedCarts, abandonedCartEmails, abandonedCartSettings (3-email recovery sequence)
 
 ## Frontend Stores (Zustand)
 

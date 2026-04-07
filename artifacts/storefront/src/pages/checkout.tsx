@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -49,6 +49,8 @@ export default function CheckoutPage() {
   const [taxInfo, setTaxInfo] = useState<TaxInfo>({ taxRate: 0, taxLabel: "VAT", exempt: false, b2bEnabled: false, priceDisplay: "exclusive" });
   const [appliedGiftCards, setAppliedGiftCards] = useState<AppliedGiftCard[]>([]);
 
+  const capturedRef = useRef("");
+
   useEffect(() => {
     const params = new URLSearchParams();
     if (billing.country) params.set("country", billing.country);
@@ -58,6 +60,23 @@ export default function CheckoutPage() {
       .then((d: TaxInfo) => setTaxInfo(d))
       .catch(() => {});
   }, [billing.country, billing.vatNumber]);
+
+  useEffect(() => {
+    if (!billing.email || !billing.email.includes("@") || items.length === 0) return;
+    const total = getTotal();
+    const key = `${billing.email}:${items.length}:${total}:${coupon?.code || ""}`;
+    if (capturedRef.current === key) return;
+    const timer = setTimeout(() => {
+      const cartItems = items.map((i) => ({ variantId: i.variantId, productId: i.productId, productName: i.productName, variantName: i.variantName, quantity: i.quantity, priceUsd: i.priceUsd, imageUrl: i.imageUrl }));
+      fetch(`${API}/cart/capture`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email: billing.email, cartData: { items: cartItems, coupon: coupon?.code }, cartTotal: total }),
+      }).then(() => { capturedRef.current = key; }).catch(() => {});
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [billing.email, items, coupon]);
 
   if (items.length === 0) {
     return (

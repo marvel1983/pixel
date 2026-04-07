@@ -9,6 +9,7 @@ import {
 import { processPayment } from "./payment";
 import { createGiftCardForOrder, sendGiftCardEmails, redeemGiftCards } from "./gift-card-service";
 import { createCommissionForOrder } from "./affiliate-service";
+import { markCartRecovered } from "./abandoned-cart-service";
 import { getMetenziConfig } from "../lib/metenzi-config";
 import { createOrder as metenziCreateOrder } from "../lib/metenzi-endpoints";
 import { logger } from "../lib/logger";
@@ -162,6 +163,10 @@ export async function executeOrderPipeline(input: OrderInput) {
         logger.error({ err, orderNumber }, "Failed to create affiliate commission (non-fatal)");
       });
     }
+
+    markCartRecovered(billing.email, order.id).catch((err) => {
+      logger.error({ err, orderNumber }, "Failed to mark cart recovered (non-fatal)");
+    });
 
     logger.info({ orderNumber, total: total.toFixed(2) }, "Order pipeline complete");
     return { orderNumber, status: "COMPLETED" };

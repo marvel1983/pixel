@@ -30,6 +30,7 @@ import GiftCardsPage from "@/pages/gift-cards";
 import AccountGiftCardsPage from "@/pages/account-gift-cards";
 import AffiliatesPage from "@/pages/affiliates";
 import AffiliateApplyPage from "@/pages/affiliate-apply";
+import CartRecoverPage from "@/pages/cart-recover";
 import SearchPage from "@/pages/search";
 import { useReferralTracking } from "@/hooks/use-referral";
 import StaticPageView from "@/pages/static-page";
@@ -60,6 +61,7 @@ function StorefrontWithMaintenance() {
         <Route path="/account/gift-cards" component={AccountGiftCardsPage} />
         <Route path="/affiliates/apply" component={AffiliateApplyPage} />
         <Route path="/affiliates" component={AffiliatesPage} />
+        <Route path="/cart/recover/:token" component={CartRecoverPage} />
         <Route path="/cart" component={CartPage} />
         <Route path="/checkout" component={CheckoutPage} />
         <Route path="/order-complete/:orderNumber" component={OrderCompletePage} />

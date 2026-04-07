@@ -71,6 +71,8 @@ const sections: NavSection[] = [
       { label: "Gift Cards", href: "/admin/gift-cards", icon: Gift },
       { label: "Affiliates", href: "/admin/affiliates", icon: Link2 },
       { label: "Affiliate Settings", href: "/admin/affiliate-settings", icon: Settings },
+      { label: "Abandoned Carts", href: "/admin/abandoned-carts", icon: ShoppingCart },
+      { label: "Cart Recovery Settings", href: "/admin/abandoned-cart-settings", icon: Settings },
     ],
   },
   {

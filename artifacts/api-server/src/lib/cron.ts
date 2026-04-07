@@ -2,11 +2,13 @@ import cron, { type ScheduledTask } from "node-cron";
 import { syncProducts } from "./product-sync";
 import { processEmailQueue } from "./email";
 import { approveHeldCommissions } from "../services/affiliate-service";
+import { processAbandonedCarts } from "../services/abandoned-cart-service";
 import { logger } from "./logger";
 
 let syncTask: ScheduledTask | null = null;
 let emailTask: ScheduledTask | null = null;
 let affiliateTask: ScheduledTask | null = null;
+let abandonedCartTask: ScheduledTask | null = null;
 
 export function startCronJobs(): void {
   if (syncTask) return;
@@ -43,7 +45,18 @@ export function startCronJobs(): void {
     }
   });
 
-  logger.info("Cron jobs started (product sync 30m, email queue 1m, affiliate approval 6h)");
+  abandonedCartTask = cron.schedule("*/15 * * * *", async () => {
+    try {
+      const result = await processAbandonedCarts();
+      if (result.sent > 0) {
+        logger.info(result, "Cron: abandoned cart emails sent");
+      }
+    } catch (error) {
+      logger.error({ error }, "Cron: abandoned cart processing failed");
+    }
+  });
+
+  logger.info("Cron jobs started (product sync 30m, email 1m, affiliate 6h, abandoned cart 15m)");
 }
 
 export function stopCronJobs(): void {
@@ -58,6 +71,10 @@ export function stopCronJobs(): void {
   if (affiliateTask) {
     affiliateTask.stop();
     affiliateTask = null;
+  }
+  if (abandonedCartTask) {
+    abandonedCartTask.stop();
+    abandonedCartTask = null;
   }
   logger.info("Cron jobs stopped");
 }
