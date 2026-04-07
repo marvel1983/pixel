@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
+import { useTranslation } from "react-i18next";
 import { Mail, Loader2, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -8,26 +9,26 @@ import { TrustpilotMicro } from "@/components/trustpilot/trustpilot-micro";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
-const QUICK_LINKS = [
-  { label: "Best Sellers", href: "/best-sellers" },
-  { label: "New Arrivals", href: "/new-arrivals" },
-  { label: "Deals & Offers", href: "/deals" },
-  { label: "Gift Cards", href: "/gift-cards" },
-  { label: "Blog", href: "/blog" },
+const QUICK_LINK_KEYS = [
+  { key: "footer.bestSellers", href: "/best-sellers" },
+  { key: "footer.newArrivals", href: "/new-arrivals" },
+  { key: "footer.dealsOffers", href: "/deals" },
+  { key: "footer.giftCards", href: "/gift-cards" },
+  { key: "footer.blog", href: "/blog" },
 ];
 
-const SUPPORT_LINKS = [
-  { label: "Help Center", href: "/support" },
-  { label: "Contact Us", href: "/contact" },
-  { label: "How to Activate", href: "/how-to-activate" },
-  { label: "Refund Policy", href: "/refund-policy" },
-  { label: "FAQ", href: "/faq" },
+const SUPPORT_LINK_KEYS = [
+  { key: "footer.helpCenter", href: "/support" },
+  { key: "footer.contactUs", href: "/contact" },
+  { key: "footer.howToActivate", href: "/how-to-activate" },
+  { key: "footer.refundPolicy", href: "/refund-policy" },
+  { key: "footer.faq", href: "/faq" },
 ];
 
-const LEGAL_LINKS = [
-  { label: "Terms of Service", href: "/terms" },
-  { label: "Privacy Policy", href: "/privacy" },
-  { label: "Cookie Policy", href: "/cookies" },
+const LEGAL_LINK_KEYS = [
+  { key: "footer.termsOfService", href: "/terms" },
+  { key: "footer.privacyPolicy", href: "/privacy" },
+  { key: "footer.cookiePolicy", href: "/cookies" },
 ];
 
 const PAYMENT_METHODS = [
@@ -40,6 +41,7 @@ const PAYMENT_METHODS = [
 ];
 
 export function Footer() {
+  const { t } = useTranslation();
   return (
     <footer className="bg-slate-900 text-slate-300">
       <div className="container mx-auto px-4 py-12">
@@ -52,8 +54,7 @@ export function Footer() {
               <span className="text-lg font-bold text-white">PixelCodes</span>
             </div>
             <p className="text-sm text-slate-400 leading-relaxed">
-              Your trusted source for digital software license keys. Instant
-              delivery, competitive prices, and 24/7 customer support.
+              {t("footer.tagline")}
             </p>
             <div className="flex gap-3 mt-4">
               <SocialLink label="Twitter" />
@@ -65,16 +66,13 @@ export function Footer() {
 
           <div>
             <h3 className="text-sm font-semibold text-white uppercase tracking-wider mb-4">
-              Quick Links
+              {t("footer.quickLinks")}
             </h3>
             <ul className="space-y-2.5">
-              {QUICK_LINKS.map((link) => (
+              {QUICK_LINK_KEYS.map((link) => (
                 <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    className="text-sm text-slate-400 hover:text-white transition-colors"
-                  >
-                    {link.label}
+                  <Link href={link.href} className="text-sm text-slate-400 hover:text-white transition-colors">
+                    {t(link.key)}
                   </Link>
                 </li>
               ))}
@@ -83,16 +81,13 @@ export function Footer() {
 
           <div>
             <h3 className="text-sm font-semibold text-white uppercase tracking-wider mb-4">
-              Support
+              {t("footer.support")}
             </h3>
             <ul className="space-y-2.5">
-              {SUPPORT_LINKS.map((link) => (
+              {SUPPORT_LINK_KEYS.map((link) => (
                 <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    className="text-sm text-slate-400 hover:text-white transition-colors"
-                  >
-                    {link.label}
+                  <Link href={link.href} className="text-sm text-slate-400 hover:text-white transition-colors">
+                    {t(link.key)}
                   </Link>
                 </li>
               ))}
@@ -101,10 +96,10 @@ export function Footer() {
 
           <div>
             <h3 className="text-sm font-semibold text-white uppercase tracking-wider mb-4">
-              Newsletter
+              {t("footer.newsletter")}
             </h3>
             <p className="text-sm text-slate-400 mb-3">
-              Get deals and updates straight to your inbox.
+              {t("footer.newsletterDesc")}
             </p>
             <FooterNewsletter />
           </div>
@@ -115,23 +110,16 @@ export function Footer() {
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex flex-wrap justify-center gap-2">
             {PAYMENT_METHODS.map((m) => (
-              <span
-                key={m}
-                className="px-2.5 py-1 text-xs rounded bg-slate-800 text-slate-400 border border-slate-700"
-              >
+              <span key={m} className="px-2.5 py-1 text-xs rounded bg-slate-800 text-slate-400 border border-slate-700">
                 {m}
               </span>
             ))}
           </div>
 
           <div className="flex flex-wrap justify-center gap-4 text-xs text-slate-500">
-            {LEGAL_LINKS.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="hover:text-slate-300 transition-colors"
-              >
-                {link.label}
+            {LEGAL_LINK_KEYS.map((link) => (
+              <Link key={link.href} href={link.href} className="hover:text-slate-300 transition-colors">
+                {t(link.key)}
               </Link>
             ))}
           </div>
@@ -142,7 +130,7 @@ export function Footer() {
         </div>
 
         <p className="text-center text-xs text-slate-600">
-          &copy; {new Date().getFullYear()} PixelCodes. All rights reserved.
+          &copy; {new Date().getFullYear()} PixelCodes. {t("footer.allRightsReserved")}
         </p>
       </div>
     </footer>

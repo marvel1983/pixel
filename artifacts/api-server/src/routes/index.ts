@@ -64,6 +64,8 @@ import searchRouter from "./search";
 import trustpilotRouter from "./trustpilot";
 import socialProofRouter from "./social-proof";
 import adminSocialProofRouter from "./admin-social-proof";
+import i18nRouter from "./i18n";
+import adminI18nRouter from "./admin-i18n";
 
 const router: IRouter = Router();
 
@@ -132,5 +134,7 @@ router.use(searchRouter);
 router.use(trustpilotRouter);
 router.use(socialProofRouter);
 router.use(adminSocialProofRouter);
+router.use(i18nRouter);
+router.use(adminI18nRouter);
 
 export default router;

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
+import { useTranslation } from "react-i18next";
 import {
   ChevronDown,
   LayoutGrid,
@@ -25,20 +26,22 @@ import { useWishlistStore } from "@/stores/wishlist-store";
 import { useCompareStore } from "@/stores/compare-store";
 import { useAuthStore } from "@/stores/auth-store";
 import { CurrencySelector } from "./currency-selector";
+import { LanguageSelector } from "../shop/language-selector";
 import { CartDrawer } from "./cart-drawer";
 import { MobileDrawer } from "./mobile-drawer";
 import { CategoriesDropdown } from "./categories-dropdown";
 
-const NAV_LINKS = [
-  { label: "Best Sellers", href: "/best-sellers" },
-  { label: "Bundles", href: "/bundles" },
-  { label: "New Arrivals", href: "/new-arrivals" },
-  { label: "Deals", href: "/deals" },
-  { label: "Blog", href: "/blog" },
-  { label: "Support", href: "/support" },
+const NAV_KEYS = [
+  { key: "nav.bestSellers", href: "/best-sellers" },
+  { key: "nav.bundles", href: "/bundles" },
+  { key: "nav.newArrivals", href: "/new-arrivals" },
+  { key: "nav.deals", href: "/deals" },
+  { key: "nav.blog", href: "/blog" },
+  { key: "nav.support", href: "/support" },
 ];
 
 export function NavBar() {
+  const { t } = useTranslation();
   const [cartOpen, setCartOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [catOpen, setCatOpen] = useState(false);
@@ -66,7 +69,7 @@ export function NavBar() {
               onClick={() => setCatOpen(!catOpen)}
             >
               <LayoutGrid className="h-4 w-4" />
-              All Categories
+              {t("nav.allCategories")}
               <ChevronDown className="h-3 w-3" />
             </Button>
             {catOpen && (
@@ -75,20 +78,21 @@ export function NavBar() {
           </div>
 
           <div className="hidden lg:flex items-center gap-1 ml-2">
-            {NAV_LINKS.map((link) => (
+            {NAV_KEYS.map((link) => (
               <Link key={link.href} href={link.href}>
                 <Button
                   variant="ghost"
                   size="sm"
                   className="text-primary-foreground/90 hover:text-primary-foreground"
                 >
-                  {link.label}
+                  {t(link.key)}
                 </Button>
               </Link>
             ))}
           </div>
 
           <div className="ml-auto flex items-center gap-1">
+            <LanguageSelector />
             <CurrencySelector />
 
             <Link href="/compare">
@@ -135,17 +139,14 @@ export function NavBar() {
 }
 
 function UserMenu() {
+  const { t } = useTranslation();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
 
   if (!user) {
     return (
       <Link href="/login">
-        <Button
-          variant="ghost"
-          size="icon"
-          className="text-primary-foreground"
-        >
+        <Button variant="ghost" size="icon" className="text-primary-foreground">
           <User className="h-5 w-5" />
         </Button>
       </Link>
@@ -155,11 +156,7 @@ function UserMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="text-primary-foreground"
-        >
+        <Button variant="ghost" size="icon" className="text-primary-foreground">
           <User className="h-5 w-5" />
         </Button>
       </DropdownMenuTrigger>
@@ -171,26 +168,22 @@ function UserMenu() {
         <DropdownMenuSeparator />
         <Link href="/account">
           <DropdownMenuItem>
-            <User className="mr-2 h-4 w-4" />
-            My Account
+            <User className="mr-2 h-4 w-4" />{t("nav.myAccount")}
           </DropdownMenuItem>
         </Link>
         <Link href="/account/orders">
           <DropdownMenuItem>
-            <Package className="mr-2 h-4 w-4" />
-            My Orders
+            <Package className="mr-2 h-4 w-4" />{t("nav.myOrders")}
           </DropdownMenuItem>
         </Link>
         <Link href="/account">
           <DropdownMenuItem>
-            <Settings className="mr-2 h-4 w-4" />
-            Settings
+            <Settings className="mr-2 h-4 w-4" />{t("nav.settings")}
           </DropdownMenuItem>
         </Link>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={logout}>
-          <LogOut className="mr-2 h-4 w-4" />
-          Sign Out
+          <LogOut className="mr-2 h-4 w-4" />{t("nav.signOut")}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

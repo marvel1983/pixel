@@ -29,6 +29,7 @@ export const users = pgTable("users", {
   isActive: boolean("is_active").notNull().default(true),
   emailVerified: boolean("email_verified").notNull().default(false),
   marketingConsent: boolean("marketing_consent").notNull().default(false),
+  preferredLocale: varchar("preferred_locale", { length: 10 }),
   adminNotes: text("admin_notes"),
   lastLoginAt: timestamp("last_login_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),

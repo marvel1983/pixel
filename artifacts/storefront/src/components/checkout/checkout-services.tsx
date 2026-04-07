@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Zap, ShieldCheck, Clock, Headphones, Shield, Check, Info } from "lucide-react";
 import { useCurrencyStore } from "@/stores/currency-store";
 
@@ -27,6 +28,7 @@ interface Props {
 }
 
 export function CheckoutServices({ selectedIds, onToggle }: Props) {
+  const { t } = useTranslation();
   const [services, setServices] = useState<CheckoutService[]>([]);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const { format } = useCurrencyStore();
@@ -42,8 +44,8 @@ export function CheckoutServices({ selectedIds, onToggle }: Props) {
 
   return (
     <div className="space-y-3">
-      <h3 className="font-semibold text-lg">Additional Services</h3>
-      <p className="text-sm text-muted-foreground">Enhance your purchase with optional add-ons</p>
+      <h3 className="font-semibold text-lg">{t("checkout.additionalServices")}</h3>
+      <p className="text-sm text-muted-foreground">{t("checkout.enhancePurchase")}</p>
       <div className="grid gap-2">
         {services.map((svc) => {
           const selected = selectedIds.includes(svc.id);

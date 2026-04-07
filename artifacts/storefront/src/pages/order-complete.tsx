@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "wouter";
+import { useTranslation } from "react-i18next";
 import { CheckCircle, Download, ArrowRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Breadcrumbs } from "@/components/shop/breadcrumbs";
@@ -33,6 +34,7 @@ interface OrderResponse {
 }
 
 export default function OrderCompletePage() {
+  const { t } = useTranslation();
   const params = useParams<{ orderNumber: string }>();
   const orderNumber = params.orderNumber ?? "";
   const [data, setData] = useState<OrderResponse | null>(null);
@@ -69,9 +71,9 @@ export default function OrderCompletePage() {
           <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
             <CheckCircle className="h-10 w-10 text-green-600" />
           </div>
-          <h1 className="text-2xl font-bold mb-2">Order Confirmed!</h1>
+          <h1 className="text-2xl font-bold mb-2">{t("order.confirmed")}</h1>
           <p className="text-muted-foreground">
-            Thank you for your purchase. Your order has been placed successfully.
+            {t("order.thankYou")}
           </p>
         </div>
 
@@ -92,10 +94,10 @@ export default function OrderCompletePage() {
         {!loading && !data && (
           <div className="border rounded-lg p-5 mb-6 text-left">
             <p className="text-sm font-medium mb-1">
-              Order Number: <span className="text-primary">{orderNumber}</span>
+              {t("order.orderNumber")}: <span className="text-primary">{orderNumber}</span>
             </p>
             <p className="text-sm text-muted-foreground">
-              Your license keys will be delivered to your email within minutes.
+              {t("order.keysDelivery")}
             </p>
           </div>
         )}
@@ -104,11 +106,11 @@ export default function OrderCompletePage() {
           <Link href="/shop">
             <Button variant="outline">
               <ArrowRight className="h-4 w-4 mr-2" />
-              Continue Shopping
+              {t("order.continueShopping")}
             </Button>
           </Link>
           <Link href="/order-lookup">
-            <Button variant="outline">Check Order Status</Button>
+            <Button variant="outline">{t("order.checkStatus")}</Button>
           </Link>
         </div>
       </div>

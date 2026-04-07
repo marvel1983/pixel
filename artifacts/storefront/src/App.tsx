@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SiteLayout } from "@/components/layout/site-layout";
+import { HreflangTags } from "@/components/seo/hreflang";
 import { useAuthStore } from "@/stores/auth-store";
 import { useWishlistStore } from "@/stores/wishlist-store";
 import { useCurrencyStore } from "@/stores/currency-store";
@@ -98,6 +99,7 @@ function StorefrontWithMaintenance() {
       </Switch>
       <ExitIntentPopup />
       <PurchaseToastProvider />
+      <HreflangTags />
     </SiteLayout>
   );
 }

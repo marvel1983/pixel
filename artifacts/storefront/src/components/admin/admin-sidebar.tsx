@@ -27,6 +27,7 @@ import {
   ClipboardList,
   Wallet,
   Gift,
+  Globe,
   Link2,
   Zap,
   type LucideIcon,
@@ -111,6 +112,7 @@ const sections: NavSection[] = [
     items: [
       { label: "Admin Users", href: "/admin/admin-users", icon: Shield },
       { label: "Tax / VAT", href: "/admin/tax-settings", icon: Receipt },
+      { label: "Languages (i18n)", href: "/admin/i18n", icon: Globe },
       { label: "Settings", href: "/admin/settings", icon: Settings },
       { label: "Audit Log", href: "/admin/audit-log", icon: ClipboardList },
       { label: "Metenzi Balance", href: "/admin/metenzi-balance", icon: Wallet },

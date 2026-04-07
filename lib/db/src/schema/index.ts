@@ -38,3 +38,4 @@ export * from "./bundles";
 export * from "./checkout-services";
 export * from "./trustpilot";
 export * from "./social-proof";
+export * from "./i18n";

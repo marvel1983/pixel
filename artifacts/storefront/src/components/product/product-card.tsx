@@ -1,4 +1,5 @@
 import { Link } from "wouter";
+import { useTranslation } from "react-i18next";
 import { Star, ShoppingCart, Package, Heart, GitCompareArrows, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +22,7 @@ interface ProductCardProps {
 
 export function ProductCard({ product, flashSalePrice: flashSalePriceProp }: ProductCardProps) {
   const flashPrices = useFlashSaleStore((s) => s.prices);
+  const { t } = useTranslation();
   const variant = product.variants?.[0];
   const resolvedFlashPrice = product.variants?.reduce<string | undefined>((found, v) => found ?? flashPrices.get(v.id), undefined);
   const flashSalePrice = flashSalePriceProp ?? resolvedFlashPrice ?? null;
@@ -139,7 +141,7 @@ export function ProductCard({ product, flashSalePrice: flashSalePriceProp }: Pro
 
           <div className="flex items-center gap-1.5 mb-1 flex-wrap">
             <span className={`text-xs ${inStock ? "text-green-600" : "text-destructive"}`}>
-              {inStock ? "In Stock" : "Out of Stock"}
+              {inStock ? t("product.inStock") : t("product.outOfStock")}
             </span>
             <StockUrgencyBadge stockCount={variant.stockCount} compact />
             <SoldBadge productId={product.id} compact />

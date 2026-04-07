@@ -44,6 +44,7 @@ import AdminBundlesPage from "./bundles";
 import AdminSupportPage from "./support";
 import AdminSupportDetailPage from "./support-detail";
 import AdminCheckoutServicesPage from "./checkout-services";
+import I18nSettingsPage from "./i18n-settings";
 
 function AdminPlaceholder({ title }: { title: string }) {
   return (
@@ -115,6 +116,7 @@ export default function AdminRoot() {
           <Route path="/admin/media">
             <AdminPlaceholder title="Media" />
           </Route>
+          <Route path="/admin/i18n" component={I18nSettingsPage} />
           <Route path="/admin/settings" component={AdminSettingsPage} />
           <Route path="/admin/audit-log" component={AuditLogPage} />
           <Route path="/admin/metenzi-balance" component={MetenziBalancePage} />
