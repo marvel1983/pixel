@@ -51,6 +51,8 @@ export const siteSettings = pgTable("site_settings", {
   smtpPass: text("smtp_pass"),
   smtpFrom: varchar("smtp_from", { length: 255 }),
   smtpSecure: boolean("smtp_secure").notNull().default(false),
+  liveChatEnabled: boolean("live_chat_enabled").notNull().default(false),
+  liveChatCode: text("live_chat_code"),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 

@@ -6,6 +6,8 @@ const SettingsApiKeysTab = lazy(() => import("./settings-apikeys"));
 const SettingsCppFeesTab = lazy(() => import("./settings-cpp-fees"));
 const SettingsCurrenciesTab = lazy(() => import("./settings-currencies"));
 const SettingsSmtpTab = lazy(() => import("./settings-smtp"));
+const SettingsWebhooksTab = lazy(() => import("./settings-webhooks"));
+const SettingsLiveChatTab = lazy(() => import("./settings-livechat"));
 
 const tabs = [
   { key: "general", label: "General" },
@@ -13,6 +15,8 @@ const tabs = [
   { key: "currencies", label: "Currencies" },
   { key: "smtp", label: "SMTP" },
   { key: "api-keys", label: "API Keys" },
+  { key: "webhooks", label: "Webhooks" },
+  { key: "live-chat", label: "Live Chat" },
 ] as const;
 
 export default function AdminSettingsPage() {
@@ -39,6 +43,8 @@ export default function AdminSettingsPage() {
         {activeTab === "currencies" && <SettingsCurrenciesTab />}
         {activeTab === "smtp" && <SettingsSmtpTab />}
         {activeTab === "api-keys" && <SettingsApiKeysTab />}
+        {activeTab === "webhooks" && <SettingsWebhooksTab />}
+        {activeTab === "live-chat" && <SettingsLiveChatTab />}
       </Suspense>
     </div>
   );
