@@ -64,16 +64,20 @@ async function validateAndPriceItems(items: z.infer<typeof orderSchema>["items"]
     .from(productVariants)
     .where(inArray(productVariants.id, variantIds));
 
-  if (dbVariants.length === 0) return { prices: null, error: null };
+  if (dbVariants.length === 0) {
+    return { prices: null, error: null };
+  }
 
   const priceMap = new Map(dbVariants.map((v) => [v.id, v.priceUsd]));
 
+  if (dbVariants.length !== variantIds.length) {
+    const missing = variantIds.filter((id) => !priceMap.has(id));
+    return { prices: null, error: `Variant(s) not found: ${missing.join(", ")}` };
+  }
+
   for (const item of items) {
     const dbPrice = priceMap.get(item.variantId);
-    if (!dbPrice) {
-      return { prices: null, error: `Variant ${item.variantId} not found` };
-    }
-    if (dbPrice !== item.priceUsd) {
+    if (dbPrice && dbPrice !== item.priceUsd) {
       return { prices: null, error: `Price changed for ${item.productName}` };
     }
   }

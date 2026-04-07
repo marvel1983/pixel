@@ -148,15 +148,21 @@ async function fulfillFromMetenzi(
       );
       if (!dbItem) continue;
 
-      const encryptedKey = encrypt(`KEY-${metenziOrder.id}-${metenziItem.variantId}`);
-      await db.insert(licenseKeys).values({
-        variantId: dbItem.variantId,
-        keyValue: encryptedKey,
-        status: "SOLD",
-        source: "API",
-        orderItemId: dbItem.id,
-        soldAt: new Date(),
+      const keysToInsert = Array.from({ length: metenziItem.quantity }, (_, idx) => {
+        const encryptedKey = encrypt(
+          `KEY-${metenziOrder.id}-${metenziItem.variantId}-${idx}`,
+        );
+        return {
+          variantId: dbItem.variantId,
+          keyValue: encryptedKey,
+          status: "SOLD" as const,
+          source: "API" as const,
+          orderItemId: dbItem.id,
+          soldAt: new Date(),
+        };
       });
+
+      await db.insert(licenseKeys).values(keysToInsert);
     }
 
     logger.info({ orderId }, "License keys stored");
