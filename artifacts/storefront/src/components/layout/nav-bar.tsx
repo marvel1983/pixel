@@ -31,6 +31,7 @@ import { CategoriesDropdown } from "./categories-dropdown";
 
 const NAV_LINKS = [
   { label: "Best Sellers", href: "/best-sellers" },
+  { label: "Bundles", href: "/bundles" },
   { label: "New Arrivals", href: "/new-arrivals" },
   { label: "Deals", href: "/deals" },
   { label: "Blog", href: "/blog" },

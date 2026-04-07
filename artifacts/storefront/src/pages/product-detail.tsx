@@ -12,6 +12,7 @@ import { ReviewsSection } from "@/components/product-detail/reviews-section";
 import { QASection } from "@/components/product-detail/qa-section";
 import { RelatedProducts } from "@/components/product-detail/related-products";
 import { PaymentIcons } from "@/components/product-detail/payment-icons";
+import { BundleCrossSell } from "@/components/product-detail/bundle-cross-sell";
 import { addToRecentlyViewed } from "@/components/home/recently-viewed";
 import { setSeoMeta, clearSeoMeta } from "@/lib/seo";
 import { Separator } from "@/components/ui/separator";
@@ -86,6 +87,7 @@ export default function ProductDetailPage() {
           <ProductInfo product={product} />
           <SocialShare productName={product.name} />
           <Separator />
+          <BundleCrossSell productId={product.id} />
           <CrossSell
             currentProduct={product}
             relatedProducts={relatedProducts}

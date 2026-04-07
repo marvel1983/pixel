@@ -44,6 +44,7 @@ Tables split across `lib/db/src/schema/`:
 - `affiliates.ts` — affiliate_profiles, affiliate_clicks, affiliate_commissions, affiliate_settings
 - `abandoned-carts.ts` — abandonedCarts, abandonedCartEmails, abandonedCartSettings (3-email recovery sequence)
 - `loyalty.ts` — loyaltyAccounts, loyaltyTransactions, loyaltySettings (points, tiers, bonuses)
+- `bundles.ts` — bundles, bundleItems (curated product bundles with discounted package pricing)
 
 ## Frontend Stores (Zustand)
 
@@ -67,6 +68,16 @@ Located in `artifacts/storefront/src/stores/`:
 - Schema: loyaltyAccounts, loyaltyTransactions, loyaltySettings tables
 - Service: `loyalty-service.ts` (earn, redeem, tier calculation, config)
 - Routes: `loyalty.ts` (customer), `admin-loyalty.ts` (admin settings + customer adjustments)
+
+## Product Bundles
+
+- Curated bundles of products sold at a discounted package price
+- Public: `/bundles` listing page, `/bundles/:slug` detail page with pricing comparison
+- Cart: bundle items added individually with proportionally discounted prices (marked as "Bundle")
+- Product detail: cross-sell callout when product appears in any active bundle
+- Admin: `/admin/bundles` with create/edit/duplicate/delete, product search, drag-to-reorder, SEO fields
+- Schema: bundles, bundleItems tables
+- Routes: `bundles.ts` (public), `admin-bundles.ts` (admin CRUD)
 
 ## Google OAuth
 

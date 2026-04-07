@@ -35,6 +35,8 @@ import AffiliateApplyPage from "@/pages/affiliate-apply";
 import CartRecoverPage from "@/pages/cart-recover";
 import SearchPage from "@/pages/search";
 import FlashSalePage from "@/pages/flash-sale";
+import BundlesPage from "@/pages/bundles";
+import BundleDetailPage from "@/pages/bundle-detail";
 import NewsletterConfirmPage from "@/pages/newsletter-confirm";
 import NewsletterUnsubscribePage from "@/pages/newsletter-unsubscribe";
 import AuthGoogleSuccessPage from "@/pages/auth-google-success";
@@ -64,6 +66,8 @@ function StorefrontWithMaintenance() {
         <Route path="/outlet" component={OutletPage} />
         <Route path="/hot-offers" component={HotOffersPage} />
         <Route path="/flash-sale" component={FlashSalePage} />
+        <Route path="/bundles/:slug" component={BundleDetailPage} />
+        <Route path="/bundles" component={BundlesPage} />
         <Route path="/product/:slug" component={ProductDetailPage} />
         <Route path="/gift-cards" component={GiftCardsPage} />
         <Route path="/account/gift-cards" component={AccountGiftCardsPage} />

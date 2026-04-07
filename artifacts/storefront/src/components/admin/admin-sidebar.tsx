@@ -59,6 +59,7 @@ const sections: NavSection[] = [
     title: "CATALOGUE",
     items: [
       { label: "Products", href: "/admin/products", icon: Package },
+      { label: "Bundles", href: "/admin/bundles", icon: Package },
       { label: "Categories", href: "/admin/categories", icon: Tags },
       { label: "Platforms", href: "/admin/platforms", icon: Layers },
       { label: "Reviews", href: "/admin/reviews", icon: MessageSquare },
