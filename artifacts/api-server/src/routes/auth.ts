@@ -236,10 +236,10 @@ router.post("/auth/forgot-password", async (req, res) => {
       expiresAt,
     });
 
-    const origin = req.headers.origin ?? `https://${req.headers.host}`;
-    const resetLink = `${origin}/reset-password?token=${resetToken}`;
+    const baseUrl = process.env.APP_PUBLIC_URL ?? `https://${process.env.REPLIT_DEV_DOMAIN ?? "localhost"}`;
+    const resetLink = `${baseUrl}/reset-password?token=${resetToken}`;
     sendPasswordResetEmail(parsed.data.email.toLowerCase(), {
-      firstName: user.firstName,
+      firstName: user.firstName ?? "there",
       resetLink,
       expiresIn: "1 hour",
     }).catch((err) =>
