@@ -41,7 +41,15 @@ export async function processEmailQueue(): Promise<{ processed: number; failed: 
 
   for (const email of pending) {
     try {
-      await sendEmail(email.to, email.subject, email.html);
+      const sent = await sendEmail(email.to, email.subject, email.html);
+      if (!sent) {
+        await db
+          .update(emailQueue)
+          .set({ attempts: email.attempts + 1, lastError: "SMTP not configured" })
+          .where(eq(emailQueue.id, email.id));
+        failed++;
+        continue;
+      }
       await db
         .update(emailQueue)
         .set({

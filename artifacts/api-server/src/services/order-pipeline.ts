@@ -10,8 +10,9 @@ import {
 import { processPayment } from "./payment";
 import { getMetenziConfig } from "../lib/metenzi-config";
 import { createOrder as metenziCreateOrder } from "../lib/metenzi-endpoints";
-import { encrypt } from "../lib/encryption";
+import { encrypt, decrypt } from "../lib/encryption";
 import { logger } from "../lib/logger";
+import { sendOrderConfirmationEmail, sendKeyDeliveryEmail } from "../lib/email";
 import bcrypt from "bcryptjs";
 
 type OrderStatus = (typeof orderStatusEnum.enumValues)[number];
@@ -98,7 +99,7 @@ export async function executeOrderPipeline(input: OrderInput) {
 
     await updateOrderStatus(order.id, "COMPLETED");
 
-    await triggerOrderEmail(billing.email, orderNumber, total);
+    await triggerOrderEmails(billing, orderNumber, order.id, items, total);
 
     if (input.guestPassword) {
       await createGuestAccount(billing, input.guestPassword);
@@ -171,11 +172,62 @@ async function fulfillFromMetenzi(
   }
 }
 
-async function triggerOrderEmail(email: string, orderNumber: string, total: number) {
-  logger.info(
-    { email, orderNumber, total: total.toFixed(2) },
-    "Email: order confirmation queued",
-  );
+async function triggerOrderEmails(
+  billing: OrderInput["billing"],
+  orderNumber: string,
+  orderId: number,
+  items: OrderInput["items"],
+  total: number,
+) {
+  try {
+    const emailItems = items.map((it) => ({
+      name: it.productName,
+      variant: it.variantName,
+      quantity: it.quantity,
+      price: `$${(parseFloat(it.priceUsd) * it.quantity).toFixed(2)}`,
+    }));
+
+    await sendOrderConfirmationEmail(billing.email, {
+      orderId,
+      orderRef: orderNumber,
+      items: emailItems,
+      total: `$${total.toFixed(2)}`,
+      customerName: billing.firstName,
+    });
+
+    const deliveredKeys = await db
+      .select({
+        keyValue: licenseKeys.keyValue,
+        variantId: licenseKeys.variantId,
+      })
+      .from(licenseKeys)
+      .innerJoin(orderItems, eq(licenseKeys.orderItemId, orderItems.id))
+      .where(eq(orderItems.orderId, orderId));
+
+    if (deliveredKeys.length > 0) {
+      const keys = deliveredKeys.map((dk) => {
+        const item = items.find((it) => it.variantId === dk.variantId);
+        let keyVal: string;
+        try {
+          keyVal = decrypt(dk.keyValue);
+        } catch {
+          keyVal = dk.keyValue;
+        }
+        return {
+          productName: item?.productName ?? "Product",
+          variant: item?.variantName ?? "Standard",
+          licenseKey: keyVal,
+        };
+      });
+      await sendKeyDeliveryEmail(billing.email, {
+        orderRef: orderNumber,
+        customerName: billing.firstName,
+        keys,
+      });
+    }
+  } catch (err) {
+    logger.error({ err, orderNumber }, "Failed to enqueue order emails (non-fatal)");
+  }
 }
 
 async function createGuestAccount(

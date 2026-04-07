@@ -6,6 +6,7 @@ import { db } from "@workspace/db";
 import { users, passwordResets, type User } from "@workspace/db/schema";
 import { signToken, requireAuth, type JwtPayload } from "../middleware/auth";
 import { logger } from "../lib/logger";
+import { sendWelcomeEmail, sendPasswordResetEmail } from "../lib/email";
 import crypto from "node:crypto";
 
 const router = Router();
@@ -95,6 +96,11 @@ router.post("/auth/register", async (req, res) => {
   const token = makeToken(user);
   res.cookie("token", token, COOKIE_OPTS);
   logger.info({ userId: user.id }, "User registered");
+
+  sendWelcomeEmail(user.email, firstName).catch((err) =>
+    logger.error({ err, userId: user.id }, "Failed to enqueue welcome email"),
+  );
+
   res.status(201).json({ user: sanitizeUser(user), token });
 });
 
@@ -212,7 +218,7 @@ router.post("/auth/forgot-password", async (req, res) => {
   }
 
   const [user] = await db
-    .select({ id: users.id })
+    .select({ id: users.id, firstName: users.firstName })
     .from(users)
     .where(eq(users.email, parsed.data.email.toLowerCase()))
     .limit(1);
@@ -229,6 +235,16 @@ router.post("/auth/forgot-password", async (req, res) => {
       tokenHash: tokenHashed,
       expiresAt,
     });
+
+    const origin = req.headers.origin ?? `https://${req.headers.host}`;
+    const resetLink = `${origin}/reset-password?token=${resetToken}`;
+    sendPasswordResetEmail(parsed.data.email.toLowerCase(), {
+      firstName: user.firstName,
+      resetLink,
+      expiresIn: "1 hour",
+    }).catch((err) =>
+      logger.error({ err, userId: user.id }, "Failed to enqueue reset email"),
+    );
 
     logger.info({ userId: user.id }, "Password reset requested");
   }

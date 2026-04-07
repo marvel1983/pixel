@@ -1,7 +1,16 @@
 const BRAND_COLOR = "#3366FF";
 const BRAND_BG = "#f8f9fa";
 
-function layout(siteName: string, content: string): string {
+interface LayoutOptions {
+  siteName: string;
+  logoUrl?: string | null;
+}
+
+function layout(opts: LayoutOptions, content: string): string {
+  const { siteName, logoUrl } = opts;
+  const logoHtml = logoUrl
+    ? `<img src="${logoUrl}" alt="${siteName}" style="max-height:40px;margin-bottom:8px;" /><br>`
+    : "";
   return `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
@@ -10,7 +19,7 @@ function layout(siteName: string, content: string): string {
 <tr><td align="center">
 <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
 <tr><td style="background:${BRAND_COLOR};padding:24px 32px;text-align:center;">
-<h1 style="margin:0;color:#fff;font-size:22px;font-weight:700;">${siteName}</h1>
+${logoHtml}<h1 style="margin:0;color:#fff;font-size:22px;font-weight:700;">${siteName}</h1>
 </td></tr>
 <tr><td style="padding:32px;">${content}</td></tr>
 <tr><td style="background:#f1f3f5;padding:20px 32px;text-align:center;font-size:12px;color:#868e96;">
@@ -25,6 +34,7 @@ function layout(siteName: string, content: string): string {
 export interface WelcomeData {
   firstName: string;
   siteName: string;
+  logoUrl?: string | null;
 }
 
 export function welcomeEmail(data: WelcomeData): { subject: string; html: string } {
@@ -42,11 +52,12 @@ Thank you for creating your account at <strong>${data.siteName}</strong>. You no
 <p style="color:#495057;line-height:1.6;margin:0;">
 Start browsing our catalog and find the best deals on genuine software licenses.
 </p>`;
-  return { subject: `Welcome to ${data.siteName}!`, html: layout(data.siteName, content) };
+  return { subject: `Welcome to ${data.siteName}!`, html: layout({ siteName: data.siteName, logoUrl: data.logoUrl }, content) };
 }
 
 export interface OrderConfirmationData {
   siteName: string;
+  logoUrl?: string | null;
   orderId: number;
   orderRef: string;
   items: { name: string; variant: string; quantity: number; price: string }[];
@@ -85,11 +96,12 @@ ${rows}
 <p style="color:#868e96;font-size:13px;margin:16px 0 0;">
 Your license keys will be delivered in a separate email shortly.
 </p>`;
-  return { subject: `Order #${data.orderRef} Confirmed - ${data.siteName}`, html: layout(data.siteName, content) };
+  return { subject: `Order #${data.orderRef} Confirmed - ${data.siteName}`, html: layout({ siteName: data.siteName, logoUrl: data.logoUrl }, content) };
 }
 
 export interface KeyDeliveryData {
   siteName: string;
+  logoUrl?: string | null;
   orderRef: string;
   customerName: string;
   keys: { productName: string; variant: string; licenseKey: string }[];
@@ -121,11 +133,12 @@ ${keyBlocks}
 You can also view your keys anytime in your order history.
 </p>
 </div>`;
-  return { subject: `License Keys for Order #${data.orderRef} - ${data.siteName}`, html: layout(data.siteName, content) };
+  return { subject: `License Keys for Order #${data.orderRef} - ${data.siteName}`, html: layout({ siteName: data.siteName, logoUrl: data.logoUrl }, content) };
 }
 
 export interface PasswordResetData {
   siteName: string;
+  logoUrl?: string | null;
   firstName: string;
   resetLink: string;
   expiresIn: string;
@@ -147,5 +160,5 @@ This link will expire in ${data.expiresIn}. If you didn't request a password res
 <p style="color:#868e96;font-size:12px;margin:0;word-break:break-all;">
 Link: ${data.resetLink}
 </p>`;
-  return { subject: `Password Reset - ${data.siteName}`, html: layout(data.siteName, content) };
+  return { subject: `Password Reset - ${data.siteName}`, html: layout({ siteName: data.siteName, logoUrl: data.logoUrl }, content) };
 }
