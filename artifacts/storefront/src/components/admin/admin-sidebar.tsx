@@ -132,7 +132,7 @@ export function AdminSidebar({ onNavigate }: AdminSidebarProps) {
     })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
-        if (data?.pending) setBadges((prev) => ({ ...prev, pendingQA: data.pending }));
+        if (data) setBadges((prev) => ({ ...prev, pendingQA: data.pending ?? 0 }));
       })
       .catch(() => {});
   }, [token]);
