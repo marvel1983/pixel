@@ -38,20 +38,20 @@ router.get("/admin/trustpilot", requireAuth, requireAdmin, requirePermission("ma
 });
 
 router.put("/admin/trustpilot", requireAuth, requireAdmin, requirePermission("manageSettings"), async (req, res) => {
-  const { enabled, businessUnitId, trustpilotUrl, apiKey, inviteDelayDays, cachedRating, cachedCount } = req.body;
-  const update: Record<string, unknown> = { updatedAt: new Date() };
+  const { enabled, businessUnitId, trustpilotUrl: tpUrl, apiKey, inviteDelayDays, cachedRating, cachedCount } = req.body;
+  const update: Partial<typeof siteSettings.$inferInsert> = { updatedAt: new Date() };
 
   if (typeof enabled === "boolean") update.trustpilotEnabled = enabled;
   if (typeof businessUnitId === "string") update.trustpilotBusinessUnitId = businessUnitId || null;
-  if (typeof trustpilotUrl === "string") update.trustpilotUrl = trustpilotUrl || null;
+  if (typeof tpUrl === "string") update.trustpilotUrl = tpUrl || null;
   if (typeof apiKey === "string" && apiKey.length > 0) update.trustpilotApiKeyEncrypted = encrypt(apiKey);
   if (typeof inviteDelayDays === "number" && inviteDelayDays >= 1 && inviteDelayDays <= 30) update.trustpilotInviteDelayDays = inviteDelayDays;
   if (typeof cachedRating === "number" && cachedRating >= 0 && cachedRating <= 5) update.trustpilotCachedRating = cachedRating.toFixed(1);
   if (typeof cachedCount === "number" && cachedCount >= 0) update.trustpilotCachedCount = Math.round(cachedCount);
 
-  const rows = await db.select().from(siteSettings);
+  const rows = await db.select({ id: siteSettings.id }).from(siteSettings).limit(1);
   if (rows.length === 0) {
-    await db.insert(siteSettings).values(update as any);
+    await db.insert(siteSettings).values(update);
   } else {
     await db.update(siteSettings).set(update);
   }

@@ -3,12 +3,14 @@ import { syncProducts } from "./product-sync";
 import { processEmailQueue } from "./email";
 import { approveHeldCommissions } from "../services/affiliate-service";
 import { processAbandonedCarts } from "../services/abandoned-cart-service";
+import { processPendingInvites } from "../services/trustpilot-service";
 import { logger } from "./logger";
 
 let syncTask: ScheduledTask | null = null;
 let emailTask: ScheduledTask | null = null;
 let affiliateTask: ScheduledTask | null = null;
 let abandonedCartTask: ScheduledTask | null = null;
+let trustpilotTask: ScheduledTask | null = null;
 
 export function startCronJobs(): void {
   if (syncTask) return;
@@ -56,7 +58,15 @@ export function startCronJobs(): void {
     }
   });
 
-  logger.info("Cron jobs started (product sync 30m, email 1m, affiliate 6h, abandoned cart 15m)");
+  trustpilotTask = cron.schedule("*/30 * * * *", async () => {
+    try {
+      await processPendingInvites();
+    } catch (error) {
+      logger.error({ error }, "Cron: Trustpilot invite processing failed");
+    }
+  });
+
+  logger.info("Cron jobs started (product sync 30m, email 1m, affiliate 6h, abandoned cart 15m, trustpilot 30m)");
 }
 
 export function stopCronJobs(): void {
@@ -75,6 +85,10 @@ export function stopCronJobs(): void {
   if (abandonedCartTask) {
     abandonedCartTask.stop();
     abandonedCartTask = null;
+  }
+  if (trustpilotTask) {
+    trustpilotTask.stop();
+    trustpilotTask = null;
   }
   logger.info("Cron jobs stopped");
 }

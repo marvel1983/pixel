@@ -1,14 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { ChevronLeft, ChevronRight, Quote } from "lucide-react";
-import { useTrustpilot } from "@/hooks/use-trustpilot";
+import { useTrustpilot, useTrustpilotWidget } from "@/hooks/use-trustpilot";
 import { TrustpilotStars, TrustpilotLogo } from "./trustpilot-stars";
 
 interface Review {
-  id: number;
-  name: string;
-  rating: number;
-  text: string;
-  date: string;
+  id: number; name: string; rating: number; text: string; date: string;
 }
 
 const STATIC_REVIEWS: Review[] = [
@@ -21,18 +17,9 @@ const STATIC_REVIEWS: Review[] = [
 ];
 
 export function TrustpilotCarousel() {
-  const { enabled, cachedRating, cachedCount, trustpilotUrl, loaded } = useTrustpilot();
-  const [current, setCurrent] = useState(0);
-  const intervalRef = useRef<ReturnType<typeof setInterval>>();
-  const visibleCount = 3;
-  const maxIndex = STATIC_REVIEWS.length - visibleCount;
-
-  useEffect(() => {
-    intervalRef.current = setInterval(() => {
-      setCurrent((p) => (p >= maxIndex ? 0 : p + 1));
-    }, 5000);
-    return () => clearInterval(intervalRef.current);
-  }, [maxIndex]);
+  const { enabled, cachedRating, cachedCount, trustpilotUrl, businessUnitId, loaded } = useTrustpilot();
+  const widgetRef = useRef<HTMLDivElement>(null);
+  const widgetLoaded = useTrustpilotWidget(widgetRef, businessUnitId);
 
   if (!loaded || !enabled) return null;
 
@@ -50,37 +37,13 @@ export function TrustpilotCarousel() {
         </div>
       </div>
 
-      <div className="relative max-w-5xl mx-auto">
-        <button onClick={() => setCurrent((p) => Math.max(0, p - 1))} disabled={current === 0}
-          className="absolute -left-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center disabled:opacity-30 hover:bg-gray-50">
-          <ChevronLeft className="h-5 w-5" />
-        </button>
-
-        <div className="overflow-hidden">
-          <div className="flex transition-transform duration-500 ease-in-out" style={{ transform: `translateX(-${current * (100 / visibleCount)}%)` }}>
-            {STATIC_REVIEWS.map((review) => (
-              <div key={review.id} className="w-1/3 flex-shrink-0 px-3">
-                <div className="bg-white border rounded-xl p-5 h-full flex flex-col shadow-sm">
-                  <div className="flex items-center justify-between mb-3">
-                    <TrustpilotStars rating={review.rating} size="sm" />
-                    <Quote className="h-4 w-4 text-green-200" />
-                  </div>
-                  <p className="text-sm text-gray-700 flex-1 leading-relaxed mb-4">"{review.text}"</p>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span className="font-medium text-gray-900">{review.name}</span>
-                    <span>{review.date}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <button onClick={() => setCurrent((p) => Math.min(maxIndex, p + 1))} disabled={current >= maxIndex}
-          className="absolute -right-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center disabled:opacity-30 hover:bg-gray-50">
-          <ChevronRight className="h-5 w-5" />
-        </button>
-      </div>
+      {businessUnitId && (
+        <div ref={widgetRef} className="trustpilot-widget max-w-4xl mx-auto" data-locale="en-US"
+          data-template-id="53aa8912dec7e10d38f59f36" data-businessunit-id={businessUnitId}
+          data-style-height="140px" data-style-width="100%" data-theme="light" data-stars="4,5"
+          style={{ display: widgetLoaded ? "block" : "none" }} />
+      )}
+      {!widgetLoaded && <FallbackCarousel />}
 
       {trustpilotUrl && (
         <div className="text-center mt-6">
@@ -91,5 +54,49 @@ export function TrustpilotCarousel() {
         </div>
       )}
     </section>
+  );
+}
+
+function FallbackCarousel() {
+  const [current, setCurrent] = useState(0);
+  const intervalRef = useRef<ReturnType<typeof setInterval>>();
+  const visibleCount = 3;
+  const maxIndex = STATIC_REVIEWS.length - visibleCount;
+
+  useEffect(() => {
+    intervalRef.current = setInterval(() => setCurrent((p) => (p >= maxIndex ? 0 : p + 1)), 5000);
+    return () => clearInterval(intervalRef.current);
+  }, [maxIndex]);
+
+  return (
+    <div className="relative max-w-5xl mx-auto">
+      <button onClick={() => setCurrent((p) => Math.max(0, p - 1))} disabled={current === 0}
+        className="absolute -left-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center disabled:opacity-30 hover:bg-gray-50">
+        <ChevronLeft className="h-5 w-5" />
+      </button>
+      <div className="overflow-hidden">
+        <div className="flex transition-transform duration-500 ease-in-out" style={{ transform: `translateX(-${current * (100 / visibleCount)}%)` }}>
+          {STATIC_REVIEWS.map((review) => (
+            <div key={review.id} className="w-1/3 flex-shrink-0 px-3">
+              <div className="bg-white border rounded-xl p-5 h-full flex flex-col shadow-sm">
+                <div className="flex items-center justify-between mb-3">
+                  <TrustpilotStars rating={review.rating} size="sm" />
+                  <Quote className="h-4 w-4 text-green-200" />
+                </div>
+                <p className="text-sm text-gray-700 flex-1 leading-relaxed mb-4">"{review.text}"</p>
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span className="font-medium text-gray-900">{review.name}</span>
+                  <span>{review.date}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <button onClick={() => setCurrent((p) => Math.min(maxIndex, p + 1))} disabled={current >= maxIndex}
+        className="absolute -right-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center disabled:opacity-30 hover:bg-gray-50">
+        <ChevronRight className="h-5 w-5" />
+      </button>
+    </div>
   );
 }
