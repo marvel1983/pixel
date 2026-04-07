@@ -27,6 +27,7 @@ import {
   Wallet,
   Gift,
   Link2,
+  Zap,
   type LucideIcon,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -72,6 +73,7 @@ const sections: NavSection[] = [
       { label: "Fulfillment", href: "/admin/fulfillment", icon: Truck },
       { label: "Claims", href: "/admin/claims", icon: Flag },
       { label: "Refunds", href: "/admin/refunds", icon: Wallet },
+      { label: "Flash Sales", href: "/admin/flash-sales", icon: Zap },
       { label: "Discounts", href: "/admin/discounts", icon: Ticket },
       { label: "Checkout Upsell", href: "/admin/checkout-upsell", icon: Gift },
       { label: "Gift Cards", href: "/admin/gift-cards", icon: Gift },

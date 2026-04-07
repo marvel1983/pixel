@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ShoppingCart, Zap, Heart, GitCompareArrows, Star, Eye, Minus, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,9 +13,12 @@ interface ProductInfoProps {
   product: MockProduct;
 }
 
+const FLASH_API = import.meta.env.VITE_API_URL ?? "/api";
+
 export function ProductInfo({ product }: ProductInfoProps) {
   const [selectedVariant, setSelectedVariant] = useState<MockVariant>(product.variants[0]);
   const [quantity, setQuantity] = useState(1);
+  const [flashSale, setFlashSale] = useState<{ salePriceUsd: string; endsAt: string } | null>(null);
   const { format: formatPrice } = useCurrencyStore();
   const addItem = useCartStore((s) => s.addItem);
   const wishlistIds = useWishlistStore((s) => s.productIds);
@@ -27,12 +30,21 @@ export function ProductInfo({ product }: ProductInfoProps) {
   const isWishlisted = wishlistIds.includes(product.id);
   const isComparing = compareIds.includes(product.id);
 
+  useEffect(() => {
+    fetch(`${FLASH_API}/flash-sales/check-variant/${selectedVariant.id}`)
+      .then((r) => r.json())
+      .then((d) => setFlashSale(d.flashSale))
+      .catch(() => setFlashSale(null));
+  }, [selectedVariant.id]);
+
   const price = parseFloat(selectedVariant.priceUsd);
   const compareAt = selectedVariant.compareAtPriceUsd
     ? parseFloat(selectedVariant.compareAtPriceUsd)
     : null;
   const discount = compareAt ? Math.round((1 - price / compareAt) * 100) : 0;
   const inStock = selectedVariant.stockCount > 0;
+  const effectivePrice = flashSale ? parseFloat(flashSale.salePriceUsd) : price;
+  const flashDiscount = flashSale ? Math.round((1 - effectivePrice / price) * 100) : 0;
 
   function handleAddToCart() {
     for (let i = 0; i < quantity; i++) {
@@ -42,7 +54,7 @@ export function ProductInfo({ product }: ProductInfoProps) {
         productName: product.name,
         variantName: selectedVariant.name,
         imageUrl: product.imageUrl,
-        priceUsd: selectedVariant.priceUsd,
+        priceUsd: flashSale ? flashSale.salePriceUsd : selectedVariant.priceUsd,
         platform: selectedVariant.platform,
       });
     }
@@ -52,8 +64,13 @@ export function ProductInfo({ product }: ProductInfoProps) {
     <div className="space-y-4">
       <div>
         <div className="flex items-center gap-2 mb-1">
-          {product.isNew && <Badge className="bg-green-500">NEW</Badge>}
-          {discount > 0 && <Badge variant="destructive">-{discount}%</Badge>}
+          {flashSale && (
+            <Badge className="bg-red-600 text-white flex items-center gap-1">
+              <Zap className="h-3 w-3 fill-current" /> FLASH SALE -{flashDiscount}%
+            </Badge>
+          )}
+          {product.isNew && !flashSale && <Badge className="bg-green-500">NEW</Badge>}
+          {!flashSale && discount > 0 && <Badge variant="destructive">-{discount}%</Badge>}
         </div>
         <h1 className="text-2xl font-bold text-foreground">{product.name}</h1>
       </div>
@@ -75,13 +92,18 @@ export function ProductInfo({ product }: ProductInfoProps) {
       <SocialProofBadge />
 
       <div className="flex items-baseline gap-3">
-        <span className="text-3xl font-bold text-foreground">
-          {formatPrice(price)}
-        </span>
-        {compareAt && (
-          <span className="text-lg text-muted-foreground line-through">
-            {formatPrice(compareAt)}
-          </span>
+        {flashSale ? (
+          <>
+            <span className="text-3xl font-bold text-red-600">{formatPrice(effectivePrice)}</span>
+            <span className="text-lg text-muted-foreground line-through">{formatPrice(price)}</span>
+          </>
+        ) : (
+          <>
+            <span className="text-3xl font-bold text-foreground">{formatPrice(price)}</span>
+            {compareAt && (
+              <span className="text-lg text-muted-foreground line-through">{formatPrice(compareAt)}</span>
+            )}
+          </>
         )}
       </div>
 

@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { Star, ShoppingCart, Package, Heart, GitCompareArrows } from "lucide-react";
+import { Star, ShoppingCart, Package, Heart, GitCompareArrows, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useCartStore } from "@/stores/cart-store";
@@ -12,9 +12,10 @@ import type { MockProduct } from "@/lib/mock-data";
 
 interface ProductCardProps {
   product: MockProduct;
+  flashSalePrice?: string | null;
 }
 
-export function ProductCard({ product }: ProductCardProps) {
+export function ProductCard({ product, flashSalePrice }: ProductCardProps) {
   const addItem = useCartStore((s) => s.addItem);
   const format = useCurrencyStore((s) => s.format);
   const { toast } = useToast();
@@ -47,7 +48,7 @@ export function ProductCard({ product }: ProductCardProps) {
       productName: product.name,
       variantName: variant.name,
       imageUrl: product.imageUrl,
-      priceUsd: variant.priceUsd,
+      priceUsd: flashSalePrice || variant.priceUsd,
       platform: variant.platform,
     });
   }
@@ -84,7 +85,12 @@ export function ProductCard({ product }: ProductCardProps) {
               -{discount}%
             </Badge>
           )}
-          {product.isNew && (
+          {flashSalePrice && (
+            <Badge className="absolute bottom-2 left-2 bg-red-600 text-white text-[10px] px-1.5 py-0.5 flex items-center gap-0.5">
+              <Zap className="h-2.5 w-2.5 fill-current" /> FLASH SALE
+            </Badge>
+          )}
+          {product.isNew && !flashSalePrice && (
             <Badge className="absolute top-2 right-2 bg-green-600 text-white text-[10px] px-1.5 py-0.5">
               NEW
             </Badge>
@@ -131,9 +137,18 @@ export function ProductCard({ product }: ProductCardProps) {
 
           <div className="mt-auto pt-2 flex items-end justify-between">
             <div>
-              <span className="text-base font-bold text-foreground">{format(price)}</span>
-              {comparePrice && (
-                <span className="text-xs text-muted-foreground line-through ml-1.5">{format(comparePrice)}</span>
+              {flashSalePrice ? (
+                <>
+                  <span className="text-base font-bold text-red-600">{format(parseFloat(flashSalePrice))}</span>
+                  <span className="text-xs text-muted-foreground line-through ml-1.5">{format(price)}</span>
+                </>
+              ) : (
+                <>
+                  <span className="text-base font-bold text-foreground">{format(price)}</span>
+                  {comparePrice && (
+                    <span className="text-xs text-muted-foreground line-through ml-1.5">{format(comparePrice)}</span>
+                  )}
+                </>
               )}
             </div>
             <Button size="sm" className="h-7 px-2 text-xs" onClick={handleAddToCart} disabled={!inStock}>
