@@ -1,33 +1,54 @@
 import { db } from "@workspace/db";
-import { refunds, orders } from "@workspace/db/schema";
+import { refunds, orders, users } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
-import { sendEmail } from "./email/mailer";
+import { processProviderRefund } from "../services/refund";
+import { renderAndSendTemplate } from "./email/render-template";
 import { logger } from "./logger";
-import crypto from "crypto";
 
 export async function processRefund(refundId: number): Promise<{ success: boolean; error?: string }> {
   const [refund] = await db.select().from(refunds).where(eq(refunds.id, refundId));
   if (!refund) return { success: false, error: "Refund not found" };
 
+  const [order] = await db.select().from(orders).where(eq(orders.id, refund.orderId));
+  if (!order) return { success: false, error: "Order not found" };
+
   await db.update(refunds).set({ status: "PROCESSING" }).where(eq(refunds.id, refundId));
 
   try {
-    const externalId = `rf_${crypto.randomBytes(8).toString("hex")}`;
+    const providerResult = await processProviderRefund({
+      paymentIntentId: order.paymentIntentId ?? "",
+      amount: refund.amountUsd,
+      reason: refund.reason,
+    });
+
+    if (!providerResult.success) {
+      await db.update(refunds).set({
+        status: "FAILED",
+        failureReason: providerResult.error ?? "Provider refund failed",
+      }).where(eq(refunds.id, refundId));
+      return { success: false, error: providerResult.error };
+    }
 
     await db.update(refunds).set({
       status: "COMPLETED",
-      externalRefundId: externalId,
+      externalRefundId: providerResult.refundId,
       processedAt: new Date(),
       failureReason: null,
     }).where(eq(refunds.id, refundId));
 
     await updateOrderRefundStatus(refund.orderId);
 
-    if (refund.notifyCustomer) {
-      await sendRefundNotification(refund.orderId, refund.amountUsd, refund.reason);
+    if (refund.notifyCustomer && order.guestEmail) {
+      const customerName = order.guestEmail.split("@")[0];
+      await renderAndSendTemplate("refund_confirmation", order.guestEmail, {
+        orderNumber: order.orderNumber,
+        customerName,
+        refundAmount: `$${refund.amountUsd}`,
+        reason: refund.reason,
+      });
     }
 
-    logger.info({ refundId, externalId }, "Refund processed successfully");
+    logger.info({ refundId, externalId: providerResult.refundId }, "Refund processed successfully");
     return { success: true };
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : "Unknown processing error";
@@ -63,27 +84,4 @@ export async function updateOrderRefundStatus(orderId: number): Promise<void> {
 
   await db.update(orders).set({ status: newStatus, updatedAt: new Date() })
     .where(eq(orders.id, orderId));
-}
-
-async function sendRefundNotification(orderId: number, amountUsd: string, reason: string): Promise<void> {
-  const [order] = await db.select().from(orders).where(eq(orders.id, orderId));
-  if (!order?.guestEmail) return;
-
-  const subject = `Refund Processed — Order ${order.orderNumber}`;
-  const html = `
-    <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
-      <h2 style="color:#2563eb;">Refund Confirmation</h2>
-      <p>A refund of <strong>$${amountUsd}</strong> has been processed for your order <strong>${order.orderNumber}</strong>.</p>
-      <p><strong>Reason:</strong> ${reason}</p>
-      <p>The refund should appear in your account within 5–10 business days depending on your payment provider.</p>
-      <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;" />
-      <p style="color:#6b7280;font-size:13px;">If you have any questions, please contact our support team.</p>
-    </div>
-  `;
-
-  try {
-    await sendEmail(order.guestEmail, subject, html);
-  } catch (err) {
-    logger.warn({ orderId, err }, "Failed to send refund notification email");
-  }
 }
