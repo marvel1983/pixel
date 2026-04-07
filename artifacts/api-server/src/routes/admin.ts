@@ -2,10 +2,11 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { users } from "@workspace/db/schema";
 import { requireAuth, requireAdmin } from "../middleware/auth";
+import { requirePermission } from "../middleware/permissions";
 
 const router = Router();
 
-router.get("/admin/users", requireAuth, requireAdmin, async (_req, res) => {
+router.get("/admin/users", requireAuth, requireAdmin, requirePermission("manageCustomers"), async (_req, res) => {
   const allUsers = await db
     .select({
       id: users.id,
