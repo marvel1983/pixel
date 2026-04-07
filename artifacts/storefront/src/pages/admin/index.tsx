@@ -14,6 +14,8 @@ import AdminDiscountsPage from "./discounts";
 import DiscountFormPage from "./discount-form";
 import DiscountBulkPage from "./discount-bulk";
 import DiscountUsagePage from "./discount-usage";
+import AdminCustomersPage from "./customers";
+import CustomerDetailPage from "./customer-detail";
 
 function AdminPlaceholder({ title }: { title: string }) {
   return (
@@ -51,6 +53,8 @@ export default function AdminRoot() {
           <Route path="/admin/discounts/:id/usage" component={DiscountUsagePage} />
           <Route path="/admin/discounts/:id" component={DiscountFormPage} />
           <Route path="/admin/discounts" component={AdminDiscountsPage} />
+          <Route path="/admin/customers/:id" component={CustomerDetailPage} />
+          <Route path="/admin/customers" component={AdminCustomersPage} />
           <Route path="/admin/users">
             <AdminPlaceholder title="Users" />
           </Route>
