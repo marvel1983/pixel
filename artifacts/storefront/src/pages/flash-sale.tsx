@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "wouter";
+import { useTranslation } from "react-i18next";
 import { Breadcrumbs } from "@/components/shop/breadcrumbs";
 import { CountdownTimer } from "@/components/flash-sale/countdown-timer";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,7 @@ interface ActiveSale {
 }
 
 export default function FlashSalePage() {
+  const { t } = useTranslation();
   const [sale, setSale] = useState<ActiveSale | null>(null);
   const [loading, setLoading] = useState(true);
   const addItem = useCartStore((s) => s.addItem);
@@ -60,12 +62,12 @@ export default function FlashSalePage() {
   if (!sale) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <Breadcrumbs crumbs={[{ label: "Flash Sale" }]} />
+        <Breadcrumbs crumbs={[{ label: t("flashSale.title") }]} />
         <div className="py-16 text-center">
           <Zap className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h1 className="text-2xl font-bold mb-2">No Active Flash Sales</h1>
-          <p className="text-muted-foreground mb-6">Check back soon for amazing deals!</p>
-          <Link href="/shop"><Button>Browse Shop</Button></Link>
+          <h1 className="text-2xl font-bold mb-2">{t("flashSale.noActive")}</h1>
+          <p className="text-muted-foreground mb-6">{t("flashSale.noActiveDesc")}</p>
+          <Link href="/shop"><Button>{t("flashSale.browseShop")}</Button></Link>
         </div>
       </div>
     );
@@ -73,7 +75,7 @@ export default function FlashSalePage() {
 
   function handleAddToCart(p: FlashProduct) {
     const remaining = p.maxQuantity - p.soldCount;
-    if (remaining <= 0) { toast({ title: "Sold Out", variant: "destructive" }); return; }
+    if (remaining <= 0) { toast({ title: t("flashSale.soldOut"), variant: "destructive" }); return; }
     addItem({
       variantId: p.variantId,
       productId: p.productId,
@@ -82,12 +84,12 @@ export default function FlashSalePage() {
       priceUsd: p.salePriceUsd,
       imageUrl: p.productImage || "",
     });
-    toast({ title: "Added to cart", description: `${p.productName} at flash sale price!` });
+    toast({ title: t("flashSale.addedToCart"), description: `${p.productName}` });
   }
 
   return (
     <div className="container mx-auto px-4 py-6">
-      <Breadcrumbs crumbs={[{ label: "Flash Sale" }]} />
+      <Breadcrumbs crumbs={[{ label: t("flashSale.title") }]} />
 
       <div className="flex flex-col items-center text-center py-6">
         <div className="flex items-center gap-2 mb-2">
@@ -97,7 +99,7 @@ export default function FlashSalePage() {
         </div>
         {sale.description && <p className="text-muted-foreground mb-4">{sale.description}</p>}
         <div className="flex items-center gap-2 text-muted-foreground">
-          <span className="text-sm font-medium">Ends in:</span>
+          <span className="text-sm font-medium">{t("flashSale.endsIn")}</span>
           <CountdownTimer endsAt={sale.endsAt} size="lg" onExpired={fetchSale} />
         </div>
       </div>
@@ -113,9 +115,7 @@ export default function FlashSalePage() {
 
           return (
             <div key={p.id} className="relative border rounded-lg overflow-hidden bg-white group">
-              <Badge className="absolute top-2 left-2 z-10 bg-red-500 text-white text-[10px]">
-                -{pctOff}%
-              </Badge>
+              <Badge className="absolute top-2 left-2 z-10 bg-red-500 text-white text-[10px]">-{pctOff}%</Badge>
               <Link href={`/product/${p.productSlug}`}>
                 <div className="aspect-square bg-gray-50 flex items-center justify-center p-2">
                   {p.productImage ? (
@@ -136,24 +136,16 @@ export default function FlashSalePage() {
                 </div>
                 <div className="mt-2">
                   <div className="flex justify-between text-[10px] text-muted-foreground mb-0.5">
-                    <span>{soldOut ? "Sold out" : `${remaining} left`}</span>
-                    <span>{soldPct}% sold</span>
+                    <span>{soldOut ? t("flashSale.soldOut") : `${remaining} ${t("flashSale.left")}`}</span>
+                    <span>{soldPct}% {t("flashSale.sold")}</span>
                   </div>
                   <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all"
-                      style={{ width: `${soldPct}%`, backgroundColor: soldPct > 80 ? "#ef4444" : "#f59e0b" }}
-                    />
+                    <div className="h-full rounded-full transition-all" style={{ width: `${soldPct}%`, backgroundColor: soldPct > 80 ? "#ef4444" : "#f59e0b" }} />
                   </div>
                 </div>
-                <Button
-                  size="sm"
-                  className="w-full mt-2 h-7 text-xs"
-                  disabled={soldOut}
-                  onClick={() => handleAddToCart(p)}
-                >
+                <Button size="sm" className="w-full mt-2 h-7 text-xs" disabled={soldOut} onClick={() => handleAddToCart(p)}>
                   <ShoppingCart className="h-3 w-3 mr-1" />
-                  {soldOut ? "Sold Out" : "Add to Cart"}
+                  {soldOut ? t("flashSale.soldOut") : t("product.addToCart")}
                 </Button>
               </div>
             </div>

@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { useSearch } from "wouter";
 import { Link } from "wouter";
+import { useTranslation } from "react-i18next";
 import { MOCK_PRODUCTS, type MockProduct } from "@/lib/mock-data";
 import type { SearchResponse, SearchProduct } from "@/lib/search-types";
 import { useListingFilters } from "@/lib/use-listing-filters";
@@ -54,6 +55,7 @@ function buildApiUrl(
 }
 
 export default function SearchPage() {
+  const { t } = useTranslation();
   const rawSearch = useSearch();
   const params = new URLSearchParams(rawSearch);
   const query = params.get("q") ?? "";
@@ -94,25 +96,25 @@ export default function SearchPage() {
 
   return (
     <div className="container mx-auto px-4 py-6">
-      <Breadcrumbs crumbs={[{ label: "Search" }]} />
+      <Breadcrumbs crumbs={[{ label: t("search.title") }]} />
 
       {query ? (
         <>
           <h1 className="text-2xl font-bold text-foreground mb-6">
             {loading ? (
               <span className="flex items-center gap-2">
-                <Loader2 className="h-5 w-5 animate-spin" /> Searching...
+                <Loader2 className="h-5 w-5 animate-spin" /> {t("search.searching")}
               </span>
             ) : (
               <>
-                {total} {total === 1 ? "result" : "results"} for &ldquo;
-                {query}&rdquo;
+                {total} {total === 1 ? t("search.result") : t("search.results")}{" "}
+                &ldquo;{query}&rdquo;
               </>
             )}
           </h1>
 
           {!loading && items.length === 0 ? (
-            <NoResultsState query={query} suggestions={popularProducts} />
+            <NoResultsState query={query} suggestions={popularProducts} t={t} />
           ) : !loading ? (
             <div className="flex flex-col lg:flex-row gap-6">
               <FilterSidebar filters={filters} onFilterChange={setFilters} />
@@ -129,7 +131,7 @@ export default function SearchPage() {
           ) : null}
         </>
       ) : (
-        <NoResultsState query="" suggestions={popularProducts} />
+        <NoResultsState query="" suggestions={popularProducts} t={t} />
       )}
     </div>
   );
@@ -138,20 +140,20 @@ export default function SearchPage() {
 function NoResultsState({
   query,
   suggestions,
+  t,
 }: {
   query: string;
   suggestions: MockProduct[];
+  t: (key: string, opts?: Record<string, unknown>) => string;
 }) {
   return (
     <div className="text-center py-12">
       <SearchX className="h-16 w-16 text-muted-foreground/40 mx-auto mb-4" />
       <h2 className="text-xl font-semibold text-foreground mb-2">
-        {query ? `No results found for "${query}"` : "Enter a search term"}
+        {query ? t("search.noResults", { query }) : t("search.enterSearchTerm")}
       </h2>
       <p className="text-muted-foreground mb-2">
-        {query
-          ? "Try different keywords, check for typos, or browse our categories."
-          : "Search for software, games, license keys, and more."}
+        {query ? t("search.tryDifferent") : t("search.searchHint")}
       </p>
 
       {query && (
@@ -172,13 +174,13 @@ function NoResultsState({
         <div className="mt-8 text-left">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-foreground">
-              Popular Products
+              {t("search.popularProducts")}
             </h3>
             <Link
               href="/shop"
               className="text-sm text-primary hover:underline flex items-center gap-1"
             >
-              Browse all <ArrowRight className="h-3 w-3" />
+              {t("search.browseAll")} <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">

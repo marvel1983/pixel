@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,17 +14,18 @@ import { Loader2, Send } from "lucide-react";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
-const CATEGORIES = [
-  { value: "ORDER_ISSUE", label: "Order Issue" },
-  { value: "KEY_PROBLEM", label: "Key / License Problem" },
-  { value: "PAYMENT", label: "Payment" },
-  { value: "REFUND", label: "Refund Request" },
-  { value: "ACCOUNT", label: "Account" },
-  { value: "TECHNICAL", label: "Technical" },
-  { value: "OTHER", label: "Other" },
-];
+const CATEGORY_KEYS: Record<string, string> = {
+  ORDER_ISSUE: "support.orderIssue",
+  KEY_PROBLEM: "support.keyProblem",
+  PAYMENT: "support.payment",
+  REFUND: "support.refundRequest",
+  ACCOUNT: "support.accountIssue",
+  TECHNICAL: "support.technical",
+  OTHER: "support.other",
+};
 
 export default function SupportNewPage() {
+  const { t } = useTranslation();
   const token = useAuthStore((s) => s.token);
   const [, navigate] = useLocation();
   const { toast } = useToast();
@@ -58,10 +60,10 @@ export default function SupportNewPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Failed");
-      toast({ title: "Ticket Created", description: `Your ticket ${data.ticketNumber} has been submitted.` });
+      toast({ title: t("support.ticketCreated"), description: data.ticketNumber });
       navigate(`/support/tickets/${data.ticketNumber}`);
     } catch (err) {
-      toast({ title: "Error", description: err instanceof Error ? err.message : "Failed to create ticket", variant: "destructive" });
+      toast({ title: t("common.error"), description: err instanceof Error ? err.message : t("common.somethingWentWrong"), variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
@@ -69,35 +71,35 @@ export default function SupportNewPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
-      <Breadcrumbs crumbs={[{ label: "Support", href: "/account?tab=support" }, { label: "New Ticket" }]} />
+      <Breadcrumbs crumbs={[{ label: t("nav.support"), href: "/account?tab=support" }, { label: t("support.newTicket") }]} />
       <Card className="mt-4">
         <CardHeader>
-          <CardTitle>Submit a Support Ticket</CardTitle>
+          <CardTitle>{t("support.newTicket")}</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="category">Category</Label>
+              <Label htmlFor="category">{t("support.category")}</Label>
               <Select value={category} onValueChange={setCategory}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {CATEGORIES.map((c) => (
-                    <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                  {Object.entries(CATEGORY_KEYS).map(([value, key]) => (
+                    <SelectItem key={value} value={value}>{t(key)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="subject">Subject</Label>
-              <Input id="subject" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Brief description of your issue" maxLength={300} required />
+              <Label htmlFor="subject">{t("support.subject")}</Label>
+              <Input id="subject" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder={t("support.subjectPlaceholder")} maxLength={300} required />
             </div>
             {orders.length > 0 && (
               <div className="space-y-2">
-                <Label htmlFor="order">Related Order (optional)</Label>
+                <Label htmlFor="order">{t("support.relatedOrder")}</Label>
                 <Select value={orderId} onValueChange={setOrderId}>
-                  <SelectTrigger><SelectValue placeholder="Select an order..." /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder={t("support.selectOrder")} /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="NONE">None</SelectItem>
+                    <SelectItem value="NONE">—</SelectItem>
                     {orders.map((o) => (
                       <SelectItem key={o.id} value={String(o.id)}>{o.orderNumber}</SelectItem>
                     ))}
@@ -106,12 +108,12 @@ export default function SupportNewPage() {
               </div>
             )}
             <div className="space-y-2">
-              <Label htmlFor="message">Message</Label>
-              <Textarea id="message" value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Describe your issue in detail..." rows={6} maxLength={5000} required />
+              <Label htmlFor="message">{t("support.message")}</Label>
+              <Textarea id="message" value={message} onChange={(e) => setMessage(e.target.value)} placeholder={t("support.messagePlaceholder")} rows={6} maxLength={5000} required />
             </div>
             <Button type="submit" disabled={submitting} className="w-full">
               {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
-              Submit Ticket
+              {t("support.submitTicket")}
             </Button>
           </form>
         </CardContent>

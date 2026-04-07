@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useParams } from "wouter";
+import { useTranslation } from "react-i18next";
 import { MOCK_PRODUCTS } from "@/lib/mock-data";
 import {
   useListingFilters,
@@ -10,18 +11,19 @@ import { Breadcrumbs } from "@/components/shop/breadcrumbs";
 import { FilterSidebar } from "@/components/shop/filter-sidebar";
 import { ProductGrid } from "@/components/shop/product-grid";
 
-const CATEGORY_NAMES: Record<string, string> = {
-  "operating-systems": "Operating Systems",
-  "office-productivity": "Office & Productivity",
-  "antivirus-security": "Antivirus & Security",
-  games: "Games",
-  "servers-development": "Servers & Development",
+const CATEGORY_KEYS: Record<string, string> = {
+  "operating-systems": "categories.operatingSystems",
+  "office-productivity": "categories.officeProductivity",
+  "antivirus-security": "categories.antivirusSecurity",
+  games: "categories.games",
+  "servers-development": "categories.serversDevelopment",
 };
 
 export default function CategoryPage() {
+  const { t } = useTranslation();
   const params = useParams<{ slug: string }>();
   const slug = params.slug ?? "";
-  const categoryName = CATEGORY_NAMES[slug] ?? slug;
+  const categoryName = CATEGORY_KEYS[slug] ? t(CATEGORY_KEYS[slug]) : slug;
   const { filters, setFilters, perPage } = useListingFilters();
 
   const categoryProducts = useMemo(
@@ -41,7 +43,7 @@ export default function CategoryPage() {
     <div className="container mx-auto px-4 py-6">
       <Breadcrumbs
         crumbs={[
-          { label: "Shop", href: "/shop" },
+          { label: t("shop.title"), href: "/shop" },
           { label: categoryName },
         ]}
       />

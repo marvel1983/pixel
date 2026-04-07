@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Search, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,6 +35,7 @@ interface OrderResponse {
 }
 
 export default function OrderLookupPage() {
+  const { t } = useTranslation();
   const [orderNumber, setOrderNumber] = useState("");
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
@@ -61,15 +63,15 @@ export default function OrderLookupPage() {
         setResult(await res.json());
       } else {
         toast({
-          title: "Order not found",
-          description: "Please check your order number and email address.",
+          title: t("orderLookup.notFound"),
+          description: t("orderLookup.notFoundDesc"),
           variant: "destructive",
         });
       }
     } catch {
       toast({
-        title: "Lookup failed",
-        description: "Please try again later.",
+        title: t("orderLookup.lookupFailed"),
+        description: t("orderLookup.tryAgain"),
         variant: "destructive",
       });
     } finally {
@@ -79,18 +81,15 @@ export default function OrderLookupPage() {
 
   return (
     <div className="container mx-auto px-4 py-6">
-      <Breadcrumbs crumbs={[{ label: "Order Lookup" }]} />
+      <Breadcrumbs crumbs={[{ label: t("orderLookup.title") }]} />
 
       <div className="max-w-2xl mx-auto">
-        <h1 className="text-2xl font-bold mb-2">Order Lookup</h1>
-        <p className="text-muted-foreground mb-6">
-          Enter your order number and email address to view your order details
-          and license keys.
-        </p>
+        <h1 className="text-2xl font-bold mb-2">{t("orderLookup.title")}</h1>
+        <p className="text-muted-foreground mb-6">{t("orderLookup.subtitle")}</p>
 
         <form onSubmit={handleSearch} className="border rounded-lg p-5 mb-8 space-y-4">
           <div>
-            <Label htmlFor="orderNumber">Order Number</Label>
+            <Label htmlFor="orderNumber">{t("orderLookup.orderNumber")}</Label>
             <Input
               id="orderNumber"
               placeholder="PC-XXXXXXXX-XXXX"
@@ -99,7 +98,7 @@ export default function OrderLookupPage() {
             />
           </div>
           <div>
-            <Label htmlFor="email">Email Address</Label>
+            <Label htmlFor="email">{t("orderLookup.email")}</Label>
             <Input
               id="email"
               type="email"
@@ -110,9 +109,9 @@ export default function OrderLookupPage() {
           </div>
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? (
-              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Searching...</>
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t("orderLookup.searching")}</>
             ) : (
-              <><Search className="h-4 w-4 mr-2" />Look Up Order</>
+              <><Search className="h-4 w-4 mr-2" />{t("orderLookup.lookUp")}</>
             )}
           </Button>
         </form>
@@ -128,7 +127,7 @@ export default function OrderLookupPage() {
         {searched && !loading && !result && (
           <div className="text-center py-8 text-muted-foreground">
             <Search className="h-10 w-10 mx-auto mb-3 opacity-40" />
-            <p>No order found. Please check your details and try again.</p>
+            <p>{t("orderLookup.noOrder")}</p>
           </div>
         )}
       </div>

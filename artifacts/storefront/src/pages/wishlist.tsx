@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
+import { useTranslation } from "react-i18next";
 import { Heart, ShoppingCart, Trash2, Package, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Breadcrumbs } from "@/components/shop/breadcrumbs";
@@ -11,6 +12,7 @@ import type { MockProduct } from "@/lib/mock-data";
 import { MOCK_PRODUCTS } from "@/lib/mock-data";
 
 export default function WishlistPage() {
+  const { t } = useTranslation();
   const { productIds, removeProduct, clearAll } = useWishlistStore();
   const addItem = useCartStore((s) => s.addItem);
   const format = useCurrencyStore((s) => s.format);
@@ -47,7 +49,7 @@ export default function WishlistPage() {
         added++;
       }
     });
-    toast({ title: `${added} item${added !== 1 ? "s" : ""} added to cart` });
+    toast({ title: `${added} ${t("wishlist.items")} ${t("wishlist.addedToCart")}` });
   }
 
   function addOneToCart(p: MockProduct) {
@@ -62,29 +64,29 @@ export default function WishlistPage() {
       priceUsd: v.priceUsd,
       platform: v.platform,
     });
-    toast({ title: `${p.name} added to cart` });
+    toast({ title: `${p.name} ${t("wishlist.addedToCart")}` });
   }
 
   return (
     <div className="container mx-auto px-4 py-6">
-      <Breadcrumbs crumbs={[{ label: "Wishlist" }]} />
+      <Breadcrumbs crumbs={[{ label: t("wishlist.title") }]} />
 
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Heart className="h-6 w-6" /> My Wishlist
+          <Heart className="h-6 w-6" /> {t("wishlist.myWishlist")}
           {products.length > 0 && (
             <span className="text-base font-normal text-muted-foreground">
-              ({products.length} items)
+              ({products.length} {t("wishlist.items")})
             </span>
           )}
         </h1>
         {products.length > 0 && (
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={clearAll}>
-              Clear All
+              {t("wishlist.clearAll")}
             </Button>
             <Button size="sm" onClick={addAllToCart}>
-              <ShoppingCart className="h-4 w-4 mr-1" /> Add All to Cart
+              <ShoppingCart className="h-4 w-4 mr-1" /> {t("wishlist.addAllToCart")}
             </Button>
           </div>
         )}
@@ -97,10 +99,10 @@ export default function WishlistPage() {
       ) : products.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
           <Heart className="h-12 w-12 mx-auto mb-4 opacity-30" />
-          <p className="text-lg mb-2">Your wishlist is empty</p>
-          <p className="text-sm mb-4">Save products you love for later.</p>
+          <p className="text-lg mb-2">{t("wishlist.empty")}</p>
+          <p className="text-sm mb-4">{t("wishlist.emptyDesc")}</p>
           <Link href="/shop">
-            <Button>Browse Products</Button>
+            <Button>{t("wishlist.browseProducts")}</Button>
           </Link>
         </div>
       ) : (
@@ -134,7 +136,7 @@ export default function WishlistPage() {
                     </div>
                     <div className="flex gap-1">
                       <Button size="sm" className="flex-1 h-7 text-xs" onClick={() => addOneToCart(p)} disabled={v.stockCount === 0}>
-                        <ShoppingCart className="h-3 w-3 mr-1" /> Add
+                        <ShoppingCart className="h-3 w-3 mr-1" /> {t("product.addToCart")}
                       </Button>
                       <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => removeProduct(p.id)}>
                         <Trash2 className="h-3 w-3" />

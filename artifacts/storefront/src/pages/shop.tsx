@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { MOCK_PRODUCTS } from "@/lib/mock-data";
 import {
   useListingFilters,
@@ -10,6 +11,7 @@ import { FilterSidebar } from "@/components/shop/filter-sidebar";
 import { ProductGrid } from "@/components/shop/product-grid";
 
 export default function ShopPage() {
+  const { t } = useTranslation();
   const { filters, setFilters, perPage } = useListingFilters();
 
   const { items, totalPages, currentPage, totalItems } = useMemo(() => {
@@ -19,8 +21,8 @@ export default function ShopPage() {
 
   return (
     <div className="container mx-auto px-4 py-6">
-      <Breadcrumbs crumbs={[{ label: "Shop" }]} />
-      <h1 className="text-2xl font-bold text-foreground mb-6">All Products</h1>
+      <Breadcrumbs crumbs={[{ label: t("shop.title") }]} />
+      <h1 className="text-2xl font-bold text-foreground mb-6">{t("shop.title")}</h1>
 
       <div className="flex flex-col lg:flex-row gap-6">
         <FilterSidebar filters={filters} onFilterChange={setFilters} />

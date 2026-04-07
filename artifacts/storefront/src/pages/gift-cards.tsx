@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Gift, Send, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/stores/cart-store";
@@ -8,6 +9,7 @@ import { Breadcrumbs } from "@/components/shop/breadcrumbs";
 const PRESETS = [10, 25, 50, 100, 150, 200];
 
 export default function GiftCardsPage() {
+  const { t } = useTranslation();
   const [amount, setAmount] = useState(25);
   const [custom, setCustom] = useState("");
   const [isCustom, setIsCustom] = useState(false);
@@ -22,11 +24,11 @@ export default function GiftCardsPage() {
 
   const handleAddToCart = () => {
     if (selectedAmount < 5 || selectedAmount > 500) {
-      toast({ title: "Invalid amount", description: "Gift card amount must be between $5 and $500.", variant: "destructive" });
+      toast({ title: t("giftCard.invalidAmount"), description: t("giftCard.amountRange"), variant: "destructive" });
       return;
     }
     if (!recipientEmail || !recipientEmail.includes("@")) {
-      toast({ title: "Recipient email required", description: "Please enter a valid email address.", variant: "destructive" });
+      toast({ title: t("giftCard.emailRequired"), description: t("giftCard.emailInvalid"), variant: "destructive" });
       return;
     }
 
@@ -40,7 +42,7 @@ export default function GiftCardsPage() {
       platform: `GIFTCARD|${recipientEmail}|${recipientName}|${senderName}|${message}`,
     });
 
-    toast({ title: "Gift card added to cart!", description: `$${selectedAmount.toFixed(2)} gift card for ${recipientName || recipientEmail}` });
+    toast({ title: t("giftCard.addedToCart"), description: `$${selectedAmount.toFixed(2)} — ${recipientName || recipientEmail}` });
     setRecipientEmail("");
     setRecipientName("");
     setMessage("");
@@ -48,19 +50,19 @@ export default function GiftCardsPage() {
 
   return (
     <div className="container mx-auto px-4 py-6">
-      <Breadcrumbs crumbs={[{ label: "Gift Cards" }]} />
+      <Breadcrumbs crumbs={[{ label: t("giftCard.title") }]} />
       <div className="max-w-2xl mx-auto space-y-8">
         <div className="text-center space-y-2">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-50 mb-2">
             <Gift className="h-8 w-8 text-blue-600" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight">Gift Cards</h1>
-          <p className="text-muted-foreground">Give the gift of choice — delivered instantly via email</p>
+          <h1 className="text-3xl font-bold tracking-tight">{t("giftCard.title")}</h1>
+          <p className="text-muted-foreground">{t("giftCard.subtitle")}</p>
         </div>
 
         <div className="rounded-lg border bg-white p-6 space-y-6">
           <div>
-            <h3 className="font-semibold mb-3">Select Amount</h3>
+            <h3 className="font-semibold mb-3">{t("giftCard.selectAmount")}</h3>
             <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
               {PRESETS.map((p) => (
                 <button key={p} onClick={() => { setAmount(p); setIsCustom(false); }}
@@ -72,7 +74,7 @@ export default function GiftCardsPage() {
             <div className="mt-3 flex items-center gap-3">
               <button onClick={() => setIsCustom(true)}
                 className={`rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${isCustom ? "bg-blue-600 text-white border-blue-600" : "hover:bg-blue-50"}`}>
-                Custom
+                {t("giftCard.custom")}
               </button>
               {isCustom && (
                 <div className="relative flex-1">
@@ -85,40 +87,40 @@ export default function GiftCardsPage() {
           </div>
 
           <div className="space-y-3">
-            <h3 className="font-semibold">Recipient Details</h3>
+            <h3 className="font-semibold">{t("giftCard.recipientDetails")}</h3>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Recipient Email *">
+              <Field label={`${t("giftCard.recipientEmail")} *`}>
                 <input type="email" className="w-full rounded-md border px-3 py-2 text-sm" value={recipientEmail}
                   onChange={(e) => setRecipientEmail(e.target.value)} placeholder="friend@example.com" />
               </Field>
-              <Field label="Recipient Name">
+              <Field label={t("giftCard.recipientName")}>
                 <input className="w-full rounded-md border px-3 py-2 text-sm" value={recipientName}
                   onChange={(e) => setRecipientName(e.target.value)} placeholder="Jane Doe" />
               </Field>
             </div>
-            <Field label="Your Name">
+            <Field label={t("giftCard.yourName")}>
               <input className="w-full rounded-md border px-3 py-2 text-sm" value={senderName}
-                onChange={(e) => setSenderName(e.target.value)} placeholder="Your name" />
+                onChange={(e) => setSenderName(e.target.value)} />
             </Field>
-            <Field label="Personal Message (optional)">
+            <Field label={t("giftCard.personalMessage")}>
               <textarea className="w-full rounded-md border px-3 py-2 text-sm min-h-[80px] resize-y" value={message}
-                onChange={(e) => setMessage(e.target.value)} placeholder="Write a personal message..." maxLength={500} />
+                onChange={(e) => setMessage(e.target.value)} maxLength={500} />
             </Field>
           </div>
 
           <div className="rounded-lg bg-blue-50 p-4 flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">Gift Card Total</p>
+              <p className="text-sm text-muted-foreground">{t("giftCard.total")}</p>
               <p className="text-2xl font-bold text-blue-700">${selectedAmount > 0 ? selectedAmount.toFixed(2) : "0.00"}</p>
             </div>
             <Button size="lg" onClick={handleAddToCart} disabled={selectedAmount < 5}>
-              <CreditCard className="h-4 w-4 mr-2" /> Add to Cart
+              <CreditCard className="h-4 w-4 mr-2" /> {t("product.addToCart")}
             </Button>
           </div>
 
           <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 text-sm text-muted-foreground">
             <Send className="h-4 w-4 mt-0.5 flex-shrink-0" />
-            <p>Gift cards are delivered instantly to the recipient's email after purchase. They never expire and can be used on any product in our store.</p>
+            <p>{t("giftCard.deliveryNote")}</p>
           </div>
         </div>
       </div>

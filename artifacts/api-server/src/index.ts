@@ -1,6 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
 import { startCronJobs } from "./lib/cron";
+import { seedDefaultLocales } from "./lib/seed-locales";
 
 const rawPort = process.env["PORT"];
 
@@ -16,12 +17,22 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-app.listen(port, (err) => {
-  if (err) {
-    logger.error({ err }, "Error listening on port");
-    process.exit(1);
+async function bootstrap() {
+  try {
+    await seedDefaultLocales();
+  } catch (e) {
+    logger.warn({ err: e }, "Failed to auto-seed locales");
   }
 
-  logger.info({ port }, "Server listening");
-  startCronJobs();
-});
+  app.listen(port, (err) => {
+    if (err) {
+      logger.error({ err }, "Error listening on port");
+      process.exit(1);
+    }
+
+    logger.info({ port }, "Server listening");
+    startCronJobs();
+  });
+}
+
+bootstrap();
