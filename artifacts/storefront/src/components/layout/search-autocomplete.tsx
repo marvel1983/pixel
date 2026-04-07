@@ -45,6 +45,7 @@ export function SearchAutocomplete() {
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const abortRef = useRef<AbortController>();
 
   useEffect(() => {
     if (!query.trim()) {
@@ -54,8 +55,11 @@ export function SearchAutocomplete() {
     }
 
     timerRef.current = setTimeout(() => {
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
       const url = `${API_URL}/search?q=${encodeURIComponent(query.trim())}&limit=${MAX_SUGGESTIONS}`;
-      fetch(url)
+      fetch(url, { signal: controller.signal })
         .then((r) => r.json())
         .then((data: SearchResponse) => {
           const items = data.items.map(apiItemToSuggestion);
