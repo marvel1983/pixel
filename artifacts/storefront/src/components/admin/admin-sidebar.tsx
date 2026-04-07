@@ -17,6 +17,7 @@ import {
   Truck,
   Flag,
   Ticket,
+  MessageSquare,
   type LucideIcon,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -46,6 +47,7 @@ const sections: NavSection[] = [
       { label: "Products", href: "/admin/products", icon: Package },
       { label: "Categories", href: "/admin/categories", icon: Tags },
       { label: "Platforms", href: "/admin/platforms", icon: Layers },
+      { label: "Reviews", href: "/admin/reviews", icon: MessageSquare },
     ],
   },
   {
