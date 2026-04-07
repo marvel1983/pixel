@@ -82,7 +82,14 @@ export const useCartStore = create<CartState>()(
 
       updateQuantity: (variantId, quantity, bundleId) =>
         set((state) => {
-          const match = (i: CartItem) => i.variantId === variantId && i.bundleId === bundleId;
+          if (bundleId) {
+            return {
+              items: quantity <= 0
+                ? state.items.filter((i) => i.bundleId !== bundleId)
+                : state.items.map((i) => i.bundleId === bundleId ? { ...i, quantity } : i),
+            };
+          }
+          const match = (i: CartItem) => i.variantId === variantId && !i.bundleId;
           return {
             items: quantity <= 0
               ? state.items.filter((i) => !match(i))

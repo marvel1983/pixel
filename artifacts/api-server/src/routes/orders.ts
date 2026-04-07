@@ -63,19 +63,13 @@ const orderSchema = z.object({
 });
 
 const CPP_RATE = 0.05;
-
-function generateOrderNumber() {
-  const ts = Date.now().toString(36).toUpperCase();
-  const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
-  return `PC-${ts}-${rand}`;
-}
+const generateOrderNumber = () => `PC-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
 async function validateAndPriceItems(items: z.infer<typeof orderSchema>["items"]) {
   const variantIds = items.filter((i) => i.variantId > 0).map((i) => i.variantId);
   const dbVariants = await db
     .select({ id: productVariants.id, priceUsd: productVariants.priceUsd })
-    .from(productVariants)
-    .where(inArray(productVariants.id, variantIds));
+    .from(productVariants).where(inArray(productVariants.id, variantIds));
 
   const noResult = (e: string | null) => ({ prices: null, flashVariantMap: new Map<number, number>(), error: e });
   if (dbVariants.length === 0) return noResult(null);
@@ -90,9 +84,17 @@ async function validateAndPriceItems(items: z.infer<typeof orderSchema>["items"]
   const { priceMap: bundlePriceMap, expectedCounts } = await loadBundlePriceMap(items);
 
   const bCounts = new Map<number, number>();
-  for (const it of items) if (it.bundleId) bCounts.set(it.bundleId, (bCounts.get(it.bundleId) || 0) + 1);
+  const bQtys = new Map<number, number | null>();
+  for (const it of items) {
+    if (!it.bundleId) continue;
+    bCounts.set(it.bundleId, (bCounts.get(it.bundleId) || 0) + 1);
+    const prev = bQtys.get(it.bundleId);
+    if (prev === undefined) bQtys.set(it.bundleId, it.quantity);
+    else if (prev !== it.quantity) bQtys.set(it.bundleId, null);
+  }
   for (const [bid, exp] of expectedCounts) {
     if ((bCounts.get(bid) || 0) !== exp) return { prices: null, flashVariantMap, error: `Incomplete bundle: expected ${exp} items` };
+    if (bQtys.get(bid) === null) return { prices: null, flashVariantMap, error: "All items in a bundle must have the same quantity" };
   }
 
   const effectivePrices = new Map<string, string>();
