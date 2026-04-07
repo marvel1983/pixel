@@ -1,8 +1,8 @@
-import cron from "node-cron";
+import cron, { type ScheduledTask } from "node-cron";
 import { syncProducts } from "./product-sync";
 import { logger } from "./logger";
 
-let syncTask: cron.ScheduledTask | null = null;
+let syncTask: ScheduledTask | null = null;
 
 export function startCronJobs(): void {
   if (syncTask) return;
