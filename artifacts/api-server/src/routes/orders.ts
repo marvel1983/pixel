@@ -111,22 +111,30 @@ async function validateAndPriceItems(items: z.infer<typeof orderSchema>["items"]
 
   const flashInfo = await getFlashSaleInfo(variantIds);
   const flashVariantMap = new Map<number, number>();
+  const flashQtyAgg = new Map<number, number>();
 
+  const effectivePrices = new Map<number, string>();
   for (const item of items) {
     const dbPrice = priceMap.get(item.variantId);
     if (!dbPrice) continue;
     const fi = flashInfo.get(item.variantId);
-    if (fi && item.priceUsd === fi.salePriceUsd) {
+    if (fi) {
+      const totalQty = (flashQtyAgg.get(item.variantId) || 0) + item.quantity;
+      flashQtyAgg.set(item.variantId, totalQty);
       const remaining = fi.maxQuantity - fi.soldCount;
-      if (item.quantity > remaining) {
+      if (totalQty > remaining) {
         return { prices: null, flashVariantMap, error: `Only ${remaining} left in flash sale for ${item.productName}` };
       }
       flashVariantMap.set(item.variantId, fi.flashSaleId);
-    } else if (dbPrice !== item.priceUsd) {
-      return { prices: null, flashVariantMap, error: `Price changed for ${item.productName}` };
+      effectivePrices.set(item.variantId, fi.salePriceUsd);
+    } else {
+      if (dbPrice !== item.priceUsd) {
+        return { prices: null, flashVariantMap, error: `Price changed for ${item.productName}` };
+      }
+      effectivePrices.set(item.variantId, dbPrice);
     }
   }
-  return { prices: priceMap, flashVariantMap, error: null };
+  return { prices: effectivePrices, flashVariantMap, error: null };
 }
 
 router.post("/orders", async (req, res) => {
@@ -150,7 +158,7 @@ router.post("/orders", async (req, res) => {
     }
   }
 
-  const { error: priceError, flashVariantMap } = await validateAndPriceItems(items);
+  const { error: priceError, flashVariantMap, prices: serverPrices } = await validateAndPriceItems(items);
   if (priceError) {
     res.status(400).json({ error: priceError });
     return;
@@ -183,7 +191,10 @@ router.post("/orders", async (req, res) => {
   }
 
   const subtotal = items.reduce(
-    (sum, it) => sum + parseFloat(it.priceUsd) * it.quantity,
+    (sum, it) => {
+      const price = (serverPrices && it.variantId > 0) ? serverPrices.get(it.variantId) ?? it.priceUsd : it.priceUsd;
+      return sum + parseFloat(price) * it.quantity;
+    },
     0,
   );
   const discountPct = serverCoupon?.pct ?? 0;
@@ -225,9 +236,16 @@ router.post("/orders", async (req, res) => {
   }
 
   try {
+    const pricedItems = items.map((it) => {
+      if (serverPrices && it.variantId > 0) {
+        const sp = serverPrices.get(it.variantId);
+        if (sp) return { ...it, priceUsd: sp };
+      }
+      return it;
+    });
     const result = await executeOrderPipeline({
       billing,
-      items,
+      items: pricedItems,
       coupon: serverCoupon,
       cppSelected: cppSelected ?? false,
       subtotal,

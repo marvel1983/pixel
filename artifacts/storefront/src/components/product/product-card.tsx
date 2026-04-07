@@ -6,6 +6,7 @@ import { useCartStore } from "@/stores/cart-store";
 import { useCurrencyStore } from "@/stores/currency-store";
 import { useWishlistStore } from "@/stores/wishlist-store";
 import { useCompareStore } from "@/stores/compare-store";
+import { useFlashSaleStore } from "@/stores/flash-sale-store";
 import { addToRecentlyViewed } from "@/components/home/recently-viewed";
 import { useToast } from "@/hooks/use-toast";
 import type { MockProduct } from "@/lib/mock-data";
@@ -15,7 +16,10 @@ interface ProductCardProps {
   flashSalePrice?: string | null;
 }
 
-export function ProductCard({ product, flashSalePrice }: ProductCardProps) {
+export function ProductCard({ product, flashSalePrice: flashSalePriceProp }: ProductCardProps) {
+  const flashPrices = useFlashSaleStore((s) => s.prices);
+  const variant = product.variants?.[0];
+  const flashSalePrice = flashSalePriceProp ?? (variant ? flashPrices.get(variant.id) : undefined) ?? null;
   const addItem = useCartStore((s) => s.addItem);
   const format = useCurrencyStore((s) => s.format);
   const { toast } = useToast();
@@ -27,7 +31,6 @@ export function ProductCard({ product, flashSalePrice }: ProductCardProps) {
 
   const isWishlisted = wishlistIds.includes(product.id);
   const isComparing = compareIds.includes(product.id);
-  const variant = product.variants[0];
   if (!variant) return null;
 
   const price = parseFloat(variant.priceUsd);
