@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Plus, GripVertical, Pencil, Trash2, ToggleLeft, ToggleRight, Zap, ShieldCheck, Clock, Headphones, Shield, Loader2 } from "lucide-react";
+import { Plus, ArrowUp, ArrowDown, Pencil, Trash2, ToggleLeft, ToggleRight, Zap, ShieldCheck, Clock, Headphones, Shield, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuthStore } from "@/stores/auth-store";
@@ -61,6 +61,17 @@ export default function AdminCheckoutServicesPage() {
     load();
   }
 
+  async function handleMove(index: number, direction: "up" | "down") {
+    const newOrder = [...services];
+    const swapIdx = direction === "up" ? index - 1 : index + 1;
+    if (swapIdx < 0 || swapIdx >= newOrder.length) return;
+    [newOrder[index], newOrder[swapIdx]] = [newOrder[swapIdx], newOrder[index]];
+    setServices(newOrder);
+    await fetch(`${API}/admin/checkout-services/reorder`, {
+      method: "POST", headers, body: JSON.stringify({ order: newOrder.map((s) => s.id) }),
+    });
+  }
+
   async function handleDelete(id: number) {
     if (!confirm("Delete this service?")) return;
     await fetch(`${API}/admin/checkout-services/${id}`, { method: "DELETE", headers });
@@ -87,11 +98,14 @@ export default function AdminCheckoutServicesPage() {
       </div>
 
       <div className="border rounded-lg divide-y">
-        {services.map((svc) => {
+        {services.map((svc, idx) => {
           const Icon = iconMap[svc.icon] || Shield;
           return (
             <div key={svc.id} className="flex items-center gap-4 p-4">
-              <GripVertical className="h-4 w-4 text-muted-foreground shrink-0 cursor-grab" />
+              <div className="flex flex-col gap-0.5 shrink-0">
+                <button className="p-0.5 hover:bg-muted rounded disabled:opacity-30" disabled={idx === 0} onClick={() => handleMove(idx, "up")}><ArrowUp className="h-3.5 w-3.5" /></button>
+                <button className="p-0.5 hover:bg-muted rounded disabled:opacity-30" disabled={idx === services.length - 1} onClick={() => handleMove(idx, "down")}><ArrowDown className="h-3.5 w-3.5" /></button>
+              </div>
               <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${svc.enabled ? "bg-blue-100 text-blue-600" : "bg-muted text-muted-foreground"}`}>
                 <Icon className="h-5 w-5" />
               </div>
