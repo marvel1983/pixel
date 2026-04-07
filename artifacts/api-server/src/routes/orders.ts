@@ -1,12 +1,11 @@
 import { Router } from "express";
 import { z } from "zod";
-import { db } from "@workspace/db";
-import { orders, orderItems } from "@workspace/db/schema";
+import { executeOrderPipeline } from "../services/order-pipeline";
 import { logger } from "../lib/logger";
 
 const router = Router();
 
-const currencyStr = z.string().regex(/^\d+(\.\d{1,2})?$/, "Invalid currency format");
+const currencyStr = z.string().regex(/^\d+(\.\d{1,2})?$/);
 
 const billingSchema = z.object({
   email: z.string().email(),
@@ -29,6 +28,10 @@ const itemSchema = z.object({
   platform: z.string().optional(),
 });
 
+const paymentDataSchema = z.object({
+  cardToken: z.string().min(1),
+});
+
 const orderSchema = z.object({
   billing: billingSchema,
   items: z.array(itemSchema).min(1).max(50),
@@ -42,6 +45,7 @@ const orderSchema = z.object({
     .optional(),
   cppSelected: z.boolean().optional(),
   total: currencyStr,
+  payment: paymentDataSchema,
   guestPassword: z.string().min(8).optional(),
 });
 
@@ -56,11 +60,14 @@ function generateOrderNumber() {
 router.post("/orders", async (req, res) => {
   const parsed = orderSchema.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: "Invalid order data", details: parsed.error.flatten() });
+    res.status(400).json({
+      error: "Invalid order data",
+      details: parsed.error.flatten(),
+    });
     return;
   }
 
-  const { billing, items, coupon, cppSelected, total } = parsed.data;
+  const { billing, items, coupon, cppSelected, total, payment } = parsed.data;
 
   const subtotal = items.reduce(
     (sum, it) => sum + parseFloat(it.priceUsd) * it.quantity,
@@ -75,48 +82,29 @@ router.post("/orders", async (req, res) => {
     return;
   }
 
-  const orderNumber = generateOrderNumber();
-
   try {
-    const result = await db.transaction(async (tx) => {
-      const [order] = await tx
-        .insert(orders)
-        .values({
-          orderNumber,
-          guestEmail: billing.email,
-          status: "COMPLETED",
-          subtotalUsd: subtotal.toFixed(2),
-          discountUsd: discountAmount.toFixed(2),
-          totalUsd: computedTotal.toFixed(2),
-          paymentMethod: "CARD",
-          paymentIntentId: `sim_${Date.now()}`,
-        })
-        .returning({ id: orders.id });
-
-      await tx.insert(orderItems).values(
-        items.map((item) => ({
-          orderId: order.id,
-          variantId: item.variantId,
-          productName: item.productName,
-          variantName: item.variantName,
-          priceUsd: item.priceUsd,
-          quantity: item.quantity,
-        })),
-      );
-
-      return order;
+    const result = await executeOrderPipeline({
+      billing,
+      items,
+      coupon: coupon ?? null,
+      cppSelected: cppSelected ?? false,
+      subtotal,
+      discountAmount,
+      total: computedTotal,
+      orderNumber: generateOrderNumber(),
+      cardToken: payment.cardToken,
+      guestPassword: parsed.data.guestPassword,
     });
 
-    logger.info({ orderNumber, email: billing.email, total: computedTotal.toFixed(2) }, "Order created");
-
     res.status(201).json({
-      orderNumber,
-      status: "COMPLETED",
+      orderNumber: result.orderNumber,
+      status: result.status,
       message: "Order placed successfully",
     });
   } catch (err) {
-    logger.error({ err }, "Failed to create order");
-    res.status(500).json({ error: "Failed to process order" });
+    logger.error({ err }, "Order pipeline failed");
+    const message = err instanceof Error ? err.message : "Failed to process order";
+    res.status(500).json({ error: message });
   }
 });
 

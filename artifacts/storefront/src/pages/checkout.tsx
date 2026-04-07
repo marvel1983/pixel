@@ -76,6 +76,9 @@ export default function CheckoutPage() {
       const cpp = cppSelected ? getCppAmount(subtotal) : 0;
       const total = subtotal - discount + cpp;
 
+      const cardDigits = payment.cardNumber.replace(/\s/g, "");
+      const cardToken = `tok_${cardDigits.slice(-4)}_${Date.now()}`;
+
       const baseUrl = import.meta.env.VITE_API_URL ?? "/api";
       const res = await fetch(`${baseUrl}/orders`, {
         method: "POST",
@@ -83,6 +86,7 @@ export default function CheckoutPage() {
         body: JSON.stringify({
           billing, items, coupon, cppSelected,
           total: total.toFixed(2),
+          payment: { cardToken },
           guestPassword: guestPassword || undefined,
         }),
       });
