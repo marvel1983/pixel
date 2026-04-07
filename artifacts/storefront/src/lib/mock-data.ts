@@ -69,14 +69,14 @@ export const MOCK_PRODUCTS: MockProduct[] = [
     imageUrl: null, categorySlug: "antivirus-security",
     avgRating: 4.4, reviewCount: 210,
     variants: [{ id: 7, name: "1 Year / 3 Devices", sku: "NORTON360-3D", platform: "WINDOWS", priceUsd: "19.99", compareAtPriceUsd: "49.99", stockCount: 150 }],
-    isFeatured: false, isNew: false,
+    isFeatured: false, isNew: true,
   },
   {
     id: 8, name: "Kaspersky Total Security", slug: "kaspersky-total",
     imageUrl: null, categorySlug: "antivirus-security",
     avgRating: 4.3, reviewCount: 178,
     variants: [{ id: 8, name: "1 Year / 5 Devices", sku: "KASP-TOTAL-5D", platform: "WINDOWS", priceUsd: "24.99", compareAtPriceUsd: "79.99", stockCount: 120 }],
-    isFeatured: false, isNew: false,
+    isFeatured: false, isNew: true,
   },
   {
     id: 9, name: "Elden Ring", slug: "elden-ring",
