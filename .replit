@@ -27,3 +27,8 @@ timeoutMs = 20000
 
 [nix]
 channel = "stable-25_05"
+
+[userenv]
+
+[userenv.shared]
+ENCRYPTION_KEY = "d21b7836ffa13a99ca8101df8fbff17298eb050f8accd069e24c03eff27d8589"

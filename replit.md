@@ -51,6 +51,16 @@ Located in `artifacts/storefront/src/stores/`:
 - `compare-store.ts` — product comparison (max 4)
 - `wishlist-store.ts` — wishlist with toggle
 
+## Metenzi API Integration
+
+Located in `artifacts/api-server/src/lib/`:
+- `encryption.ts` — AES-256-GCM encrypt/decrypt for API keys (uses ENCRYPTION_KEY env var)
+- `metenzi-client.ts` — HTTP client with Bearer auth, HMAC-SHA256 signing for writes, retry with exponential backoff on 429
+- `metenzi-endpoints.ts` — All endpoint functions: getProducts, getProductById, createOrder, getOrderById, getBalance, listWebhooks, createWebhook, deleteWebhook, listClaims, submitClaim
+- `metenzi-config.ts` — Loads Metenzi provider config from DB, decrypts keys, caches for 5 min
+- `product-sync.ts` — Syncs Metenzi products into local DB (upsert products + variants)
+- `cron.ts` — Background cron: product sync every 30 minutes
+
 ## Key Commands
 
 - `pnpm run typecheck` — full typecheck across all packages
