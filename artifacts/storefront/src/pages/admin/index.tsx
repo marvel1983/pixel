@@ -45,6 +45,9 @@ import AdminSupportPage from "./support";
 import AdminSupportDetailPage from "./support-detail";
 import AdminCheckoutServicesPage from "./checkout-services";
 import I18nSettingsPage from "./i18n-settings";
+import AdminBlogPage from "./blog";
+import BlogEditPage from "./blog-edit";
+import AdminBlogCategoriesPage from "./blog-categories";
 
 function AdminPlaceholder({ title }: { title: string }) {
   return (
@@ -109,6 +112,9 @@ export default function AdminRoot() {
           <Route path="/admin/notifications">
             <AdminPlaceholder title="Notifications" />
           </Route>
+          <Route path="/admin/blog/categories" component={AdminBlogCategoriesPage} />
+          <Route path="/admin/blog/:id" component={BlogEditPage} />
+          <Route path="/admin/blog" component={AdminBlogPage} />
           <Route path="/admin/pages/new" component={PageEditPage} />
           <Route path="/admin/pages/faq" component={FaqEditorPage} />
           <Route path="/admin/pages/:id" component={PageEditPage} />

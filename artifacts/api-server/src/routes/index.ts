@@ -66,6 +66,8 @@ import socialProofRouter from "./social-proof";
 import adminSocialProofRouter from "./admin-social-proof";
 import i18nRouter from "./i18n";
 import adminI18nRouter from "./admin-i18n";
+import blogRouter from "./blog";
+import adminBlogRouter from "./admin-blog";
 
 const router: IRouter = Router();
 
@@ -136,5 +138,7 @@ router.use(socialProofRouter);
 router.use(adminSocialProofRouter);
 router.use(i18nRouter);
 router.use(adminI18nRouter);
+router.use(blogRouter);
+router.use(adminBlogRouter);
 
 export default router;

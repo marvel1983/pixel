@@ -30,6 +30,7 @@ import {
   Globe,
   Link2,
   Zap,
+  BookOpen,
   type LucideIcon,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -101,6 +102,8 @@ const sections: NavSection[] = [
     items: [
       { label: "Homepage Sections", href: "/admin/homepage-sections", icon: Layout },
       { label: "Brand Sections", href: "/admin/brand-sections", icon: ShoppingBag },
+      { label: "Blog Posts", href: "/admin/blog", icon: BookOpen },
+      { label: "Blog Categories", href: "/admin/blog/categories", icon: Tags },
       { label: "Pages", href: "/admin/pages", icon: FileText },
       { label: "FAQ Editor", href: "/admin/pages/faq", icon: HelpCircle },
       { label: "Email Templates", href: "/admin/email-templates", icon: Mail },

@@ -467,9 +467,6 @@ importers:
       '@tiptap/starter-kit':
         specifier: ^3.22.2
         version: 3.22.2
-      '@types/dompurify':
-        specifier: ^3.2.0
-        version: 3.2.0
       dompurify:
         specifier: ^3.3.3
         version: 3.3.3
@@ -591,6 +588,9 @@ importers:
       '@tanstack/react-query':
         specifier: 'catalog:'
         version: 5.90.21(react@19.1.0)
+      '@types/dompurify':
+        specifier: ^3.2.0
+        version: 3.2.0
       '@types/node':
         specifier: 'catalog:'
         version: 25.3.5

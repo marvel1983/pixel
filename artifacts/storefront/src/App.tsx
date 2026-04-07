@@ -46,6 +46,8 @@ import AuthGoogleSuccessPage from "@/pages/auth-google-success";
 import { useReferralTracking } from "@/hooks/use-referral";
 import { ExitIntentPopup } from "@/components/newsletter/exit-intent-popup";
 import { PurchaseToastProvider } from "@/components/social-proof/purchase-toast";
+import BlogPage from "@/pages/blog";
+import BlogPostPage from "@/pages/blog-post";
 import StaticPageView from "@/pages/static-page";
 import AdminRoot from "@/pages/admin/index";
 import AcceptInvitePage from "@/pages/admin/accept-invite";
@@ -93,6 +95,8 @@ function StorefrontWithMaintenance() {
         <Route path="/compare" component={ComparePage} />
         <Route path="/support/new" component={SupportNewPage} />
         <Route path="/support/tickets/:ticketNumber" component={SupportTicketPage} />
+        <Route path="/blog/:slug" component={BlogPostPage} />
+        <Route path="/blog" component={BlogPage} />
         <Route path="/newsletter/confirm" component={NewsletterConfirmPage} />
         <Route path="/newsletter/unsubscribe" component={NewsletterUnsubscribePage} />
         <Route component={StaticPageView} />
