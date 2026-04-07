@@ -83,7 +83,7 @@ Located in `artifacts/storefront/src/stores/`:
 
 - Customers: create tickets (with category, optional order link), view/reply from account Support tab
 - Admin: queue with stats (open/pending/resolved counts), detail view with thread, internal notes, status/priority/assignee management
-- Ticket numbers: TKT-{random hex} with collision retry
+- Ticket numbers: sequential TKT-00001 format (max+1 with collision retry)
 - Email notifications: new ticket → admins, admin reply → customer, customer reply → assignee
 - Routes: `support-tickets.ts` (customer), `admin-support.ts` (admin)
 - Frontend: `/support/new`, `/support/tickets/:num`, `/account?tab=support`, `/admin/support`, `/admin/support/:num`

@@ -10,8 +10,10 @@ import { logger } from "../lib/logger";
 const router = Router();
 
 async function nextTicketNumber(): Promise<string> {
-  const [row] = await db.select({ c: count() }).from(supportTickets);
-  const seq = (row?.c ?? 0) + 1;
+  const [row] = await db.select({
+    maxNum: sql<string>`COALESCE(MAX(CAST(SUBSTRING(${supportTickets.ticketNumber} FROM 5) AS integer)), 0)`,
+  }).from(supportTickets);
+  const seq = (parseInt(row?.maxNum ?? "0") || 0) + 1;
   return `TKT-${String(seq).padStart(5, "0")}`;
 }
 
