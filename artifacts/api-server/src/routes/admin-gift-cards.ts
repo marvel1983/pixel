@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { giftCards, giftCardRedemptions, orders } from "@workspace/db/schema";
-import { eq, desc, ilike, or, count, and } from "drizzle-orm";
+import { eq, desc, ilike, or, count, and, type SQL } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import crypto from "crypto";
@@ -26,8 +26,12 @@ router.get("/admin/gift-cards", requireAuth, requireAdmin, requirePermission("ma
   const limit = Math.min(100, parseInt(lm as string) || 25);
   const offset = (page - 1) * limit;
 
-  const conditions = [];
-  if (status && status !== "ALL") conditions.push(eq(giftCards.status, status as any));
+  const validStatuses = ["ACTIVE", "REDEEMED", "EXPIRED", "DEACTIVATED"] as const;
+  type GiftCardStatus = typeof validStatuses[number];
+  const conditions: SQL[] = [];
+  if (status && status !== "ALL" && validStatuses.includes(status as GiftCardStatus)) {
+    conditions.push(eq(giftCards.status, status as GiftCardStatus));
+  }
   if (search) {
     conditions.push(or(
       ilike(giftCards.code, `%${search}%`),

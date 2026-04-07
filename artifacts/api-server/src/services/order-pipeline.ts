@@ -101,11 +101,18 @@ export async function executeOrderPipeline(input: OrderInput) {
     const realItems = items.filter((i) => i.variantId > 0);
     const giftCardItems = items.filter((i) => i.platform?.startsWith("GIFTCARD|"));
 
+    let purchaserUserId: number | null = null;
+    if (giftCardItems.length) {
+      const [existingUser] = await db.select({ id: users.id }).from(users)
+        .where(eq(users.email, billing.email)).limit(1);
+      purchaserUserId = existingUser?.id ?? null;
+    }
+
     for (const gcItem of giftCardItems) {
       const parts = (gcItem.platform || "").split("|");
       const [, recipientEmail, recipientName, senderName, personalMessage] = parts;
       await createGiftCardForOrder(
-        order.id, null, gcItem.priceUsd,
+        order.id, purchaserUserId, gcItem.priceUsd,
         recipientEmail || billing.email, recipientName || "", senderName || "", personalMessage || "",
       );
     }

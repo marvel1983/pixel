@@ -45,7 +45,7 @@ export default function AccountGiftCardsPage() {
     try {
       const res = await fetch(`${API}/account/gift-cards/check-balance`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ code: checkCode.trim() }),
       });
       const d = await res.json();

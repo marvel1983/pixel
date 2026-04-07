@@ -40,7 +40,7 @@ router.get("/account/gift-cards", requireAuth, async (req, res) => {
   res.json({ giftCards: purchased });
 });
 
-router.post("/account/gift-cards/check-balance", async (req, res) => {
+router.post("/account/gift-cards/check-balance", requireAuth, async (req, res) => {
   const { code } = req.body;
   if (!code) { res.status(400).json({ error: "Code required" }); return; }
   const [card] = await db.select({
