@@ -13,17 +13,31 @@ function isValidAction(v: string): v is AuditAction {
   return (VALID_ACTIONS as readonly string[]).includes(v);
 }
 
+function endOfDay(dateStr: string): Date {
+  const d = new Date(dateStr);
+  d.setUTCHours(23, 59, 59, 999);
+  return d;
+}
+
+function csvEscape(val: string | null | undefined): string {
+  const s = val ?? "";
+  if (s.includes(",") || s.includes('"') || s.includes("\n")) {
+    return `"${s.replace(/"/g, '""')}"`;
+  }
+  return `"${s}"`;
+}
+
 router.get("/admin/audit-log", requireAuth, requireAdmin, async (req, res) => {
   const page = Math.max(1, Number(req.query.page) || 1);
   const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 50));
   const offset = (page - 1) * limit;
   const conditions = [];
   if (typeof req.query.action === "string" && isValidAction(req.query.action)) conditions.push(eq(auditLog.action, req.query.action));
-  if (typeof req.query.userId === "string") conditions.push(eq(auditLog.userId, Number(req.query.userId)));
+  if (typeof req.query.userId === "string" && !isNaN(Number(req.query.userId))) conditions.push(eq(auditLog.userId, Number(req.query.userId)));
   if (typeof req.query.entityType === "string") conditions.push(eq(auditLog.entityType, req.query.entityType));
   if (typeof req.query.search === "string") conditions.push(ilike(auditLog.entityType, `%${req.query.search}%`));
   if (typeof req.query.from === "string") conditions.push(gte(auditLog.createdAt, new Date(req.query.from)));
-  if (typeof req.query.to === "string") conditions.push(lte(auditLog.createdAt, new Date(req.query.to)));
+  if (typeof req.query.to === "string") conditions.push(lte(auditLog.createdAt, endOfDay(req.query.to)));
   const where = conditions.length > 0 ? and(...conditions) : undefined;
 
   const [countResult] = await db.select({ count: sql<number>`count(*)::int` }).from(auditLog).where(where);
@@ -42,7 +56,7 @@ router.get("/admin/audit-log/export", requireAuth, requireAdmin, async (req, res
   const conditions = [];
   if (typeof req.query.action === "string" && isValidAction(req.query.action)) conditions.push(eq(auditLog.action, req.query.action));
   if (typeof req.query.from === "string") conditions.push(gte(auditLog.createdAt, new Date(req.query.from)));
-  if (typeof req.query.to === "string") conditions.push(lte(auditLog.createdAt, new Date(req.query.to)));
+  if (typeof req.query.to === "string") conditions.push(lte(auditLog.createdAt, endOfDay(req.query.to)));
   const where = conditions.length > 0 ? and(...conditions) : undefined;
 
   const rows = await db.select({
@@ -52,7 +66,10 @@ router.get("/admin/audit-log/export", requireAuth, requireAdmin, async (req, res
   }).from(auditLog).leftJoin(users, eq(auditLog.userId, users.id)).where(where).orderBy(desc(auditLog.createdAt)).limit(10000);
 
   const header = "ID,Action,Entity Type,Entity ID,User,Email,IP Address,Timestamp\n";
-  const csv = rows.map((r) => `${r.id},"${r.action}","${r.entityType ?? ""}",${r.entityId ?? ""},"${r.userName ?? ""}","${r.userEmail ?? ""}","${r.ipAddress ?? ""}","${r.createdAt.toISOString()}"`).join("\n");
+  const csv = rows.map((r) => [
+    r.id, csvEscape(r.action), csvEscape(r.entityType), r.entityId ?? "",
+    csvEscape(r.userName), csvEscape(r.userEmail), csvEscape(r.ipAddress), csvEscape(r.createdAt.toISOString()),
+  ].join(",")).join("\n");
   res.setHeader("Content-Type", "text/csv");
   res.setHeader("Content-Disposition", "attachment; filename=audit-log.csv");
   res.send(header + csv);
