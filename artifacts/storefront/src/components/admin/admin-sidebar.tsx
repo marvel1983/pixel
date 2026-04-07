@@ -18,6 +18,7 @@ import {
   Flag,
   Ticket,
   MessageSquare,
+  HelpCircle,
   type LucideIcon,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -71,6 +72,7 @@ const sections: NavSection[] = [
     title: "CONTENT",
     items: [
       { label: "Pages", href: "/admin/pages", icon: FileText },
+      { label: "FAQ Editor", href: "/admin/pages/faq", icon: HelpCircle },
       { label: "Banners", href: "/admin/banners", icon: Image },
     ],
   },

@@ -26,6 +26,7 @@ import AccountPage from "@/pages/account";
 import WishlistPage from "@/pages/wishlist";
 import ComparePage from "@/pages/compare";
 import SearchPage from "@/pages/search";
+import StaticPageView from "@/pages/static-page";
 import AdminRoot from "@/pages/admin/index";
 import NotFound from "@/pages/not-found";
 
@@ -58,6 +59,7 @@ function Router() {
             <Route path="/account" component={AccountPage} />
             <Route path="/wishlist" component={WishlistPage} />
             <Route path="/compare" component={ComparePage} />
+            <Route path="/page/:slug" component={StaticPageView} />
             <Route component={NotFound} />
           </Switch>
         </SiteLayout>

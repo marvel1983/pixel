@@ -18,6 +18,9 @@ import AdminCustomersPage from "./customers";
 import CustomerDetailPage from "./customer-detail";
 import AdminReviewsPage from "./reviews";
 import AdminBannersPage from "./banners";
+import AdminStaticPagesPage from "./static-pages";
+import PageEditPage from "./page-edit";
+import FaqEditorPage from "./faq-editor";
 
 function AdminPlaceholder({ title }: { title: string }) {
   return (
@@ -65,9 +68,10 @@ export default function AdminRoot() {
           <Route path="/admin/notifications">
             <AdminPlaceholder title="Notifications" />
           </Route>
-          <Route path="/admin/pages">
-            <AdminPlaceholder title="Pages" />
-          </Route>
+          <Route path="/admin/pages/new" component={PageEditPage} />
+          <Route path="/admin/pages/faq" component={FaqEditorPage} />
+          <Route path="/admin/pages/:id" component={PageEditPage} />
+          <Route path="/admin/pages" component={AdminStaticPagesPage} />
           <Route path="/admin/media">
             <AdminPlaceholder title="Media" />
           </Route>
