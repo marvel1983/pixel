@@ -20,3 +20,4 @@ export * from "./password-resets";
 export * from "./email-queue";
 export * from "./claims";
 export * from "./checkout-upsell";
+export * from "./homepage-sections";

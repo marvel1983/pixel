@@ -2,10 +2,12 @@ import { useLocation, Link } from "wouter";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
+  Layout,
   Package,
   Tags,
   Layers,
   ShoppingCart,
+  ShoppingBag,
   Receipt,
   Users,
   FileText,
@@ -75,6 +77,8 @@ const sections: NavSection[] = [
   {
     title: "CONTENT",
     items: [
+      { label: "Homepage Sections", href: "/admin/homepage-sections", icon: Layout },
+      { label: "Brand Sections", href: "/admin/brand-sections", icon: ShoppingBag },
       { label: "Pages", href: "/admin/pages", icon: FileText },
       { label: "FAQ Editor", href: "/admin/pages/faq", icon: HelpCircle },
       { label: "Banners", href: "/admin/banners", icon: Image },
