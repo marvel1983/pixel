@@ -68,6 +68,9 @@ export async function getProducts(
     method: "GET",
     path: "/api/products",
   });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch Metenzi products: ${res.status}`);
+  }
   return res.data.products ?? [];
 }
 
@@ -79,7 +82,11 @@ export async function getProductById(
     method: "GET",
     path: `/api/products/${productId}`,
   });
-  return res.ok ? res.data.product : null;
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    throw new Error(`Failed to fetch Metenzi product ${productId}: ${res.status}`);
+  }
+  return res.data.product;
 }
 
 export async function createOrder(
@@ -105,7 +112,11 @@ export async function getOrderById(
     method: "GET",
     path: `/api/orders/${orderId}`,
   });
-  return res.ok ? res.data.order : null;
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    throw new Error(`Failed to fetch Metenzi order ${orderId}: ${res.status}`);
+  }
+  return res.data.order;
 }
 
 export async function getBalance(
@@ -115,6 +126,9 @@ export async function getBalance(
     method: "GET",
     path: "/api/balance",
   });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch Metenzi balance: ${res.status}`);
+  }
   return res.data;
 }
 
@@ -125,7 +139,23 @@ export async function listWebhooks(
     method: "GET",
     path: "/api/webhooks",
   });
+  if (!res.ok) {
+    throw new Error(`Failed to list Metenzi webhooks: ${res.status}`);
+  }
   return res.data.webhooks ?? [];
+}
+
+export async function listClaims(
+  config: MetenziClientConfig,
+): Promise<MetenziClaim[]> {
+  const res = await metenziRequest<{ claims: MetenziClaim[] }>(config, {
+    method: "GET",
+    path: "/api/claims",
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to list Metenzi claims: ${res.status}`);
+  }
+  return res.data.claims ?? [];
 }
 
 export async function createWebhook(
@@ -153,16 +183,6 @@ export async function deleteWebhook(
     path: `/api/webhooks/${webhookId}`,
   });
   return res.ok;
-}
-
-export async function listClaims(
-  config: MetenziClientConfig,
-): Promise<MetenziClaim[]> {
-  const res = await metenziRequest<{ claims: MetenziClaim[] }>(config, {
-    method: "GET",
-    path: "/api/claims",
-  });
-  return res.data.claims ?? [];
 }
 
 export async function submitClaim(
