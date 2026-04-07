@@ -12,14 +12,20 @@ export interface CartItem {
   platform?: string;
 }
 
+export interface CouponData {
+  code: string;
+  pct: number;
+  label: string;
+}
+
 interface CartState {
   items: CartItem[];
-  couponCode: string | null;
+  coupon: CouponData | null;
   addItem: (item: Omit<CartItem, "quantity">) => void;
   removeItem: (variantId: number) => void;
   updateQuantity: (variantId: number, quantity: number) => void;
   clearCart: () => void;
-  setCoupon: (code: string | null) => void;
+  setCoupon: (coupon: CouponData | null) => void;
   getTotal: () => number;
   getItemCount: () => number;
 }
@@ -28,7 +34,7 @@ export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
       items: [],
-      couponCode: null,
+      coupon: null,
 
       addItem: (item) =>
         set((state) => {
@@ -62,9 +68,9 @@ export const useCartStore = create<CartState>()(
                 ),
         })),
 
-      clearCart: () => set({ items: [], couponCode: null }),
+      clearCart: () => set({ items: [], coupon: null }),
 
-      setCoupon: (code) => set({ couponCode: code }),
+      setCoupon: (coupon) => set({ coupon }),
 
       getTotal: () =>
         get().items.reduce(

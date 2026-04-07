@@ -3,12 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useCartStore } from "@/stores/cart-store";
 import { useCurrencyStore } from "@/stores/currency-store";
-import { CouponInput, useCouponDiscount } from "./coupon-input";
+import { CouponInput } from "./coupon-input";
 
 export function CartTotals() {
   const getTotal = useCartStore((s) => s.getTotal);
+  const coupon = useCartStore((s) => s.coupon);
   const { format } = useCurrencyStore();
-  const coupon = useCouponDiscount();
 
   const subtotal = getTotal();
   const discountAmount = coupon ? subtotal * (coupon.pct / 100) : 0;

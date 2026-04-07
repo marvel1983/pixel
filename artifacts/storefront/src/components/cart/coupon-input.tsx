@@ -5,23 +5,10 @@ import { Input } from "@/components/ui/input";
 import { useCartStore } from "@/stores/cart-store";
 import { useToast } from "@/hooks/use-toast";
 
-interface CouponData {
-  pct: number;
-  label: string;
-}
-
-const couponCache = new Map<string, CouponData>();
-
-export function useCouponDiscount(): CouponData | null {
-  const code = useCartStore((s) => s.couponCode);
-  if (!code) return null;
-  return couponCache.get(code) ?? null;
-}
-
 export function CouponInput() {
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
-  const couponCode = useCartStore((s) => s.couponCode);
+  const coupon = useCartStore((s) => s.coupon);
   const setCoupon = useCartStore((s) => s.setCoupon);
   const { toast } = useToast();
 
@@ -39,9 +26,11 @@ export function CouponInput() {
       const data = await res.json();
 
       if (res.ok && data.valid) {
-        const upperCode = data.code as string;
-        couponCache.set(upperCode, { pct: data.discount, label: data.label });
-        setCoupon(upperCode);
+        setCoupon({
+          code: data.code,
+          pct: data.discount,
+          label: data.label,
+        });
         toast({ title: "Coupon applied!", description: `${data.label} discount` });
         setCode("");
       } else {
@@ -62,13 +51,12 @@ export function CouponInput() {
     }
   }
 
-  if (couponCode) {
-    const coupon = couponCache.get(couponCode);
+  if (coupon) {
     return (
       <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 border border-green-200">
         <Tag className="h-4 w-4 text-green-600" />
         <span className="text-sm font-medium text-green-700 flex-1">
-          {couponCode} — {coupon?.label ?? "Applied"}
+          {coupon.code} — {coupon.label}
         </span>
         <button
           onClick={() => setCoupon(null)}
