@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { blogPosts, blogCategories, users } from "@workspace/db/schema";
-import { eq, desc, and, sql, ilike, or } from "drizzle-orm";
+import { eq, desc, and, sql, ilike, or, lte } from "drizzle-orm";
 
 const router = Router();
 
@@ -14,10 +14,14 @@ router.get("/blog/posts", async (req, res) => {
     const tag = req.query.tag as string | undefined;
     const search = req.query.search as string | undefined;
 
+    await db.update(blogPosts).set({ isPublished: true, status: "published", publishedAt: new Date() })
+      .where(and(eq(blogPosts.status, "scheduled"), lte(blogPosts.scheduledAt, new Date())));
+
     const conditions = [eq(blogPosts.isPublished, true)];
     if (category) {
       const cat = await db.select().from(blogCategories).where(eq(blogCategories.slug, category)).limit(1);
-      if (cat.length) conditions.push(eq(blogPosts.categoryId, cat[0].id));
+      if (!cat.length) return res.json({ posts: [], total: 0, page, totalPages: 0 });
+      conditions.push(eq(blogPosts.categoryId, cat[0].id));
     }
     if (tag) {
       conditions.push(ilike(blogPosts.tags, `%${tag}%`));
