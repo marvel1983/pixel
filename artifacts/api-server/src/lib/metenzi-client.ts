@@ -23,6 +23,7 @@ interface MetenziResponse<T = unknown> {
 
 const MAX_RETRIES = 3;
 const BASE_DELAY_MS = 1000;
+const MAX_DELAY_MS = 30000;
 
 function signPayload(payload: string, secret: string): string {
   return crypto
@@ -49,6 +50,24 @@ async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function computeSignatureHeaders(
+  config: MetenziClientConfig,
+  bodyStr?: string,
+): Record<string, string> {
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+  const payloadToSign = bodyStr ?? "";
+  const signaturePayload = `${timestamp}.${payloadToSign}`;
+  const signature = signPayload(signaturePayload, config.hmacSecret);
+  return { "X-Signature": signature, "X-Timestamp": timestamp };
+}
+
+function parseRetryAfter(header: string | null): number | null {
+  if (!header) return null;
+  const seconds = parseInt(header, 10);
+  if (Number.isNaN(seconds) || seconds <= 0) return null;
+  return Math.min(seconds * 1000, MAX_DELAY_MS);
+}
+
 export async function metenziRequest<T = unknown>(
   config: MetenziClientConfig,
   options: MetenziRequestOptions,
@@ -56,27 +75,20 @@ export async function metenziRequest<T = unknown>(
   const { method, path, body, query } = options;
   const url = buildUrl(config.baseUrl, path, query);
   const isWrite = method !== "GET";
+  const isIdempotent = method === "GET" || method === "PUT";
 
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${config.apiKey}`,
-  };
-
-  let bodyStr: string | undefined;
-  if (body) {
-    bodyStr = JSON.stringify(body);
-  }
-
-  if (isWrite) {
-    const timestamp = Math.floor(Date.now() / 1000).toString();
-    const payloadToSign = bodyStr ?? "";
-    const signaturePayload = `${timestamp}.${payloadToSign}`;
-    const signature = signPayload(signaturePayload, config.hmacSecret);
-    headers["X-Signature"] = signature;
-    headers["X-Timestamp"] = timestamp;
-  }
+  const bodyStr = body ? JSON.stringify(body) : undefined;
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${config.apiKey}`,
+    };
+
+    if (isWrite) {
+      Object.assign(headers, computeSignatureHeaders(config, bodyStr));
+    }
+
     try {
       const response = await fetch(url, {
         method,
@@ -84,19 +96,16 @@ export async function metenziRequest<T = unknown>(
         body: bodyStr,
       });
 
-      if (response.status === 429) {
-        if (attempt < MAX_RETRIES) {
-          const retryAfter = response.headers.get("Retry-After");
-          const delayMs = retryAfter
-            ? parseInt(retryAfter, 10) * 1000
-            : BASE_DELAY_MS * Math.pow(2, attempt);
-          logger.warn(
-            { attempt, delayMs, path },
-            "Metenzi rate limited, retrying",
-          );
-          await sleep(delayMs);
-          continue;
-        }
+      if (response.status === 429 && attempt < MAX_RETRIES) {
+        const delayMs =
+          parseRetryAfter(response.headers.get("Retry-After")) ??
+          Math.min(BASE_DELAY_MS * Math.pow(2, attempt), MAX_DELAY_MS);
+        logger.warn(
+          { attempt, delayMs, path },
+          "Metenzi rate limited, retrying",
+        );
+        await sleep(delayMs);
+        continue;
       }
 
       let data: T;
@@ -111,11 +120,14 @@ export async function metenziRequest<T = unknown>(
       }
       return { ok: response.ok, status: response.status, data };
     } catch (error) {
-      if (attempt < MAX_RETRIES) {
-        const delayMs = BASE_DELAY_MS * Math.pow(2, attempt);
+      if (isIdempotent && attempt < MAX_RETRIES) {
+        const delayMs = Math.min(
+          BASE_DELAY_MS * Math.pow(2, attempt),
+          MAX_DELAY_MS,
+        );
         logger.warn(
           { attempt, delayMs, path, error },
-          "Metenzi request failed, retrying",
+          "Metenzi request failed, retrying (idempotent)",
         );
         await sleep(delayMs);
         continue;
