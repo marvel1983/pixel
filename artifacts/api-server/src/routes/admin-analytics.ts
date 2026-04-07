@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { orders, orderItems, products, categories, users } from "@workspace/db/schema";
+import { orders, orderItems, products, productVariants, categories, users } from "@workspace/db/schema";
 import { eq, sql, and, gte, lte, count, sum, desc } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 
@@ -111,10 +111,8 @@ router.get(
       })
       .from(orderItems)
       .innerJoin(orders, eq(orderItems.orderId, orders.id))
-      .innerJoin(
-        products,
-        sql`${orderItems.productName} = ${products.name}`,
-      )
+      .innerJoin(productVariants, eq(orderItems.variantId, productVariants.id))
+      .innerJoin(products, eq(productVariants.productId, products.id))
       .leftJoin(categories, eq(products.categoryId, categories.id))
       .where(and(gte(orders.createdAt, startDate), lte(orders.createdAt, endDate)))
       .groupBy(sql`COALESCE(${categories.name}, 'Uncategorized')`)
