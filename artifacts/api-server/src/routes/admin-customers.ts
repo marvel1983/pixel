@@ -25,8 +25,10 @@ router.get("/admin/customers", requireAuth, requireAdmin, async (req, res) => {
     .where(sql`${orders.userId} IS NOT NULL`);
 
   const rows = await db.select({
-    id: users.id, email: users.email, firstName: users.firstName, lastName: users.lastName,
+    id: users.id, email: users.email, username: users.username,
+    firstName: users.firstName, lastName: users.lastName,
     role: users.role, isActive: users.isActive, emailVerified: users.emailVerified,
+    marketingConsent: users.marketingConsent,
     lastLoginAt: users.lastLoginAt, createdAt: users.createdAt,
   }).from(users).where(where).orderBy(desc(users.createdAt)).limit(limit).offset(offset);
 
@@ -65,9 +67,11 @@ router.get("/admin/customers/:id", requireAuth, requireAdmin, async (req, res) =
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
 
   const [customer] = await db.select({
-    id: users.id, email: users.email, firstName: users.firstName, lastName: users.lastName,
+    id: users.id, email: users.email, username: users.username,
+    firstName: users.firstName, lastName: users.lastName,
     role: users.role, isActive: users.isActive, emailVerified: users.emailVerified,
-    adminNotes: users.adminNotes, lastLoginAt: users.lastLoginAt, createdAt: users.createdAt,
+    marketingConsent: users.marketingConsent, adminNotes: users.adminNotes,
+    lastLoginAt: users.lastLoginAt, createdAt: users.createdAt,
   }).from(users).where(eq(users.id, id));
   if (!customer) { res.status(404).json({ error: "Customer not found" }); return; }
 
@@ -111,6 +115,15 @@ router.patch("/admin/customers/:id/role", requireAuth, requireAdmin, async (req,
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
   const { role } = req.body;
   if (!["CUSTOMER", "ADMIN", "SUPER_ADMIN"].includes(role)) { res.status(400).json({ error: "Invalid role" }); return; }
+  const caller = req.user as { id: number; role: string };
+  if (role === "SUPER_ADMIN" && caller.role !== "SUPER_ADMIN") {
+    res.status(403).json({ error: "Only Super Admins can assign the Super Admin role" }); return;
+  }
+  const [target] = await db.select({ role: users.role }).from(users).where(eq(users.id, id));
+  if (!target) { res.status(404).json({ error: "Not found" }); return; }
+  if (target.role === "SUPER_ADMIN" && caller.role !== "SUPER_ADMIN") {
+    res.status(403).json({ error: "Only Super Admins can modify a Super Admin's role" }); return;
+  }
   await db.update(users).set({ role, updatedAt: new Date() }).where(eq(users.id, id));
   res.json({ success: true });
 });
@@ -143,8 +156,19 @@ router.patch("/admin/customers/:id/toggle-active", requireAuth, requireAdmin, as
 router.delete("/admin/customers/:id", requireAuth, requireAdmin, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
-  await db.delete(users).where(eq(users.id, id));
-  res.json({ success: true });
+  const [target] = await db.select({ role: users.role }).from(users).where(eq(users.id, id));
+  if (!target) { res.status(404).json({ error: "Not found" }); return; }
+  const caller = req.user as { id: number; role: string };
+  if (target.role === "SUPER_ADMIN" && caller.role !== "SUPER_ADMIN") {
+    res.status(403).json({ error: "Only Super Admins can delete a Super Admin" }); return;
+  }
+  try {
+    await db.delete(users).where(eq(users.id, id));
+    res.json({ success: true });
+  } catch {
+    await db.update(users).set({ isActive: false, updatedAt: new Date() }).where(eq(users.id, id));
+    res.json({ success: true, deactivated: true, message: "Account deactivated (has existing data)" });
+  }
 });
 
 function buildFilters(query: Record<string, unknown>) {

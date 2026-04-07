@@ -9,8 +9,8 @@ import { useAuthStore } from "@/stores/auth-store";
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
 interface CustomerRow {
-  id: number; email: string; firstName: string | null; lastName: string | null;
-  role: string; isActive: boolean; emailVerified: boolean;
+  id: number; email: string; username: string | null; firstName: string | null; lastName: string | null;
+  role: string; isActive: boolean; emailVerified: boolean; marketingConsent: boolean;
   lastLoginAt: string | null; createdAt: string;
   orderCount: number; totalSpent: string; lastOrder: string | null;
 }
@@ -100,10 +100,12 @@ export default function AdminCustomersPage() {
               <tr className="border-b bg-gray-50 text-left">
                 <th className="px-3 py-3 font-medium text-muted-foreground">Customer</th>
                 <th className="px-3 py-3 font-medium text-muted-foreground">Email</th>
+                <th className="px-3 py-3 font-medium text-muted-foreground">Username</th>
                 <th className="px-3 py-3 font-medium text-muted-foreground">Role</th>
                 <th className="px-3 py-3 font-medium text-muted-foreground text-right">Orders</th>
                 <th className="px-3 py-3 font-medium text-muted-foreground text-right">Spent</th>
                 <th className="px-3 py-3 font-medium text-muted-foreground">Last Order</th>
+                <th className="px-3 py-3 font-medium text-muted-foreground">Mktg</th>
                 <th className="px-3 py-3 font-medium text-muted-foreground">Status</th>
                 <th className="px-3 py-3 font-medium text-muted-foreground">Registered</th>
               </tr>
@@ -120,10 +122,12 @@ export default function AdminCustomersPage() {
                     </Link>
                   </td>
                   <td className="px-3 py-3 text-xs text-muted-foreground">{r.email}</td>
+                  <td className="px-3 py-3 text-xs text-muted-foreground font-mono">{r.username ?? "—"}</td>
                   <td className="px-3 py-3"><span className={`rounded-full px-2 py-0.5 text-xs font-medium ${ROLE_COLORS[r.role]}`}>{r.role}</span></td>
                   <td className="px-3 py-3 text-right font-mono text-xs">{r.orderCount}</td>
                   <td className="px-3 py-3 text-right font-mono text-xs font-semibold">${parseFloat(r.totalSpent).toFixed(2)}</td>
                   <td className="px-3 py-3 text-xs text-muted-foreground">{r.lastOrder ? new Date(r.lastOrder).toLocaleDateString() : "—"}</td>
+                  <td className="px-3 py-3 text-center">{r.marketingConsent ? <Badge variant="secondary" className="bg-green-100 text-green-700 text-xs">Yes</Badge> : <span className="text-xs text-muted-foreground">No</span>}</td>
                   <td className="px-3 py-3">
                     {r.isActive
                       ? <Badge variant="secondary" className="bg-green-100 text-green-700 text-xs">Active</Badge>
@@ -132,7 +136,7 @@ export default function AdminCustomersPage() {
                   <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">{new Date(r.createdAt).toLocaleDateString()}</td>
                 </tr>
               ))}
-              {rows.length === 0 && <tr><td colSpan={8} className="px-3 py-12 text-center text-muted-foreground">No customers found</td></tr>}
+              {rows.length === 0 && <tr><td colSpan={10} className="px-3 py-12 text-center text-muted-foreground">No customers found</td></tr>}
             </tbody>
           </table>
         </div>
