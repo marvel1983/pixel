@@ -94,10 +94,6 @@ export async function executeOrderPipeline(input: OrderInput) {
       .set({ paymentIntentId: paymentResult.paymentIntentId })
       .where(eq(orders.id, order.id));
 
-    if (input.giftCards?.length) {
-      await redeemGiftCards(order.id, input.giftCards);
-    }
-
     const realItems = items.filter((i) => i.variantId > 0);
     const giftCardItems = items.filter((i) => i.platform?.startsWith("GIFTCARD|"));
 
@@ -134,6 +130,10 @@ export async function executeOrderPipeline(input: OrderInput) {
         })),
       )
       .returning({ id: orderItems.id, variantId: orderItems.variantId }) : [];
+
+    if (input.giftCards?.length) {
+      await redeemGiftCards(order.id, input.giftCards);
+    }
 
     const metenziFulfilled = insertedItems.length
       ? await fulfillFromMetenzi(order.id, realItems, insertedItems)
