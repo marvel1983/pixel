@@ -26,7 +26,8 @@ export function verifyUnsubscribe(token: string): number | null {
   const alertId = parseInt(parts.join("-"));
   if (isNaN(alertId)) return null;
   const expected = crypto.createHmac("sha256", UNSUB_SECRET).update(String(alertId)).digest("hex").slice(0, 16);
-  if (sig !== expected) return null;
+  if (sig.length !== expected.length) return null;
+  if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
   return alertId;
 }
 
