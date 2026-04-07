@@ -71,8 +71,9 @@ router.post("/admin/abandoned-carts/process", ...guard, async (_req, res) => {
   try {
     const result = await processAbandonedCarts();
     res.json(result);
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Processing failed";
+    res.status(500).json({ error: message });
   }
 });
 

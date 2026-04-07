@@ -32,40 +32,42 @@ export default function CartRecoverPage() {
       return;
     }
 
-    fetch(`${API}/cart/recover/${token}`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (!data.cart) {
-          setStatus("expired");
-          return;
-        }
+    (async () => {
+      try {
+        const r = await fetch(`${API}/cart/recover/${token}`);
+        const data = await r.json();
+        if (!data.cart) { setStatus("expired"); return; }
 
         clearCart();
         for (const item of data.cart.items) {
           addItem({
-            variantId: item.variantId,
-            productId: item.productId,
-            productName: item.productName,
-            variantName: item.variantName,
-            priceUsd: item.priceUsd,
-            imageUrl: item.imageUrl || null,
+            variantId: item.variantId, productId: item.productId,
+            productName: item.productName, variantName: item.variantName,
+            priceUsd: item.priceUsd, imageUrl: item.imageUrl || null,
           });
-          if (item.quantity > 1) {
-            updateQuantity(item.variantId, item.quantity);
-          }
+          if (item.quantity > 1) updateQuantity(item.variantId, item.quantity);
         }
 
         if (data.cart.coupon) {
-          setCoupon({ code: data.cart.coupon, pct: 0, label: "Recovery Discount" });
+          try {
+            const couponRes = await fetch(`${API}/coupons/validate`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ code: data.cart.coupon }),
+            });
+            if (couponRes.ok) {
+              const cd = await couponRes.json();
+              setCoupon({ code: cd.code, pct: cd.discount, label: cd.label });
+            }
+          } catch {}
         }
 
         setStatus("restored");
         toast({ title: "Cart Restored!", description: "Your items have been added back to your cart." });
-
         setTimeout(() => setLocation("/cart"), 2000);
-      })
-      .catch(() => setStatus("error"))
-      .finally(() => setLoading(false));
+      } catch { setStatus("error"); }
+      finally { setLoading(false); }
+    })();
   }, [token]);
 
   if (loading) {

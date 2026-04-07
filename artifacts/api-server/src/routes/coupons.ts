@@ -1,5 +1,8 @@
 import { Router } from "express";
 import { z } from "zod";
+import { db } from "@workspace/db";
+import { coupons } from "@workspace/db/schema";
+import { eq, and } from "drizzle-orm";
 
 const router = Router();
 
@@ -13,7 +16,7 @@ const validateSchema = z.object({
   code: z.string().min(1).max(50),
 });
 
-router.post("/coupons/validate", (req, res) => {
+router.post("/coupons/validate", async (req, res) => {
   const parsed = validateSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ valid: false, error: "Invalid request" });
@@ -21,21 +24,39 @@ router.post("/coupons/validate", (req, res) => {
   }
 
   const code = parsed.data.code.trim().toUpperCase();
-  const coupon = VALID_COUPONS[code];
+  const hardcoded = VALID_COUPONS[code];
 
-  if (coupon) {
+  if (hardcoded) {
+    res.json({ valid: true, code, discount: hardcoded.discount, label: hardcoded.label });
+    return;
+  }
+
+  const [dbCoupon] = await db.select().from(coupons)
+    .where(and(
+      eq(coupons.code, code),
+      eq(coupons.isActive, true),
+    )).limit(1);
+
+  if (dbCoupon) {
+    if (dbCoupon.expiresAt && new Date() > dbCoupon.expiresAt) {
+      res.status(404).json({ valid: false, error: "This coupon has expired." });
+      return;
+    }
+    if (dbCoupon.usageLimit && dbCoupon.usedCount >= dbCoupon.usageLimit) {
+      res.status(404).json({ valid: false, error: "This coupon has been fully redeemed." });
+      return;
+    }
+    const discount = parseFloat(dbCoupon.discountValue);
     res.json({
       valid: true,
-      code,
-      discount: coupon.discount,
-      label: coupon.label,
+      code: dbCoupon.code,
+      discount,
+      label: `${discount}% off`,
     });
-  } else {
-    res.status(404).json({
-      valid: false,
-      error: "This coupon code is not valid or has expired.",
-    });
+    return;
   }
+
+  res.status(404).json({ valid: false, error: "This coupon code is not valid or has expired." });
 });
 
 export default router;
