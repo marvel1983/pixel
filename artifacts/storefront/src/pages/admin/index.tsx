@@ -2,6 +2,7 @@ import { Switch, Route } from "wouter";
 import { AdminLayout } from "@/components/admin/admin-layout";
 import { AdminGuard } from "@/components/admin/admin-guard";
 import AdminDashboard from "./dashboard";
+import AnalyticsPage from "./analytics";
 
 function AdminPlaceholder({ title }: { title: string }) {
   return (
@@ -20,9 +21,7 @@ export default function AdminRoot() {
       <AdminLayout>
         <Switch>
           <Route path="/admin" component={AdminDashboard} />
-          <Route path="/admin/analytics">
-            <AdminPlaceholder title="Analytics" />
-          </Route>
+          <Route path="/admin/analytics" component={AnalyticsPage} />
           <Route path="/admin/products">
             <AdminPlaceholder title="Products" />
           </Route>
