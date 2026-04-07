@@ -39,7 +39,7 @@ export async function maintenanceMiddleware(req: Request, res: Response, next: N
   const state = await getMaintenanceState();
   if (!state.mode) { next(); return; }
 
-  const clientIp = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.ip || "";
+  const clientIp = req.ip || "";
   if (state.bypassIps.length > 0 && state.bypassIps.includes(clientIp)) {
     next(); return;
   }

@@ -43,7 +43,11 @@ router.put("/admin/settings/seo-tracking", requireAuth, requireAdmin, requirePer
   if (typeof maintenanceMode === "boolean") data.maintenanceMode = maintenanceMode;
   if (typeof maintenanceMessage === "string") data.maintenanceMessage = maintenanceMessage;
   if (typeof maintenanceEstimate === "string") data.maintenanceEstimate = maintenanceEstimate || null;
-  if (Array.isArray(maintenanceBypassIps)) data.maintenanceBypassIps = maintenanceBypassIps;
+  if (Array.isArray(maintenanceBypassIps)) {
+    data.maintenanceBypassIps = maintenanceBypassIps.filter(
+      (ip: unknown) => typeof ip === "string" && /^[\d.:a-fA-F]+$/.test(ip) && ip.length <= 45
+    );
+  }
 
   await db.update(seoTracking).set(data).where(eq(seoTracking.id, settings.id));
   invalidateMaintenanceCache();
@@ -71,7 +75,7 @@ router.get("/maintenance-status", async (req, res) => {
   if (!rows[0] || !rows[0].maintenanceMode) {
     res.json({ maintenance: false }); return;
   }
-  const clientIp = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.ip || "";
+  const clientIp = req.ip || "";
   const bypassIps = rows[0].maintenanceBypassIps ?? [];
   if (bypassIps.length > 0 && bypassIps.includes(clientIp)) {
     res.json({ maintenance: false, bypassed: true }); return;

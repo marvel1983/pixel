@@ -42,7 +42,11 @@ router.put("/admin/settings/notifications", requireAuth, requireAdmin, requirePe
   if (typeof systemAlerts === "boolean") data.systemAlerts = systemAlerts;
   if (typeof dailyDigest === "boolean") data.dailyDigest = dailyDigest;
   if (typeof dailyDigestTime === "string") data.dailyDigestTime = dailyDigestTime;
-  if (Array.isArray(dailyDigestRecipients)) data.dailyDigestRecipients = dailyDigestRecipients;
+  if (Array.isArray(dailyDigestRecipients)) {
+    data.dailyDigestRecipients = dailyDigestRecipients.filter(
+      (e: unknown) => typeof e === "string" && e.includes("@") && e.length <= 255
+    );
+  }
 
   await db.update(notificationPreferences).set(data)
     .where(eq(notificationPreferences.id, prefs.id));
