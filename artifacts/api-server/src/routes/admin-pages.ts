@@ -49,11 +49,12 @@ router.put("/admin/pages/:id", requireAuth, requireAdmin, async (req, res) => {
 router.post("/admin/pages", requireAuth, requireAdmin, async (req, res) => {
   const { title, slug } = req.body;
   if (!title || !slug) { res.status(400).json({ error: "Title and slug required" }); return; }
-  const [existing] = await db.select({ id: pages.id }).from(pages).where(eq(pages.slug, String(slug).trim()));
+  const cleanSlug = String(slug).trim().toLowerCase().replace(/[^a-z0-9-]/g, "");
+  const [existing] = await db.select({ id: pages.id }).from(pages).where(eq(pages.slug, cleanSlug));
   if (existing) { res.status(409).json({ error: "Slug already exists" }); return; }
   const [page] = await db.insert(pages).values({
     title: String(title).trim(),
-    slug: String(slug).trim().toLowerCase().replace(/[^a-z0-9-]/g, ""),
+    slug: cleanSlug,
     content: req.body.content ?? "",
     metaTitle: req.body.metaTitle ? String(req.body.metaTitle).slice(0, 60) : null,
     metaDescription: req.body.metaDescription ? String(req.body.metaDescription).slice(0, 160) : null,
