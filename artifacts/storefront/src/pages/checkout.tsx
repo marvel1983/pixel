@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,14 +17,18 @@ import { validateBilling, validatePayment } from "@/lib/checkout-validation";
 import { getCppAmount } from "@/components/checkout/cpp-section";
 import { EmptyCart } from "@/components/cart/empty-cart";
 
+const API = import.meta.env.VITE_API_URL ?? "/api";
+
 const INITIAL_BILLING: BillingData = {
   email: "", firstName: "", lastName: "",
-  country: "", city: "", address: "", zip: "",
+  country: "", city: "", address: "", zip: "", vatNumber: "",
 };
 
 const INITIAL_PAYMENT: PaymentData = {
   cardNumber: "", expiry: "", cvc: "", cardName: "",
 };
+
+interface TaxInfo { taxRate: number; taxLabel: string; exempt: boolean; priceDisplay?: string }
 
 export default function CheckoutPage() {
   const items = useCartStore((s) => s.items);
@@ -41,6 +45,21 @@ export default function CheckoutPage() {
   const [cppSelected, setCppSelected] = useState(true);
   const [guestPassword, setGuestPassword] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [taxInfo, setTaxInfo] = useState<TaxInfo>({ taxRate: 0, taxLabel: "VAT", exempt: false });
+  const [showVatField, setShowVatField] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (billing.country) params.set("country", billing.country);
+    if (billing.vatNumber) params.set("vatNumber", billing.vatNumber);
+    fetch(`${API}/tax/lookup?${params}`)
+      .then((r) => r.json())
+      .then((d: TaxInfo & { priceDisplay?: string }) => {
+        setTaxInfo(d);
+        setShowVatField(!d.exempt && billing.country.length > 0);
+      })
+      .catch(() => {});
+  }, [billing.country, billing.vatNumber]);
 
   if (items.length === 0) {
     return (
@@ -74,17 +93,19 @@ export default function CheckoutPage() {
       const subtotal = getTotal();
       const discount = coupon ? subtotal * (coupon.pct / 100) : 0;
       const cpp = cppSelected ? getCppAmount(subtotal) : 0;
-      const total = subtotal - discount + cpp;
+      const taxableAmount = subtotal - discount + cpp;
+      const taxAmount = taxInfo.taxRate > 0 ? Math.round(taxableAmount * (taxInfo.taxRate / 100) * 100) / 100 : 0;
+      const total = taxableAmount + taxAmount;
 
       const cardDigits = payment.cardNumber.replace(/\s/g, "");
       const cardToken = `tok_${cardDigits.slice(-4)}_${Date.now()}`;
 
-      const baseUrl = import.meta.env.VITE_API_URL ?? "/api";
-      const res = await fetch(`${baseUrl}/orders`, {
+      const res = await fetch(`${API}/orders`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           billing, items, coupon, cppSelected,
+          vatNumber: billing.vatNumber || undefined,
           total: total.toFixed(2),
           payment: { cardToken },
           guestPassword: guestPassword || undefined,
@@ -115,7 +136,7 @@ export default function CheckoutPage() {
 
       <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
         <div className="space-y-6">
-          <BillingForm data={billing} errors={billingErrors} onChange={handleBillingChange} />
+          <BillingForm data={billing} errors={billingErrors} onChange={handleBillingChange} showVatField={showVatField} />
           <Separator />
           <GuestAccount onPasswordChange={setGuestPassword} />
           <Separator />
@@ -132,7 +153,7 @@ export default function CheckoutPage() {
         </div>
 
         <div className="space-y-4">
-          <CheckoutSummary cppSelected={cppSelected} />
+          <CheckoutSummary cppSelected={cppSelected} taxRate={taxInfo.taxRate} taxLabel={taxInfo.taxLabel} />
           <ProductUpsell />
         </div>
       </div>

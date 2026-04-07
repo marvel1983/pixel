@@ -16,22 +16,33 @@ export interface BillingData {
   city: string;
   address: string;
   zip: string;
+  vatNumber?: string;
 }
 
 interface BillingFormProps {
   data: BillingData;
   errors: Partial<Record<keyof BillingData, string>>;
   onChange: (field: keyof BillingData, value: string) => void;
+  showVatField?: boolean;
 }
 
-const COUNTRIES = [
-  "United States", "United Kingdom", "Germany", "France", "Canada",
-  "Australia", "Netherlands", "Poland", "Brazil", "Turkey",
-  "Spain", "Italy", "Sweden", "Norway", "Denmark",
-  "Japan", "South Korea", "India", "Mexico", "Switzerland",
+const COUNTRIES: [string, string][] = [
+  ["US", "United States"], ["GB", "United Kingdom"], ["DE", "Germany"],
+  ["FR", "France"], ["CA", "Canada"], ["AU", "Australia"],
+  ["NL", "Netherlands"], ["PL", "Poland"], ["BR", "Brazil"],
+  ["TR", "Turkey"], ["ES", "Spain"], ["IT", "Italy"],
+  ["SE", "Sweden"], ["NO", "Norway"], ["DK", "Denmark"],
+  ["JP", "Japan"], ["KR", "South Korea"], ["IN", "India"],
+  ["MX", "Mexico"], ["CH", "Switzerland"], ["AT", "Austria"],
+  ["BE", "Belgium"], ["BG", "Bulgaria"], ["HR", "Croatia"],
+  ["CY", "Cyprus"], ["CZ", "Czech Republic"], ["EE", "Estonia"],
+  ["FI", "Finland"], ["GR", "Greece"], ["HU", "Hungary"],
+  ["IE", "Ireland"], ["LV", "Latvia"], ["LT", "Lithuania"],
+  ["LU", "Luxembourg"], ["MT", "Malta"], ["PT", "Portugal"],
+  ["RO", "Romania"], ["SK", "Slovakia"], ["SI", "Slovenia"],
 ];
 
-export function BillingForm({ data, errors, onChange }: BillingFormProps) {
+export function BillingForm({ data, errors, onChange, showVatField }: BillingFormProps) {
   return (
     <div className="space-y-4">
       <h2 className="text-lg font-bold">Billing Details</h2>
@@ -78,8 +89,8 @@ export function BillingForm({ data, errors, onChange }: BillingFormProps) {
             <SelectValue placeholder="Select country" />
           </SelectTrigger>
           <SelectContent>
-            {COUNTRIES.map((c) => (
-              <SelectItem key={c} value={c}>{c}</SelectItem>
+            {COUNTRIES.map(([code, name]) => (
+              <SelectItem key={code} value={code}>{name}</SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -119,6 +130,18 @@ export function BillingForm({ data, errors, onChange }: BillingFormProps) {
         />
         {errors.address && <p className="text-xs text-destructive mt-1">{errors.address}</p>}
       </div>
+
+      {showVatField && (
+        <div>
+          <Label htmlFor="vatNumber">VAT Number (optional, for B2B tax exemption)</Label>
+          <Input
+            id="vatNumber"
+            value={data.vatNumber ?? ""}
+            onChange={(e) => onChange("vatNumber", e.target.value)}
+            placeholder="e.g. DE123456789"
+          />
+        </div>
+      )}
     </div>
   );
 }
