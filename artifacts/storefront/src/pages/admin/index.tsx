@@ -10,6 +10,10 @@ import AdminOrdersPage from "./orders";
 import OrderDetailPage from "./order-detail";
 import AdminKeysPage from "./keys";
 import AdminClaimsPage from "./claims";
+import AdminDiscountsPage from "./discounts";
+import DiscountFormPage from "./discount-form";
+import DiscountBulkPage from "./discount-bulk";
+import DiscountUsagePage from "./discount-usage";
 
 function AdminPlaceholder({ title }: { title: string }) {
   return (
@@ -42,6 +46,11 @@ export default function AdminRoot() {
           </Route>
           <Route path="/admin/fulfillment" component={AdminKeysPage} />
           <Route path="/admin/claims" component={AdminClaimsPage} />
+          <Route path="/admin/discounts/bulk" component={DiscountBulkPage} />
+          <Route path="/admin/discounts/new" component={DiscountFormPage} />
+          <Route path="/admin/discounts/:id/usage" component={DiscountUsagePage} />
+          <Route path="/admin/discounts/:id" component={DiscountFormPage} />
+          <Route path="/admin/discounts" component={AdminDiscountsPage} />
           <Route path="/admin/users">
             <AdminPlaceholder title="Users" />
           </Route>

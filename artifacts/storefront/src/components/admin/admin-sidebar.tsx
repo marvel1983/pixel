@@ -16,6 +16,7 @@ import {
   BarChart3,
   Truck,
   Flag,
+  Ticket,
   type LucideIcon,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -54,6 +55,7 @@ const sections: NavSection[] = [
       { label: "Transactions", href: "/admin/transactions", icon: Receipt },
       { label: "Fulfillment", href: "/admin/fulfillment", icon: Truck },
       { label: "Claims", href: "/admin/claims", icon: Flag },
+      { label: "Discounts", href: "/admin/discounts", icon: Ticket },
     ],
   },
   {
