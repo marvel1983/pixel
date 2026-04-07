@@ -1,0 +1,163 @@
+import { Router } from "express";
+import { db } from "@workspace/db";
+import { productQuestions, productAnswers, products } from "@workspace/db/schema";
+import { eq, and, desc, count, ilike, or, type SQL } from "drizzle-orm";
+import { requireAuth, requireAdmin } from "../middleware/auth";
+import { requirePermission } from "../middleware/permissions";
+import { enqueueEmail } from "../lib/email/queue";
+import { qaAnsweredEmail } from "../services/qa-emails";
+
+const router = Router();
+const guard = [requireAuth, requireAdmin, requirePermission("manageOrders")];
+
+router.get("/admin/qa/stats", ...guard, async (_req, res) => {
+  const [pendingRow] = await db.select({ c: count() }).from(productQuestions)
+    .where(eq(productQuestions.status, "PENDING"));
+  const [approvedRow] = await db.select({ c: count() }).from(productQuestions)
+    .where(eq(productQuestions.status, "APPROVED"));
+  const [rejectedRow] = await db.select({ c: count() }).from(productQuestions)
+    .where(eq(productQuestions.status, "REJECTED"));
+  const [totalRow] = await db.select({ c: count() }).from(productQuestions);
+
+  res.json({
+    pending: pendingRow?.c ?? 0,
+    approved: approvedRow?.c ?? 0,
+    rejected: rejectedRow?.c ?? 0,
+    total: totalRow?.c ?? 0,
+  });
+});
+
+router.get("/admin/qa", ...guard, async (req, res) => {
+  const { status, search, page: pg, limit: lm } = req.query;
+  const page = Math.max(1, parseInt(pg as string) || 1);
+  const limit = Math.min(100, parseInt(lm as string) || 25);
+  const offset = (page - 1) * limit;
+
+  const conditions: SQL[] = [];
+  if (status && status !== "ALL") {
+    conditions.push(eq(productQuestions.status, status as "PENDING" | "APPROVED" | "REJECTED"));
+  }
+  if (search) {
+    const s = `%${search}%`;
+    conditions.push(or(
+      ilike(productQuestions.questionText, s),
+      ilike(productQuestions.askerName, s),
+      ilike(productQuestions.askerEmail, s),
+      ilike(products.name, s),
+    )!);
+  }
+
+  const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const rows = await db.select({
+    question: productQuestions,
+    productName: products.name,
+    productSlug: products.slug,
+  })
+    .from(productQuestions)
+    .innerJoin(products, eq(products.id, productQuestions.productId))
+    .where(where)
+    .orderBy(desc(productQuestions.createdAt))
+    .limit(limit).offset(offset);
+
+  const [totalRow] = where
+    ? await db.select({ c: count() }).from(productQuestions).innerJoin(products, eq(products.id, productQuestions.productId)).where(where)
+    : await db.select({ c: count() }).from(productQuestions);
+
+  const qIds = rows.map((r) => r.question.id);
+  let answers: any[] = [];
+  if (qIds.length > 0) {
+    const allAnswers = await db.select().from(productAnswers);
+    answers = allAnswers.filter((a) => qIds.includes(a.questionId));
+  }
+
+  const result = rows.map((r) => ({
+    ...r,
+    answers: answers.filter((a) => a.questionId === r.question.id),
+  }));
+
+  res.json({ questions: result, total: totalRow?.c ?? 0, page, limit });
+});
+
+router.patch("/admin/qa/:id/status", ...guard, async (req, res) => {
+  const id = parseInt(req.params.id);
+  const { status } = req.body;
+  if (!["APPROVED", "REJECTED"].includes(status)) {
+    res.status(400).json({ error: "Invalid status" }); return;
+  }
+  await db.update(productQuestions).set({ status, updatedAt: new Date() })
+    .where(eq(productQuestions.id, id));
+  res.json({ success: true });
+});
+
+router.post("/admin/qa/bulk-status", ...guard, async (req, res) => {
+  const { ids, status } = req.body;
+  if (!Array.isArray(ids) || !["APPROVED", "REJECTED"].includes(status)) {
+    res.status(400).json({ error: "Invalid request" }); return;
+  }
+  for (const id of ids) {
+    await db.update(productQuestions).set({ status, updatedAt: new Date() })
+      .where(eq(productQuestions.id, id));
+  }
+  res.json({ success: true, count: ids.length });
+});
+
+router.post("/admin/qa/:id/answer", ...guard, async (req, res) => {
+  const id = parseInt(req.params.id);
+  const { answer } = req.body;
+  if (!answer || typeof answer !== "string" || answer.length < 1) {
+    res.status(400).json({ error: "Answer is required" }); return;
+  }
+
+  await db.insert(productAnswers).values({
+    questionId: id,
+    answerText: answer,
+    isAdmin: true,
+    authorName: "Store Admin",
+  });
+
+  await db.update(productQuestions).set({ status: "APPROVED", updatedAt: new Date() })
+    .where(eq(productQuestions.id, id));
+
+  const [q] = await db.select({
+    question: productQuestions,
+    productName: products.name,
+    productSlug: products.slug,
+  }).from(productQuestions)
+    .innerJoin(products, eq(products.id, productQuestions.productId))
+    .where(eq(productQuestions.id, id));
+
+  if (q) {
+    const baseUrl = process.env["REPLIT_DEV_DOMAIN"]
+      ? `https://${process.env["REPLIT_DEV_DOMAIN"]}`
+      : "https://localhost";
+    const productUrl = `${baseUrl}/product/${q.productSlug}`;
+    const { subject, html } = qaAnsweredEmail({
+      askerName: q.question.askerName,
+      productName: q.productName,
+      questionText: q.question.questionText,
+      answerText: answer,
+      productUrl,
+    });
+    await enqueueEmail(q.question.askerEmail, subject, html, { type: "qa_answered", questionId: id });
+  }
+
+  res.json({ success: true });
+});
+
+router.delete("/admin/qa/:id", ...guard, async (req, res) => {
+  const id = parseInt(req.params.id);
+  await db.delete(productQuestions).where(eq(productQuestions.id, id));
+  res.json({ success: true });
+});
+
+router.post("/admin/qa/bulk-delete", ...guard, async (req, res) => {
+  const { ids } = req.body;
+  if (!Array.isArray(ids)) { res.status(400).json({ error: "Invalid request" }); return; }
+  for (const id of ids) {
+    await db.delete(productQuestions).where(eq(productQuestions.id, id));
+  }
+  res.json({ success: true, count: ids.length });
+});
+
+export default router;

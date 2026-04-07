@@ -30,3 +30,4 @@ export * from "./gift-cards";
 export * from "./affiliates";
 export * from "./abandoned-carts";
 export * from "./product-alerts";
+export * from "./product-qa";

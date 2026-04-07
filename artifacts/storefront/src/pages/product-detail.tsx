@@ -9,6 +9,7 @@ import { TrustBadges } from "@/components/product-detail/trust-badges";
 import { SocialShare } from "@/components/product-detail/social-share";
 import { ProductTabs } from "@/components/product-detail/product-tabs";
 import { ReviewsSection } from "@/components/product-detail/reviews-section";
+import { QASection } from "@/components/product-detail/qa-section";
 import { RelatedProducts } from "@/components/product-detail/related-products";
 import { PaymentIcons } from "@/components/product-detail/payment-icons";
 import { addToRecentlyViewed } from "@/components/home/recently-viewed";
@@ -105,6 +106,10 @@ export default function ProductDetailPage() {
         avgRating={product.avgRating}
         reviewCount={product.reviewCount}
       />
+
+      <Separator />
+
+      <QASection productId={product.id} productName={product.name} />
 
       <Separator />
 

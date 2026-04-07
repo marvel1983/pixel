@@ -56,6 +56,7 @@ const sections: NavSection[] = [
       { label: "Categories", href: "/admin/categories", icon: Tags },
       { label: "Platforms", href: "/admin/platforms", icon: Layers },
       { label: "Reviews", href: "/admin/reviews", icon: MessageSquare },
+      { label: "Q&A", href: "/admin/qa", icon: HelpCircle },
     ],
   },
   {
