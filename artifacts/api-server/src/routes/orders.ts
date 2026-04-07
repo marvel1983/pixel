@@ -1,11 +1,13 @@
 import { Router } from "express";
 import { z } from "zod";
-import { inArray, eq, and, sql, lte, gte } from "drizzle-orm";
+import { inArray, eq, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { productVariants, taxSettings, taxRates, flashSales, flashSaleProducts } from "@workspace/db/schema";
+import { productVariants, taxSettings, taxRates } from "@workspace/db/schema";
 import { executeOrderPipeline } from "../services/order-pipeline";
 import { validateCouponServerSide } from "../services/coupon-service";
 import { validateGiftCards, loadGiftCardBalances } from "../services/gift-card-service";
+import { loadBundlePriceMap } from "../services/bundle-pricing";
+import { getFlashSaleInfo } from "../services/flash-sale-pricing";
 import { getRefCookie } from "../middleware/referral";
 import { verifyToken } from "../middleware/auth";
 import { logger } from "../lib/logger";
@@ -34,6 +36,7 @@ const itemSchema = z.object({
   priceUsd: currencyStr,
   quantity: z.number().int().positive().max(99),
   platform: z.string().optional(),
+  bundleId: z.number().int().optional(),
 });
 
 const orderSchema = z.object({
@@ -67,33 +70,6 @@ function generateOrderNumber() {
   return `PC-${ts}-${rand}`;
 }
 
-interface FlashSaleInfo { salePriceUsd: string; soldCount: number; maxQuantity: number; flashSaleId: number }
-
-async function getFlashSaleInfo(variantIds: number[]): Promise<Map<number, FlashSaleInfo>> {
-  if (variantIds.length === 0) return new Map();
-  const now = new Date();
-  const rows = await db.select({
-    variantId: flashSaleProducts.variantId,
-    salePriceUsd: flashSaleProducts.salePriceUsd,
-    soldCount: flashSaleProducts.soldCount,
-    maxQuantity: flashSaleProducts.maxQuantity,
-    flashSaleId: flashSaleProducts.flashSaleId,
-  }).from(flashSaleProducts)
-    .innerJoin(flashSales, eq(flashSaleProducts.flashSaleId, flashSales.id))
-    .where(and(
-      inArray(flashSaleProducts.variantId, variantIds),
-      eq(flashSales.status, "ACTIVE"),
-      eq(flashSales.isActive, true),
-      lte(flashSales.startsAt, now),
-      gte(flashSales.endsAt, now),
-    ));
-  const map = new Map<number, FlashSaleInfo>();
-  for (const r of rows) {
-    if (r.soldCount < r.maxQuantity) map.set(r.variantId, r);
-  }
-  return map;
-}
-
 async function validateAndPriceItems(items: z.infer<typeof orderSchema>["items"]) {
   const variantIds = items.filter((i) => i.variantId > 0).map((i) => i.variantId);
   const dbVariants = await db
@@ -101,20 +77,41 @@ async function validateAndPriceItems(items: z.infer<typeof orderSchema>["items"]
     .from(productVariants)
     .where(inArray(productVariants.id, variantIds));
 
-  if (dbVariants.length === 0) return { prices: null, flashVariantMap: new Map<number, number>(), error: null };
+  const noResult = (e: string | null) => ({ prices: null, flashVariantMap: new Map<number, number>(), error: e });
+  if (dbVariants.length === 0) return noResult(null);
   const priceMap = new Map(dbVariants.map((v) => [v.id, v.priceUsd]));
   if (dbVariants.length !== variantIds.length) {
-    return { prices: null, flashVariantMap: new Map<number, number>(), error: `Variant(s) not found: ${variantIds.filter((id) => !priceMap.has(id)).join(", ")}` };
+    return noResult(`Variant(s) not found: ${variantIds.filter((id) => !priceMap.has(id)).join(", ")}`);
   }
 
   const flashInfo = await getFlashSaleInfo(variantIds);
   const flashVariantMap = new Map<number, number>();
   const flashQtyAgg = new Map<number, number>();
+  const { priceMap: bundlePriceMap, expectedCounts } = await loadBundlePriceMap(items);
 
-  const effectivePrices = new Map<number, string>();
+  const bCounts = new Map<number, number>();
+  for (const it of items) if (it.bundleId) bCounts.set(it.bundleId, (bCounts.get(it.bundleId) || 0) + 1);
+  for (const [bid, exp] of expectedCounts) {
+    if ((bCounts.get(bid) || 0) !== exp) return { prices: null, flashVariantMap, error: `Incomplete bundle: expected ${exp} items` };
+  }
+
+  const effectivePrices = new Map<string, string>();
   for (const item of items) {
+    const lineKey = `${item.bundleId ?? "s"}-${item.variantId}`;
     const dbPrice = priceMap.get(item.variantId);
     if (!dbPrice) continue;
+    if (item.bundleId) {
+      const bundleKey = `${item.bundleId}-${item.variantId}`;
+      const serverBundlePrice = bundlePriceMap.get(bundleKey);
+      if (!serverBundlePrice) {
+        return { prices: null, flashVariantMap, error: `Bundle pricing not found for ${item.productName}` };
+      }
+      if (Math.abs(parseFloat(serverBundlePrice) - parseFloat(item.priceUsd)) > 0.02) {
+        return { prices: null, flashVariantMap, error: `Bundle price changed for ${item.productName}` };
+      }
+      effectivePrices.set(lineKey, serverBundlePrice);
+      continue;
+    }
     const fi = flashInfo.get(item.variantId);
     if (fi) {
       const totalQty = (flashQtyAgg.get(item.variantId) || 0) + item.quantity;
@@ -124,12 +121,12 @@ async function validateAndPriceItems(items: z.infer<typeof orderSchema>["items"]
         return { prices: null, flashVariantMap, error: `Only ${remaining} left in flash sale for ${item.productName}` };
       }
       flashVariantMap.set(item.variantId, fi.flashSaleId);
-      effectivePrices.set(item.variantId, fi.salePriceUsd);
+      effectivePrices.set(lineKey, fi.salePriceUsd);
     } else {
       if (dbPrice !== item.priceUsd) {
         return { prices: null, flashVariantMap, error: `Price changed for ${item.productName}` };
       }
-      effectivePrices.set(item.variantId, dbPrice);
+      effectivePrices.set(lineKey, dbPrice);
     }
   }
   return { prices: effectivePrices, flashVariantMap, error: null };
@@ -196,7 +193,8 @@ router.post("/orders", async (req, res) => {
 
   const subtotal = items.reduce(
     (sum, it) => {
-      const price = (serverPrices && it.variantId > 0) ? serverPrices.get(it.variantId) ?? it.priceUsd : it.priceUsd;
+      const lk = `${it.bundleId ?? "s"}-${it.variantId}`;
+      const price = (serverPrices && it.variantId > 0) ? serverPrices.get(lk) ?? it.priceUsd : it.priceUsd;
       return sum + parseFloat(price) * it.quantity;
     },
     0,
@@ -256,7 +254,8 @@ router.post("/orders", async (req, res) => {
   try {
     const pricedItems = items.map((it) => {
       if (serverPrices && it.variantId > 0) {
-        const sp = serverPrices.get(it.variantId);
+        const lk = `${it.bundleId ?? "s"}-${it.variantId}`;
+        const sp = serverPrices.get(lk);
         if (sp) return { ...it, priceUsd: sp };
       }
       return it;

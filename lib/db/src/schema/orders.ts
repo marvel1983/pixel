@@ -79,6 +79,7 @@ export const orderItems = pgTable("order_items", {
   variantName: varchar("variant_name", { length: 200 }).notNull(),
   priceUsd: numeric("price_usd", { precision: 10, scale: 2 }).notNull(),
   quantity: integer("quantity").notNull().default(1),
+  bundleId: integer("bundle_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

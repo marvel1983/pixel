@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { bundles, bundleItems, products, productVariants, orderItems } from "@workspace/db/schema";
-import { eq, asc, ilike, sql, and, inArray, desc } from "drizzle-orm";
+import { bundles, bundleItems, products, orderItems } from "@workspace/db/schema";
+import { eq, asc, ilike, sql, and, desc } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import { z } from "zod/v4";
@@ -159,25 +159,16 @@ router.get("/admin/bundles/:id/analytics", ...auth, async (req, res) => {
 
   const items = await db.select({ productId: bundleItems.productId })
     .from(bundleItems).where(eq(bundleItems.bundleId, id));
-  const productIds = items.map((i) => i.productId);
 
-  let purchases = 0;
-  let revenue = 0;
-  if (productIds.length > 0) {
-    const variantIds = await db.select({ id: productVariants.id })
-      .from(productVariants).where(inArray(productVariants.productId, productIds));
-    if (variantIds.length > 0) {
-      const vIds = variantIds.map((v) => v.id);
-      const stats = await db.select({
-        count: sql<number>`count(distinct ${orderItems.orderId})`,
-        total: sql<string>`coalesce(sum(${orderItems.priceUsd} * ${orderItems.quantity}), 0)`,
-      }).from(orderItems).where(inArray(orderItems.variantId, vIds));
-      purchases = Number(stats[0]?.count ?? 0);
-      revenue = parseFloat(stats[0]?.total ?? "0");
-    }
-  }
+  const stats = await db.select({
+    count: sql<number>`count(distinct ${orderItems.orderId})`,
+    total: sql<string>`coalesce(sum(${orderItems.priceUsd} * ${orderItems.quantity}), 0)`,
+  }).from(orderItems).where(eq(orderItems.bundleId, id));
 
-  res.json({ bundleId: id, name: bundle.name, itemCount: productIds.length, purchases, revenue: revenue.toFixed(2) });
+  const purchases = Number(stats[0]?.count ?? 0);
+  const revenue = parseFloat(stats[0]?.total ?? "0");
+
+  res.json({ bundleId: id, name: bundle.name, itemCount: items.length, purchases, revenue: revenue.toFixed(2) });
 });
 
 export default router;

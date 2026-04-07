@@ -38,6 +38,7 @@ interface OrderInput {
     priceUsd: string;
     quantity: number;
     platform?: string;
+    bundleId?: number;
   }>;
   coupon: { code: string; pct: number; label: string } | null;
   cppSelected: boolean;
@@ -131,6 +132,7 @@ export async function executeOrderPipeline(input: OrderInput) {
           orderId: order.id, variantId: item.variantId,
           productName: item.productName, variantName: item.variantName,
           priceUsd: item.priceUsd, quantity: item.quantity,
+          bundleId: item.bundleId ?? null,
         })))
         .returning({ id: orderItems.id, variantId: orderItems.variantId }) : [];
 
