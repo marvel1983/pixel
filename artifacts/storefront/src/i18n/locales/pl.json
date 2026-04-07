@@ -55,7 +55,9 @@
     "orderSummary": "Podsumowanie zamówienia",
     "discount": "Rabat",
     "proceedToCheckout": "Przejdź do kasy",
-    "continueShopping": "Kontynuuj zakupy"
+    "continueShopping": "Kontynuuj zakupy",
+    "cartTotals": "Podsumowanie koszyka",
+    "taxesNote": "Podatki naliczane przy kasie"
   },
   "checkout": {
     "title": "Zamówienie",

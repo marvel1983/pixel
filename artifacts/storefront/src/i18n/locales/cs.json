@@ -55,7 +55,9 @@
     "orderSummary": "Souhrn objednávky",
     "discount": "Sleva",
     "proceedToCheckout": "Přejít k pokladně",
-    "continueShopping": "Pokračovat v nákupu"
+    "continueShopping": "Pokračovat v nákupu",
+    "cartTotals": "Celkem v košíku",
+    "taxesNote": "Daně vypočítány u pokladny"
   },
   "checkout": {
     "title": "Pokladna",

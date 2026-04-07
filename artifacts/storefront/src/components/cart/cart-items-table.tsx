@@ -1,11 +1,13 @@
 import { Package, Minus, Plus, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useCartStore, type CartItem } from "@/stores/cart-store";
 import { useCurrencyStore } from "@/stores/currency-store";
 
 export function CartItemsTable() {
+  const { t } = useTranslation();
   const items = useCartStore((s) => s.items);
   const updateQuantity = useCartStore((s) => s.updateQuantity);
   const removeItem = useCartStore((s) => s.removeItem);
@@ -27,10 +29,10 @@ export function CartItemsTable() {
   return (
     <div className="border rounded-lg overflow-hidden">
       <div className="hidden sm:grid grid-cols-[1fr_120px_140px_100px_40px] gap-4 px-4 py-3 bg-muted/50 text-xs font-semibold text-muted-foreground uppercase">
-        <span>Product</span>
-        <span className="text-center">Price</span>
-        <span className="text-center">Quantity</span>
-        <span className="text-right">Subtotal</span>
+        <span>{t("cart.product")}</span>
+        <span className="text-center">{t("cart.price")}</span>
+        <span className="text-center">{t("cart.quantity")}</span>
+        <span className="text-right">{t("cart.subtotal")}</span>
         <span />
       </div>
 

@@ -45,6 +45,7 @@ interface OrderInput {
   loyaltyPointsUsed?: number; loyaltyDiscount?: number;
   walletAmountUsd?: number; userId?: number;
   services?: Array<{ id: number; name: string; priceUsd: string }>;
+  locale?: string;
 }
 
 export async function executeOrderPipeline(input: OrderInput) {
@@ -170,10 +171,10 @@ export async function executeOrderPipeline(input: OrderInput) {
 
     if (metenziFulfilled) {
       await updateOrderStatus(order.id, "PROCESSING");
-      await sendOrderConfirmationOnly(billing, orderNumber, order.id, items, total);
+      await sendOrderConfirmationOnly(billing, orderNumber, order.id, items, total, input.locale);
     } else {
       await updateOrderStatus(order.id, "COMPLETED");
-      await triggerOrderEmails(billing, orderNumber, order.id, items, total);
+      await triggerOrderEmails(billing, orderNumber, order.id, items, total, input.locale);
     }
 
     if (input.flashVariantMap?.size) {

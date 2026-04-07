@@ -45,6 +45,11 @@ export default function CheckoutPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
+  useEffect(() => {
+    document.title = t("seo.checkoutTitle");
+    return () => { document.title = "PixelCodes"; };
+  }, [t]);
+
   const [billing, setBilling] = useState<BillingData>(INITIAL_BILLING);
   const [billingErrors, setBillingErrors] = useState<Partial<Record<keyof BillingData, string>>>({});
   const [payment, setPayment] = useState<PaymentData>(INITIAL_PAYMENT);

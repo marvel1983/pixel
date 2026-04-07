@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useCartStore } from "@/stores/cart-store";
 import { CartProgress } from "@/components/cart/cart-progress";
@@ -10,6 +11,11 @@ export default function CartPage() {
   const { t } = useTranslation();
   const items = useCartStore((s) => s.items);
   const isEmpty = items.length === 0;
+
+  useEffect(() => {
+    document.title = t("seo.cartTitle");
+    return () => { document.title = "PixelCodes"; };
+  }, [t]);
 
   return (
     <div className="container mx-auto px-4 py-6">

@@ -55,7 +55,9 @@
     "orderSummary": "Bestellübersicht",
     "discount": "Rabatt",
     "proceedToCheckout": "Zur Kasse gehen",
-    "continueShopping": "Weiter einkaufen"
+    "continueShopping": "Weiter einkaufen",
+    "cartTotals": "Warenkorb-Summe",
+    "taxesNote": "Steuern werden an der Kasse berechnet"
   },
   "checkout": {
     "title": "Kasse",

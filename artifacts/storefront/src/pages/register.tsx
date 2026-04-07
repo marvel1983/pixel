@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, Link } from "wouter";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,11 @@ export default function RegisterPage() {
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    document.title = t("seo.registerTitle");
+    return () => { document.title = "PixelCodes"; };
+  }, [t]);
 
   function update(field: string, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));

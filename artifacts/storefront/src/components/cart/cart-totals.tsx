@@ -1,4 +1,5 @@
 import { Link } from "wouter";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useCartStore } from "@/stores/cart-store";
@@ -6,6 +7,7 @@ import { useCurrencyStore } from "@/stores/currency-store";
 import { CouponInput } from "./coupon-input";
 
 export function CartTotals() {
+  const { t } = useTranslation();
   const getTotal = useCartStore((s) => s.getTotal);
   const coupon = useCartStore((s) => s.coupon);
   const { format } = useCurrencyStore();
@@ -16,17 +18,17 @@ export function CartTotals() {
 
   return (
     <div className="border rounded-lg p-5 space-y-4 bg-muted/10">
-      <h3 className="text-lg font-bold">Cart Totals</h3>
+      <h3 className="text-lg font-bold">{t("cart.cartTotals")}</h3>
 
       <div className="space-y-2">
         <div className="flex justify-between text-sm">
-          <span className="text-muted-foreground">Subtotal</span>
+          <span className="text-muted-foreground">{t("cart.subtotal")}</span>
           <span className="font-medium">{format(subtotal)}</span>
         </div>
 
         {coupon && (
           <div className="flex justify-between text-sm text-green-600">
-            <span>Discount ({coupon.label})</span>
+            <span>{t("cart.discount")} ({coupon.label})</span>
             <span>-{format(discountAmount)}</span>
           </div>
         )}
@@ -35,7 +37,7 @@ export function CartTotals() {
       <Separator />
 
       <div className="flex justify-between text-base font-bold">
-        <span>Total</span>
+        <span>{t("cart.total")}</span>
         <span>{format(total)}</span>
       </div>
 
@@ -43,12 +45,12 @@ export function CartTotals() {
 
       <Link href="/checkout">
         <Button size="lg" className="w-full">
-          Proceed to Checkout
+          {t("cart.proceedToCheckout")}
         </Button>
       </Link>
 
       <p className="text-xs text-center text-muted-foreground">
-        Taxes calculated at checkout
+        {t("cart.taxesNote")}
       </p>
     </div>
   );

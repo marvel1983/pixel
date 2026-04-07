@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { MOCK_PRODUCTS } from "@/lib/mock-data";
 import { HeroBanner } from "@/components/home/hero-banner";
 import { CategorySection } from "@/components/home/category-section";
@@ -48,7 +49,13 @@ function renderSection(type: string) {
 }
 
 export default function HomePage() {
+  const { t } = useTranslation();
   const [sectionTypes, setSectionTypes] = useState<string[]>(ALL_TYPES);
+
+  useEffect(() => {
+    document.title = t("seo.homeTitle");
+    return () => { document.title = "PixelCodes"; };
+  }, [t]);
 
   useEffect(() => {
     fetch(`${API}/homepage-sections`)

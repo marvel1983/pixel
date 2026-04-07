@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { inArray, eq, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { productVariants, taxSettings, taxRates, checkoutServices } from "@workspace/db/schema";
+import { productVariants, taxSettings, taxRates, checkoutServices, users } from "@workspace/db/schema";
 import { executeOrderPipeline } from "../services/order-pipeline";
 import { validateCouponServerSide } from "../services/coupon-service";
 import { validateGiftCards, loadGiftCardBalances } from "../services/gift-card-service";
@@ -55,15 +55,11 @@ async function validateAndPriceItems(items: z.infer<typeof orderSchema>["items"]
   const noResult = (e: string | null) => ({ prices: null, flashVariantMap: new Map<number, number>(), error: e });
   if (dbVariants.length === 0) return noResult(null);
   const priceMap = new Map(dbVariants.map((v) => [v.id, v.priceUsd]));
-  if (dbVariants.length !== variantIds.length) {
-    return noResult(`Variant(s) not found: ${variantIds.filter((id) => !priceMap.has(id)).join(", ")}`);
-  }
-
+  if (dbVariants.length !== variantIds.length) return noResult(`Variant(s) not found: ${variantIds.filter((id) => !priceMap.has(id)).join(", ")}`);
   const flashInfo = await getFlashSaleInfo(variantIds);
   const flashVariantMap = new Map<number, number>();
   const flashQtyAgg = new Map<number, number>();
   const { priceMap: bundlePriceMap, expectedProducts } = await loadBundlePriceMap(items);
-
   const bProductSets = new Map<number, Set<number>>();
   const bQtys = new Map<number, number | null>();
   for (const it of items) {
@@ -128,9 +124,14 @@ router.post("/orders", async (req, res) => {
   }
   const { billing, items, coupon, cppSelected, vatNumber, total, payment, giftCards: gcInput } = parsed.data;
   let userId: number | undefined;
+  let userLocale: string | undefined;
   try {
     const authToken = req.cookies?.token || req.headers.authorization?.replace("Bearer ", "");
-    if (authToken) userId = verifyToken(authToken).userId;
+    if (authToken) {
+      userId = verifyToken(authToken).userId;
+      const [u] = await db.select({ preferredLocale: users.preferredLocale }).from(users).where(eq(users.id, userId)).limit(1);
+      if (u?.preferredLocale) userLocale = u.preferredLocale;
+    }
   } catch { /* guest checkout */ }
 
   for (const item of items) {
@@ -281,6 +282,7 @@ router.post("/orders", async (req, res) => {
       walletAmountUsd: walletDeduction > 0 ? walletDeduction : undefined,
       userId,
       services: validatedServices.length > 0 ? validatedServices : undefined,
+      locale: userLocale,
     });
 
     res.status(201).json({

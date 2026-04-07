@@ -55,7 +55,9 @@
     "orderSummary": "Order Summary",
     "discount": "Discount",
     "proceedToCheckout": "Proceed to Checkout",
-    "continueShopping": "Continue Shopping"
+    "continueShopping": "Continue Shopping",
+    "cartTotals": "Cart Totals",
+    "taxesNote": "Taxes calculated at checkout"
   },
   "checkout": {
     "title": "Checkout",
