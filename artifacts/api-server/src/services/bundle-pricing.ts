@@ -2,18 +2,18 @@ import { eq, and, inArray, asc } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { bundles, bundleItems, productVariants } from "@workspace/db/schema";
 
-interface OrderItem { variantId: number; bundleId?: number; }
+interface OrderItem { variantId: number; bundleId?: number; productId: number; }
 
 export interface BundlePriceResult {
   priceMap: Map<string, string>;
-  expectedCounts: Map<number, number>;
+  expectedProducts: Map<number, Set<number>>;
 }
 
 export async function loadBundlePriceMap(items: OrderItem[]): Promise<BundlePriceResult> {
   const bundleIds = [...new Set(items.filter((i) => i.bundleId).map((i) => i.bundleId!))];
   const priceMap = new Map<string, string>();
-  const expectedCounts = new Map<number, number>();
-  if (!bundleIds.length) return { priceMap, expectedCounts };
+  const expectedProducts = new Map<number, Set<number>>();
+  if (!bundleIds.length) return { priceMap, expectedProducts };
 
   for (const bid of bundleIds) {
     const [b] = await db.select({ bundlePriceUsd: bundles.bundlePriceUsd, isActive: bundles.isActive })
@@ -23,7 +23,7 @@ export async function loadBundlePriceMap(items: OrderItem[]): Promise<BundlePric
     const bItems = await db.select({ productId: bundleItems.productId })
       .from(bundleItems).where(eq(bundleItems.bundleId, bid)).orderBy(asc(bundleItems.sortOrder));
     const productIds = bItems.map((i) => i.productId);
-    expectedCounts.set(bid, productIds.length);
+    expectedProducts.set(bid, new Set(productIds));
 
     const variants = await db.select({ id: productVariants.id, priceUsd: productVariants.priceUsd, productId: productVariants.productId })
       .from(productVariants).where(and(inArray(productVariants.productId, productIds), eq(productVariants.isActive, true)));
@@ -53,5 +53,5 @@ export async function loadBundlePriceMap(items: OrderItem[]): Promise<BundlePric
     }
   }
 
-  return { priceMap, expectedCounts };
+  return { priceMap, expectedProducts };
 }

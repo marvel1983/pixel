@@ -17,48 +17,26 @@ const router = Router();
 
 const currencyStr = z.string().regex(/^\d+(\.\d{1,2})?$/);
 
+const s1 = z.string().min(1);
 const billingSchema = z.object({
-  email: z.string().email(),
-  firstName: z.string().min(1),
-  lastName: z.string().min(1),
-  country: z.string().min(1),
-  city: z.string().min(1),
-  address: z.string().min(1),
-  zip: z.string().min(1),
+  email: z.string().email(), firstName: s1, lastName: s1,
+  country: s1, city: s1, address: s1, zip: s1,
 });
-
 const itemSchema = z.object({
-  variantId: z.number().int(),
-  productId: z.number().int(),
-  productName: z.string().min(1),
-  variantName: z.string().min(1),
-  imageUrl: z.string().nullable(),
-  priceUsd: currencyStr,
-  quantity: z.number().int().positive().max(99),
-  platform: z.string().optional(),
-  bundleId: z.number().int().optional(),
+  variantId: z.number().int(), productId: z.number().int(),
+  productName: s1, variantName: s1, imageUrl: z.string().nullable(),
+  priceUsd: currencyStr, quantity: z.number().int().positive().max(99),
+  platform: z.string().optional(), bundleId: z.number().int().optional(),
 });
-
 const orderSchema = z.object({
   billing: billingSchema,
   items: z.array(itemSchema).min(1).max(50),
-  coupon: z
-    .object({
-      code: z.string().min(1).max(50),
-      pct: z.number(),
-      label: z.string(),
-    })
-    .nullable()
-    .optional(),
+  coupon: z.object({ code: z.string().min(1).max(50), pct: z.number(), label: z.string() }).nullable().optional(),
   cppSelected: z.boolean().optional(),
-  vatNumber: z.string().max(50).optional(),
-  total: currencyStr,
+  vatNumber: z.string().max(50).optional(), total: currencyStr,
   payment: z.object({ cardToken: z.string().min(1) }),
   guestPassword: z.string().min(8).optional(),
-  giftCards: z.array(z.object({
-    code: z.string(),
-    amount: z.number().positive(),
-  })).optional(),
+  giftCards: z.array(z.object({ code: z.string(), amount: z.number().positive() })).optional(),
   loyaltyPointsUsed: z.number().int().min(0).optional(),
 });
 
@@ -81,19 +59,25 @@ async function validateAndPriceItems(items: z.infer<typeof orderSchema>["items"]
   const flashInfo = await getFlashSaleInfo(variantIds);
   const flashVariantMap = new Map<number, number>();
   const flashQtyAgg = new Map<number, number>();
-  const { priceMap: bundlePriceMap, expectedCounts } = await loadBundlePriceMap(items);
+  const { priceMap: bundlePriceMap, expectedProducts } = await loadBundlePriceMap(items);
 
-  const bCounts = new Map<number, number>();
+  const bProductSets = new Map<number, Set<number>>();
   const bQtys = new Map<number, number | null>();
   for (const it of items) {
     if (!it.bundleId) continue;
-    bCounts.set(it.bundleId, (bCounts.get(it.bundleId) || 0) + 1);
+    if (!bProductSets.has(it.bundleId)) bProductSets.set(it.bundleId, new Set());
+    const pSet = bProductSets.get(it.bundleId)!;
+    if (pSet.has(it.productId)) return { prices: null, flashVariantMap, error: "Duplicate product in bundle" };
+    pSet.add(it.productId);
     const prev = bQtys.get(it.bundleId);
     if (prev === undefined) bQtys.set(it.bundleId, it.quantity);
     else if (prev !== it.quantity) bQtys.set(it.bundleId, null);
   }
-  for (const [bid, exp] of expectedCounts) {
-    if ((bCounts.get(bid) || 0) !== exp) return { prices: null, flashVariantMap, error: `Incomplete bundle: expected ${exp} items` };
+  for (const [bid, reqProducts] of expectedProducts) {
+    const submitted = bProductSets.get(bid);
+    if (!submitted || submitted.size !== reqProducts.size || [...reqProducts].some((p) => !submitted.has(p))) {
+      return { prices: null, flashVariantMap, error: "Bundle composition does not match required products" };
+    }
     if (bQtys.get(bid) === null) return { prices: null, flashVariantMap, error: "All items in a bundle must have the same quantity" };
   }
 
