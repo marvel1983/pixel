@@ -181,12 +181,8 @@ export async function executeOrderPipeline(input: OrderInput) {
     });
 
     if (input.loyaltyPointsUsed && input.loyaltyPointsUsed > 0 && input.userId) {
-      try {
-        const acct = await getOrCreateAccount(input.userId);
-        await redeemPoints(acct.id, input.loyaltyPointsUsed, order.id);
-      } catch (err) {
-        logger.error({ err, orderNumber }, "Failed to redeem loyalty points (non-fatal)");
-      }
+      const acct = await getOrCreateAccount(input.userId);
+      await redeemPoints(acct.id, input.loyaltyPointsUsed, order.id);
     }
 
     if (input.userId) {

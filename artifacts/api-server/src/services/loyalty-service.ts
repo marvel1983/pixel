@@ -142,12 +142,20 @@ async function updateTier(accountId: number) {
   }
 }
 
+function getConfigMultiplier(tier: string, config: NonNullable<Awaited<ReturnType<typeof getLoyaltyConfig>>>) {
+  const map: Record<string, string> = {
+    BRONZE: config.bronzeMultiplier, SILVER: config.silverMultiplier,
+    GOLD: config.goldMultiplier, PLATINUM: config.platinumMultiplier,
+  };
+  return parseFloat(map[tier] ?? config.bronzeMultiplier);
+}
+
 export async function awardOrderPoints(userId: number, orderId: number, totalUsd: number) {
   const config = await getLoyaltyConfig();
   if (!config?.enabled) return;
 
   const account = await getOrCreateAccount(userId);
-  const multiplier = parseFloat(account.tierMultiplier);
+  const multiplier = getConfigMultiplier(account.tier, config);
   const rawPoints = Math.floor(totalUsd * config.pointsPerDollar);
   const points = Math.floor(rawPoints * multiplier);
   if (points <= 0) return;
