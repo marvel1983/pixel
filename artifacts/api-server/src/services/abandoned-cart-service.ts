@@ -90,47 +90,53 @@ export async function processAbandonedCarts(): Promise<{ sent: number }> {
     const sendAfter = new Date(cart.createdAt.getTime() + delayMs);
     if (new Date() < sendAfter) continue;
 
-    let couponCode: string | undefined;
-    if (nextEmail === 3) {
-      couponCode = await createRecoveryCoupon(settings.discountPercent, settings.expirationDays);
-      await db.update(abandonedCarts)
-        .set({ couponCode })
-        .where(eq(abandonedCarts.id, cart.id));
-    }
-
-    const domain = process.env["REPLIT_DEV_DOMAIN"] || process.env["REPLIT_DOMAINS"]?.split(",")[0] || "localhost";
-    const baseUrl = domain.startsWith("http") ? domain : `https://${domain}`;
-    const recoveryUrl = `${baseUrl}/cart/recover/${cart.recoveryToken}`;
-    const unsubUrl = `${recoveryUrl}?action=unsubscribe`;
-    const { subject, html } = abandonedCartEmail({
-      emailNumber: nextEmail,
-      siteName,
-      items: cart.cartData.items,
-      total: cart.cartTotal,
-      recoveryUrl,
-      unsubscribeUrl: unsubUrl,
-      couponCode,
-      discountPercent: settings.discountPercent,
-    });
-
-    await enqueueEmail(cart.email, subject, html, { type: "abandoned_cart", cartId: cart.id });
-
-    await db.insert(abandonedCartEmails).values({
-      abandonedCartId: cart.id,
-      emailNumber: nextEmail,
-      subject,
-    });
-
-    await db.update(abandonedCarts).set({
-      emailsSent: nextEmail,
-      lastEmailAt: new Date(),
-      updatedAt: new Date(),
-    }).where(eq(abandonedCarts.id, cart.id));
-
+    await sendEmailForCart(cart, nextEmail, settings, siteName);
     sent++;
   }
 
   return { sent };
+}
+
+async function sendEmailForCart(
+  cart: typeof abandonedCarts.$inferSelect,
+  emailNumber: number,
+  settings: NonNullable<Awaited<ReturnType<typeof getSettings>>>,
+  siteName: string,
+) {
+  let couponCode: string | undefined;
+  if (emailNumber === 3) {
+    couponCode = await createRecoveryCoupon(settings.discountPercent, settings.expirationDays);
+    await db.update(abandonedCarts).set({ couponCode }).where(eq(abandonedCarts.id, cart.id));
+  }
+
+  const domain = process.env["REPLIT_DEV_DOMAIN"] || process.env["REPLIT_DOMAINS"]?.split(",")[0] || "localhost";
+  const baseUrl = domain.startsWith("http") ? domain : `https://${domain}`;
+  const recoveryUrl = `${baseUrl}/cart/recover/${cart.recoveryToken}`;
+  const { subject, html } = abandonedCartEmail({
+    emailNumber, siteName,
+    items: cart.cartData.items, total: cart.cartTotal,
+    recoveryUrl, unsubscribeUrl: `${recoveryUrl}?action=unsubscribe`,
+    couponCode, discountPercent: settings.discountPercent,
+  });
+
+  await enqueueEmail(cart.email, subject, html, { type: "abandoned_cart", cartId: cart.id });
+  await db.insert(abandonedCartEmails).values({ abandonedCartId: cart.id, emailNumber, subject });
+  await db.update(abandonedCarts).set({
+    emailsSent: emailNumber, lastEmailAt: new Date(), updatedAt: new Date(),
+  }).where(eq(abandonedCarts.id, cart.id));
+}
+
+export async function sendCartEmailNow(cartId: number): Promise<boolean> {
+  const settings = await getSettings();
+  if (!settings) return false;
+
+  const [cart] = await db.select().from(abandonedCarts)
+    .where(and(eq(abandonedCarts.id, cartId), eq(abandonedCarts.status, "ACTIVE")));
+  if (!cart || cart.emailsSent >= 3) return false;
+
+  const siteName = await getSiteName();
+  await sendEmailForCart(cart, cart.emailsSent + 1, settings, siteName);
+  return true;
 }
 
 async function createRecoveryCoupon(discountPercent: number, expirationDays: number): Promise<string> {

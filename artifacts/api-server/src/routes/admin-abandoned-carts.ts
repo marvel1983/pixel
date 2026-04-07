@@ -8,7 +8,7 @@ import {
 import { eq, desc, sql, count, and } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
-import { processAbandonedCarts } from "../services/abandoned-cart-service";
+import { processAbandonedCarts, sendCartEmailNow } from "../services/abandoned-cart-service";
 
 const router = Router();
 const guard = [requireAuth, requireAdmin, requirePermission("manageOrders")];
@@ -79,17 +79,17 @@ router.post("/admin/abandoned-carts/process", ...guard, async (_req, res) => {
 
 router.post("/admin/abandoned-carts/:id/send-now", ...guard, async (req, res) => {
   const id = parseInt(req.params.id);
-  const [cart] = await db.select().from(abandonedCarts)
-    .where(and(eq(abandonedCarts.id, id), eq(abandonedCarts.status, "ACTIVE")));
-  if (!cart) { res.status(404).json({ error: "Cart not found or not active" }); return; }
-
-  await db.update(abandonedCarts).set({
-    lastEmailAt: new Date(0),
-    updatedAt: new Date(),
-  }).where(eq(abandonedCarts.id, id));
-
-  const result = await processAbandonedCarts();
-  res.json({ triggered: true, ...result });
+  try {
+    const sent = await sendCartEmailNow(id);
+    if (!sent) {
+      res.status(404).json({ error: "Cart not found, not active, or all emails already sent" });
+      return;
+    }
+    res.json({ triggered: true, sent: 1 });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to send email";
+    res.status(500).json({ error: message });
+  }
 });
 
 router.get("/admin/abandoned-cart-settings", ...settingsGuard, async (_req, res) => {
