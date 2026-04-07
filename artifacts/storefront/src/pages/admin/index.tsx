@@ -5,6 +5,7 @@ import AdminDashboard from "./dashboard";
 import AnalyticsPage from "./analytics";
 import AdminProductsPage from "./products";
 import ProductEditPage from "./product-edit";
+import AdminCategoriesPage from "./categories";
 
 function AdminPlaceholder({ title }: { title: string }) {
   return (
@@ -26,9 +27,7 @@ export default function AdminRoot() {
           <Route path="/admin/analytics" component={AnalyticsPage} />
           <Route path="/admin/products/:id" component={ProductEditPage} />
           <Route path="/admin/products" component={AdminProductsPage} />
-          <Route path="/admin/categories">
-            <AdminPlaceholder title="Categories" />
-          </Route>
+          <Route path="/admin/categories" component={AdminCategoriesPage} />
           <Route path="/admin/platforms">
             <AdminPlaceholder title="Platforms" />
           </Route>
