@@ -44,8 +44,8 @@ export function SearchAutocomplete() {
   const format = useCurrencyStore((s) => s.format);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
-  const abortRef = useRef<AbortController>();
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const abortRef = useRef<AbortController>(undefined);
 
   useEffect(() => {
     if (!query.trim()) {

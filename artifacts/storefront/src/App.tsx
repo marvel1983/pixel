@@ -26,36 +26,43 @@ import AccountPage from "@/pages/account";
 import WishlistPage from "@/pages/wishlist";
 import ComparePage from "@/pages/compare";
 import SearchPage from "@/pages/search";
+import AdminRoot from "@/pages/admin/index";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
 
 function Router() {
   return (
-    <SiteLayout>
-      <Switch>
-        <Route path="/" component={HomePage} />
-        <Route path="/search" component={SearchPage} />
-        <Route path="/shop" component={ShopPage} />
-        <Route path="/category/:slug" component={CategoryPage} />
-        <Route path="/outlet" component={OutletPage} />
-        <Route path="/hot-offers" component={HotOffersPage} />
-        <Route path="/product/:slug" component={ProductDetailPage} />
-        <Route path="/cart" component={CartPage} />
-        <Route path="/checkout" component={CheckoutPage} />
-        <Route path="/order-complete/:orderNumber" component={OrderCompletePage} />
-        <Route path="/order-lookup" component={OrderLookupPage} />
-        <Route path="/account/orders" component={AccountOrdersPage} />
-        <Route path="/login" component={LoginPage} />
-        <Route path="/register" component={RegisterPage} />
-        <Route path="/forgot-password" component={ForgotPasswordPage} />
-        <Route path="/reset-password/:token" component={ResetPasswordPage} />
-        <Route path="/account" component={AccountPage} />
-        <Route path="/wishlist" component={WishlistPage} />
-        <Route path="/compare" component={ComparePage} />
-        <Route component={NotFound} />
-      </Switch>
-    </SiteLayout>
+    <Switch>
+      <Route path="/admin" component={AdminRoot} />
+      <Route path="/admin/:rest*" component={AdminRoot} />
+      <Route>
+        <SiteLayout>
+          <Switch>
+            <Route path="/" component={HomePage} />
+            <Route path="/search" component={SearchPage} />
+            <Route path="/shop" component={ShopPage} />
+            <Route path="/category/:slug" component={CategoryPage} />
+            <Route path="/outlet" component={OutletPage} />
+            <Route path="/hot-offers" component={HotOffersPage} />
+            <Route path="/product/:slug" component={ProductDetailPage} />
+            <Route path="/cart" component={CartPage} />
+            <Route path="/checkout" component={CheckoutPage} />
+            <Route path="/order-complete/:orderNumber" component={OrderCompletePage} />
+            <Route path="/order-lookup" component={OrderLookupPage} />
+            <Route path="/account/orders" component={AccountOrdersPage} />
+            <Route path="/login" component={LoginPage} />
+            <Route path="/register" component={RegisterPage} />
+            <Route path="/forgot-password" component={ForgotPasswordPage} />
+            <Route path="/reset-password/:token" component={ResetPasswordPage} />
+            <Route path="/account" component={AccountPage} />
+            <Route path="/wishlist" component={WishlistPage} />
+            <Route path="/compare" component={ComparePage} />
+            <Route component={NotFound} />
+          </Switch>
+        </SiteLayout>
+      </Route>
+    </Switch>
   );
 }
 
