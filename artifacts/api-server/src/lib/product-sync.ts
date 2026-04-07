@@ -19,7 +19,7 @@ async function findOrCreateCategory(categoryName: string): Promise<number> {
   const [existing] = await db
     .select()
     .from(categories)
-    .where(eq(categories.slug, slug))
+    .where(eq(categories.name, categoryName))
     .limit(1);
 
   if (existing) return existing.id;
