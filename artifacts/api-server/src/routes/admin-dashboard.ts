@@ -176,7 +176,7 @@ router.get(
       .from(reviews)
       .innerJoin(products, eq(reviews.productId, products.id))
       .innerJoin(users, eq(reviews.userId, users.id))
-      .where(eq(reviews.isApproved, false))
+      .where(eq(reviews.status, "PENDING"))
       .orderBy(desc(reviews.createdAt))
       .limit(5);
 
