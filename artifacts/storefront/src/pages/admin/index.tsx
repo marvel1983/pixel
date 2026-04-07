@@ -34,6 +34,7 @@ import AdminUsersPage from "./admin-users";
 import RefundsPage from "./refunds";
 import AdminGiftCardsPage from "./gift-cards";
 import AdminAffiliatesPage from "./affiliates";
+import AffiliateSettingsPage from "./affiliate-settings";
 
 function AdminPlaceholder({ title }: { title: string }) {
   return (
@@ -84,6 +85,7 @@ export default function AdminRoot() {
           <Route path="/admin/refunds" component={RefundsPage} />
           <Route path="/admin/gift-cards" component={AdminGiftCardsPage} />
           <Route path="/admin/affiliates" component={AdminAffiliatesPage} />
+          <Route path="/admin/affiliate-settings" component={AffiliateSettingsPage} />
           <Route path="/admin/admin-users" component={AdminUsersPage} />
           <Route path="/admin/notifications">
             <AdminPlaceholder title="Notifications" />

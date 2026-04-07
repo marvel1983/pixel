@@ -70,6 +70,7 @@ const sections: NavSection[] = [
       { label: "Checkout Upsell", href: "/admin/checkout-upsell", icon: Gift },
       { label: "Gift Cards", href: "/admin/gift-cards", icon: Gift },
       { label: "Affiliates", href: "/admin/affiliates", icon: Link2 },
+      { label: "Affiliate Settings", href: "/admin/affiliate-settings", icon: Settings },
     ],
   },
   {

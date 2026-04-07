@@ -6,7 +6,7 @@ import {
   affiliateSettings,
   users,
 } from "@workspace/db/schema";
-import { eq, desc, ilike, or, sql, count } from "drizzle-orm";
+import { eq, desc, ilike, or, and, sql, count, type SQL } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import { approveHeldCommissions } from "../services/affiliate-service";
@@ -20,18 +20,9 @@ router.get("/admin/affiliates", ...guard, async (req, res) => {
   const limit = Math.min(100, parseInt(lm as string) || 25);
   const offset = (page - 1) * limit;
 
-  let query = db.select({
-    profile: affiliateProfiles,
-    email: users.email,
-    firstName: users.firstName,
-    lastName: users.lastName,
-  }).from(affiliateProfiles)
-    .innerJoin(users, eq(affiliateProfiles.userId, users.id))
-    .$dynamic();
-
-  const conditions = [];
+  const conditions: SQL[] = [];
   if (status && status !== "ALL") {
-    conditions.push(eq(affiliateProfiles.status, status as any));
+    conditions.push(sql`${affiliateProfiles.status} = ${String(status)}`);
   }
   if (search) {
     const s = `%${search}%`;
@@ -42,11 +33,20 @@ router.get("/admin/affiliates", ...guard, async (req, res) => {
     )!);
   }
 
-  if (conditions.length === 1) query = query.where(conditions[0]!) as any;
-  else if (conditions.length > 1) query = query.where(sql`${conditions[0]} AND ${conditions[1]}`) as any;
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const rows = await db.select({
+    profile: affiliateProfiles,
+    email: users.email,
+    firstName: users.firstName,
+    lastName: users.lastName,
+  }).from(affiliateProfiles)
+    .innerJoin(users, eq(affiliateProfiles.userId, users.id))
+    .where(whereClause)
+    .orderBy(desc(affiliateProfiles.createdAt))
+    .limit(limit).offset(offset);
 
   const [totalRow] = await db.select({ c: count() }).from(affiliateProfiles);
-  const rows = await query.orderBy(desc(affiliateProfiles.createdAt)).limit(limit).offset(offset);
   res.json({ affiliates: rows, total: totalRow?.c ?? 0, page, limit });
 });
 
@@ -57,11 +57,12 @@ router.patch("/admin/affiliates/:id/status", ...guard, async (req, res) => {
     res.status(400).json({ error: "Invalid status" }); return;
   }
 
-  const updates: Record<string, any> = { status, updatedAt: new Date() };
-  if (adminNote !== undefined) updates.adminNote = adminNote;
-  if (status === "APPROVED") updates.approvedAt = new Date();
-
-  await db.update(affiliateProfiles).set(updates).where(eq(affiliateProfiles.id, id));
+  await db.update(affiliateProfiles).set({
+    status: status as "APPROVED" | "REJECTED" | "SUSPENDED",
+    updatedAt: new Date(),
+    ...(adminNote !== undefined ? { adminNote } : {}),
+    ...(status === "APPROVED" ? { approvedAt: new Date() } : {}),
+  }).where(eq(affiliateProfiles.id, id));
   res.json({ success: true });
 });
 

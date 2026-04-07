@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import {
   affiliateProfiles,
+  affiliateClicks,
   affiliateCommissions,
   affiliateSettings,
   users,
