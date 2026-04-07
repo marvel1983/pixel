@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { licenseKeys, productVariants, products, orderItems, orders, auditLog } from "@workspace/db/schema";
-import { eq, desc, and, or, ilike, gte, lte, count, sql } from "drizzle-orm";
+import { eq, desc, and, or, ilike, gte, lte, count, sql, isNull } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { decrypt } from "../lib/encryption";
 
@@ -101,6 +101,19 @@ router.get("/admin/keys", requireAuth, requireAdmin, async (req, res) => {
   });
 });
 
+router.post("/admin/keys/backfill-masks", requireAuth, requireAdmin, async (_req, res) => {
+  const nullMasks = await db.select({ id: licenseKeys.id, keyValue: licenseKeys.keyValue })
+    .from(licenseKeys).where(isNull(licenseKeys.keyMask)).limit(500);
+  let updated = 0;
+  for (const row of nullMasks) {
+    const plain = safeDecrypt(row.keyValue);
+    const mask = makeMask(plain);
+    await db.update(licenseKeys).set({ keyMask: mask }).where(eq(licenseKeys.id, row.id));
+    updated++;
+  }
+  res.json({ updated, remaining: nullMasks.length === 500 });
+});
+
 router.get("/admin/keys/products", requireAuth, requireAdmin, async (_req, res) => {
   const prods = await db
     .select({ id: products.id, name: products.name })
@@ -175,6 +188,10 @@ router.post("/admin/keys/:id/claim", requireAuth, requireAdmin, async (req, res)
   const [key] = await db.select({ id: licenseKeys.id, status: licenseKeys.status }).from(licenseKeys).where(eq(licenseKeys.id, id));
   if (!key) {
     res.status(404).json({ error: "Key not found" });
+    return;
+  }
+  if (key.status !== "SOLD") {
+    res.status(400).json({ error: "Only sold keys can have claims submitted" });
     return;
   }
 
