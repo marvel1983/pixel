@@ -12,6 +12,7 @@ import { ReviewsSection } from "@/components/product-detail/reviews-section";
 import { RelatedProducts } from "@/components/product-detail/related-products";
 import { PaymentIcons } from "@/components/product-detail/payment-icons";
 import { addToRecentlyViewed } from "@/components/home/recently-viewed";
+import { setSeoMeta, clearSeoMeta } from "@/lib/seo";
 import { Separator } from "@/components/ui/separator";
 
 const CATEGORY_NAMES: Record<string, string> = {
@@ -41,10 +42,16 @@ export default function ProductDetailPage() {
   useEffect(() => {
     if (product) {
       addToRecentlyViewed(product.id);
-      document.title = `${product.name} | PixelCodes`;
+      const price = product.variants[0]?.priceUsd ?? "0";
+      setSeoMeta({
+        title: `${product.name} | PixelCodes`,
+        description: `Buy ${product.name} for $${price}. Instant digital delivery. Genuine license key with lifetime validity. ${product.reviewCount} reviews, ${product.avgRating}/5 rating.`,
+        canonicalUrl: `${window.location.origin}/product/${product.slug}`,
+        ogImage: product.imageUrl ?? undefined,
+      });
     }
     return () => {
-      document.title = "PixelCodes";
+      clearSeoMeta();
     };
   }, [product]);
 

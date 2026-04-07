@@ -43,6 +43,13 @@ export function ReviewsSection({ avgRating, reviewCount }: ReviewsSectionProps) 
   );
 }
 
+const SUB_RATINGS = [
+  { label: "Value for Money", score: 4.7 },
+  { label: "Delivery Speed", score: 4.9 },
+  { label: "Activation Ease", score: 4.6 },
+  { label: "Product Quality", score: 4.8 },
+];
+
 function RatingSummary({ avgRating, reviewCount }: { avgRating: number; reviewCount: number }) {
   return (
     <div className="space-y-3">
@@ -70,6 +77,22 @@ function RatingSummary({ avgRating, reviewCount }: { avgRating: number; reviewCo
               />
             </div>
             <span className="w-8 text-right text-muted-foreground">{d.pct}%</span>
+          </div>
+        ))}
+      </div>
+      <div className="pt-2 space-y-2">
+        {SUB_RATINGS.map((sr) => (
+          <div key={sr.label} className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground">{sr.label}</span>
+            <div className="flex items-center gap-1.5">
+              <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary rounded-full"
+                  style={{ width: `${(sr.score / 5) * 100}%` }}
+                />
+              </div>
+              <span className="font-medium w-6 text-right">{sr.score}</span>
+            </div>
           </div>
         ))}
       </div>
