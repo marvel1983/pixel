@@ -34,10 +34,7 @@ export default function AdminKeysPage() {
   const [to, setTo] = useState("");
   const [productOptions, setProductOptions] = useState<{ id: number; name: string }[]>([]);
   const [revealed, setRevealed] = useState<Record<number, string>>({});
-  const [claimId, setClaimId] = useState<number | null>(null);
-  const [claimReason, setClaimReason] = useState("");
-  const [claimEmail, setClaimEmail] = useState("");
-  const [saving, setSaving] = useState(false);
+  const [claimKey, setClaimKey] = useState<KeyRow | null>(null);
   const timers = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
   const token = useAuthStore((s) => s.token);
   const limit = 50;
@@ -93,16 +90,8 @@ export default function AdminKeysPage() {
     fetch(`${API}/admin/keys/${id}/copy-audit`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
   };
 
-  const submitClaim = async () => {
-    if (!claimId || !claimReason.trim()) return;
-    setSaving(true);
-    await fetch(`${API}/admin/keys/${claimId}/claim`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ reason: claimReason, customerEmail: claimEmail }),
-    });
-    setSaving(false);
-    setClaimId(null); setClaimReason(""); setClaimEmail("");
+  const onClaimSubmitted = () => {
+    setClaimKey(null);
     fetchKeys();
   };
 
@@ -181,7 +170,7 @@ export default function AdminKeysPage() {
                         </button>
                       )}
                       {r.status === "SOLD" && (
-                        <button onClick={() => setClaimId(r.id)} className="p-1 rounded hover:bg-orange-100" title="Submit Claim">
+                        <button onClick={() => setClaimKey(r)} className="p-1 rounded hover:bg-orange-100" title="Submit Claim">
                           <Flag className="h-4 w-4 text-orange-500" />
                         </button>
                       )}
@@ -203,31 +192,8 @@ export default function AdminKeysPage() {
         </div>
       )}
 
-      {claimId !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setClaimId(null)}>
-          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold mb-4">Submit Claim</h3>
-            <p className="text-sm text-muted-foreground mb-3">This will revoke key #{claimId} and log a claim entry.</p>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium mb-1">Customer Email</label>
-                <input className="w-full rounded-md border px-3 py-2 text-sm" value={claimEmail}
-                  onChange={(e) => setClaimEmail(e.target.value)} placeholder="customer@example.com" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Reason *</label>
-                <textarea className="w-full rounded-md border px-3 py-2 text-sm" rows={3} value={claimReason}
-                  onChange={(e) => setClaimReason(e.target.value)} placeholder="Describe the claim reason..." />
-              </div>
-              <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={() => setClaimId(null)}>Cancel</Button>
-                <Button onClick={submitClaim} disabled={saving || !claimReason.trim()}>
-                  {saving ? "Submitting..." : "Submit Claim"}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
+      {claimKey && (
+        <KeyClaimModal token={token!} keyRow={claimKey} onClose={() => setClaimKey(null)} onSubmit={onClaimSubmitted} />
       )}
     </div>
   );
@@ -238,6 +204,60 @@ function StatCard({ label, value, icon }: { label: string; value: number; icon: 
     <div className="rounded-lg border bg-white p-4 flex items-center gap-3">
       {icon}
       <div><p className="text-2xl font-bold">{value}</p><p className="text-xs text-muted-foreground">{label}</p></div>
+    </div>
+  );
+}
+
+const REASONS = ["DEFECTIVE", "ALREADY_USED", "WRONG_PRODUCT", "NOT_RECEIVED", "OTHER"] as const;
+
+function KeyClaimModal({ token, keyRow, onClose, onSubmit }: { token: string; keyRow: KeyRow; onClose: () => void; onSubmit: () => void }) {
+  const [email, setEmail] = useState(keyRow.customerEmail ?? "");
+  const [reason, setReason] = useState<string>("DEFECTIVE");
+  const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const submit = async () => {
+    if (!email.trim()) return;
+    setSaving(true);
+    await fetch(`${API}/admin/claims`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ licenseKeyId: keyRow.id, customerEmail: email, reason, notes }),
+    });
+    setSaving(false);
+    onSubmit();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
+      <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <h3 className="text-lg font-semibold mb-4">Submit Claim</h3>
+        <p className="text-sm text-muted-foreground mb-3">Key: {keyRow.maskedKey} — {keyRow.productName}</p>
+        <div className="space-y-3">
+          <div>
+            <label className="block text-sm font-medium mb-1">Customer Email *</label>
+            <input className="w-full rounded-md border px-3 py-2 text-sm" value={email}
+              onChange={(e) => setEmail(e.target.value)} placeholder="customer@example.com" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Reason *</label>
+            <select className="w-full rounded-md border px-3 py-2 text-sm" value={reason} onChange={(e) => setReason(e.target.value)}>
+              {REASONS.map((r) => <option key={r} value={r}>{r.replace(/_/g, " ")}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Notes</label>
+            <textarea className="w-full rounded-md border px-3 py-2 text-sm" rows={3} value={notes}
+              onChange={(e) => setNotes(e.target.value)} placeholder="Additional details..." />
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" onClick={onClose}>Cancel</Button>
+            <Button onClick={submit} disabled={saving || !email.trim()}>
+              {saving ? "Submitting..." : "Submit Claim"}
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

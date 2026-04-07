@@ -172,47 +172,6 @@ router.post("/admin/keys/:id/copy-audit", requireAuth, requireAdmin, async (req,
   res.json({ success: true });
 });
 
-router.post("/admin/keys/:id/claim", requireAuth, requireAdmin, async (req, res) => {
-  const id = Number(req.params.id);
-  if (!Number.isInteger(id) || id <= 0) {
-    res.status(400).json({ error: "Invalid key ID" });
-    return;
-  }
-
-  const { reason, customerEmail } = req.body;
-  if (!reason?.trim()) {
-    res.status(400).json({ error: "Claim reason is required" });
-    return;
-  }
-
-  const [key] = await db.select({ id: licenseKeys.id, status: licenseKeys.status }).from(licenseKeys).where(eq(licenseKeys.id, id));
-  if (!key) {
-    res.status(404).json({ error: "Key not found" });
-    return;
-  }
-  if (key.status !== "SOLD") {
-    res.status(400).json({ error: "Only sold keys can have claims submitted" });
-    return;
-  }
-
-  await db.update(licenseKeys).set({
-    status: "REVOKED",
-    revokedAt: new Date(),
-    revokeReason: `CLAIM: ${reason} (${customerEmail ?? "N/A"})`,
-  }).where(eq(licenseKeys.id, id));
-
-  await db.insert(auditLog).values({
-    userId: req.user!.userId,
-    action: "KEY_REVOKE",
-    entityType: "license_key",
-    entityId: id,
-    details: { action: "claim", reason, customerEmail, previousStatus: key.status },
-    ipAddress: req.ip ?? null,
-  });
-
-  res.json({ success: true });
-});
-
 router.patch("/admin/keys/:id/status", requireAuth, requireAdmin, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
