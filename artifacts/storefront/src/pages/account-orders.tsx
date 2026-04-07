@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { Link } from "wouter";
-import { Loader2, Package, ChevronRight, Search } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { useLocation } from "wouter";
+import { Loader2, Package, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Breadcrumbs } from "@/components/shop/breadcrumbs";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
 import { OrderDetail } from "@/components/orders/order-detail";
 import { useCurrencyStore } from "@/stores/currency-store";
+import { useAuthStore } from "@/stores/auth-store";
 import { useToast } from "@/hooks/use-toast";
 
 interface OrderSummary {
@@ -53,34 +53,37 @@ interface OrderFull {
 }
 
 export default function AccountOrdersPage() {
-  const [email, setEmail] = useState("");
+  const { user, token, isAuthenticated } = useAuthStore();
+  const [, setLocation] = useLocation();
   const [orders, setOrders] = useState<OrderSummary[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [searched, setSearched] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<OrderFull | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const { format } = useCurrencyStore();
   const { toast } = useToast();
 
-  async function handleSearch(e: React.FormEvent) {
-    e.preventDefault();
-    if (!email.trim()) return;
-    setLoading(true);
-    setSearched(true);
-    setSelectedOrder(null);
+  useEffect(() => {
+    if (!isAuthenticated()) {
+      setLocation("/login");
+      return;
+    }
+    loadOrders();
+  }, [token]);
 
+  async function loadOrders() {
     try {
       const baseUrl = import.meta.env.VITE_API_URL ?? "/api";
-      const res = await fetch(`${baseUrl}/account/orders?email=${encodeURIComponent(email.trim())}`);
+      const res = await fetch(`${baseUrl}/account/orders`, {
+        headers: { Authorization: `Bearer ${token}` },
+        credentials: "include",
+      });
       if (res.ok) {
         const data = await res.json();
         setOrders(data.orders);
       } else {
-        setOrders([]);
         toast({ title: "Failed to load orders", variant: "destructive" });
       }
     } catch {
-      setOrders([]);
       toast({ title: "Failed to load orders", variant: "destructive" });
     } finally {
       setLoading(false);
@@ -91,7 +94,14 @@ export default function AccountOrdersPage() {
     setLoadingDetail(true);
     try {
       const baseUrl = import.meta.env.VITE_API_URL ?? "/api";
-      const res = await fetch(`${baseUrl}/orders/${orderNumber}?email=${encodeURIComponent(email.trim())}`);
+      const email = user?.email ?? "";
+      const res = await fetch(
+        `${baseUrl}/orders/${orderNumber}?email=${encodeURIComponent(email)}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          credentials: "include",
+        },
+      );
       if (res.ok) {
         setSelectedOrder(await res.json());
       } else {
@@ -104,33 +114,26 @@ export default function AccountOrdersPage() {
     }
   }
 
+  if (!isAuthenticated()) return null;
+
   return (
     <div className="container mx-auto px-4 py-6">
-      <Breadcrumbs crumbs={[{ label: "Account" }, { label: "Orders" }]} />
+      <Breadcrumbs crumbs={[{ label: "Account", href: "/account" }, { label: "Orders" }]} />
 
       <div className="max-w-3xl mx-auto">
-        <h1 className="text-2xl font-bold mb-2">Order History</h1>
+        <h1 className="text-2xl font-bold mb-2">My Orders</h1>
         <p className="text-muted-foreground mb-6">
           View your past orders and license keys.
         </p>
 
-        <form onSubmit={handleSearch} className="flex gap-3 mb-8">
-          <Input
-            placeholder="Enter your email address"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="flex-1"
-          />
-          <Button type="submit" disabled={loading}>
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-          </Button>
-        </form>
-
-        {selectedOrder ? (
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <Loader2 className="h-6 w-6 animate-spin" />
+          </div>
+        ) : selectedOrder ? (
           <div>
             <Button variant="ghost" size="sm" onClick={() => setSelectedOrder(null)} className="mb-4">
-              ← Back to orders
+              &larr; Back to orders
             </Button>
             <OrderDetail
               order={selectedOrder.order}
@@ -138,54 +141,46 @@ export default function AccountOrdersPage() {
               licenseKeys={selectedOrder.licenseKeys}
             />
           </div>
+        ) : orders.length > 0 ? (
+          <div className="border rounded-lg overflow-hidden">
+            {orders.map((order, idx) => (
+              <button
+                key={order.id}
+                className={`w-full text-left px-4 py-3 flex items-center gap-4 hover:bg-muted/50 transition-colors ${idx > 0 ? "border-t" : ""}`}
+                onClick={() => openOrder(order.orderNumber)}
+              >
+                <Package className="h-5 w-5 text-muted-foreground shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm font-medium">{order.orderNumber}</span>
+                    <OrderStatusBadge status={order.status} />
+                  </div>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {order.firstProduct}
+                    {order.itemCount > 1 && ` +${order.itemCount - 1} more`}
+                  </p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-sm font-medium">{format(parseFloat(order.totalUsd))}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(order.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+              </button>
+            ))}
+          </div>
         ) : (
-          <>
-            {orders.length > 0 && (
-              <div className="border rounded-lg overflow-hidden">
-                {orders.map((order, idx) => (
-                  <button
-                    key={order.id}
-                    className={`w-full text-left px-4 py-3 flex items-center gap-4 hover:bg-muted/50 transition-colors ${
-                      idx > 0 ? "border-t" : ""
-                    }`}
-                    onClick={() => openOrder(order.orderNumber)}
-                  >
-                    <Package className="h-5 w-5 text-muted-foreground shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-medium">{order.orderNumber}</span>
-                        <OrderStatusBadge status={order.status} />
-                      </div>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {order.firstProduct}
-                        {order.itemCount > 1 && ` +${order.itemCount - 1} more`}
-                      </p>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-sm font-medium">{format(parseFloat(order.totalUsd))}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(order.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                  </button>
-                ))}
-              </div>
-            )}
+          <div className="text-center py-12 text-muted-foreground">
+            <Package className="h-10 w-10 mx-auto mb-3 opacity-40" />
+            <p>No orders found.</p>
+          </div>
+        )}
 
-            {searched && !loading && orders.length === 0 && (
-              <div className="text-center py-12 text-muted-foreground">
-                <Package className="h-10 w-10 mx-auto mb-3 opacity-40" />
-                <p>No orders found for this email address.</p>
-              </div>
-            )}
-
-            {loadingDetail && (
-              <div className="flex justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin" />
-              </div>
-            )}
-          </>
+        {loadingDetail && (
+          <div className="flex justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin" />
+          </div>
         )}
       </div>
     </div>

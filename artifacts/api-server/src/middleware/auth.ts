@@ -2,7 +2,15 @@ import { type Request, type Response, type NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { logger } from "../lib/logger";
 
-const JWT_SECRET = process.env.ENCRYPTION_KEY ?? "dev-jwt-secret";
+function getJwtSecret(): string {
+  const secret = process.env.ENCRYPTION_KEY;
+  if (!secret) {
+    throw new Error("ENCRYPTION_KEY environment variable is required for JWT signing");
+  }
+  return secret;
+}
+
+const JWT_SECRET = getJwtSecret();
 const JWT_EXPIRY = "30d";
 
 export interface JwtPayload {
