@@ -3,6 +3,7 @@ import { TopBar } from "./top-bar";
 import { NavBar } from "./nav-bar";
 import { Footer } from "./footer";
 import { LiveChatWidget } from "./live-chat-widget";
+import { CompareBar } from "@/components/compare/compare-bar";
 
 interface SiteLayoutProps {
   children: ReactNode;
@@ -16,6 +17,7 @@ export function SiteLayout({ children }: SiteLayoutProps) {
       <main className="flex-1">{children}</main>
       <Footer />
       <LiveChatWidget />
+      <CompareBar />
     </div>
   );
 }

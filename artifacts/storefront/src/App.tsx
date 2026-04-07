@@ -19,6 +19,8 @@ import RegisterPage from "@/pages/register";
 import ForgotPasswordPage from "@/pages/forgot-password";
 import ResetPasswordPage from "@/pages/reset-password";
 import AccountPage from "@/pages/account";
+import WishlistPage from "@/pages/wishlist";
+import ComparePage from "@/pages/compare";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -43,6 +45,8 @@ function Router() {
         <Route path="/forgot-password" component={ForgotPasswordPage} />
         <Route path="/reset-password/:token" component={ResetPasswordPage} />
         <Route path="/account" component={AccountPage} />
+        <Route path="/wishlist" component={WishlistPage} />
+        <Route path="/compare" component={ComparePage} />
         <Route component={NotFound} />
       </Switch>
     </SiteLayout>

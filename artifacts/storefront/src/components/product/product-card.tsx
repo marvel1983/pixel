@@ -1,10 +1,13 @@
 import { Link } from "wouter";
-import { Star, ShoppingCart, Package } from "lucide-react";
+import { Star, ShoppingCart, Package, Heart, GitCompareArrows } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useCartStore } from "@/stores/cart-store";
 import { useCurrencyStore } from "@/stores/currency-store";
+import { useWishlistStore } from "@/stores/wishlist-store";
+import { useCompareStore } from "@/stores/compare-store";
 import { addToRecentlyViewed } from "@/components/home/recently-viewed";
+import { useToast } from "@/hooks/use-toast";
 import type { MockProduct } from "@/lib/mock-data";
 
 interface ProductCardProps {
@@ -14,6 +17,15 @@ interface ProductCardProps {
 export function ProductCard({ product }: ProductCardProps) {
   const addItem = useCartStore((s) => s.addItem);
   const format = useCurrencyStore((s) => s.format);
+  const { toast } = useToast();
+  const wishlistIds = useWishlistStore((s) => s.productIds);
+  const toggleWishlist = useWishlistStore((s) => s.toggleProduct);
+  const compareIds = useCompareStore((s) => s.productIds);
+  const addCompare = useCompareStore((s) => s.addProduct);
+  const removeCompare = useCompareStore((s) => s.removeProduct);
+
+  const isWishlisted = wishlistIds.includes(product.id);
+  const isComparing = compareIds.includes(product.id);
   const variant = product.variants[0];
   if (!variant) return null;
 
@@ -40,16 +52,30 @@ export function ProductCard({ product }: ProductCardProps) {
     });
   }
 
+  function handleWishlist(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleWishlist(product.id);
+  }
+
+  function handleCompare(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isComparing) {
+      removeCompare(product.id);
+    } else if (compareIds.length >= 4) {
+      toast({ title: "Compare limit reached", description: "You can compare up to 4 products at a time.", variant: "destructive" });
+    } else {
+      addCompare(product.id);
+    }
+  }
+
   return (
     <Link href={`/product/${product.slug}`} onClick={() => addToRecentlyViewed(product.id)}>
       <div className="group bg-white border border-border rounded-lg overflow-hidden hover:shadow-md transition-shadow h-full flex flex-col">
         <div className="relative aspect-[4/3] bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center">
           {product.imageUrl ? (
-            <img
-              src={product.imageUrl}
-              alt={product.name}
-              className="w-full h-full object-cover"
-            />
+            <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
           ) : (
             <Package className="h-12 w-12 text-muted-foreground/30" />
           )}
@@ -63,6 +89,21 @@ export function ProductCard({ product }: ProductCardProps) {
               NEW
             </Badge>
           )}
+          <div className="absolute top-2 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            {!product.isNew && <span />}
+            <button
+              onClick={handleWishlist}
+              className={`w-7 h-7 rounded-full bg-white/90 shadow flex items-center justify-center hover:bg-white transition-colors ${isWishlisted ? "text-red-500" : "text-muted-foreground"}`}
+            >
+              <Heart className={`h-3.5 w-3.5 ${isWishlisted ? "fill-red-500" : ""}`} />
+            </button>
+            <button
+              onClick={handleCompare}
+              className={`w-7 h-7 rounded-full bg-white/90 shadow flex items-center justify-center hover:bg-white transition-colors ${isComparing ? "text-primary" : "text-muted-foreground"}`}
+            >
+              <GitCompareArrows className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
 
         <div className="p-3 flex flex-col flex-1">
@@ -75,46 +116,28 @@ export function ProductCard({ product }: ProductCardProps) {
               {[1, 2, 3, 4, 5].map((s) => (
                 <Star
                   key={s}
-                  className={`h-3 w-3 ${
-                    s <= Math.round(product.avgRating)
-                      ? "text-yellow-400 fill-yellow-400"
-                      : "text-muted-foreground/30"
-                  }`}
+                  className={`h-3 w-3 ${s <= Math.round(product.avgRating) ? "text-yellow-400 fill-yellow-400" : "text-muted-foreground/30"}`}
                 />
               ))}
             </div>
-            <span className="text-[10px] text-muted-foreground">
-              ({product.reviewCount})
-            </span>
+            <span className="text-[10px] text-muted-foreground">({product.reviewCount})</span>
           </div>
 
           <div className="flex items-center gap-1.5 mb-1">
-            <span
-              className={`text-xs ${inStock ? "text-green-600" : "text-destructive"}`}
-            >
+            <span className={`text-xs ${inStock ? "text-green-600" : "text-destructive"}`}>
               {inStock ? "In Stock" : "Out of Stock"}
             </span>
           </div>
 
           <div className="mt-auto pt-2 flex items-end justify-between">
             <div>
-              <span className="text-base font-bold text-foreground">
-                {format(price)}
-              </span>
+              <span className="text-base font-bold text-foreground">{format(price)}</span>
               {comparePrice && (
-                <span className="text-xs text-muted-foreground line-through ml-1.5">
-                  {format(comparePrice)}
-                </span>
+                <span className="text-xs text-muted-foreground line-through ml-1.5">{format(comparePrice)}</span>
               )}
             </div>
-            <Button
-              size="sm"
-              className="h-7 px-2 text-xs"
-              onClick={handleAddToCart}
-              disabled={!inStock}
-            >
-              <ShoppingCart className="h-3 w-3 mr-1" />
-              Add
+            <Button size="sm" className="h-7 px-2 text-xs" onClick={handleAddToCart} disabled={!inStock}>
+              <ShoppingCart className="h-3 w-3 mr-1" /> Add
             </Button>
           </div>
         </div>

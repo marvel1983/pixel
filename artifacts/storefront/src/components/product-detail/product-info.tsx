@@ -4,6 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useCurrencyStore } from "@/stores/currency-store";
 import { useCartStore } from "@/stores/cart-store";
+import { useWishlistStore } from "@/stores/wishlist-store";
+import { useCompareStore } from "@/stores/compare-store";
+import { useToast } from "@/hooks/use-toast";
 import type { MockProduct, MockVariant } from "@/lib/mock-data";
 
 interface ProductInfoProps {
@@ -15,6 +18,14 @@ export function ProductInfo({ product }: ProductInfoProps) {
   const [quantity, setQuantity] = useState(1);
   const { format: formatPrice } = useCurrencyStore();
   const addItem = useCartStore((s) => s.addItem);
+  const wishlistIds = useWishlistStore((s) => s.productIds);
+  const toggleWishlist = useWishlistStore((s) => s.toggleProduct);
+  const compareIds = useCompareStore((s) => s.productIds);
+  const addCompare = useCompareStore((s) => s.addProduct);
+  const removeCompare = useCompareStore((s) => s.removeProduct);
+  const { toast } = useToast();
+  const isWishlisted = wishlistIds.includes(product.id);
+  const isComparing = compareIds.includes(product.id);
 
   const price = parseFloat(selectedVariant.priceUsd);
   const compareAt = selectedVariant.compareAtPriceUsd
@@ -144,13 +155,27 @@ export function ProductInfo({ product }: ProductInfoProps) {
       </div>
 
       <div className="flex gap-4 text-sm">
-        <button className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
-          <Heart className="h-4 w-4" />
-          Add to Wishlist
+        <button
+          onClick={() => toggleWishlist(product.id)}
+          className={`flex items-center gap-1.5 transition-colors ${isWishlisted ? "text-red-500" : "text-muted-foreground hover:text-foreground"}`}
+        >
+          <Heart className={`h-4 w-4 ${isWishlisted ? "fill-red-500" : ""}`} />
+          {isWishlisted ? "In Wishlist" : "Add to Wishlist"}
         </button>
-        <button className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
+        <button
+          onClick={() => {
+            if (isComparing) {
+              removeCompare(product.id);
+            } else if (compareIds.length >= 4) {
+              toast({ title: "Compare limit reached", description: "You can compare up to 4 products.", variant: "destructive" });
+            } else {
+              addCompare(product.id);
+            }
+          }}
+          className={`flex items-center gap-1.5 transition-colors ${isComparing ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+        >
           <GitCompareArrows className="h-4 w-4" />
-          Compare
+          {isComparing ? "Remove from Compare" : "Compare"}
         </button>
       </div>
 

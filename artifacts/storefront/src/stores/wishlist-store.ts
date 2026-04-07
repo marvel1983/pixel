@@ -8,6 +8,7 @@ interface WishlistState {
   toggleProduct: (id: number) => void;
   hasProduct: (id: number) => boolean;
   clearAll: () => void;
+  syncWithServer: (token: string) => Promise<void>;
 }
 
 export const useWishlistStore = create<WishlistState>()(
@@ -38,6 +39,27 @@ export const useWishlistStore = create<WishlistState>()(
       hasProduct: (id) => get().productIds.includes(id),
 
       clearAll: () => set({ productIds: [] }),
+
+      syncWithServer: async (token: string) => {
+        try {
+          const baseUrl = import.meta.env.VITE_API_URL ?? "/api";
+          const res = await fetch(`${baseUrl}/wishlist/sync`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            credentials: "include",
+            body: JSON.stringify({ productIds: get().productIds }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            set({ productIds: data.productIds });
+          }
+        } catch {
+          // keep local state on failure
+        }
+      },
     }),
     { name: "pixelcodes-wishlist" },
   ),
