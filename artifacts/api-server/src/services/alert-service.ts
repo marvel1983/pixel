@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { db } from "@workspace/db";
 import {
   productAlerts,
@@ -11,6 +12,24 @@ import { enqueueEmail } from "../lib/email/queue";
 import { priceDropEmail, backInStockEmail } from "./alert-emails";
 import { logger } from "../lib/logger";
 
+const UNSUB_SECRET = process.env["ENCRYPTION_KEY"] || "alert-unsub-fallback-key";
+
+export function signUnsubscribe(alertId: number): string {
+  const hmac = crypto.createHmac("sha256", UNSUB_SECRET).update(String(alertId)).digest("hex").slice(0, 16);
+  return `${alertId}-${hmac}`;
+}
+
+export function verifyUnsubscribe(token: string): number | null {
+  const parts = token.split("-");
+  if (parts.length < 2) return null;
+  const sig = parts.pop()!;
+  const alertId = parseInt(parts.join("-"));
+  if (isNaN(alertId)) return null;
+  const expected = crypto.createHmac("sha256", UNSUB_SECRET).update(String(alertId)).digest("hex").slice(0, 16);
+  if (sig !== expected) return null;
+  return alertId;
+}
+
 async function getSiteName(): Promise<string> {
   const [row] = await db.select({ n: siteSettings.siteName }).from(siteSettings).limit(1);
   return row?.n ?? "PixelCodes";
@@ -23,6 +42,7 @@ function getBaseUrl(): string {
 
 export async function checkPriceDropAlerts(
   variantId: number,
+  productId: number,
   oldPrice: string,
   newPrice: string,
 ): Promise<number> {
@@ -41,6 +61,7 @@ export async function checkPriceDropAlerts(
     .where(and(
       eq(productAlerts.isActive, true),
       eq(productAlerts.alertType, "PRICE_DROP"),
+      eq(productAlerts.productId, productId),
       isNull(productAlerts.notifiedAt),
     ));
 
@@ -57,7 +78,8 @@ export async function checkPriceDropAlerts(
 
   for (const row of matching) {
     const productUrl = `${baseUrl}/product/${row.productSlug}`;
-    const unsubscribeUrl = `${baseUrl}/api/alerts/${row.alert.id}/unsubscribe`;
+    const unsubToken = signUnsubscribe(row.alert.id);
+    const unsubscribeUrl = `${baseUrl}/api/alerts/unsubscribe/${unsubToken}`;
     const savings = (oldNum - newNum).toFixed(2);
 
     const { subject, html } = priceDropEmail({
@@ -116,7 +138,8 @@ export async function checkBackInStockAlerts(
 
   for (const row of matching) {
     const productUrl = `${baseUrl}/product/${row.productSlug}`;
-    const unsubscribeUrl = `${baseUrl}/api/alerts/${row.alert.id}/unsubscribe`;
+    const unsubToken = signUnsubscribe(row.alert.id);
+    const unsubscribeUrl = `${baseUrl}/api/alerts/unsubscribe/${unsubToken}`;
 
     const { subject, html } = backInStockEmail({
       siteName, productName: row.productName, productUrl,

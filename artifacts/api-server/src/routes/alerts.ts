@@ -4,6 +4,7 @@ import { productAlerts, products, productVariants } from "@workspace/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { requireAuth } from "../middleware/auth";
 import { z } from "zod";
+import { verifyUnsubscribe } from "../services/alert-service";
 
 const router = Router();
 
@@ -92,10 +93,14 @@ router.delete("/account/alerts/:id", requireAuth, async (req, res) => {
   res.json({ success: true });
 });
 
-router.get("/alerts/:id/unsubscribe", async (req, res) => {
-  const id = parseInt(req.params.id);
+router.get("/alerts/unsubscribe/:token", async (req, res) => {
+  const alertId = verifyUnsubscribe(req.params.token);
+  if (alertId === null) {
+    res.status(400).send("<html><body style='text-align:center;padding:60px;font-family:sans-serif'><h2>Invalid Link</h2><p>This unsubscribe link is invalid or has expired.</p></body></html>");
+    return;
+  }
   await db.update(productAlerts).set({ isActive: false })
-    .where(eq(productAlerts.id, id));
+    .where(eq(productAlerts.id, alertId));
   res.send("<html><body style='text-align:center;padding:60px;font-family:sans-serif'><h2>Unsubscribed</h2><p>You will no longer receive this alert.</p></body></html>");
 });
 

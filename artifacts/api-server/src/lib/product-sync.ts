@@ -166,7 +166,7 @@ async function upsertVariant(
       .set(data)
       .where(eq(productVariants.id, existing.id));
 
-    checkPriceDropAlerts(existing.id, oldPrice, data.priceUsd).catch((err) => {
+    checkPriceDropAlerts(existing.id, productId, oldPrice, data.priceUsd).catch((err) => {
       logger.error({ err, variantId: existing.id }, "Price drop alert check failed");
     });
 
