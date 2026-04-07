@@ -52,9 +52,12 @@ router.post("/newsletter/subscribe", optionalAuth, async (req, res) => {
     if (existing.status === "UNSUBSCRIBED") {
       const confirmToken = genToken();
       const unsubToken = genToken();
+      const newStatus = settings.doubleOptIn ? "PENDING" : "CONFIRMED";
       await db.update(newsletterSubscribers).set({
-        status: "PENDING", confirmToken, unsubToken, source,
+        status: newStatus, confirmToken, unsubToken, source,
         userId: userId ?? existing.userId,
+        confirmedAt: settings.doubleOptIn ? null : new Date(),
+        unsubscribedAt: null,
         updatedAt: new Date(),
       }).where(eq(newsletterSubscribers.id, existing.id));
 
@@ -62,6 +65,10 @@ router.post("/newsletter/subscribe", optionalAuth, async (req, res) => {
         const confirmUrl = `${getBaseUrl()}/newsletter/confirm?token=${confirmToken}`;
         const { subject, html } = confirmationEmail({ confirmUrl });
         await enqueueEmail(email, subject, html, { type: "newsletter_confirm" });
+      } else {
+        const unsubUrl = `${getBaseUrl()}/newsletter/unsubscribe?token=${unsubToken}`;
+        const { subject, html } = welcomeEmail({ unsubscribeUrl: unsubUrl });
+        await enqueueEmail(email, subject, html, { type: "newsletter_welcome" });
       }
       res.json({ success: true, message: settings.doubleOptIn ? "Please check your email to confirm." : "Subscribed!" });
       return;
@@ -80,10 +87,12 @@ router.post("/newsletter/subscribe", optionalAuth, async (req, res) => {
     discountCode = `NL${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
     await db.insert(coupons).values({
       code: discountCode,
-      discountPercent: String(settings.exitIntentDiscount),
-      maxUses: 1,
+      discountType: "PERCENTAGE",
+      discountValue: String(settings.exitIntentDiscount),
+      usageLimit: 1,
       usedCount: 0,
       isActive: true,
+      singleUsePerCustomer: true,
     });
   }
 
@@ -147,6 +156,24 @@ router.get("/newsletter/unsubscribe", async (req, res) => {
   }).where(eq(newsletterSubscribers.id, sub.id));
 
   res.json({ success: true, message: "You have been unsubscribed." });
+});
+
+router.post("/newsletter/unsubscribe-account", async (req, res) => {
+  const { email } = req.body;
+  if (!email) { res.status(400).json({ error: "Email required" }); return; }
+
+  const [sub] = await db.select().from(newsletterSubscribers)
+    .where(eq(newsletterSubscribers.email, email.toLowerCase()));
+  if (!sub || sub.status !== "CONFIRMED") {
+    res.json({ success: true, message: "Not subscribed." });
+    return;
+  }
+
+  await db.update(newsletterSubscribers).set({
+    status: "UNSUBSCRIBED", unsubscribedAt: new Date(), updatedAt: new Date(),
+  }).where(eq(newsletterSubscribers.id, sub.id));
+
+  res.json({ success: true, message: "Unsubscribed successfully." });
 });
 
 router.get("/newsletter/status", async (req, res) => {

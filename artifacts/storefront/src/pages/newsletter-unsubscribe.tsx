@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Check, AlertCircle, Loader2 } from "lucide-react";
-import { Breadcrumbs } from "@/components/ui/breadcrumbs";
+import { Breadcrumbs } from "@/components/shop/breadcrumbs";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 

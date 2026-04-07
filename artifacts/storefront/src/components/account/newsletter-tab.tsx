@@ -23,19 +23,31 @@ export function NewsletterTab() {
       .finally(() => setLoading(false));
   }, [user?.email]);
 
-  async function handleSubscribe() {
+  async function handleToggle() {
     if (!user?.email) return;
     setToggling(true);
     try {
-      const res = await fetch(`${API}/newsletter/subscribe`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: user.email, source: "account" }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      toast({ title: "Subscribed", description: data.message });
-      setSubscribed(true);
+      if (subscribed) {
+        const res = await fetch(`${API}/newsletter/unsubscribe-account`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: user.email }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        toast({ title: "Unsubscribed", description: "You have been unsubscribed from the newsletter." });
+        setSubscribed(false);
+      } else {
+        const res = await fetch(`${API}/newsletter/subscribe`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: user.email, source: "account" }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        toast({ title: "Subscribed", description: data.message });
+        setSubscribed(true);
+      }
     } catch (err) {
       toast({ title: "Error", description: err instanceof Error ? err.message : "Failed", variant: "destructive" });
     } finally {
@@ -73,15 +85,17 @@ export function NewsletterTab() {
 
             <p className="text-sm text-muted-foreground">
               {subscribed
-                ? "You'll receive exclusive deals, product updates, and special discounts. You can unsubscribe anytime via the link in our emails."
+                ? "You'll receive exclusive deals, product updates, and special discounts."
                 : "Subscribe to get exclusive deals, new product alerts, and special discount codes delivered to your inbox."}
             </p>
 
-            {!subscribed && (
-              <Button onClick={handleSubscribe} disabled={toggling} size="sm">
-                {toggling ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Subscribing...</> : "Subscribe Now"}
-              </Button>
-            )}
+            <Button onClick={handleToggle} disabled={toggling} size="sm" variant={subscribed ? "outline" : "default"}>
+              {toggling ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{subscribed ? "Unsubscribing..." : "Subscribing..."}</>
+              ) : (
+                subscribed ? "Unsubscribe" : "Subscribe Now"
+              )}
+            </Button>
           </div>
         )}
       </CardContent>

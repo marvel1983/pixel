@@ -134,16 +134,14 @@ function ProfileTab() {
   );
 }
 
-function PlaceholderTab({ title, icon }: { title: string; icon: React.ReactNode }) {
-  return (
-    <Card>
-      <CardContent className="py-12 text-center text-muted-foreground">
-        <div className="flex justify-center mb-3">{icon}</div>
-        <p>Your {title.toLowerCase()} will appear here.</p>
-      </CardContent>
-    </Card>
-  );
-}
+const PlaceholderTab = ({ title, icon }: { title: string; icon: React.ReactNode }) => (
+  <Card>
+    <CardContent className="py-12 text-center text-muted-foreground">
+      <div className="flex justify-center mb-3">{icon}</div>
+      <p>Your {title.toLowerCase()} will appear here.</p>
+    </CardContent>
+  </Card>
+);
 
 export default function AccountPage() {
   const { user, isAuthenticated } = useAuthStore();
