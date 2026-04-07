@@ -142,7 +142,12 @@
     "signInHere": "Přihlaste se zde",
     "email": "E-mailová adresa",
     "password": "Heslo",
-    "confirmPassword": "Potvrzení hesla"
+    "confirmPassword": "Potvrzení hesla",
+    "welcomeBack": "Vítejte zpět!",
+    "passwordsMismatch": "Hesla se neshodují",
+    "agreeTerms": "Prosím odsouhlaste podmínky",
+    "agreeToTerms": "Souhlasím s Obchodními podmínkami a Zásadami ochrany osobních údajů",
+    "accountCreated": "Účet vytvořen!"
   },
   "common": {
     "loading": "Načítání...",

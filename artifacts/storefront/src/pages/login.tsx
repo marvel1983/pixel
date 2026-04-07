@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation, Link } from "wouter";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +12,7 @@ import { LogIn, Eye, EyeOff, Loader2 } from "lucide-react";
 import { GoogleButton } from "@/components/auth/google-button";
 
 export default function LoginPage() {
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const { setAuth } = useAuthStore();
   const { toast } = useToast();
@@ -45,7 +47,7 @@ export default function LoginPage() {
       if (!res.ok) throw new Error(data.error ?? "Login failed");
 
       setAuth(data.user, data.token);
-      toast({ title: "Welcome back!" });
+      toast({ title: t("auth.welcomeBack") });
       setLocation("/");
     } catch (err) {
       toast({
@@ -60,19 +62,19 @@ export default function LoginPage() {
 
   return (
     <div className="container mx-auto px-4 py-6">
-      <Breadcrumbs crumbs={[{ label: "Sign In" }]} />
+      <Breadcrumbs crumbs={[{ label: t("auth.signIn") }]} />
 
       <div className="max-w-md mx-auto mt-8">
         <Card>
           <CardHeader className="text-center">
             <CardTitle className="text-2xl flex items-center justify-center gap-2">
-              <LogIn className="h-6 w-6" /> Sign In
+              <LogIn className="h-6 w-6" /> {t("auth.signIn")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <Label htmlFor="email">Email Address</Label>
+                <Label htmlFor="email">{t("auth.email")}</Label>
                 <Input
                   id="email"
                   type="email"
@@ -84,7 +86,7 @@ export default function LoginPage() {
               </div>
 
               <div>
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">{t("auth.password")}</Label>
                 <div className="relative">
                   <Input
                     id="password"
@@ -106,27 +108,27 @@ export default function LoginPage() {
 
               <div className="text-right">
                 <Link href="/forgot-password" className="text-sm text-primary hover:underline">
-                  Forgot password?
+                  {t("auth.forgotPassword")}
                 </Link>
               </div>
 
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                Sign In
+                {t("auth.signIn")}
               </Button>
             </form>
 
             <div className="relative my-4">
               <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
-              <div className="relative flex justify-center text-xs uppercase"><span className="bg-card px-2 text-muted-foreground">Or</span></div>
+              <div className="relative flex justify-center text-xs uppercase"><span className="bg-card px-2 text-muted-foreground">{t("common.or")}</span></div>
             </div>
 
             <GoogleButton />
 
             <p className="text-center text-sm text-muted-foreground mt-4">
-              Don't have an account?{" "}
+              {t("auth.noAccount")}{" "}
               <Link href="/register" className="text-primary hover:underline font-medium">
-                Create one
+                {t("auth.createOne")}
               </Link>
             </p>
           </CardContent>

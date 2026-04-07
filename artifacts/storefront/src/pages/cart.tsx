@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useCartStore } from "@/stores/cart-store";
 import { CartProgress } from "@/components/cart/cart-progress";
 import { CartItemsTable } from "@/components/cart/cart-items-table";
@@ -6,12 +7,13 @@ import { EmptyCart } from "@/components/cart/empty-cart";
 import { Breadcrumbs } from "@/components/shop/breadcrumbs";
 
 export default function CartPage() {
+  const { t } = useTranslation();
   const items = useCartStore((s) => s.items);
   const isEmpty = items.length === 0;
 
   return (
     <div className="container mx-auto px-4 py-6">
-      <Breadcrumbs crumbs={[{ label: "Shopping Cart" }]} />
+      <Breadcrumbs crumbs={[{ label: t("cart.title") }]} />
       <CartProgress step={1} />
 
       {isEmpty ? (

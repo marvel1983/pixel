@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useLocation, Link } from "wouter";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +13,7 @@ import { UserPlus, Eye, EyeOff, Loader2 } from "lucide-react";
 import { GoogleButton } from "@/components/auth/google-button";
 
 export default function RegisterPage() {
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const { setAuth } = useAuthStore();
   const { toast } = useToast();
@@ -34,11 +36,11 @@ export default function RegisterPage() {
     e.preventDefault();
 
     if (form.password !== form.confirmPassword) {
-      toast({ title: "Passwords do not match", variant: "destructive" });
+      toast({ title: t("auth.passwordsMismatch"), variant: "destructive" });
       return;
     }
     if (!agreeTerms) {
-      toast({ title: "Please agree to the terms", variant: "destructive" });
+      toast({ title: t("auth.agreeTerms"), variant: "destructive" });
       return;
     }
 
@@ -62,7 +64,7 @@ export default function RegisterPage() {
       if (!res.ok) throw new Error(data.error ?? "Registration failed");
 
       setAuth(data.user, data.token);
-      toast({ title: "Account created!" });
+      toast({ title: t("auth.accountCreated") });
       setLocation("/");
     } catch (err) {
       toast({
@@ -77,20 +79,20 @@ export default function RegisterPage() {
 
   return (
     <div className="container mx-auto px-4 py-6">
-      <Breadcrumbs crumbs={[{ label: "Create Account" }]} />
+      <Breadcrumbs crumbs={[{ label: t("auth.createAccount") }]} />
 
       <div className="max-w-md mx-auto mt-8">
         <Card>
           <CardHeader className="text-center">
             <CardTitle className="text-2xl flex items-center justify-center gap-2">
-              <UserPlus className="h-6 w-6" /> Create Account
+              <UserPlus className="h-6 w-6" /> {t("auth.createAccount")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label htmlFor="firstName">First Name</Label>
+                  <Label htmlFor="firstName">{t("checkout.firstName")}</Label>
                   <Input
                     id="firstName"
                     value={form.firstName}
@@ -99,7 +101,7 @@ export default function RegisterPage() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="lastName">Last Name</Label>
+                  <Label htmlFor="lastName">{t("checkout.lastName")}</Label>
                   <Input
                     id="lastName"
                     value={form.lastName}
@@ -110,7 +112,7 @@ export default function RegisterPage() {
               </div>
 
               <div>
-                <Label htmlFor="email">Email Address</Label>
+                <Label htmlFor="email">{t("auth.email")}</Label>
                 <Input
                   id="email"
                   type="email"
@@ -122,7 +124,7 @@ export default function RegisterPage() {
               </div>
 
               <div>
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">{t("auth.password")}</Label>
                 <div className="relative">
                   <Input
                     id="password"
@@ -144,7 +146,7 @@ export default function RegisterPage() {
               </div>
 
               <div>
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Label htmlFor="confirmPassword">{t("auth.confirmPassword")}</Label>
                 <Input
                   id="confirmPassword"
                   type="password"
@@ -161,27 +163,27 @@ export default function RegisterPage() {
                   onCheckedChange={(v) => setAgreeTerms(v === true)}
                 />
                 <Label htmlFor="terms" className="text-sm font-normal">
-                  I agree to the Terms of Service and Privacy Policy
+                  {t("auth.agreeToTerms")}
                 </Label>
               </div>
 
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                Create Account
+                {t("auth.createAccount")}
               </Button>
             </form>
 
             <div className="relative my-4">
               <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
-              <div className="relative flex justify-center text-xs uppercase"><span className="bg-card px-2 text-muted-foreground">Or</span></div>
+              <div className="relative flex justify-center text-xs uppercase"><span className="bg-card px-2 text-muted-foreground">{t("common.or")}</span></div>
             </div>
 
             <GoogleButton label="Sign up with Google" />
 
             <p className="text-center text-sm text-muted-foreground mt-4">
-              Already have an account?{" "}
+              {t("auth.haveAccount")}{" "}
               <Link href="/login" className="text-primary hover:underline font-medium">
-                Sign In
+                {t("auth.signInHere")}
               </Link>
             </p>
           </CardContent>

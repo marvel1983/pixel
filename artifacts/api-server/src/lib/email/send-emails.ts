@@ -26,9 +26,9 @@ async function getSiteBrand(): Promise<SiteBrand> {
   return { siteName: rows[0]?.siteName ?? "PixelCodes", logoUrl: rows[0]?.logoUrl ?? null };
 }
 
-export async function sendWelcomeEmail(to: string, firstName: string): Promise<void> {
+export async function sendWelcomeEmail(to: string, firstName: string, locale?: string): Promise<void> {
   const brand = await getSiteBrand();
-  const { subject, html } = welcomeEmail({ firstName, ...brand });
+  const { subject, html } = welcomeEmail({ firstName, ...brand, locale });
   await enqueueEmail(to, subject, html, { type: "welcome" });
 }
 

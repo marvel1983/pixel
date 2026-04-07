@@ -142,7 +142,12 @@
     "signInHere": "Hier anmelden",
     "email": "E-Mail-Adresse",
     "password": "Passwort",
-    "confirmPassword": "Passwort bestätigen"
+    "confirmPassword": "Passwort bestätigen",
+    "welcomeBack": "Willkommen zurück!",
+    "passwordsMismatch": "Passwörter stimmen nicht überein",
+    "agreeTerms": "Bitte stimmen Sie den Bedingungen zu",
+    "agreeToTerms": "Ich stimme den Nutzungsbedingungen und der Datenschutzrichtlinie zu",
+    "accountCreated": "Konto erstellt!"
   },
   "common": {
     "loading": "Laden...",

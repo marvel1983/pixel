@@ -142,7 +142,12 @@
     "signInHere": "Zaloguj się tutaj",
     "email": "Adres email",
     "password": "Hasło",
-    "confirmPassword": "Potwierdź hasło"
+    "confirmPassword": "Potwierdź hasło",
+    "welcomeBack": "Witaj ponownie!",
+    "passwordsMismatch": "Hasła nie są zgodne",
+    "agreeTerms": "Proszę zaakceptować warunki",
+    "agreeToTerms": "Akceptuję Regulamin i Politykę Prywatności",
+    "accountCreated": "Konto utworzone!"
   },
   "common": {
     "loading": "Ładowanie...",

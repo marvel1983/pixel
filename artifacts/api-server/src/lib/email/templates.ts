@@ -1,18 +1,22 @@
+import { et } from "./email-i18n";
+
 const BRAND_COLOR = "#3366FF";
 const BRAND_BG = "#f8f9fa";
 
 interface LayoutOptions {
   siteName: string;
   logoUrl?: string | null;
+  locale?: string;
 }
 
 function layout(opts: LayoutOptions, content: string): string {
-  const { siteName, logoUrl } = opts;
+  const { siteName, logoUrl, locale = "en" } = opts;
+  const lang = locale.slice(0, 2);
   const logoHtml = logoUrl
     ? `<img src="${logoUrl}" alt="${siteName}" style="max-height:40px;margin-bottom:8px;" /><br>`
     : "";
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="${lang}">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
 <body style="margin:0;padding:0;background:${BRAND_BG};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" style="background:${BRAND_BG};padding:40px 20px;">
@@ -23,8 +27,8 @@ ${logoHtml}<h1 style="margin:0;color:#fff;font-size:22px;font-weight:700;">${sit
 </td></tr>
 <tr><td style="padding:32px;">${content}</td></tr>
 <tr><td style="background:#f1f3f5;padding:20px 32px;text-align:center;font-size:12px;color:#868e96;">
-<p style="margin:0;">© ${new Date().getFullYear()} ${siteName}. All rights reserved.</p>
-<p style="margin:4px 0 0;">This is an automated message. Please do not reply directly.</p>
+<p style="margin:0;">© ${new Date().getFullYear()} ${siteName}. ${et(lang, "email.footer.rights")}</p>
+<p style="margin:4px 0 0;">${et(lang, "email.footer.auto")}</p>
 </td></tr>
 </table>
 </td></tr></table>
@@ -35,24 +39,29 @@ export interface WelcomeData {
   firstName: string;
   siteName: string;
   logoUrl?: string | null;
+  locale?: string;
 }
 
 export function welcomeEmail(data: WelcomeData): { subject: string; html: string } {
+  const lang = data.locale ?? "en";
   const content = `
-<h2 style="margin:0 0 16px;color:#212529;font-size:20px;">Welcome, ${data.firstName}!</h2>
+<h2 style="margin:0 0 16px;color:#212529;font-size:20px;">${et(lang, "email.welcome.title", { firstName: data.firstName })}</h2>
 <p style="color:#495057;line-height:1.6;margin:0 0 16px;">
-Thank you for creating your account at <strong>${data.siteName}</strong>. You now have access to:
+${et(lang, "email.welcome.body", { siteName: data.siteName })}
 </p>
 <ul style="color:#495057;line-height:1.8;margin:0 0 24px;padding-left:20px;">
-<li>Instant digital delivery of software keys</li>
-<li>Order history and license management</li>
-<li>Exclusive deals and promotions</li>
-<li>Wishlist and product comparison tools</li>
+<li>${et(lang, "email.welcome.feature1")}</li>
+<li>${et(lang, "email.welcome.feature2")}</li>
+<li>${et(lang, "email.welcome.feature3")}</li>
+<li>${et(lang, "email.welcome.feature4")}</li>
 </ul>
 <p style="color:#495057;line-height:1.6;margin:0;">
-Start browsing our catalog and find the best deals on genuine software licenses.
+${et(lang, "email.welcome.cta")}
 </p>`;
-  return { subject: `Welcome to ${data.siteName}!`, html: layout({ siteName: data.siteName, logoUrl: data.logoUrl }, content) };
+  return {
+    subject: et(lang, "email.welcome.subject", { siteName: data.siteName }),
+    html: layout({ siteName: data.siteName, logoUrl: data.logoUrl, locale: lang }, content),
+  };
 }
 
 export interface OrderConfirmationData {
@@ -63,9 +72,11 @@ export interface OrderConfirmationData {
   items: { name: string; variant: string; quantity: number; price: string }[];
   total: string;
   customerName: string;
+  locale?: string;
 }
 
 export function orderConfirmationEmail(data: OrderConfirmationData): { subject: string; html: string } {
+  const lang = data.locale ?? "en";
   const rows = data.items
     .map(
       (item) => `<tr>
@@ -77,26 +88,29 @@ export function orderConfirmationEmail(data: OrderConfirmationData): { subject: 
     .join("");
 
   const content = `
-<h2 style="margin:0 0 16px;color:#212529;font-size:20px;">Order Confirmed!</h2>
-<p style="color:#495057;line-height:1.6;margin:0 0 8px;">Hi ${data.customerName},</p>
+<h2 style="margin:0 0 16px;color:#212529;font-size:20px;">${et(lang, "email.order.title")}</h2>
+<p style="color:#495057;line-height:1.6;margin:0 0 8px;">${et(lang, "email.order.greeting", { name: data.customerName })}</p>
 <p style="color:#495057;line-height:1.6;margin:0 0 24px;">
-Your order <strong>#${data.orderRef}</strong> has been confirmed. Here's your summary:
+${et(lang, "email.order.body", { orderRef: data.orderRef })}
 </p>
 <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;">
 <tr style="background:#f8f9fa;">
-<th style="padding:8px 0;text-align:left;font-size:13px;color:#495057;">Product</th>
-<th style="padding:8px 0;text-align:center;font-size:13px;color:#495057;">Qty</th>
-<th style="padding:8px 0;text-align:right;font-size:13px;color:#495057;">Price</th>
+<th style="padding:8px 0;text-align:left;font-size:13px;color:#495057;">${et(lang, "email.order.product")}</th>
+<th style="padding:8px 0;text-align:center;font-size:13px;color:#495057;">${et(lang, "email.order.qty")}</th>
+<th style="padding:8px 0;text-align:right;font-size:13px;color:#495057;">${et(lang, "email.order.price")}</th>
 </tr>
 ${rows}
 </table>
 <div style="background:#f8f9fa;padding:16px;border-radius:6px;text-align:right;">
-<strong style="font-size:18px;color:#212529;">Total: ${data.total}</strong>
+<strong style="font-size:18px;color:#212529;">${et(lang, "email.order.total", { total: data.total })}</strong>
 </div>
 <p style="color:#868e96;font-size:13px;margin:16px 0 0;">
-Your license keys will be delivered in a separate email shortly.
+${et(lang, "email.order.keysNote")}
 </p>`;
-  return { subject: `Order #${data.orderRef} Confirmed - ${data.siteName}`, html: layout({ siteName: data.siteName, logoUrl: data.logoUrl }, content) };
+  return {
+    subject: et(lang, "email.order.subject", { orderRef: data.orderRef, siteName: data.siteName }),
+    html: layout({ siteName: data.siteName, logoUrl: data.logoUrl, locale: lang }, content),
+  };
 }
 
 export interface KeyDeliveryData {
@@ -105,9 +119,11 @@ export interface KeyDeliveryData {
   orderRef: string;
   customerName: string;
   keys: { productName: string; variant: string; licenseKey: string }[];
+  locale?: string;
 }
 
 export function keyDeliveryEmail(data: KeyDeliveryData): { subject: string; html: string } {
+  const lang = data.locale ?? "en";
   const keyBlocks = data.keys
     .map(
       (k) => `
@@ -121,19 +137,21 @@ export function keyDeliveryEmail(data: KeyDeliveryData): { subject: string; html
     .join("");
 
   const content = `
-<h2 style="margin:0 0 16px;color:#212529;font-size:20px;">Your License Keys</h2>
-<p style="color:#495057;line-height:1.6;margin:0 0 8px;">Hi ${data.customerName},</p>
+<h2 style="margin:0 0 16px;color:#212529;font-size:20px;">${et(lang, "email.keys.title")}</h2>
+<p style="color:#495057;line-height:1.6;margin:0 0 8px;">${et(lang, "email.order.greeting", { name: data.customerName })}</p>
 <p style="color:#495057;line-height:1.6;margin:0 0 24px;">
-Here are the license keys for order <strong>#${data.orderRef}</strong>:
+${et(lang, "email.keys.body", { orderRef: data.orderRef })}
 </p>
 ${keyBlocks}
 <div style="background:#fff3cd;padding:12px 16px;border-radius:6px;border:1px solid #ffc107;margin-top:24px;">
 <p style="margin:0;font-size:13px;color:#856404;">
-<strong>Important:</strong> Keep your license keys safe. Do not share them publicly.
-You can also view your keys anytime in your order history.
+${et(lang, "email.keys.warning")}
 </p>
 </div>`;
-  return { subject: `License Keys for Order #${data.orderRef} - ${data.siteName}`, html: layout({ siteName: data.siteName, logoUrl: data.logoUrl }, content) };
+  return {
+    subject: et(lang, "email.keys.subject", { orderRef: data.orderRef, siteName: data.siteName }),
+    html: layout({ siteName: data.siteName, logoUrl: data.logoUrl, locale: lang }, content),
+  };
 }
 
 export interface PasswordResetData {
@@ -142,23 +160,28 @@ export interface PasswordResetData {
   firstName: string;
   resetLink: string;
   expiresIn: string;
+  locale?: string;
 }
 
 export function passwordResetEmail(data: PasswordResetData): { subject: string; html: string } {
+  const lang = data.locale ?? "en";
   const content = `
-<h2 style="margin:0 0 16px;color:#212529;font-size:20px;">Reset Your Password</h2>
-<p style="color:#495057;line-height:1.6;margin:0 0 16px;">Hi ${data.firstName},</p>
+<h2 style="margin:0 0 16px;color:#212529;font-size:20px;">${et(lang, "email.reset.title")}</h2>
+<p style="color:#495057;line-height:1.6;margin:0 0 16px;">${et(lang, "email.order.greeting", { name: data.firstName })}</p>
 <p style="color:#495057;line-height:1.6;margin:0 0 24px;">
-We received a request to reset your password. Click the button below to set a new password:
+${et(lang, "email.reset.body")}
 </p>
 <div style="text-align:center;margin:0 0 24px;">
-<a href="${data.resetLink}" style="display:inline-block;background:${BRAND_COLOR};color:#fff;padding:14px 36px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;">Reset Password</a>
+<a href="${data.resetLink}" style="display:inline-block;background:${BRAND_COLOR};color:#fff;padding:14px 36px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;">${et(lang, "email.reset.button")}</a>
 </div>
 <p style="color:#868e96;font-size:13px;margin:0 0 8px;">
-This link will expire in ${data.expiresIn}. If you didn't request a password reset, you can safely ignore this email.
+${et(lang, "email.reset.expiry", { expiresIn: data.expiresIn })}
 </p>
 <p style="color:#868e96;font-size:12px;margin:0;word-break:break-all;">
 Link: ${data.resetLink}
 </p>`;
-  return { subject: `Password Reset - ${data.siteName}`, html: layout({ siteName: data.siteName, logoUrl: data.logoUrl }, content) };
+  return {
+    subject: et(lang, "email.reset.subject", { siteName: data.siteName }),
+    html: layout({ siteName: data.siteName, logoUrl: data.logoUrl, locale: lang }, content),
+  };
 }

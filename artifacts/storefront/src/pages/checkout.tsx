@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
+import { useTranslation } from "react-i18next";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -36,6 +37,7 @@ const INITIAL_PAYMENT: PaymentData = {
 interface TaxInfo { taxRate: number; taxLabel: string; exempt: boolean; b2bEnabled: boolean; priceDisplay: string }
 
 export default function CheckoutPage() {
+  const { t } = useTranslation();
   const items = useCartStore((s) => s.items);
   const coupon = useCartStore((s) => s.coupon);
   const getTotal = useCartStore((s) => s.getTotal);
@@ -92,7 +94,7 @@ export default function CheckoutPage() {
   if (items.length === 0) {
     return (
       <div className="container mx-auto px-4 py-6">
-        <Breadcrumbs crumbs={[{ label: "Cart", href: "/cart" }, { label: "Checkout" }]} />
+        <Breadcrumbs crumbs={[{ label: t("cart.title"), href: "/cart" }, { label: t("checkout.title") }]} />
         <CartProgress step={2} />
         <EmptyCart />
       </div>
@@ -184,8 +186,8 @@ export default function CheckoutPage() {
       setLocation(`/order-complete/${data.orderNumber}`);
     } catch (err) {
       toast({
-        title: "Order failed",
-        description: err instanceof Error ? err.message : "Please try again.",
+        title: t("checkout.orderFailed"),
+        description: err instanceof Error ? err.message : t("checkout.tryAgain"),
         variant: "destructive",
       });
     } finally {
@@ -195,7 +197,7 @@ export default function CheckoutPage() {
 
   return (
     <div className="container mx-auto px-4 py-6">
-      <Breadcrumbs crumbs={[{ label: "Cart", href: "/cart" }, { label: "Checkout" }]} />
+      <Breadcrumbs crumbs={[{ label: t("cart.title"), href: "/cart" }, { label: t("checkout.title") }]} />
       <CartProgress step={2} />
 
       <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
@@ -237,13 +239,13 @@ export default function CheckoutPage() {
           <TrustpilotBadge variant="full" />
           <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
             <input type="checkbox" checked={newsletterOptIn} onChange={(e) => setNewsletterOptIn(e.target.checked)} />
-            Subscribe to our newsletter for deals and updates
+            {t("checkout.newsletterOptIn")}
           </label>
           <Button size="lg" className="w-full" disabled={submitting} onClick={handleSubmit}>
             {submitting ? (
-              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processing...</>
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t("checkout.processing")}</>
             ) : (
-              "Place Order"
+              t("checkout.placeOrder")
             )}
           </Button>
         </div>

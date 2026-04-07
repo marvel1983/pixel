@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { SUPPORTED_LOCALES } from "@/i18n";
 
 export function HreflangTags() {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   useEffect(() => {
     const existing = document.querySelectorAll('link[rel="alternate"][hreflang]');
@@ -34,10 +34,21 @@ export function HreflangTags() {
 
     document.documentElement.lang = i18n.language;
 
+    const metaDesc = document.querySelector('meta[name="description"]');
+    const desc = t("footer.tagline");
+    if (metaDesc) {
+      metaDesc.setAttribute("content", desc);
+    } else {
+      const meta = document.createElement("meta");
+      meta.name = "description";
+      meta.content = desc;
+      document.head.appendChild(meta);
+    }
+
     return () => {
       document.querySelectorAll('link[rel="alternate"][hreflang]').forEach((el) => el.remove());
     };
-  }, [i18n.language]);
+  }, [i18n.language, t]);
 
   return null;
 }

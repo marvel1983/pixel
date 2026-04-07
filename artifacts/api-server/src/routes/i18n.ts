@@ -31,11 +31,18 @@ router.get("/locales/overrides/:locale", async (req, res) => {
 });
 
 router.put("/user/locale", requireAuth, async (req, res) => {
-  const userId = (req as any).user?.id;
-  if (!userId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const userId = req.user!.userId;
   const { locale } = req.body;
   if (!locale || typeof locale !== "string" || locale.length > 10) {
     res.status(400).json({ error: "Invalid locale" });
+    return;
+  }
+  const enabled = await db
+    .select({ code: enabledLocales.code })
+    .from(enabledLocales)
+    .where(and(eq(enabledLocales.code, locale), eq(enabledLocales.enabled, true)));
+  if (enabled.length === 0) {
+    res.status(400).json({ error: "Locale not enabled" });
     return;
   }
   await db.update(users).set({ preferredLocale: locale, updatedAt: new Date() }).where(eq(users.id, userId));
