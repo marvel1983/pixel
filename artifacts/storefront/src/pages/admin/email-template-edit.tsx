@@ -7,9 +7,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, Save, Copy, Check, Monitor, Smartphone, Variable, Eye } from "lucide-react";
+import { ArrowLeft, Save, Copy, Check, Monitor, Smartphone, Variable, Eye, Code, Type } from "lucide-react";
 import { useLocation, useParams } from "wouter";
 import { useAuthStore } from "@/stores/auth-store";
+import { RichTextEditor } from "@/components/admin/rich-text-editor";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -32,6 +33,8 @@ export default function EmailTemplateEditPage() {
   const [previewSize, setPreviewSize] = useState<"desktop" | "mobile">("desktop");
   const [showSample, setShowSample] = useState(true);
   const [copied, setCopied] = useState<string | null>(null);
+  const [editorMode, setEditorMode] = useState<"visual" | "source">("visual");
+  const [sourceHtml, setSourceHtml] = useState("");
   const headers: Record<string, string> = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 
   const fetchTemplate = useCallback(() => {
@@ -40,24 +43,38 @@ export default function EmailTemplateEditPage() {
         setTemplate(d.template);
         setSubject(d.template.subject);
         setBodyHtml(d.template.bodyHtml);
+        setSourceHtml(d.template.bodyHtml);
         setSampleData(d.template.sampleData);
       }).catch(() => {});
   }, [token, params.id]);
 
   useEffect(() => { fetchTemplate(); }, [fetchTemplate]);
 
+  const switchMode = (mode: "visual" | "source") => {
+    if (mode === "source") {
+      setSourceHtml(bodyHtml);
+    } else {
+      setBodyHtml(sourceHtml);
+    }
+    setEditorMode(mode);
+  };
+
   const save = async () => {
+    const html = editorMode === "source" ? sourceHtml : bodyHtml;
     setSaving(true);
-    await fetch(`${API}/admin/email-templates/${params.id}`, { method: "PUT", headers, body: JSON.stringify({ subject, bodyHtml, sampleData }) });
+    await fetch(`${API}/admin/email-templates/${params.id}`, { method: "PUT", headers, body: JSON.stringify({ subject, bodyHtml: html, sampleData }) });
     setSaving(false); setSaved(true);
+    if (editorMode === "source") setBodyHtml(sourceHtml);
+    else setSourceHtml(bodyHtml);
     setTimeout(() => setSaved(false), 2000);
   };
 
   const copyVar = (v: string) => {
     navigator.clipboard.writeText(`{{${v}}}`);
-    setCopied(v);
-    setTimeout(() => setCopied(null), 1500);
+    setCopied(v); setTimeout(() => setCopied(null), 1500);
   };
+
+  const currentHtml = editorMode === "source" ? sourceHtml : bodyHtml;
 
   const renderedSubject = useMemo(() => {
     if (!showSample) return subject;
@@ -67,13 +84,12 @@ export default function EmailTemplateEditPage() {
   }, [subject, sampleData, showSample]);
 
   const renderedHtml = useMemo(() => {
-    let html = bodyHtml;
+    let html = currentHtml;
     if (showSample) {
       Object.entries(sampleData).forEach(([k, v]) => { html = html.replaceAll(`{{${k}}}`, v); });
     }
-    const wrapper = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;margin:0;padding:24px;color:#1a1a1a;line-height:1.6;background:#f8f9fa}h1{color:#1a1a1a;font-size:22px}pre{background:#f1f3f5;padding:12px;border-radius:6px;font-size:14px}a{color:#2563eb}</style></head><body>${html}</body></html>`;
-    return wrapper;
-  }, [bodyHtml, sampleData, showSample]);
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;margin:0;padding:24px;color:#1a1a1a;line-height:1.6;background:#f8f9fa}h1{color:#1a1a1a;font-size:22px}pre{background:#f1f3f5;padding:12px;border-radius:6px;font-size:14px}a{color:#2563eb}</style></head><body>${html}</body></html>`;
+  }, [currentHtml, sampleData, showSample]);
 
   if (!template) return <div className="p-8 text-center text-muted-foreground">Loading...</div>;
 
@@ -101,9 +117,23 @@ export default function EmailTemplateEditPage() {
             </CardContent>
           </Card>
           <Card>
-            <CardHeader className="pb-3"><CardTitle className="text-sm">Email Body (HTML)</CardTitle></CardHeader>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm">Email Body</CardTitle>
+                <Tabs value={editorMode} onValueChange={(v) => switchMode(v as "visual" | "source")}>
+                  <TabsList className="h-7">
+                    <TabsTrigger value="visual" className="text-xs px-2 h-6"><Type className="h-3 w-3 mr-1" />Visual</TabsTrigger>
+                    <TabsTrigger value="source" className="text-xs px-2 h-6"><Code className="h-3 w-3 mr-1" />HTML</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+              </div>
+            </CardHeader>
             <CardContent>
-              <Textarea value={bodyHtml} onChange={(e) => setBodyHtml(e.target.value)} rows={16} className="font-mono text-xs" placeholder="<h1>Your Email</h1><p>Content here...</p>" />
+              {editorMode === "visual" ? (
+                <RichTextEditor content={bodyHtml} onChange={setBodyHtml} placeholder="Write your email content..." />
+              ) : (
+                <Textarea value={sourceHtml} onChange={(e) => setSourceHtml(e.target.value)} rows={16} className="font-mono text-xs" placeholder="<h1>Your Email</h1><p>Content here...</p>" />
+              )}
             </CardContent>
           </Card>
           <Card>
@@ -112,8 +142,7 @@ export default function EmailTemplateEditPage() {
               <div className="flex flex-wrap gap-2">
                 {template.variables.map((v) => (
                   <button key={v} onClick={() => copyVar(v)} className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-xs font-mono text-blue-700 hover:bg-blue-100 transition-colors">
-                    {`{{${v}}}`}
-                    {copied === v ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3 opacity-50" />}
+                    {`{{${v}}}`}{copied === v ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3 opacity-50" />}
                   </button>
                 ))}
               </div>
@@ -138,8 +167,7 @@ export default function EmailTemplateEditPage() {
                 <CardTitle className="text-sm flex items-center gap-2"><Eye className="h-4 w-4" />Preview</CardTitle>
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Switch checked={showSample} onCheckedChange={setShowSample} className="scale-75" />
-                    <span>Sample data</span>
+                    <Switch checked={showSample} onCheckedChange={setShowSample} className="scale-75" /><span>Sample data</span>
                   </div>
                   <Tabs value={previewSize} onValueChange={(v) => setPreviewSize(v as "desktop" | "mobile")}>
                     <TabsList className="h-7">
