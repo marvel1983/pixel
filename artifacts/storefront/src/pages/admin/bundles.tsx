@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Package, Plus, Search, Copy, Trash2, Pencil, Eye, EyeOff, Star, Tag } from "lucide-react";
+import { Package, Plus, Search, Copy, Trash2, Pencil, Eye, EyeOff, Star, Tag, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +26,7 @@ interface AdminBundle {
 }
 
 interface ProductOption { id: number; name: string; imageUrl: string | null; }
+interface BundleAnalytics { bundleId: number; name: string; itemCount: number; purchases: number; revenue: string; }
 
 export default function AdminBundlesPage() {
   const token = useAuthStore((s) => s.token);
@@ -39,6 +40,7 @@ export default function AdminBundlesPage() {
   const [products, setProducts] = useState<ProductOption[]>([]);
   const [productSearch, setProductSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [analytics, setAnalytics] = useState<BundleAnalytics | null>(null);
 
   const h = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 
@@ -55,7 +57,7 @@ export default function AdminBundlesPage() {
   async function loadProducts() {
     const r = await fetch(`${API}/admin/products?limit=200`, { headers: h });
     const data = await r.json();
-    setProducts((data.products || []).map((p: any) => ({ id: p.id, name: p.name, imageUrl: p.imageUrl })));
+    setProducts((data.products || []).map((p: ProductOption) => ({ id: p.id, name: p.name, imageUrl: p.imageUrl })));
   }
 
   function openNew() {
@@ -99,6 +101,11 @@ export default function AdminBundlesPage() {
   async function duplicate(id: number) {
     await fetch(`${API}/admin/bundles/${id}/duplicate`, { method: "POST", headers: h });
     toast({ title: "Bundle duplicated" }); load();
+  }
+
+  async function viewAnalytics(id: number) {
+    const r = await fetch(`${API}/admin/bundles/${id}/analytics`, { headers: h });
+    if (r.ok) setAnalytics(await r.json());
   }
 
   function toggleProduct(id: number) {
@@ -172,6 +179,7 @@ export default function AdminBundlesPage() {
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex gap-1 justify-end">
+                    <Button variant="ghost" size="icon" onClick={() => viewAnalytics(b.id)} title="Analytics"><BarChart3 className="h-4 w-4" /></Button>
                     <Button variant="ghost" size="icon" onClick={() => openEdit(b)}><Pencil className="h-4 w-4" /></Button>
                     <Button variant="ghost" size="icon" onClick={() => duplicate(b.id)}><Copy className="h-4 w-4" /></Button>
                     <Button variant="ghost" size="icon" onClick={() => remove(b.id)}><Trash2 className="h-4 w-4 text-red-500" /></Button>
@@ -182,6 +190,22 @@ export default function AdminBundlesPage() {
           </TableBody>
         </Table>
       </Card>
+
+      {analytics && (
+        <Dialog open={!!analytics} onOpenChange={() => setAnalytics(null)}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader><DialogTitle>Bundle Analytics</DialogTitle></DialogHeader>
+            <div className="space-y-3 py-2">
+              <p className="font-medium">{analytics.name}</p>
+              <div className="grid grid-cols-2 gap-3">
+                <Card><CardContent className="p-3 text-center"><p className="text-2xl font-bold">{analytics.purchases}</p><p className="text-xs text-muted-foreground">Orders</p></CardContent></Card>
+                <Card><CardContent className="p-3 text-center"><p className="text-2xl font-bold">${analytics.revenue}</p><p className="text-xs text-muted-foreground">Revenue</p></CardContent></Card>
+              </div>
+              <p className="text-xs text-muted-foreground">{analytics.itemCount} products in bundle</p>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
 
       <BundleDialog
         open={open} onOpenChange={setOpen} editing={editing} setEditing={setEditing}
@@ -202,7 +226,7 @@ function BundleDialog({ open, onOpenChange, editing, setEditing, saving, onSave,
   productSearch: string; setProductSearch: (v: string) => void;
 }) {
   if (!editing) return null;
-  const upd = (field: string, val: any) => setEditing({ ...editing, [field]: val });
+  const upd = (field: keyof AdminBundle, val: string | number | boolean | null) => setEditing({ ...editing, [field]: val });
 
   const selectedProducts = selectedIds.map((id) => products.find((p) => p.id === id)).filter(Boolean);
   const bundlePrice = parseFloat(editing.bundlePriceUsd) || 0;

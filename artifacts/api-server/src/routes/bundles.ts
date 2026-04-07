@@ -66,7 +66,7 @@ router.get("/bundles/by-product/:productId", async (req, res) => {
   if (!rows.length) { res.json([]); return; }
 
   const bundleIds = rows.map((r) => r.bundleId);
-  const result: any[] = [];
+  const result: Array<typeof bundles.$inferSelect & { items: Awaited<ReturnType<typeof getBundleProducts>>; individualTotal: string }> = [];
   for (const bid of bundleIds) {
     const [b] = await db.select().from(bundles)
       .where(and(eq(bundles.id, bid), eq(bundles.isActive, true))).limit(1);

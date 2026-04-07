@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { GripVertical, Pencil, Layout, Image, ShoppingBag, Sparkles, Star, Type } from "lucide-react";
+import { GripVertical, Pencil, Layout, Image, ShoppingBag, Sparkles, Star, Type, Package } from "lucide-react";
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -19,11 +19,13 @@ interface Section { id: number; type: string; title: string | null; isEnabled: b
 const SECTION_ICONS: Record<string, typeof Layout> = {
   HERO_SLIDER: Image, CATEGORY_ROW: Layout, BRAND_SECTIONS: ShoppingBag,
   NEW_ADDITIONS: Sparkles, PRODUCT_SPOTLIGHT: Star, FEATURED_TEXT_BANNER: Type,
+  FEATURED_BUNDLES: Package,
 };
 
 const SECTION_LABELS: Record<string, string> = {
   HERO_SLIDER: "Hero Slider", CATEGORY_ROW: "Category Row", BRAND_SECTIONS: "Brand Partners",
   NEW_ADDITIONS: "New Additions", PRODUCT_SPOTLIGHT: "Product Spotlight", FEATURED_TEXT_BANNER: "Featured Text Banner",
+  FEATURED_BUNDLES: "Featured Bundles",
 };
 
 function SortableItem({ section, onEdit, onToggle }: { section: Section; onEdit: (s: Section) => void; onToggle: (s: Section) => void }) {
@@ -98,6 +100,7 @@ export default function HomepageSectionsPage() {
       case "PRODUCT_SPOTLIGHT": return ["productId", "heading"];
       case "HERO_SLIDER": return ["autoplaySpeed", "maxSlides"];
       case "CATEGORY_ROW": return ["maxCategories"];
+      case "FEATURED_BUNDLES": return ["limit"];
       default: return [];
     }
   };

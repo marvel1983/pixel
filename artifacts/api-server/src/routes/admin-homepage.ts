@@ -14,6 +14,7 @@ const DEFAULT_SECTIONS = [
   { type: "NEW_ADDITIONS" as const, title: "New Additions", sortOrder: 3, config: { limit: 12 } },
   { type: "PRODUCT_SPOTLIGHT" as const, title: "Product Spotlight", sortOrder: 4, config: {} },
   { type: "FEATURED_TEXT_BANNER" as const, title: "Featured Banner", sortOrder: 5, config: { text: "", link: "" } },
+  { type: "FEATURED_BUNDLES" as const, title: "Featured Bundles", sortOrder: 6, config: { limit: 3 } },
 ];
 
 router.get("/admin/homepage-sections", requireAuth, requireAdmin, requirePermission("manageContent"), async (_req, res) => {

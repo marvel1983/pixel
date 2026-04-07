@@ -156,7 +156,28 @@ router.get("/admin/bundles/:id/analytics", ...auth, async (req, res) => {
   const id = parseInt(req.params.id);
   const [bundle] = await db.select().from(bundles).where(eq(bundles.id, id)).limit(1);
   if (!bundle) { res.status(404).json({ error: "Not found" }); return; }
-  res.json({ bundleId: id, name: bundle.name, views: 0, cartAdds: 0, purchases: 0 });
+
+  const items = await db.select({ productId: bundleItems.productId })
+    .from(bundleItems).where(eq(bundleItems.bundleId, id));
+  const productIds = items.map((i) => i.productId);
+
+  let purchases = 0;
+  let revenue = 0;
+  if (productIds.length > 0) {
+    const variantIds = await db.select({ id: productVariants.id })
+      .from(productVariants).where(inArray(productVariants.productId, productIds));
+    if (variantIds.length > 0) {
+      const vIds = variantIds.map((v) => v.id);
+      const stats = await db.select({
+        count: sql<number>`count(distinct ${orderItems.orderId})`,
+        total: sql<string>`coalesce(sum(${orderItems.priceUsd} * ${orderItems.quantity}), 0)`,
+      }).from(orderItems).where(inArray(orderItems.variantId, vIds));
+      purchases = Number(stats[0]?.count ?? 0);
+      revenue = parseFloat(stats[0]?.total ?? "0");
+    }
+  }
+
+  res.json({ bundleId: id, name: bundle.name, itemCount: productIds.length, purchases, revenue: revenue.toFixed(2) });
 });
 
 export default router;
