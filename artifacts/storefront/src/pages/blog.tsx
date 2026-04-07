@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { Loader2, Clock, Eye, ArrowRight, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -23,8 +23,13 @@ interface BlogPostSummary {
   authorName: string | null;
 }
 
+interface Category { id: number; name: string; slug: string; }
+
 export default function BlogPage() {
+  const queryString = useSearch();
+  const [, setLocation] = useLocation();
   const [posts, setPosts] = useState<BlogPostSummary[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -32,6 +37,25 @@ export default function BlogPage() {
   const [activeTag, setActiveTag] = useState("");
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
+
+  useEffect(() => {
+    fetch(`${API}/blog/categories`).then((r) => r.json())
+      .then((d) => setCategories(d.categories || []))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(queryString);
+    const cat = params.get("category") || "";
+    const tag = params.get("tag") || "";
+    const q = params.get("search") || "";
+    const p = parseInt(params.get("page") || "1") || 1;
+    setActiveCategory(cat);
+    setActiveTag(tag);
+    setSearch(q);
+    setSearchInput(q);
+    setPage(p);
+  }, [queryString]);
 
   useEffect(() => {
     loadPosts();
@@ -53,22 +77,29 @@ export default function BlogPage() {
     } catch {} finally { setLoading(false); }
   }
 
+  function updateUrl(cat: string, tag: string, q: string, p: number) {
+    const params = new URLSearchParams();
+    if (cat) params.set("category", cat);
+    if (tag) params.set("tag", tag);
+    if (q) params.set("search", q);
+    if (p > 1) params.set("page", String(p));
+    const qs = params.toString();
+    setLocation(`/blog${qs ? `?${qs}` : ""}`, { replace: true });
+  }
+
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
-    setPage(1);
-    setSearch(searchInput);
+    updateUrl(activeCategory, activeTag, searchInput, 1);
   }
 
   function selectCategory(slug: string) {
-    setActiveCategory(slug === activeCategory ? "" : slug);
-    setActiveTag("");
-    setPage(1);
+    const next = slug === activeCategory ? "" : slug;
+    updateUrl(next, "", search, 1);
   }
 
   function selectTag(tag: string) {
-    setActiveTag(tag === activeTag ? "" : tag);
-    setActiveCategory("");
-    setPage(1);
+    const next = tag === activeTag ? "" : tag;
+    updateUrl("", next, search, 1);
   }
 
   const featured = posts.length > 0 && page === 1 && !search ? posts[0] : null;
@@ -77,7 +108,7 @@ export default function BlogPage() {
   return (
     <div className="container mx-auto px-4 py-6">
       <Breadcrumbs crumbs={[{ label: "Blog" }]} />
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-2xl font-bold">Blog</h1>
           <p className="text-muted-foreground text-sm mt-1">Software tips, guides, and news</p>
@@ -88,6 +119,17 @@ export default function BlogPage() {
           <Button type="submit" variant="outline" size="icon"><Search className="h-4 w-4" /></Button>
         </form>
       </div>
+
+      {categories.length > 0 && (
+        <div className="flex gap-2 flex-wrap mb-6">
+          <Button variant={activeCategory === "" ? "default" : "outline"} size="sm"
+            onClick={() => selectCategory("")}>All</Button>
+          {categories.map((cat) => (
+            <Button key={cat.id} variant={activeCategory === cat.slug ? "default" : "outline"} size="sm"
+              onClick={() => selectCategory(cat.slug)}>{cat.name}</Button>
+          ))}
+        </div>
+      )}
 
       {featured && <FeaturedPost post={featured} />}
 
@@ -106,7 +148,7 @@ export default function BlogPage() {
             <div className="flex justify-center gap-2 mt-8">
               {Array.from({ length: totalPages }, (_, i) => (
                 <Button key={i} variant={page === i + 1 ? "default" : "outline"} size="sm"
-                  onClick={() => setPage(i + 1)}>{i + 1}</Button>
+                  onClick={() => updateUrl(activeCategory, activeTag, search, i + 1)}>{i + 1}</Button>
               ))}
             </div>
           )}

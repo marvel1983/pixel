@@ -3,10 +3,12 @@ import { db } from "@workspace/db";
 import { blogPosts, blogCategories, users } from "@workspace/db/schema";
 import { eq, desc, sql, ilike, and, or } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
+import { requirePermission } from "../middleware/permissions";
 
 const router = Router();
+const auth = [requireAuth, requireAdmin, requirePermission("manageContent")];
 
-router.get("/admin/blog/posts", requireAuth, requireAdmin, async (req, res) => {
+router.get("/admin/blog/posts", ...auth, async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
     const limit = 20;
@@ -43,7 +45,7 @@ router.get("/admin/blog/posts", requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
-router.get("/admin/blog/posts/:id", requireAuth, requireAdmin, async (req, res) => {
+router.get("/admin/blog/posts/:id", ...auth, async (req, res) => {
   try {
     const rows = await db.select().from(blogPosts).where(eq(blogPosts.id, parseInt(req.params.id)));
     if (!rows.length) return res.status(404).json({ error: "Post not found" });
@@ -53,7 +55,7 @@ router.get("/admin/blog/posts/:id", requireAuth, requireAdmin, async (req, res) 
   }
 });
 
-router.post("/admin/blog/posts", requireAuth, requireAdmin, async (req, res) => {
+router.post("/admin/blog/posts", ...auth, async (req, res) => {
   try {
     const { title, slug, excerpt, content, coverImageUrl, categoryId, tags, status, seoTitle, seoDescription, scheduledAt } = req.body;
     const isPublished = status === "published";
@@ -67,13 +69,14 @@ router.post("/admin/blog/posts", requireAuth, requireAdmin, async (req, res) => 
       seoTitle, seoDescription,
     }).returning();
     res.json(post);
-  } catch (err: any) {
-    if (err?.constraint?.includes("slug")) return res.status(400).json({ error: "Slug already exists" });
+  } catch (err) {
+    if (err instanceof Error && "constraint" in err && String((err as Record<string, unknown>).constraint).includes("slug"))
+      return res.status(400).json({ error: "Slug already exists" });
     res.status(500).json({ error: "Failed to create post" });
   }
 });
 
-router.put("/admin/blog/posts/:id", requireAuth, requireAdmin, async (req, res) => {
+router.put("/admin/blog/posts/:id", ...auth, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const { title, slug, excerpt, content, coverImageUrl, categoryId, tags, status, seoTitle, seoDescription, scheduledAt } = req.body;
@@ -92,13 +95,14 @@ router.put("/admin/blog/posts/:id", requireAuth, requireAdmin, async (req, res) 
       seoTitle, seoDescription, updatedAt: new Date(),
     }).where(eq(blogPosts.id, id)).returning();
     res.json(post);
-  } catch (err: any) {
-    if (err?.constraint?.includes("slug")) return res.status(400).json({ error: "Slug already exists" });
+  } catch (err) {
+    if (err instanceof Error && "constraint" in err && String((err as Record<string, unknown>).constraint).includes("slug"))
+      return res.status(400).json({ error: "Slug already exists" });
     res.status(500).json({ error: "Failed to update post" });
   }
 });
 
-router.delete("/admin/blog/posts/:id", requireAuth, requireAdmin, async (req, res) => {
+router.delete("/admin/blog/posts/:id", ...auth, async (req, res) => {
   try {
     await db.delete(blogPosts).where(eq(blogPosts.id, parseInt(req.params.id)));
     res.json({ success: true });
@@ -107,7 +111,7 @@ router.delete("/admin/blog/posts/:id", requireAuth, requireAdmin, async (req, re
   }
 });
 
-router.get("/admin/blog/categories", requireAuth, requireAdmin, async (_req, res) => {
+router.get("/admin/blog/categories", ...auth, async (_req, res) => {
   try {
     const categories = await db.select().from(blogCategories).orderBy(blogCategories.sortOrder);
     res.json({ categories });
@@ -116,32 +120,34 @@ router.get("/admin/blog/categories", requireAuth, requireAdmin, async (_req, res
   }
 });
 
-router.post("/admin/blog/categories", requireAuth, requireAdmin, async (req, res) => {
+router.post("/admin/blog/categories", ...auth, async (req, res) => {
   try {
     const { name, slug, description, sortOrder } = req.body;
     const [cat] = await db.insert(blogCategories).values({
       name, slug, description, sortOrder: sortOrder || 0,
     }).returning();
     res.json(cat);
-  } catch (err: any) {
-    if (err?.constraint?.includes("slug")) return res.status(400).json({ error: "Slug already exists" });
+  } catch (err) {
+    if (err instanceof Error && "constraint" in err && String((err as Record<string, unknown>).constraint).includes("slug"))
+      return res.status(400).json({ error: "Slug already exists" });
     res.status(500).json({ error: "Failed to create category" });
   }
 });
 
-router.put("/admin/blog/categories/:id", requireAuth, requireAdmin, async (req, res) => {
+router.put("/admin/blog/categories/:id", ...auth, async (req, res) => {
   try {
     const { name, slug, description, sortOrder } = req.body;
     const [cat] = await db.update(blogCategories).set({ name, slug, description, sortOrder })
       .where(eq(blogCategories.id, parseInt(req.params.id))).returning();
     res.json(cat);
-  } catch (err: any) {
-    if (err?.constraint?.includes("slug")) return res.status(400).json({ error: "Slug already exists" });
+  } catch (err) {
+    if (err instanceof Error && "constraint" in err && String((err as Record<string, unknown>).constraint).includes("slug"))
+      return res.status(400).json({ error: "Slug already exists" });
     res.status(500).json({ error: "Failed to update category" });
   }
 });
 
-router.delete("/admin/blog/categories/:id", requireAuth, requireAdmin, async (req, res) => {
+router.delete("/admin/blog/categories/:id", ...auth, async (req, res) => {
   try {
     await db.update(blogPosts).set({ categoryId: null })
       .where(eq(blogPosts.categoryId, parseInt(req.params.id)));
