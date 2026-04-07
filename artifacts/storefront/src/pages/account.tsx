@@ -8,10 +8,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthStore } from "@/stores/auth-store";
 import { Breadcrumbs } from "@/components/shop/breadcrumbs";
-import { User, ShoppingBag, Heart, Star, Gift, Link2, Mail, Loader2 } from "lucide-react";
+import { User, ShoppingBag, Heart, Star, Gift, Link2, Mail, Loader2, Shield } from "lucide-react";
 import { GiftCardsTab } from "@/components/account/gift-cards-tab";
 import { AffiliateTab } from "@/components/account/affiliate-tab";
 import { NewsletterTab } from "@/components/account/newsletter-tab";
+import { ConnectedAccountsTab } from "@/components/account/connected-accounts";
 
 function ProfileTab() {
   const { user, token, setAuth } = useAuthStore();
@@ -135,17 +136,17 @@ function ProfileTab() {
 }
 
 const PlaceholderTab = ({ title, icon }: { title: string; icon: React.ReactNode }) => (
-  <Card>
-    <CardContent className="py-12 text-center text-muted-foreground">
-      <div className="flex justify-center mb-3">{icon}</div>
-      <p>Your {title.toLowerCase()} will appear here.</p>
-    </CardContent>
-  </Card>
+  <Card><CardContent className="py-12 text-center text-muted-foreground">
+    <div className="flex justify-center mb-3">{icon}</div>
+    <p>Your {title.toLowerCase()} will appear here.</p>
+  </CardContent></Card>
 );
 
 export default function AccountPage() {
   const { user, isAuthenticated } = useAuthStore();
   const [, setLocation] = useLocation();
+  const params = new URLSearchParams(window.location.search);
+  const initialTab = params.get("tab") || "profile";
 
   useEffect(() => {
     if (!isAuthenticated()) setLocation("/login");
@@ -161,13 +162,16 @@ export default function AccountPage() {
         Welcome, {user.firstName ?? user.email}
       </h1>
 
-      <Tabs defaultValue="profile">
-        <TabsList className="mb-4">
+      <Tabs defaultValue={initialTab}>
+        <TabsList className="mb-4 flex-wrap">
           <TabsTrigger value="profile" className="gap-1.5">
             <User className="h-4 w-4" /> Profile
           </TabsTrigger>
           <TabsTrigger value="orders" className="gap-1.5">
             <ShoppingBag className="h-4 w-4" /> Orders
+          </TabsTrigger>
+          <TabsTrigger value="connected" className="gap-1.5">
+            <Shield className="h-4 w-4" /> Connected
           </TabsTrigger>
           <TabsTrigger value="wishlist" className="gap-1.5">
             <Heart className="h-4 w-4" /> Wishlist
@@ -191,6 +195,9 @@ export default function AccountPage() {
         </TabsContent>
         <TabsContent value="orders">
           <AccountOrdersTab />
+        </TabsContent>
+        <TabsContent value="connected">
+          <ConnectedAccountsTab />
         </TabsContent>
         <TabsContent value="wishlist">
           <PlaceholderTab title="Wishlist" icon={<Heart className="h-8 w-8" />} />
@@ -238,26 +245,9 @@ function AccountOrdersTab() {
     load();
   }, [token]);
 
-  if (loading) {
-    return (
-      <Card>
-        <CardContent className="py-8 text-center">
-          <Loader2 className="h-6 w-6 animate-spin mx-auto" />
-        </CardContent>
-      </Card>
-    );
-  }
+  if (loading) return <Card><CardContent className="py-8 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></CardContent></Card>;
 
-  if (orders.length === 0) {
-    return (
-      <Card>
-        <CardContent className="py-12 text-center text-muted-foreground">
-          <ShoppingBag className="h-8 w-8 mx-auto mb-3" />
-          <p>No orders yet.</p>
-        </CardContent>
-      </Card>
-    );
-  }
+  if (orders.length === 0) return <Card><CardContent className="py-12 text-center text-muted-foreground"><ShoppingBag className="h-8 w-8 mx-auto mb-3" /><p>No orders yet.</p></CardContent></Card>;
 
   return (
     <Card>

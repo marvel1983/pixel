@@ -36,6 +36,7 @@ import SearchPage from "@/pages/search";
 import FlashSalePage from "@/pages/flash-sale";
 import NewsletterConfirmPage from "@/pages/newsletter-confirm";
 import NewsletterUnsubscribePage from "@/pages/newsletter-unsubscribe";
+import AuthGoogleSuccessPage from "@/pages/auth-google-success";
 import { useReferralTracking } from "@/hooks/use-referral";
 import { ExitIntentPopup } from "@/components/newsletter/exit-intent-popup";
 import StaticPageView from "@/pages/static-page";
@@ -75,6 +76,7 @@ function StorefrontWithMaintenance() {
         <Route path="/account/orders" component={AccountOrdersPage} />
         <Route path="/login" component={LoginPage} />
         <Route path="/register" component={RegisterPage} />
+        <Route path="/auth/google/success" component={AuthGoogleSuccessPage} />
         <Route path="/forgot-password" component={ForgotPasswordPage} />
         <Route path="/reset-password/:token" component={ResetPasswordPage} />
         <Route path="/account" component={AccountPage} />

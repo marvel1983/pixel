@@ -10,6 +10,7 @@ const SettingsWebhooksTab = lazy(() => import("./settings-webhooks"));
 const SettingsLiveChatTab = lazy(() => import("./settings-livechat"));
 const SettingsNotificationsTab = lazy(() => import("./settings-notifications"));
 const SettingsSeoTrackingTab = lazy(() => import("./settings-seo-tracking"));
+const SettingsGoogleTab = lazy(() => import("./settings-google"));
 
 const tabs = [
   { key: "general", label: "General" },
@@ -21,6 +22,7 @@ const tabs = [
   { key: "api-keys", label: "API Keys" },
   { key: "webhooks", label: "Webhooks" },
   { key: "live-chat", label: "Live Chat" },
+  { key: "google-oauth", label: "Google OAuth" },
 ] as const;
 
 export default function AdminSettingsPage() {
@@ -51,6 +53,7 @@ export default function AdminSettingsPage() {
         {activeTab === "api-keys" && <SettingsApiKeysTab />}
         {activeTab === "webhooks" && <SettingsWebhooksTab />}
         {activeTab === "live-chat" && <SettingsLiveChatTab />}
+        {activeTab === "google-oauth" && <SettingsGoogleTab />}
       </Suspense>
     </div>
   );

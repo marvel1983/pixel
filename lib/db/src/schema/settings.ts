@@ -53,6 +53,9 @@ export const siteSettings = pgTable("site_settings", {
   smtpSecure: boolean("smtp_secure").notNull().default(false),
   liveChatEnabled: boolean("live_chat_enabled").notNull().default(false),
   liveChatCode: text("live_chat_code"),
+  googleOAuthEnabled: boolean("google_oauth_enabled").notNull().default(false),
+  googleClientId: varchar("google_client_id", { length: 500 }),
+  googleClientSecret: text("google_client_secret"),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 

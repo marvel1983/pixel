@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuthStore } from "@/stores/auth-store";
 import { Breadcrumbs } from "@/components/shop/breadcrumbs";
 import { LogIn, Eye, EyeOff, Loader2 } from "lucide-react";
+import { GoogleButton } from "@/components/auth/google-button";
 
 export default function LoginPage() {
   const [, setLocation] = useLocation();
@@ -17,6 +18,15 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const error = params.get("error");
+    if (error) {
+      toast({ title: "Sign in failed", description: error, variant: "destructive" });
+      window.history.replaceState({}, "", "/login");
+    }
+  }, [toast]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -105,6 +115,13 @@ export default function LoginPage() {
                 Sign In
               </Button>
             </form>
+
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
+              <div className="relative flex justify-center text-xs uppercase"><span className="bg-card px-2 text-muted-foreground">Or</span></div>
+            </div>
+
+            <GoogleButton />
 
             <p className="text-center text-sm text-muted-foreground mt-4">
               Don't have an account?{" "}

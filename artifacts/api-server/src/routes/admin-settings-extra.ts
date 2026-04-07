@@ -151,4 +151,34 @@ router.get("/admin/settings/smtp/queue-status", requireAuth, requireAdmin, requi
   res.json({ counts, recent });
 });
 
+router.get("/admin/settings/google-oauth", requireAuth, requireAdmin, requirePermission("manageSettings"), async (_req, res) => {
+  const [s] = await db.select({
+    enabled: siteSettings.googleOAuthEnabled,
+    clientId: siteSettings.googleClientId,
+    hasSecret: sql<boolean>`${siteSettings.googleClientSecret} IS NOT NULL AND ${siteSettings.googleClientSecret} != ''`,
+  }).from(siteSettings);
+  res.json({
+    enabled: s?.enabled ?? false,
+    clientId: s?.clientId ?? "",
+    hasSecret: s?.hasSecret ?? false,
+  });
+});
+
+router.put("/admin/settings/google-oauth", requireAuth, requireAdmin, requirePermission("manageSettings"), async (req, res) => {
+  const { enabled, clientId, clientSecret } = req.body;
+  const update: Record<string, unknown> = { updatedAt: new Date() };
+  if (typeof enabled === "boolean") update.googleOAuthEnabled = enabled;
+  if (typeof clientId === "string") update.googleClientId = clientId;
+  if (typeof clientSecret === "string" && clientSecret.length > 0) {
+    update.googleClientSecret = encrypt(clientSecret);
+  }
+  const [s] = await db.select({ id: siteSettings.id }).from(siteSettings);
+  if (s) {
+    await db.update(siteSettings).set(update).where(eq(siteSettings.id, s.id));
+  } else {
+    await db.insert(siteSettings).values(update as Record<string, unknown>);
+  }
+  res.json({ ok: true });
+});
+
 export default router;

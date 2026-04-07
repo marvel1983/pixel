@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuthStore } from "@/stores/auth-store";
 import { Breadcrumbs } from "@/components/shop/breadcrumbs";
 import { UserPlus, Eye, EyeOff, Loader2 } from "lucide-react";
+import { GoogleButton } from "@/components/auth/google-button";
 
 export default function RegisterPage() {
   const [, setLocation] = useLocation();
@@ -169,6 +170,13 @@ export default function RegisterPage() {
                 Create Account
               </Button>
             </form>
+
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
+              <div className="relative flex justify-center text-xs uppercase"><span className="bg-card px-2 text-muted-foreground">Or</span></div>
+            </div>
+
+            <GoogleButton label="Sign up with Google" />
 
             <p className="text-center text-sm text-muted-foreground mt-4">
               Already have an account?{" "}

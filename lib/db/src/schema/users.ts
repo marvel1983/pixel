@@ -25,6 +25,7 @@ export const users = pgTable("users", {
   lastName: varchar("last_name", { length: 100 }),
   role: userRoleEnum("role").notNull().default("CUSTOMER"),
   avatarUrl: text("avatar_url"),
+  googleId: varchar("google_id", { length: 255 }),
   isActive: boolean("is_active").notNull().default(true),
   emailVerified: boolean("email_verified").notNull().default(false),
   marketingConsent: boolean("marketing_consent").notNull().default(false),

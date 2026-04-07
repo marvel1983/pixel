@@ -15,7 +15,7 @@ pnpm workspace monorepo for PixelCodes, an ecommerce website selling digital sof
 - **Database**: PostgreSQL + Drizzle ORM
 - **Validation**: Zod (`zod/v4`), `drizzle-zod`
 - **API codegen**: Orval (from OpenAPI spec)
-- **Auth**: bcryptjs + JWT with 30-day cookie sessions
+- **Auth**: bcryptjs + JWT with 30-day cookie sessions + Google OAuth (optional)
 - **Build**: esbuild (CJS bundle for API server)
 - **Routing**: wouter (frontend)
 
@@ -52,6 +52,15 @@ Located in `artifacts/storefront/src/stores/`:
 - `currency-store.ts` — currency selection + conversion
 - `compare-store.ts` — product comparison (max 4)
 - `wishlist-store.ts` — wishlist with toggle
+- `flash-sale-store.ts` — active flash sale variant prices
+
+## Google OAuth
+
+- Admin configurable via Settings > Google OAuth tab (Client ID, Client Secret, enable/disable)
+- Server routes: `auth-google.ts` handles redirect, Google callback, login/register/link
+- Google-only accounts get placeholder password hash; users can set real password from account
+- Connected Accounts tab in account page shows link/unlink Google
+- `GoogleButton` component auto-hides when Google OAuth is disabled
 
 ## Metenzi API Integration
 

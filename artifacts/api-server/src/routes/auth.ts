@@ -50,7 +50,7 @@ const COOKIE_OPTS = {
 };
 
 function sanitizeUser(u: User) {
-  return { id: u.id, email: u.email, firstName: u.firstName, lastName: u.lastName, role: u.role, avatarUrl: u.avatarUrl, emailVerified: u.emailVerified, createdAt: u.createdAt };
+  return { id: u.id, email: u.email, firstName: u.firstName, lastName: u.lastName, role: u.role, avatarUrl: u.avatarUrl, emailVerified: u.emailVerified, googleId: u.googleId, createdAt: u.createdAt };
 }
 
 function makeToken(u: User) {

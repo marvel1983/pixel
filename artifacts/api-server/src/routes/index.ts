@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
 import authRouter from "./auth";
+import authGoogleRouter from "./auth-google";
 import adminRouter from "./admin";
 import adminDashboardRouter from "./admin-dashboard";
 import adminAnalyticsRouter from "./admin-analytics";
@@ -55,6 +56,7 @@ const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(authRouter);
+router.use(authGoogleRouter);
 router.use(adminRouter);
 router.use(adminDashboardRouter);
 router.use(adminAnalyticsRouter);
