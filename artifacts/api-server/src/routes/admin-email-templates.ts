@@ -18,7 +18,7 @@ const DEFAULT_TEMPLATES = [
 router.get("/admin/email-templates", requireAuth, requireAdmin, async (_req, res) => {
   let templates = await db.select().from(emailTemplates).orderBy(asc(emailTemplates.id));
   if (templates.length === 0) {
-    await db.insert(emailTemplates).values(DEFAULT_TEMPLATES);
+    await db.insert(emailTemplates).values(DEFAULT_TEMPLATES).onConflictDoNothing();
     templates = await db.select().from(emailTemplates).orderBy(asc(emailTemplates.id));
   }
   res.json({ templates });
@@ -43,6 +43,8 @@ router.put("/admin/email-templates/:id", requireAuth, requireAdmin, async (req, 
   if (typeof isEnabled === "boolean") updates.isEnabled = isEnabled;
   if (Array.isArray(variables)) updates.variables = variables;
   if (sampleData && typeof sampleData === "object") updates.sampleData = sampleData;
+  const [existing] = await db.select({ id: emailTemplates.id }).from(emailTemplates).where(eq(emailTemplates.id, id));
+  if (!existing) { res.status(404).json({ error: "Template not found" }); return; }
   await db.update(emailTemplates).set(updates).where(eq(emailTemplates.id, id));
   const [updated] = await db.select().from(emailTemplates).where(eq(emailTemplates.id, id));
   res.json({ template: updated });
@@ -52,7 +54,7 @@ router.post("/admin/email-templates/:id/test", requireAuth, requireAdmin, async 
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const { email } = req.body;
-  if (!email || typeof email !== "string") { res.status(400).json({ error: "email is required" }); return; }
+  if (!email || typeof email !== "string" || !email.includes("@")) { res.status(400).json({ error: "Valid email is required" }); return; }
   const [tmpl] = await db.select().from(emailTemplates).where(eq(emailTemplates.id, id));
   if (!tmpl) { res.status(404).json({ error: "Template not found" }); return; }
   res.json({ success: true, message: `Test email queued for ${email}` });
