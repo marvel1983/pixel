@@ -31,6 +31,7 @@ interface BillingInfo {
 interface OrderItem {
   variantId: number; productId: number; productName: string; variantName: string;
   priceUsd: string; quantity: number; platform?: string; bundleId?: number;
+  imageUrl?: string | null;
 }
 interface OrderInput {
   billing: BillingInfo;
@@ -208,7 +209,7 @@ export async function executeOrderPipeline(input: OrderInput) {
     scheduleTrustpilotInvite({ email: billing.email, name: `${billing.firstName} ${billing.lastName}`, orderNumber })
       .catch((err) => logger.error({ err, orderNumber }, "Trustpilot invite failed (non-fatal)"));
     recordPurchaseEvents(
-      items.map((i) => ({ productId: i.productId, productName: i.productName })),
+      items.map((i) => ({ productId: i.productId, productName: i.productName, imageUrl: i.imageUrl ?? undefined })),
       `${billing.firstName}`, billing.city,
     ).catch((err) => logger.error({ err, orderNumber }, "Social proof record failed (non-fatal)"));
     logger.info({ orderNumber, total: total.toFixed(2) }, "Order pipeline complete");
