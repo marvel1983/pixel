@@ -28,7 +28,7 @@ const INITIAL_PAYMENT: PaymentData = {
   cardNumber: "", expiry: "", cvc: "", cardName: "",
 };
 
-interface TaxInfo { taxRate: number; taxLabel: string; exempt: boolean; priceDisplay?: string }
+interface TaxInfo { taxRate: number; taxLabel: string; exempt: boolean; b2bEnabled: boolean; priceDisplay: string }
 
 export default function CheckoutPage() {
   const items = useCartStore((s) => s.items);
@@ -45,8 +45,7 @@ export default function CheckoutPage() {
   const [cppSelected, setCppSelected] = useState(true);
   const [guestPassword, setGuestPassword] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [taxInfo, setTaxInfo] = useState<TaxInfo>({ taxRate: 0, taxLabel: "VAT", exempt: false });
-  const [showVatField, setShowVatField] = useState(false);
+  const [taxInfo, setTaxInfo] = useState<TaxInfo>({ taxRate: 0, taxLabel: "VAT", exempt: false, b2bEnabled: false, priceDisplay: "exclusive" });
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -54,10 +53,7 @@ export default function CheckoutPage() {
     if (billing.vatNumber) params.set("vatNumber", billing.vatNumber);
     fetch(`${API}/tax/lookup?${params}`)
       .then((r) => r.json())
-      .then((d: TaxInfo & { priceDisplay?: string }) => {
-        setTaxInfo(d);
-        setShowVatField(!d.exempt && billing.country.length > 0);
-      })
+      .then((d: TaxInfo) => setTaxInfo(d))
       .catch(() => {});
   }, [billing.country, billing.vatNumber]);
 
@@ -93,9 +89,14 @@ export default function CheckoutPage() {
       const subtotal = getTotal();
       const discount = coupon ? subtotal * (coupon.pct / 100) : 0;
       const cpp = cppSelected ? getCppAmount(subtotal) : 0;
-      const taxableAmount = subtotal - discount + cpp;
-      const taxAmount = taxInfo.taxRate > 0 ? Math.round(taxableAmount * (taxInfo.taxRate / 100) * 100) / 100 : 0;
-      const total = taxableAmount + taxAmount;
+      const beforeTax = subtotal - discount + cpp;
+      const isInclusive = taxInfo.priceDisplay === "inclusive";
+      const taxAmount = taxInfo.taxRate > 0
+        ? isInclusive
+          ? Math.round((beforeTax - beforeTax / (1 + taxInfo.taxRate / 100)) * 100) / 100
+          : Math.round(beforeTax * (taxInfo.taxRate / 100) * 100) / 100
+        : 0;
+      const total = isInclusive ? beforeTax : beforeTax + taxAmount;
 
       const cardDigits = payment.cardNumber.replace(/\s/g, "");
       const cardToken = `tok_${cardDigits.slice(-4)}_${Date.now()}`;
@@ -136,7 +137,7 @@ export default function CheckoutPage() {
 
       <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
         <div className="space-y-6">
-          <BillingForm data={billing} errors={billingErrors} onChange={handleBillingChange} showVatField={showVatField} />
+          <BillingForm data={billing} errors={billingErrors} onChange={handleBillingChange} showVatField={taxInfo.b2bEnabled} />
           <Separator />
           <GuestAccount onPasswordChange={setGuestPassword} />
           <Separator />
@@ -153,7 +154,7 @@ export default function CheckoutPage() {
         </div>
 
         <div className="space-y-4">
-          <CheckoutSummary cppSelected={cppSelected} taxRate={taxInfo.taxRate} taxLabel={taxInfo.taxLabel} />
+          <CheckoutSummary cppSelected={cppSelected} taxRate={taxInfo.taxRate} taxLabel={taxInfo.taxLabel} priceDisplay={taxInfo.priceDisplay} />
           <ProductUpsell />
         </div>
       </div>

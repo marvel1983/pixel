@@ -96,16 +96,17 @@ router.delete("/admin/tax-rates/:id", requireAuth, requireAdmin, async (req, res
 
 router.get("/tax/lookup", async (req, res) => {
   const country = (req.query.country as string || "").toUpperCase();
-  const vatNumber = req.query.vatNumber as string || "";
+  const vatNumber = (req.query.vatNumber as string || "").trim();
   const [s] = await db.select().from(taxSettings);
-  if (!s || !s.enabled) { res.json({ taxRate: 0, taxLabel: "VAT", exempt: false }); return; }
+  if (!s || !s.enabled) { res.json({ taxRate: 0, taxLabel: "VAT", exempt: false, b2bEnabled: false, priceDisplay: "exclusive" }); return; }
   let rate = parseFloat(s.defaultRate);
   if (country) {
     const [cr] = await db.select().from(taxRates).where(eq(taxRates.countryCode, country));
     if (cr && cr.isEnabled) rate = parseFloat(cr.rate);
   }
-  const exempt = s.b2bExemptionEnabled && vatNumber.length >= 8;
-  res.json({ taxRate: exempt ? 0 : rate, taxLabel: s.taxLabel, exempt, priceDisplay: s.priceDisplay });
+  const vatValid = vatNumber.length >= 8 && /^[A-Z]{2}\d{5,}/.test(vatNumber.toUpperCase());
+  const exempt = s.b2bExemptionEnabled && vatValid;
+  res.json({ taxRate: exempt ? 0 : rate, taxLabel: s.taxLabel, exempt, b2bEnabled: s.b2bExemptionEnabled, priceDisplay: s.priceDisplay });
 });
 
 export default router;

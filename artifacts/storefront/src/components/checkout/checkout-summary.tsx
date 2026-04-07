@@ -8,9 +8,10 @@ interface CheckoutSummaryProps {
   cppSelected: boolean;
   taxRate?: number;
   taxLabel?: string;
+  priceDisplay?: string;
 }
 
-export function CheckoutSummary({ cppSelected, taxRate = 0, taxLabel = "VAT" }: CheckoutSummaryProps) {
+export function CheckoutSummary({ cppSelected, taxRate = 0, taxLabel = "VAT", priceDisplay = "exclusive" }: CheckoutSummaryProps) {
   const items = useCartStore((s) => s.items);
   const coupon = useCartStore((s) => s.coupon);
   const getTotal = useCartStore((s) => s.getTotal);
@@ -20,9 +21,14 @@ export function CheckoutSummary({ cppSelected, taxRate = 0, taxLabel = "VAT" }: 
   const subtotal = getTotal();
   const discountAmount = coupon ? subtotal * (coupon.pct / 100) : 0;
   const cppAmount = cppSelected ? getCppAmount(subtotal) : 0;
-  const taxableAmount = subtotal - discountAmount + cppAmount;
-  const taxAmount = taxRate > 0 ? Math.round(taxableAmount * (taxRate / 100) * 100) / 100 : 0;
-  const total = taxableAmount + taxAmount;
+  const beforeTax = subtotal - discountAmount + cppAmount;
+  const isInclusive = priceDisplay === "inclusive";
+  const taxAmount = taxRate > 0
+    ? isInclusive
+      ? Math.round((beforeTax - beforeTax / (1 + taxRate / 100)) * 100) / 100
+      : Math.round(beforeTax * (taxRate / 100) * 100) / 100
+    : 0;
+  const total = isInclusive ? beforeTax : beforeTax + taxAmount;
 
   return (
     <div className="border rounded-lg p-5 space-y-4 bg-muted/10 sticky top-24">
@@ -88,8 +94,8 @@ export function CheckoutSummary({ cppSelected, taxRate = 0, taxLabel = "VAT" }: 
 
         {taxAmount > 0 && (
           <div className="flex justify-between">
-            <span className="text-muted-foreground">{taxLabel} ({taxRate}%)</span>
-            <span>{format(taxAmount)}</span>
+            <span className="text-muted-foreground">{isInclusive ? `Incl. ${taxLabel}` : taxLabel} ({taxRate}%)</span>
+            <span>{isInclusive ? "" : "+"}{format(taxAmount)}</span>
           </div>
         )}
       </div>

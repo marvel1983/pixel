@@ -121,18 +121,24 @@ router.post("/orders", async (req, res) => {
   let taxAmount = 0;
   const [taxConfig] = await db.select().from(taxSettings);
   if (taxConfig?.enabled) {
-    const isExempt = taxConfig.b2bExemptionEnabled && vatNumber && vatNumber.length >= 8;
+    const vatValid = vatNumber && vatNumber.trim().length >= 8 && /^[A-Z]{2}\d{5,}/.test(vatNumber.trim().toUpperCase());
+    const isExempt = taxConfig.b2bExemptionEnabled && vatValid;
     if (!isExempt) {
       taxRate = parseFloat(taxConfig.defaultRate);
       const country = billing.country.toUpperCase();
       const [cr] = await db.select().from(taxRates).where(eq(taxRates.countryCode, country));
       if (cr?.isEnabled) taxRate = parseFloat(cr.rate);
-      const taxableAmount = subtotal - discountAmount + cppAmount;
-      taxAmount = Math.round(taxableAmount * (taxRate / 100) * 100) / 100;
+      const beforeTax = subtotal - discountAmount + cppAmount;
+      if (taxConfig.priceDisplay === "inclusive") {
+        taxAmount = Math.round((beforeTax - beforeTax / (1 + taxRate / 100)) * 100) / 100;
+      } else {
+        taxAmount = Math.round(beforeTax * (taxRate / 100) * 100) / 100;
+      }
     }
   }
 
-  const computedTotal = subtotal - discountAmount + cppAmount + taxAmount;
+  const isInclusive = taxConfig?.priceDisplay === "inclusive";
+  const computedTotal = isInclusive ? subtotal - discountAmount + cppAmount : subtotal - discountAmount + cppAmount + taxAmount;
 
   if (Math.abs(computedTotal - parseFloat(total)) > 0.02) {
     res.status(400).json({ error: "Total mismatch. Please refresh and try again." });
