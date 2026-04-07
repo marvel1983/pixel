@@ -1,14 +1,15 @@
-import { Router } from "express";
+import { Router, type Request, type Response, type NextFunction } from "express";
 import crypto from "crypto";
 import { db } from "@workspace/db";
 import { users, adminPermissions, adminInvites } from "@workspace/db/schema";
 import { eq, inArray, desc, and } from "drizzle-orm";
 import { requireAuth, requireAdmin, signToken } from "../middleware/auth";
+import { requirePermission } from "../middleware/permissions";
 import bcrypt from "bcryptjs";
 
 const router = Router();
 
-function requireSuperAdmin(req: any, res: any, next: any) {
+function requireSuperAdmin(req: Request, res: Response, next: NextFunction) {
   if (req.user?.role !== "SUPER_ADMIN") {
     res.status(403).json({ error: "Super admin access required" });
     return;
@@ -16,7 +17,7 @@ function requireSuperAdmin(req: any, res: any, next: any) {
   next();
 }
 
-router.get("/admin/admin-users", requireAuth, requireAdmin, async (_req, res) => {
+router.get("/admin/admin-users", requireAuth, requireAdmin, requirePermission("manageAdmins"), async (_req, res) => {
   const admins = await db
     .select({
       id: users.id, email: users.email, firstName: users.firstName,
@@ -95,7 +96,7 @@ router.post("/admin/accept-invite", async (req, res) => {
     role: "ADMIN", isActive: true,
   }).returning();
 
-  const savedPerms = invite.permissionsJson ? JSON.parse(invite.permissionsJson) : {};
+  const savedPerms: PermInput = invite.permissionsJson ? JSON.parse(invite.permissionsJson) : {};
   const permValues = buildPermValues(user.id, savedPerms);
   await db.insert(adminPermissions).values(permValues)
     .onConflictDoUpdate({ target: adminPermissions.userId, set: permValues });
@@ -138,17 +139,23 @@ router.delete("/admin/admin-users/:id", requireAuth, requireAdmin, requireSuperA
   res.json({ success: true });
 });
 
-function buildPermValues(userId: number, p: any) {
+interface PermInput {
+  manageProducts?: boolean; manageOrders?: boolean; manageCustomers?: boolean;
+  manageDiscounts?: boolean; manageContent?: boolean; manageSettings?: boolean;
+  manageAdmins?: boolean; viewAnalytics?: boolean;
+}
+
+function buildPermValues(userId: number, p: PermInput) {
   return {
     userId,
-    manageProducts: p?.manageProducts ?? true,
-    manageOrders: p?.manageOrders ?? true,
-    manageCustomers: p?.manageCustomers ?? false,
-    manageDiscounts: p?.manageDiscounts ?? true,
-    manageContent: p?.manageContent ?? false,
-    manageSettings: p?.manageSettings ?? false,
-    manageAdmins: p?.manageAdmins ?? false,
-    viewAnalytics: p?.viewAnalytics ?? true,
+    manageProducts: p.manageProducts ?? true,
+    manageOrders: p.manageOrders ?? true,
+    manageCustomers: p.manageCustomers ?? false,
+    manageDiscounts: p.manageDiscounts ?? true,
+    manageContent: p.manageContent ?? false,
+    manageSettings: p.manageSettings ?? false,
+    manageAdmins: p.manageAdmins ?? false,
+    viewAnalytics: p.viewAnalytics ?? true,
   };
 }
 

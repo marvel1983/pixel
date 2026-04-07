@@ -193,7 +193,7 @@ router.post(
   "/admin/dashboard/reviews/:id/approve",
   requireAuth,
   requireAdmin,
-  requirePermission("viewAnalytics"),
+  requirePermission("manageProducts"),
   async (req, res) => {
     const reviewId = Number(req.params.id);
     if (!Number.isInteger(reviewId) || reviewId <= 0) {
@@ -216,7 +216,7 @@ router.delete(
   "/admin/dashboard/reviews/:id",
   requireAuth,
   requireAdmin,
-  requirePermission("viewAnalytics"),
+  requirePermission("manageProducts"),
   async (req, res) => {
     const reviewId = Number(req.params.id);
     if (!Number.isInteger(reviewId) || reviewId <= 0) {
