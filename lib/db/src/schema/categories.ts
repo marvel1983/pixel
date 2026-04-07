@@ -14,9 +14,7 @@ import { z } from "zod/v4";
 export const categories = pgTable("categories", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 200 }).notNull(),
-  displayName: varchar("display_name", { length: 200 }),
   slug: varchar("slug", { length: 200 }).notNull().unique(),
-  showInNav: boolean("show_in_nav").notNull().default(true),
   description: text("description"),
   imageUrl: text("image_url"),
   metaTitle: varchar("meta_title", { length: 300 }),

@@ -4,6 +4,7 @@ import {
   products,
   productVariants,
   categories,
+  categoryMeta,
 } from "@workspace/db/schema";
 import { getProducts, type MetenziProduct } from "./metenzi-endpoints";
 import { getMetenziConfig } from "./metenzi-config";
@@ -25,8 +26,15 @@ async function findOrCreateCategory(categoryName: string): Promise<number> {
 
   const [created] = await db
     .insert(categories)
-    .values({ name: categoryName, displayName: categoryName, slug, showInNav: true })
+    .values({ name: categoryName, slug })
     .returning({ id: categories.id });
+
+  await db.insert(categoryMeta).values({
+    categoryId: created.id,
+    displayName: categoryName,
+    showInNav: true,
+    sortOrder: 0,
+  });
 
   return created.id;
 }

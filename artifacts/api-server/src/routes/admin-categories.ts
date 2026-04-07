@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { categories } from "@workspace/db/schema";
+import { categories, categoryMeta } from "@workspace/db/schema";
 import { products } from "@workspace/db/schema";
 import { eq, asc, sql, count } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
@@ -12,23 +12,26 @@ router.get("/admin/categories", requireAuth, requireAdmin, async (_req, res) => 
     .select({
       id: categories.id,
       name: categories.name,
-      displayName: categories.displayName,
       slug: categories.slug,
       description: categories.description,
       imageUrl: categories.imageUrl,
-      metaTitle: categories.metaTitle,
-      metaDescription: categories.metaDescription,
       parentId: categories.parentId,
       sortOrder: categories.sortOrder,
       isActive: categories.isActive,
-      showInNav: categories.showInNav,
       createdAt: categories.createdAt,
+      metaId: categoryMeta.id,
+      displayName: categoryMeta.displayName,
+      showInNav: categoryMeta.showInNav,
+      metaSortOrder: categoryMeta.sortOrder,
+      heroImageUrl: categoryMeta.heroImageUrl,
+      bannerText: categoryMeta.bannerText,
       productCount: sql<number>`(
         SELECT COUNT(*)::int FROM products p WHERE p.category_id = ${categories.id}
       )`,
     })
     .from(categories)
-    .orderBy(asc(categories.sortOrder), asc(categories.name));
+    .leftJoin(categoryMeta, eq(categoryMeta.categoryId, categories.id))
+    .orderBy(asc(categoryMeta.sortOrder), asc(categories.sortOrder), asc(categories.name));
 
   res.json({ categories: rows });
 });
@@ -40,19 +43,40 @@ router.get("/admin/categories/:id", requireAuth, requireAdmin, async (req, res) 
     return;
   }
 
-  const [category] = await db.select().from(categories).where(eq(categories.id, id));
-  if (!category) {
+  const [row] = await db
+    .select({
+      id: categories.id,
+      name: categories.name,
+      slug: categories.slug,
+      description: categories.description,
+      imageUrl: categories.imageUrl,
+      parentId: categories.parentId,
+      sortOrder: categories.sortOrder,
+      isActive: categories.isActive,
+      metaId: categoryMeta.id,
+      displayName: categoryMeta.displayName,
+      showInNav: categoryMeta.showInNav,
+      metaSortOrder: categoryMeta.sortOrder,
+      heroImageUrl: categoryMeta.heroImageUrl,
+      bannerText: categoryMeta.bannerText,
+      seoKeywords: categoryMeta.seoKeywords,
+    })
+    .from(categories)
+    .leftJoin(categoryMeta, eq(categoryMeta.categoryId, categories.id))
+    .where(eq(categories.id, id));
+
+  if (!row) {
     res.status(404).json({ error: "Category not found" });
     return;
   }
 
-  const allCats = await db
+  const parentOptions = await db
     .select({ id: categories.id, name: categories.name })
     .from(categories)
     .where(sql`${categories.id} != ${id}`)
     .orderBy(asc(categories.name));
 
-  res.json({ category, parentOptions: allCats });
+  res.json({ category: row, parentOptions });
 });
 
 router.put("/admin/categories/:id", requireAuth, requireAdmin, async (req, res) => {
@@ -63,23 +87,40 @@ router.put("/admin/categories/:id", requireAuth, requireAdmin, async (req, res) 
   }
 
   const body = req.body;
+
   await db
     .update(categories)
     .set({
-      name: body.name,
-      displayName: body.displayName ?? null,
       slug: body.slug,
-      showInNav: Boolean(body.showInNav),
       description: body.description ?? null,
       imageUrl: body.imageUrl ?? null,
-      metaTitle: body.metaTitle ?? null,
-      metaDescription: body.metaDescription ?? null,
       parentId: body.parentId || null,
       sortOrder: Number(body.sortOrder) || 0,
       isActive: Boolean(body.isActive),
       updatedAt: new Date(),
     })
     .where(eq(categories.id, id));
+
+  const [existingMeta] = await db
+    .select({ id: categoryMeta.id })
+    .from(categoryMeta)
+    .where(eq(categoryMeta.categoryId, id));
+
+  const metaData = {
+    displayName: body.displayName ?? null,
+    showInNav: body.showInNav !== false,
+    sortOrder: Number(body.metaSortOrder ?? body.sortOrder) || 0,
+    heroImageUrl: body.heroImageUrl ?? null,
+    bannerText: body.bannerText ?? null,
+    seoKeywords: body.seoKeywords ?? null,
+    updatedAt: new Date(),
+  };
+
+  if (existingMeta) {
+    await db.update(categoryMeta).set(metaData).where(eq(categoryMeta.categoryId, id));
+  } else {
+    await db.insert(categoryMeta).values({ categoryId: id, ...metaData });
+  }
 
   res.json({ success: true });
 });
@@ -91,22 +132,21 @@ router.patch("/admin/categories/:id/toggle", requireAuth, requireAdmin, async (r
     return;
   }
 
-  const [cat] = await db
-    .select({ showInNav: categories.showInNav })
-    .from(categories)
-    .where(eq(categories.id, id));
+  const [meta] = await db
+    .select({ id: categoryMeta.id, showInNav: categoryMeta.showInNav })
+    .from(categoryMeta)
+    .where(eq(categoryMeta.categoryId, id));
 
-  if (!cat) {
-    res.status(404).json({ error: "Category not found" });
-    return;
+  if (meta) {
+    await db
+      .update(categoryMeta)
+      .set({ showInNav: !meta.showInNav, updatedAt: new Date() })
+      .where(eq(categoryMeta.categoryId, id));
+    res.json({ showInNav: !meta.showInNav });
+  } else {
+    await db.insert(categoryMeta).values({ categoryId: id, showInNav: false });
+    res.json({ showInNav: false });
   }
-
-  await db
-    .update(categories)
-    .set({ showInNav: !cat.showInNav, updatedAt: new Date() })
-    .where(eq(categories.id, id));
-
-  res.json({ showInNav: !cat.showInNav });
 });
 
 router.post("/admin/categories", requireAuth, requireAdmin, async (req, res) => {
@@ -130,15 +170,20 @@ router.post("/admin/categories", requireAuth, requireAdmin, async (req, res) => 
     .insert(categories)
     .values({
       name: body.name,
-      displayName: body.displayName ?? body.name,
       slug: body.slug,
       description: body.description ?? null,
       imageUrl: body.imageUrl ?? null,
       sortOrder: Number(body.sortOrder) || 0,
       isActive: body.isActive !== false,
-      showInNav: body.showInNav !== false,
     })
     .returning();
+
+  await db.insert(categoryMeta).values({
+    categoryId: created.id,
+    displayName: body.displayName ?? body.name,
+    showInNav: body.showInNav !== false,
+    sortOrder: Number(body.sortOrder) || 0,
+  });
 
   res.status(201).json({ category: created });
 });

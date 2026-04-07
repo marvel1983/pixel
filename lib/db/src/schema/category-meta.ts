@@ -4,6 +4,7 @@ import {
   integer,
   varchar,
   text,
+  boolean,
   jsonb,
   timestamp,
 } from "drizzle-orm/pg-core";
@@ -17,6 +18,9 @@ export const categoryMeta = pgTable("category_meta", {
     .notNull()
     .references(() => categories.id, { onDelete: "cascade" })
     .unique(),
+  displayName: varchar("display_name", { length: 200 }),
+  showInNav: boolean("show_in_nav").notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
   heroImageUrl: text("hero_image_url"),
   bannerText: text("banner_text"),
   seoKeywords: varchar("seo_keywords", { length: 500 }),
