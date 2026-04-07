@@ -1,9 +1,10 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { Search, Package, ArrowRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { MOCK_PRODUCTS } from "@/lib/mock-data";
 import { searchProducts } from "@/lib/search-utils";
+import type { SearchResponse, SearchProduct } from "@/lib/search-types";
 import { useCurrencyStore } from "@/stores/currency-store";
 
 const MAX_SUGGESTIONS = 6;
@@ -15,9 +16,22 @@ interface SuggestionItem {
   name: string;
   slug: string;
   imageUrl: string | null;
-  categorySlug: string;
   priceUsd: number;
   compareAtPriceUsd: number | null;
+}
+
+function apiItemToSuggestion(p: SearchProduct): SuggestionItem {
+  const v = p.variants[0];
+  return {
+    id: p.id,
+    name: p.name,
+    slug: p.slug,
+    imageUrl: p.imageUrl,
+    priceUsd: parseFloat(v?.priceUsd ?? "0"),
+    compareAtPriceUsd: v?.compareAtPriceUsd
+      ? parseFloat(v.compareAtPriceUsd)
+      : null,
+  };
 }
 
 export function SearchAutocomplete() {
@@ -40,25 +54,13 @@ export function SearchAutocomplete() {
     }
 
     timerRef.current = setTimeout(() => {
-      fetch(`${API_URL}/search?q=${encodeURIComponent(query.trim())}&limit=${MAX_SUGGESTIONS}`)
+      const url = `${API_URL}/search?q=${encodeURIComponent(query.trim())}&limit=${MAX_SUGGESTIONS}`;
+      fetch(url)
         .then((r) => r.json())
-        .then((data) => {
-          const items: SuggestionItem[] = (data.items ?? []).map((p: any) => {
-            const v = p.variants?.[0];
-            return {
-              id: p.id,
-              name: p.name,
-              slug: p.slug,
-              imageUrl: p.imageUrl,
-              categorySlug: p.categoryId ? `cat-${p.categoryId}` : "",
-              priceUsd: parseFloat(v?.priceUsd ?? "0"),
-              compareAtPriceUsd: v?.compareAtPriceUsd
-                ? parseFloat(v.compareAtPriceUsd)
-                : null,
-            };
-          });
+        .then((data: SearchResponse) => {
+          const items = data.items.map(apiItemToSuggestion);
           setSuggestions(items);
-          setTotalCount(data.total ?? items.length);
+          setTotalCount(data.total);
           if (items.length > 0) setIsOpen(true);
         })
         .catch(() => {
@@ -70,7 +72,6 @@ export function SearchAutocomplete() {
               name: p.name,
               slug: p.slug,
               imageUrl: p.imageUrl,
-              categorySlug: p.categorySlug,
               priceUsd: parseFloat(p.variants[0]?.priceUsd ?? "0"),
               compareAtPriceUsd: p.variants[0]?.compareAtPriceUsd
                 ? parseFloat(p.variants[0].compareAtPriceUsd)

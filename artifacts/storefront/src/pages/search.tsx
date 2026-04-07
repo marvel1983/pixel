@@ -2,6 +2,7 @@ import { useMemo, useState, useEffect } from "react";
 import { useSearch } from "wouter";
 import { Link } from "wouter";
 import { MOCK_PRODUCTS, type MockProduct } from "@/lib/mock-data";
+import type { SearchResponse, SearchProduct } from "@/lib/search-types";
 import {
   useListingFilters,
   applyFilters,
@@ -15,19 +16,19 @@ import { SearchX, ArrowRight, Loader2 } from "lucide-react";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "/api";
 
-function toMockProduct(item: any): MockProduct {
+function toMockProduct(item: SearchProduct): MockProduct {
   return {
     id: item.id,
     name: item.name,
     slug: item.slug,
     imageUrl: item.imageUrl,
-    categorySlug: item.categoryId ? `cat-${item.categoryId}` : "uncategorized",
+    categorySlug: item.categorySlug ?? "uncategorized",
     avgRating: parseFloat(item.avgRating ?? "0"),
     reviewCount: item.reviewCount ?? 0,
     isFeatured: item.isFeatured ?? false,
     isNew: false,
-    description: item.description,
-    variants: (item.variants ?? []).map((v: any) => ({
+    description: undefined,
+    variants: item.variants.map((v) => ({
       id: v.id,
       name: v.name,
       sku: v.sku,
@@ -55,23 +56,31 @@ export default function SearchPage() {
       return;
     }
     setLoading(true);
-    fetch(`${API_URL}/search?q=${encodeURIComponent(query.trim())}&limit=50`)
+    const offset = (filters.page - 1) * perPage;
+    const url = `${API_URL}/search?q=${encodeURIComponent(query.trim())}&limit=${perPage}&offset=${offset}`;
+    fetch(url)
       .then((r) => r.json())
-      .then((data) => {
+      .then((data: SearchResponse) => {
         setApiResults(data.items.map(toMockProduct));
-        setApiTotal(data.total ?? data.items.length);
+        setApiTotal(data.total);
       })
       .catch(() => {
         setApiResults([]);
         setApiTotal(0);
       })
       .finally(() => setLoading(false));
-  }, [query]);
+  }, [query, filters.page, perPage]);
 
   const { items, totalPages, currentPage, totalItems } = useMemo(() => {
     const filtered = applyFilters(apiResults, filters);
-    return paginate(filtered, filters.page, perPage);
-  }, [apiResults, filters, perPage]);
+    const serverTotalPages = Math.max(1, Math.ceil(apiTotal / perPage));
+    return {
+      items: filtered,
+      totalPages: serverTotalPages,
+      currentPage: filters.page,
+      totalItems: apiTotal,
+    };
+  }, [apiResults, filters, perPage, apiTotal]);
 
   const popularProducts = useMemo(
     () =>

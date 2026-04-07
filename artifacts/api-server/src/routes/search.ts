@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from "express";
 import { db } from "@workspace/db";
-import { products, productVariants } from "@workspace/db/schema";
+import { products, productVariants, categories } from "@workspace/db/schema";
 import { eq, ilike, or, and, sql, inArray } from "drizzle-orm";
 import { z } from "zod";
 
@@ -52,9 +52,10 @@ router.get("/search", async (req: Request, res: Response) => {
       avgRating: products.avgRating,
       reviewCount: products.reviewCount,
       isFeatured: products.isFeatured,
-      categoryId: products.categoryId,
+      categorySlug: categories.slug,
     })
     .from(products)
+    .leftJoin(categories, eq(products.categoryId, categories.id))
     .where(whereClause)
     .orderBy(
       sql`CASE WHEN ${products.name} ILIKE ${pattern} THEN 0 ELSE 1 END`,
