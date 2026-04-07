@@ -11,7 +11,7 @@ import { processPayment } from "./payment";
 import { createGiftCardForOrder, sendGiftCardEmails, redeemGiftCards } from "./gift-card-service";
 import { createCommissionForOrder } from "./affiliate-service";
 import { markCartRecovered } from "./abandoned-cart-service";
-import { awardOrderPoints, redeemPoints, getOrCreateAccount } from "./loyalty-service";
+import { awardOrderPoints, redeemPoints, getOrCreateAccount, addPoints } from "./loyalty-service";
 import { getMetenziConfig } from "../lib/metenzi-config";
 import { createOrder as metenziCreateOrder } from "../lib/metenzi-endpoints";
 import { logger } from "../lib/logger";
@@ -82,6 +82,15 @@ export async function executeOrderPipeline(input: OrderInput) {
     .returning({ id: orders.id });
 
   try {
+    let loyaltyRedeemed = false;
+    let loyaltyAccountId: number | undefined;
+    if (input.loyaltyPointsUsed && input.loyaltyPointsUsed > 0 && input.userId) {
+      const acct = await getOrCreateAccount(input.userId);
+      loyaltyAccountId = acct.id;
+      await redeemPoints(acct.id, input.loyaltyPointsUsed, order.id);
+      loyaltyRedeemed = true;
+    }
+
     await updateOrderStatus(order.id, "PROCESSING");
 
     const paymentResult = await processPayment({
@@ -92,6 +101,10 @@ export async function executeOrderPipeline(input: OrderInput) {
     });
 
     if (!paymentResult.success) {
+      if (loyaltyRedeemed && loyaltyAccountId && input.loyaltyPointsUsed) {
+        await addPoints(loyaltyAccountId, input.loyaltyPointsUsed, "REFUND",
+          `Points restored: payment failed for order ${orderNumber}`);
+      }
       await updateOrderStatus(order.id, "FAILED");
       throw new Error(paymentResult.error ?? "Payment declined");
     }
@@ -100,15 +113,6 @@ export async function executeOrderPipeline(input: OrderInput) {
       .update(orders)
       .set({ paymentIntentId: paymentResult.paymentIntentId })
       .where(eq(orders.id, order.id));
-
-    if (input.loyaltyPointsUsed && input.loyaltyPointsUsed > 0 && input.userId) {
-      try {
-        const acct = await getOrCreateAccount(input.userId);
-        await redeemPoints(acct.id, input.loyaltyPointsUsed, order.id);
-      } catch (err) {
-        logger.error({ err, orderNumber }, "Loyalty redemption failed after payment; points not deducted");
-      }
-    }
 
     if (input.guestPassword) {
       await createGuestAccount(billing, input.guestPassword);

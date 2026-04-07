@@ -65,10 +65,11 @@ export function LoyaltyRedeem({ subtotal, onRedeemChange }: LoyaltyRedeemProps) 
 
   function handleChange(pts: number) {
     const clamped = Math.min(Math.max(0, pts), maxPoints);
+    const effective = clamped > 0 && clamped < minRedeem ? 0 : clamped;
     setPointsToUse(clamped);
-    const disc = Math.min(Math.round(clamped * redemptionRate * 100) / 100, maxDiscount);
+    const disc = Math.min(Math.round(effective * redemptionRate * 100) / 100, maxDiscount);
     setDiscount(disc);
-    onRedeemChange(clamped, disc);
+    onRedeemChange(effective, disc);
   }
 
   function handleClear() {
