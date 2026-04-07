@@ -111,10 +111,13 @@ export async function executeOrderPipeline(input: OrderInput) {
     for (const gcItem of giftCardItems) {
       const parts = (gcItem.platform || "").split("|");
       const [, recipientEmail, recipientName, senderName, personalMessage] = parts;
-      await createGiftCardForOrder(
-        order.id, purchaserUserId, gcItem.priceUsd,
-        recipientEmail || billing.email, recipientName || "", senderName || "", personalMessage || "",
-      );
+      const qty = Math.max(1, gcItem.quantity);
+      for (let q = 0; q < qty; q++) {
+        await createGiftCardForOrder(
+          order.id, purchaserUserId, gcItem.priceUsd,
+          recipientEmail || billing.email, recipientName || "", senderName || "", personalMessage || "",
+        );
+      }
     }
 
     const insertableItems = realItems.length ? realItems : [];

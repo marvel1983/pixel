@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { giftCards, giftCardRedemptions } from "@workspace/db/schema";
 import { logger } from "../lib/logger";
 import { sendEmail } from "../lib/email/mailer";
+import crypto from "crypto";
 
 interface GiftCardApply {
   code: string;
@@ -128,7 +129,6 @@ function generateGiftCardCode(): string {
   for (let i = 0; i < 4; i++) {
     if (i > 0) code += "-";
     for (let j = 0; j < 4; j++) {
-      const crypto = require("crypto");
       code += chars[crypto.randomInt(chars.length)];
     }
   }
