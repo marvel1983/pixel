@@ -8,8 +8,18 @@ import {
   ShoppingCart,
   User,
   Menu,
+  LogOut,
+  Package,
+  Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useCartStore } from "@/stores/cart-store";
 import { useWishlistStore } from "@/stores/wishlist-store";
 import { useCompareStore } from "@/stores/compare-store";
@@ -34,7 +44,6 @@ export function NavBar() {
   const itemCount = useCartStore((s) => s.getItemCount());
   const wishCount = useWishlistStore((s) => s.productIds.length);
   const compareCount = useCompareStore((s) => s.productIds.length);
-  const user = useAuthStore((s) => s.user);
 
   return (
     <>
@@ -113,15 +122,7 @@ export function NavBar() {
               {itemCount > 0 && <NavBadge count={itemCount} />}
             </Button>
 
-            <Link href={user ? "/account" : "/login"}>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-primary-foreground"
-              >
-                <User className="h-5 w-5" />
-              </Button>
-            </Link>
+            <UserMenu />
           </div>
         </div>
       </nav>
@@ -129,6 +130,69 @@ export function NavBar() {
       <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
       <MobileDrawer open={mobileOpen} onClose={() => setMobileOpen(false)} />
     </>
+  );
+}
+
+function UserMenu() {
+  const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
+
+  if (!user) {
+    return (
+      <Link href="/login">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="text-primary-foreground"
+        >
+          <User className="h-5 w-5" />
+        </Button>
+      </Link>
+    );
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="text-primary-foreground"
+        >
+          <User className="h-5 w-5" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-48">
+        <div className="px-2 py-1.5">
+          <p className="text-sm font-medium">{user.firstName ?? user.email}</p>
+          <p className="text-xs text-muted-foreground">{user.email}</p>
+        </div>
+        <DropdownMenuSeparator />
+        <Link href="/account">
+          <DropdownMenuItem>
+            <User className="mr-2 h-4 w-4" />
+            My Account
+          </DropdownMenuItem>
+        </Link>
+        <Link href="/orders">
+          <DropdownMenuItem>
+            <Package className="mr-2 h-4 w-4" />
+            My Orders
+          </DropdownMenuItem>
+        </Link>
+        <Link href="/account/settings">
+          <DropdownMenuItem>
+            <Settings className="mr-2 h-4 w-4" />
+            Settings
+          </DropdownMenuItem>
+        </Link>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={logout}>
+          <LogOut className="mr-2 h-4 w-4" />
+          Sign Out
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
