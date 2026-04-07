@@ -5,7 +5,7 @@ import { db } from "@workspace/db";
 import { productVariants, taxSettings, taxRates } from "@workspace/db/schema";
 import { executeOrderPipeline } from "../services/order-pipeline";
 import { validateCouponServerSide } from "../services/coupon-service";
-import { validateGiftCards } from "../services/gift-card-service";
+import { validateGiftCards, loadGiftCardBalances } from "../services/gift-card-service";
 import { logger } from "../lib/logger";
 
 const router = Router();
@@ -99,6 +99,18 @@ router.post("/orders", async (req, res) => {
 
   const { billing, items, coupon, cppSelected, vatNumber, total, payment, giftCards: gcInput } = parsed.data;
 
+  for (const item of items) {
+    if (item.variantId <= 0) {
+      if (!item.platform?.startsWith("GIFTCARD|") || item.productId !== -1) {
+        res.status(400).json({ error: "Invalid item in order" }); return;
+      }
+      const amt = parseFloat(item.priceUsd);
+      if (amt < 5 || amt > 500) {
+        res.status(400).json({ error: "Gift card amount must be $5–$500" }); return;
+      }
+    }
+  }
+
   const { error: priceError } = await validateAndPriceItems(items);
   if (priceError) {
     res.status(400).json({ error: priceError });
@@ -114,12 +126,21 @@ router.post("/orders", async (req, res) => {
     }
   }
 
+  let serverGiftCards: Array<{ code: string; amount: number }> = [];
   if (gcInput?.length) {
-    const gcResult = await validateGiftCards(gcInput);
-    if (!gcResult.valid) {
-      res.status(400).json({ error: gcResult.error });
-      return;
+    const deduped = new Map<string, number>();
+    for (const gc of gcInput) {
+      const code = gc.code.trim().toUpperCase();
+      deduped.set(code, (deduped.get(code) ?? 0) + gc.amount);
     }
+    const dedupedList = Array.from(deduped, ([code, amount]) => ({ code, amount }));
+    const gcResult = await validateGiftCards(dedupedList);
+    if (!gcResult.valid) { res.status(400).json({ error: gcResult.error }); return; }
+    const balances = await loadGiftCardBalances(dedupedList.map((g) => g.code));
+    serverGiftCards = dedupedList.map((gc) => ({
+      code: gc.code,
+      amount: Math.min(gc.amount, balances.get(gc.code) ?? 0),
+    }));
   }
 
   const subtotal = items.reduce(
@@ -152,7 +173,7 @@ router.post("/orders", async (req, res) => {
 
   const isInclusive = taxConfig?.priceDisplay === "inclusive";
   const preGcTotal = isInclusive ? subtotal - discountAmount + cppAmount : subtotal - discountAmount + cppAmount + taxAmount;
-  const gcDeduction = gcInput?.reduce((s, c) => s + c.amount, 0) ?? 0;
+  const gcDeduction = serverGiftCards.reduce((s, c) => s + c.amount, 0);
   if (gcDeduction > preGcTotal + 0.01) {
     res.status(400).json({ error: "Gift card amount exceeds order total" });
     return;
@@ -179,7 +200,7 @@ router.post("/orders", async (req, res) => {
       orderNumber: generateOrderNumber(),
       cardToken: payment.cardToken,
       guestPassword: parsed.data.guestPassword,
-      giftCards: gcInput || [],
+      giftCards: serverGiftCards,
     });
 
     res.status(201).json({

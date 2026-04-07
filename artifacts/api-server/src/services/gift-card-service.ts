@@ -26,6 +26,16 @@ export async function validateGiftCards(cards: GiftCardApply[]): Promise<{ valid
   return { valid: true };
 }
 
+export async function loadGiftCardBalances(codes: string[]): Promise<Map<string, number>> {
+  const result = new Map<string, number>();
+  for (const code of codes) {
+    const [card] = await db.select({ code: giftCards.code, balanceUsd: giftCards.balanceUsd })
+      .from(giftCards).where(and(eq(giftCards.code, code), eq(giftCards.status, "ACTIVE")));
+    if (card) result.set(card.code, parseFloat(card.balanceUsd));
+  }
+  return result;
+}
+
 export async function redeemGiftCards(orderId: number, cards: GiftCardApply[]): Promise<void> {
   await db.transaction(async (tx) => {
     for (const gc of cards) {
