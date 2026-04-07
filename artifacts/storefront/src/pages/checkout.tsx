@@ -20,6 +20,7 @@ import { GiftCardInput, type AppliedGiftCard } from "@/components/checkout/gift-
 import { LoyaltyRedeem } from "@/components/checkout/loyalty-redeem";
 import { WalletPayment } from "@/components/checkout/wallet-payment";
 import { CheckoutServices } from "@/components/checkout/checkout-services";
+import { TrustpilotBadge } from "@/components/trustpilot/trustpilot-badge";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -233,6 +234,7 @@ export default function CheckoutPage() {
           })()} onWalletChange={setWalletAmount} />
           <Separator />
           <PaymentForm data={payment} errors={paymentErrors} onChange={handlePaymentChange} />
+          <TrustpilotBadge variant="full" />
           <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
             <input type="checkbox" checked={newsletterOptIn} onChange={(e) => setNewsletterOptIn(e.target.checked)} />
             Subscribe to our newsletter for deals and updates

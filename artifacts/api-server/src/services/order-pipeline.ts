@@ -18,6 +18,7 @@ import { getMetenziConfig } from "../lib/metenzi-config";
 import { createOrder as metenziCreateOrder } from "../lib/metenzi-endpoints";
 import { logger } from "../lib/logger";
 import { sendOrderConfirmationOnly, triggerOrderEmails } from "./order-emails";
+import { scheduleTrustpilotInvite } from "./trustpilot-service";
 import bcrypt from "bcryptjs";
 
 type OrderStatus = (typeof orderStatusEnum.enumValues)[number];
@@ -48,7 +49,6 @@ export async function executeOrderPipeline(input: OrderInput) {
   const { billing, items, orderNumber, total } = input;
 
   const cppAmount = input.cppSelected ? Math.round(input.subtotal * 0.05 * 100) / 100 : 0;
-
   const walletUsed = input.walletAmountUsd && input.walletAmountUsd > 0;
   const cardNeeded = walletUsed ? total - input.walletAmountUsd! > 0.01 : true;
   const payMethod = walletUsed ? (cardNeeded ? "MIXED" : "WALLET") : "CARD";
@@ -204,6 +204,8 @@ export async function executeOrderPipeline(input: OrderInput) {
       }
     }
 
+    scheduleTrustpilotInvite({ email: billing.email, name: `${billing.firstName} ${billing.lastName}`, orderNumber })
+      .catch((err) => logger.error({ err, orderNumber }, "Trustpilot invite failed (non-fatal)"));
     logger.info({ orderNumber, total: total.toFixed(2) }, "Order pipeline complete");
     return { orderNumber, status: "COMPLETED" };
   } catch (err) {
@@ -292,8 +294,7 @@ async function incrementFlashSaleSoldCounts(flashVariantMap: Map<number, number>
     else qtyMap.set(key, { variantId: item.variantId, flashSaleId: fsId, qty: item.quantity });
   }
   for (const { variantId, flashSaleId, qty } of qtyMap.values()) {
-    await db.update(flashSaleProducts)
-      .set({ soldCount: sql`LEAST(${flashSaleProducts.soldCount} + ${qty}, ${flashSaleProducts.maxQuantity})` })
+    await db.update(flashSaleProducts).set({ soldCount: sql`LEAST(${flashSaleProducts.soldCount} + ${qty}, ${flashSaleProducts.maxQuantity})` })
       .where(and(eq(flashSaleProducts.variantId, variantId), eq(flashSaleProducts.flashSaleId, flashSaleId)));
   }
 }

@@ -4,6 +4,7 @@ import { Mail, Loader2, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { TrustpilotMicro } from "@/components/trustpilot/trustpilot-micro";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -136,7 +137,11 @@ export function Footer() {
           </div>
         </div>
 
-        <p className="text-center text-xs text-slate-600 mt-6">
+        <div className="flex justify-center mt-6 mb-3">
+          <TrustpilotMicro />
+        </div>
+
+        <p className="text-center text-xs text-slate-600">
           &copy; {new Date().getFullYear()} PixelCodes. All rights reserved.
         </p>
       </div>

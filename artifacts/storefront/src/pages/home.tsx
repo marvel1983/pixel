@@ -7,6 +7,7 @@ import { FeaturedSpotlight } from "@/components/home/featured-spotlight";
 import { NewAdditions } from "@/components/home/new-additions";
 import { RecentlyViewed } from "@/components/home/recently-viewed";
 import { FeaturedBundles } from "@/components/home/featured-bundles";
+import { TrustpilotCarousel } from "@/components/trustpilot/trustpilot-carousel";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -61,6 +62,7 @@ export default function HomePage() {
   return (
     <div className="container mx-auto px-4 py-6 space-y-8">
       {sectionTypes.map((type) => renderSection(type))}
+      <TrustpilotCarousel />
       <RecentlyViewed />
     </div>
   );

@@ -12,6 +12,7 @@ import { ReviewsSection } from "@/components/product-detail/reviews-section";
 import { QASection } from "@/components/product-detail/qa-section";
 import { RelatedProducts } from "@/components/product-detail/related-products";
 import { PaymentIcons } from "@/components/product-detail/payment-icons";
+import { TrustpilotBadge } from "@/components/trustpilot/trustpilot-badge";
 import { BundleCrossSell } from "@/components/product-detail/bundle-cross-sell";
 import { addToRecentlyViewed } from "@/components/home/recently-viewed";
 import { setSeoMeta, clearSeoMeta } from "@/lib/seo";
@@ -92,6 +93,7 @@ export default function ProductDetailPage() {
             currentProduct={product}
             relatedProducts={relatedProducts}
           />
+          <TrustpilotBadge variant="compact" />
           <TrustBadges />
           <PaymentIcons />
         </div>

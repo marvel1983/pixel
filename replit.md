@@ -45,6 +45,22 @@ Tables split across `lib/db/src/schema/`:
 - `abandoned-carts.ts` — abandonedCarts, abandonedCartEmails, abandonedCartSettings (3-email recovery sequence)
 - `loyalty.ts` — loyaltyAccounts, loyaltyTransactions, loyaltySettings (points, tiers, bonuses)
 - `bundles.ts` — bundles, bundleItems (curated product bundles with discounted package pricing)
+- `checkout-services.ts` — checkoutServices, orderServices (add-on services at checkout)
+
+## Trustpilot Integration
+
+- Settings in `site_settings`: `trustpilot_enabled`, `trustpilot_business_unit_id`, `trustpilot_api_key_encrypted`, `trustpilot_invite_delay_days`, `trustpilot_cached_rating`, `trustpilot_cached_count`
+- Public API: GET `/trustpilot/config` (returns enabled state, cached rating/count, profile URL)
+- Admin API: GET/PUT `/admin/trustpilot`, POST `/admin/trustpilot/test-invite`, POST `/admin/trustpilot/clear-api-key`
+- Frontend components in `artifacts/storefront/src/components/trustpilot/`:
+  - `TrustpilotMicro` — compact footer widget (stars + score + count)
+  - `TrustpilotCarousel` — homepage "What Our Customers Say" section with review cards
+  - `TrustpilotBadge` — compact or full variant for product pages and checkout
+  - `TrustpilotStars` + `TrustpilotLogo` — shared star rendering + logo
+- Shared hook: `useTrustpilot()` — cached config fetch, returns enabled/rating/count/url
+- Post-purchase: `scheduleTrustpilotInvite()` queues review invite email via Trustpilot API after configurable delay
+- Admin: Settings > Trustpilot tab for configuration, API key management, test invite
+- Fallback: static cached data when Trustpilot widgets can't load (ad-blocker)
 
 ## Frontend Stores (Zustand)
 

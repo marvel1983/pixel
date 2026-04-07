@@ -12,6 +12,7 @@ const SettingsNotificationsTab = lazy(() => import("./settings-notifications"));
 const SettingsSeoTrackingTab = lazy(() => import("./settings-seo-tracking"));
 const SettingsGoogleTab = lazy(() => import("./settings-google"));
 const SettingsLoyaltyTab = lazy(() => import("./settings-loyalty"));
+const SettingsTrustpilotTab = lazy(() => import("./settings-trustpilot"));
 
 const tabs = [
   { key: "general", label: "General" },
@@ -20,6 +21,7 @@ const tabs = [
   { key: "cpp-fees", label: "CPP & Fees" },
   { key: "currencies", label: "Currencies" },
   { key: "loyalty", label: "Loyalty" },
+  { key: "trustpilot", label: "Trustpilot" },
   { key: "smtp", label: "SMTP" },
   { key: "api-keys", label: "API Keys" },
   { key: "webhooks", label: "Webhooks" },
@@ -56,6 +58,7 @@ export default function AdminSettingsPage() {
         {activeTab === "webhooks" && <SettingsWebhooksTab />}
         {activeTab === "live-chat" && <SettingsLiveChatTab />}
         {activeTab === "loyalty" && <SettingsLoyaltyTab />}
+        {activeTab === "trustpilot" && <SettingsTrustpilotTab />}
         {activeTab === "google-oauth" && <SettingsGoogleTab />}
       </Suspense>
     </div>

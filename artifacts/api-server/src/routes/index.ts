@@ -61,6 +61,7 @@ import webhooksRouter from "./webhooks";
 import checkoutServicesRouter from "./checkout-services";
 import adminCheckoutServicesRouter from "./admin-checkout-services";
 import searchRouter from "./search";
+import trustpilotRouter from "./trustpilot";
 
 const router: IRouter = Router();
 
@@ -126,5 +127,6 @@ router.use(webhooksRouter);
 router.use(checkoutServicesRouter);
 router.use(adminCheckoutServicesRouter);
 router.use(searchRouter);
+router.use(trustpilotRouter);
 
 export default router;
