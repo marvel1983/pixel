@@ -138,6 +138,7 @@ export function Footer() {
 }
 
 function FooterNewsletter() {
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -157,7 +158,7 @@ function FooterNewsletter() {
       setMessage(data.message);
       setEmail("");
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Something went wrong");
+      setMessage(err instanceof Error ? err.message : t("common.somethingWentWrong"));
     } finally {
       setLoading(false);
     }
@@ -176,7 +177,7 @@ function FooterNewsletter() {
     <form className="flex gap-2" onSubmit={handleSubmit}>
       <Input
         type="email"
-        placeholder="Your email"
+        placeholder={t("footer.emailPlaceholder")}
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         className="h-9 bg-slate-800 border-slate-700 text-white placeholder:text-slate-500 flex-1"

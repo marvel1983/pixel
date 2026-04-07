@@ -1,5 +1,7 @@
+import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { getEnabledLocales } from "@/i18n";
+import { getEnabledLocales, onLocalesChanged } from "@/i18n";
+import type { EnabledLocale } from "@/i18n";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,7 +16,13 @@ const API = import.meta.env.VITE_API_URL ?? "/api";
 export function LanguageSelector() {
   const { i18n } = useTranslation();
   const token = useAuthStore((s) => s.token);
-  const locales = getEnabledLocales();
+  const [locales, setLocales] = useState<EnabledLocale[]>(getEnabledLocales());
+
+  useEffect(() => {
+    return onLocalesChanged(() => {
+      setLocales([...getEnabledLocales()]);
+    });
+  }, []);
 
   const current = locales.find((l) => l.code === i18n.language) ?? locales[0];
 

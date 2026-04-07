@@ -40,8 +40,20 @@ let enabledLocales: EnabledLocale[] = [...SUPPORTED_LOCALES.map(
   (l) => ({ ...l, isDefault: l.code === "en" }),
 )];
 
+type Listener = () => void;
+const listeners: Set<Listener> = new Set();
+
 export function getEnabledLocales(): EnabledLocale[] {
   return enabledLocales;
+}
+
+export function onLocalesChanged(fn: Listener): () => void {
+  listeners.add(fn);
+  return () => { listeners.delete(fn); };
+}
+
+function notifyLocalesChanged() {
+  listeners.forEach((fn) => fn());
 }
 
 i18n
@@ -99,6 +111,8 @@ export async function syncEnabledLocales() {
     if (!enabledCodes.includes(i18n.language)) {
       i18n.changeLanguage(fallback);
     }
+
+    notifyLocalesChanged();
   } catch {
   }
 }
