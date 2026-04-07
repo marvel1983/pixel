@@ -162,7 +162,7 @@ export function ProductInfo({ product }: ProductInfoProps) {
 }
 
 function SocialProofBadge() {
-  const viewers = Math.floor(Math.random() * 30) + 5;
+  const [viewers] = useState(() => Math.floor(Math.random() * 30) + 5);
   return (
     <div className="flex items-center gap-1.5 text-sm text-orange-600">
       <Eye className="h-4 w-4" />
