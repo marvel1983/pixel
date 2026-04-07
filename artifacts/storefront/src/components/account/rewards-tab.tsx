@@ -25,6 +25,7 @@ interface AccountData {
   lifetimePoints: number;
   tier: string;
   tierMultiplier: string;
+  currentTierThreshold: number;
   nextTier: string | null;
   nextTierThreshold: number | null;
   pointsToNextTier: number;
