@@ -30,19 +30,16 @@ export async function creditWallet(
 ): Promise<{ wallet: WalletAccount; tx: typeof walletTransactions.$inferSelect }> {
   const wallet = await getOrCreateWallet(userId);
 
-  const isDeposit = type === "TOPUP";
   const amtSql = sql`${amount.toFixed(2)}::numeric`;
   return db.transaction(async (tx) => {
-    const [updated] = isDeposit
-      ? await tx.update(walletAccounts).set({
-          balanceUsd: sql`${walletAccounts.balanceUsd}::numeric + ${amtSql}`,
-          totalDeposited: sql`${walletAccounts.totalDeposited}::numeric + ${amtSql}`,
-          updatedAt: new Date(),
-        }).where(eq(walletAccounts.id, wallet.id)).returning()
-      : await tx.update(walletAccounts).set({
-          balanceUsd: sql`${walletAccounts.balanceUsd}::numeric + ${amtSql}`,
-          updatedAt: new Date(),
-        }).where(eq(walletAccounts.id, wallet.id)).returning();
+    const baseSet = { balanceUsd: sql`${walletAccounts.balanceUsd}::numeric + ${amtSql}`, updatedAt: new Date() };
+    const setFields = type === "TOPUP"
+      ? { ...baseSet, totalDeposited: sql`${walletAccounts.totalDeposited}::numeric + ${amtSql}` }
+      : type === "REFUND"
+        ? { ...baseSet, totalSpent: sql`GREATEST(${walletAccounts.totalSpent}::numeric - ${amtSql}, 0)` }
+        : baseSet;
+    const [updated] = await tx.update(walletAccounts).set(setFields)
+      .where(eq(walletAccounts.id, wallet.id)).returning();
 
     const [txn] = await tx.insert(walletTransactions).values({
       userId, type, amountUsd: amount.toFixed(2),
