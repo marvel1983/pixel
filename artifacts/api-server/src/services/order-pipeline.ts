@@ -94,6 +94,10 @@ export async function executeOrderPipeline(input: OrderInput) {
       .set({ paymentIntentId: paymentResult.paymentIntentId })
       .where(eq(orders.id, order.id));
 
+    if (input.guestPassword) {
+      await createGuestAccount(billing, input.guestPassword);
+    }
+
     const realItems = items.filter((i) => i.variantId > 0);
     const giftCardItems = items.filter((i) => i.platform?.startsWith("GIFTCARD|"));
 
@@ -173,10 +177,6 @@ export async function executeOrderPipeline(input: OrderInput) {
     } else {
       await updateOrderStatus(order.id, "COMPLETED");
       await triggerOrderEmails(billing, orderNumber, order.id, items, total);
-    }
-
-    if (input.guestPassword) {
-      await createGuestAccount(billing, input.guestPassword);
     }
 
     logger.info({ orderNumber, total: total.toFixed(2) }, "Order pipeline complete");

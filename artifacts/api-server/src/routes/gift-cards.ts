@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { giftCards, giftCardRedemptions } from "@workspace/db/schema";
-import { eq } from "drizzle-orm";
+import { giftCards, giftCardRedemptions, users } from "@workspace/db/schema";
+import { eq, or } from "drizzle-orm";
 import { requireAuth } from "../middleware/auth";
 import crypto from "crypto";
 
@@ -35,8 +35,12 @@ router.post("/gift-cards/validate", async (req, res) => {
 
 router.get("/account/gift-cards", requireAuth, async (req, res) => {
   const userId = req.user!.userId;
+  const [user] = await db.select({ email: users.email }).from(users).where(eq(users.id, userId));
+  const email = user?.email;
   const purchased = await db.select().from(giftCards)
-    .where(eq(giftCards.purchasedByUserId, userId));
+    .where(email
+      ? or(eq(giftCards.purchasedByUserId, userId), eq(giftCards.recipientEmail, email))
+      : eq(giftCards.purchasedByUserId, userId));
   res.json({ giftCards: purchased });
 });
 
