@@ -16,6 +16,12 @@ router.get(
 
     const startDate = from ? new Date(from) : new Date(Date.now() - 30 * 86400000);
     const endDate = to ? new Date(to) : new Date();
+
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      res.status(400).json({ error: "Invalid date format. Use YYYY-MM-DD." });
+      return;
+    }
+
     startDate.setHours(0, 0, 0, 0);
     endDate.setHours(23, 59, 59, 999);
 
