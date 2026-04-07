@@ -8,6 +8,7 @@ import {
 } from "@workspace/db/schema";
 import { processPayment } from "./payment";
 import { createGiftCardForOrder, sendGiftCardEmails, redeemGiftCards } from "./gift-card-service";
+import { createCommissionForOrder } from "./affiliate-service";
 import { getMetenziConfig } from "../lib/metenzi-config";
 import { createOrder as metenziCreateOrder } from "../lib/metenzi-endpoints";
 import { logger } from "../lib/logger";
@@ -47,6 +48,7 @@ interface OrderInput {
   cardToken: string;
   guestPassword?: string;
   giftCards?: Array<{ code: string; amount: number }>;
+  affiliateRefCode?: string;
 }
 
 export async function executeOrderPipeline(input: OrderInput) {
@@ -153,6 +155,12 @@ export async function executeOrderPipeline(input: OrderInput) {
     } else {
       await updateOrderStatus(order.id, "COMPLETED");
       await triggerOrderEmails(billing, orderNumber, order.id, items, total);
+    }
+
+    if (input.affiliateRefCode) {
+      createCommissionForOrder(input.affiliateRefCode, order.id, total).catch((err) => {
+        logger.error({ err, orderNumber }, "Failed to create affiliate commission (non-fatal)");
+      });
     }
 
     logger.info({ orderNumber, total: total.toFixed(2) }, "Order pipeline complete");

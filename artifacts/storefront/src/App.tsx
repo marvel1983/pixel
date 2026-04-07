@@ -28,7 +28,10 @@ import WishlistPage from "@/pages/wishlist";
 import ComparePage from "@/pages/compare";
 import GiftCardsPage from "@/pages/gift-cards";
 import AccountGiftCardsPage from "@/pages/account-gift-cards";
+import AffiliatesPage from "@/pages/affiliates";
+import AffiliateApplyPage from "@/pages/affiliate-apply";
 import SearchPage from "@/pages/search";
+import { useReferralTracking } from "@/hooks/use-referral";
 import StaticPageView from "@/pages/static-page";
 import AdminRoot from "@/pages/admin/index";
 import AcceptInvitePage from "@/pages/admin/accept-invite";
@@ -37,6 +40,7 @@ import NotFound from "@/pages/not-found";
 const queryClient = new QueryClient();
 
 function StorefrontWithMaintenance() {
+  useReferralTracking();
   const { info, checked } = useMaintenanceCheck();
   if (!checked) return null;
   if (info?.maintenance) {
@@ -54,6 +58,8 @@ function StorefrontWithMaintenance() {
         <Route path="/product/:slug" component={ProductDetailPage} />
         <Route path="/gift-cards" component={GiftCardsPage} />
         <Route path="/account/gift-cards" component={AccountGiftCardsPage} />
+        <Route path="/affiliates/apply" component={AffiliateApplyPage} />
+        <Route path="/affiliates" component={AffiliatesPage} />
         <Route path="/cart" component={CartPage} />
         <Route path="/checkout" component={CheckoutPage} />
         <Route path="/order-complete/:orderNumber" component={OrderCompletePage} />

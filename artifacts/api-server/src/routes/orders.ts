@@ -6,6 +6,7 @@ import { productVariants, taxSettings, taxRates } from "@workspace/db/schema";
 import { executeOrderPipeline } from "../services/order-pipeline";
 import { validateCouponServerSide } from "../services/coupon-service";
 import { validateGiftCards, loadGiftCardBalances } from "../services/gift-card-service";
+import { getRefCookie } from "../middleware/referral";
 import { logger } from "../lib/logger";
 
 const router = Router();
@@ -201,6 +202,7 @@ router.post("/orders", async (req, res) => {
       cardToken: payment.cardToken,
       guestPassword: parsed.data.guestPassword,
       giftCards: serverGiftCards,
+      affiliateRefCode: getRefCookie(req),
     });
 
     res.status(201).json({

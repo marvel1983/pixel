@@ -33,6 +33,7 @@ import TaxSettingsPage from "./tax-settings";
 import AdminUsersPage from "./admin-users";
 import RefundsPage from "./refunds";
 import AdminGiftCardsPage from "./gift-cards";
+import AdminAffiliatesPage from "./affiliates";
 
 function AdminPlaceholder({ title }: { title: string }) {
   return (
@@ -82,6 +83,7 @@ export default function AdminRoot() {
           <Route path="/admin/banners" component={AdminBannersPage} />
           <Route path="/admin/refunds" component={RefundsPage} />
           <Route path="/admin/gift-cards" component={AdminGiftCardsPage} />
+          <Route path="/admin/affiliates" component={AdminAffiliatesPage} />
           <Route path="/admin/admin-users" component={AdminUsersPage} />
           <Route path="/admin/notifications">
             <AdminPlaceholder title="Notifications" />

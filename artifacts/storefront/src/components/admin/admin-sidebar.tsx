@@ -25,6 +25,7 @@ import {
   ClipboardList,
   Wallet,
   Gift,
+  Link2,
   type LucideIcon,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -68,6 +69,7 @@ const sections: NavSection[] = [
       { label: "Discounts", href: "/admin/discounts", icon: Ticket },
       { label: "Checkout Upsell", href: "/admin/checkout-upsell", icon: Gift },
       { label: "Gift Cards", href: "/admin/gift-cards", icon: Gift },
+      { label: "Affiliates", href: "/admin/affiliates", icon: Link2 },
     ],
   },
   {

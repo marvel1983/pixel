@@ -41,6 +41,7 @@ Tables split across `lib/db/src/schema/`:
 - `wallet.ts` — wallet transactions
 - `blog.ts` — blog posts
 - `support.ts` — support tickets + ticket messages
+- `affiliates.ts` — affiliate_profiles, affiliate_clicks, affiliate_commissions, affiliate_settings
 
 ## Frontend Stores (Zustand)
 

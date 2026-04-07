@@ -3,6 +3,7 @@ import { refunds, orders, users } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 import { processProviderRefund } from "../services/refund";
 import { renderAndSendTemplate } from "./email/render-template";
+import { reverseCommissionsForOrder } from "../services/affiliate-service";
 import { logger } from "./logger";
 
 export async function processRefund(refundId: number): Promise<{ success: boolean; error?: string }> {
@@ -37,6 +38,10 @@ export async function processRefund(refundId: number): Promise<{ success: boolea
     }).where(eq(refunds.id, refundId));
 
     await updateOrderRefundStatus(refund.orderId);
+
+    reverseCommissionsForOrder(refund.orderId).catch((err) => {
+      logger.error({ err, orderId: refund.orderId }, "Failed to reverse affiliate commissions (non-fatal)");
+    });
 
     if (refund.notifyCustomer && order.guestEmail) {
       const customerName = order.guestEmail.split("@")[0];

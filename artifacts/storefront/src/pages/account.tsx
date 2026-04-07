@@ -8,8 +8,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthStore } from "@/stores/auth-store";
 import { Breadcrumbs } from "@/components/shop/breadcrumbs";
-import { User, ShoppingBag, Heart, Star, Gift, Loader2 } from "lucide-react";
+import { User, ShoppingBag, Heart, Star, Gift, Link2, Loader2 } from "lucide-react";
 import { GiftCardsTab } from "@/components/account/gift-cards-tab";
+import { AffiliateTab } from "@/components/account/affiliate-tab";
 
 function ProfileTab() {
   const { user, token, setAuth } = useAuthStore();
@@ -178,6 +179,9 @@ export default function AccountPage() {
           <TabsTrigger value="gift-cards" className="gap-1.5">
             <Gift className="h-4 w-4" /> Gift Cards
           </TabsTrigger>
+          <TabsTrigger value="affiliate" className="gap-1.5">
+            <Link2 className="h-4 w-4" /> Affiliate
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="profile">
@@ -194,6 +198,9 @@ export default function AccountPage() {
         </TabsContent>
         <TabsContent value="gift-cards">
           <GiftCardsTab />
+        </TabsContent>
+        <TabsContent value="affiliate">
+          <AffiliateTab />
         </TabsContent>
       </Tabs>
     </div>
