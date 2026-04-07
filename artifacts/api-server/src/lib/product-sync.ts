@@ -16,13 +16,21 @@ async function findOrCreateCategory(categoryName: string): Promise<number> {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
 
-  const [existing] = await db
+  const [byName] = await db
     .select()
     .from(categories)
     .where(eq(categories.name, categoryName))
     .limit(1);
 
-  if (existing) return existing.id;
+  if (byName) return byName.id;
+
+  const [bySlug] = await db
+    .select()
+    .from(categories)
+    .where(eq(categories.slug, slug))
+    .limit(1);
+
+  if (bySlug) return bySlug.id;
 
   const [created] = await db
     .insert(categories)
