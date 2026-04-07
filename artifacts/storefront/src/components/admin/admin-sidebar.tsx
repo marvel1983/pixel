@@ -89,11 +89,11 @@ const sections: NavSection[] = [
   {
     title: "SYSTEM",
     items: [
+      { label: "Admin Users", href: "/admin/admin-users", icon: Shield },
       { label: "Tax / VAT", href: "/admin/tax-settings", icon: Receipt },
       { label: "Settings", href: "/admin/settings", icon: Settings },
       { label: "Audit Log", href: "/admin/audit-log", icon: ClipboardList },
       { label: "Metenzi Balance", href: "/admin/metenzi-balance", icon: Wallet },
-      { label: "Security", href: "/admin/security", icon: Shield },
     ],
   },
 ];
