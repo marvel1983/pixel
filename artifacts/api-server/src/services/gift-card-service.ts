@@ -78,9 +78,11 @@ export async function createGiftCardForOrder(
   recipientName: string,
   senderName: string,
   personalMessage: string,
+  txDb?: typeof db,
 ): Promise<typeof giftCards.$inferSelect> {
+  const conn = txDb || db;
   const code = generateGiftCardCode();
-  const [card] = await db.insert(giftCards).values({
+  const [card] = await conn.insert(giftCards).values({
     code,
     initialAmountUsd: amount,
     balanceUsd: amount,
@@ -92,14 +94,18 @@ export async function createGiftCardForOrder(
     personalMessage: personalMessage || null,
   }).returning();
   logger.info({ code, orderId, amount, recipientEmail }, "Gift card created for order");
-
-  try {
-    await sendGiftCardEmail(card, recipientName, senderName, personalMessage);
-    await db.update(giftCards).set({ emailSent: true }).where(eq(giftCards.id, card.id));
-  } catch (err) {
-    logger.error({ err, code }, "Failed to send gift card email (non-fatal)");
-  }
   return card;
+}
+
+export async function sendGiftCardEmails(cards: Array<typeof giftCards.$inferSelect>) {
+  for (const card of cards) {
+    try {
+      await sendGiftCardEmail(card, card.recipientName || "", card.senderName || "", card.personalMessage || "");
+      await db.update(giftCards).set({ emailSent: true }).where(eq(giftCards.id, card.id));
+    } catch (err) {
+      logger.error({ err, code: card.code }, "Failed to send gift card email (non-fatal)");
+    }
+  }
 }
 
 async function sendGiftCardEmail(

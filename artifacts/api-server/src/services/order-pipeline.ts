@@ -1,19 +1,19 @@
-import { eq } from "drizzle-orm";
+import { eq, and, gte } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   orders,
   orderItems,
   users,
-  licenseKeys,
   orderStatusEnum,
+  giftCards,
+  giftCardRedemptions,
 } from "@workspace/db/schema";
 import { processPayment } from "./payment";
-import { redeemGiftCards, createGiftCardForOrder } from "./gift-card-service";
+import { createGiftCardForOrder, sendGiftCardEmails } from "./gift-card-service";
 import { getMetenziConfig } from "../lib/metenzi-config";
 import { createOrder as metenziCreateOrder } from "../lib/metenzi-endpoints";
-import { decrypt } from "../lib/encryption";
 import { logger } from "../lib/logger";
-import { sendOrderConfirmationEmail, sendKeyDeliveryEmail } from "../lib/email";
+import { sendOrderConfirmationOnly, triggerOrderEmails } from "./order-emails";
 import bcrypt from "bcryptjs";
 
 type OrderStatus = (typeof orderStatusEnum.enumValues)[number];
@@ -104,35 +104,63 @@ export async function executeOrderPipeline(input: OrderInput) {
       purchaserUserId = existingUser?.id ?? null;
     }
 
-    for (const gcItem of giftCardItems) {
-      const parts = (gcItem.platform || "").split("|");
-      const [, recipientEmail, recipientName, senderName, personalMessage] = parts;
-      const qty = Math.max(1, gcItem.quantity);
-      for (let q = 0; q < qty; q++) {
-        await createGiftCardForOrder(
-          order.id, purchaserUserId, gcItem.priceUsd,
-          recipientEmail || billing.email, recipientName || "", senderName || "", personalMessage || "",
-        );
+    const { insertedItems, createdCards } = await db.transaction(async (tx) => {
+      const insertableItems = realItems.length ? realItems : [];
+      const inserted = insertableItems.length ? await tx
+        .insert(orderItems)
+        .values(insertableItems.map((item) => ({
+          orderId: order.id, variantId: item.variantId,
+          productName: item.productName, variantName: item.variantName,
+          priceUsd: item.priceUsd, quantity: item.quantity,
+        })))
+        .returning({ id: orderItems.id, variantId: orderItems.variantId }) : [];
+
+      const cards: Awaited<ReturnType<typeof createGiftCardForOrder>>[] = [];
+      for (const gcItem of giftCardItems) {
+        const parts = (gcItem.platform || "").split("|");
+        const [, recipientEmail, recipientName, senderName, personalMessage] = parts;
+        const qty = Math.max(1, gcItem.quantity);
+        for (let q = 0; q < qty; q++) {
+          const card = await createGiftCardForOrder(
+            order.id, purchaserUserId, gcItem.priceUsd,
+            recipientEmail || billing.email, recipientName || "",
+            senderName || "", personalMessage || "", tx as typeof db,
+          );
+          cards.push(card);
+        }
       }
-    }
 
-    const insertableItems = realItems.length ? realItems : [];
-    const insertedItems = insertableItems.length ? await db
-      .insert(orderItems)
-      .values(
-        insertableItems.map((item) => ({
-          orderId: order.id,
-          variantId: item.variantId,
-          productName: item.productName,
-          variantName: item.variantName,
-          priceUsd: item.priceUsd,
-          quantity: item.quantity,
-        })),
-      )
-      .returning({ id: orderItems.id, variantId: orderItems.variantId }) : [];
+      if (input.giftCards?.length) {
+        for (const gc of input.giftCards) {
+          const code = gc.code.trim().toUpperCase();
+          const [card] = await tx.select().from(giftCards)
+            .where(and(eq(giftCards.code, code), eq(giftCards.status, "ACTIVE")));
+          if (!card) throw new Error(`Gift card ${code} is no longer valid`);
+          const balanceBefore = parseFloat(card.balanceUsd);
+          const deductAmount = Math.min(gc.amount, balanceBefore);
+          if (deductAmount <= 0) throw new Error(`Gift card ${code} has no balance`);
+          const balanceAfter = Math.max(0, balanceBefore - deductAmount);
+          const updated = await tx.update(giftCards).set({
+            balanceUsd: balanceAfter.toFixed(2),
+            status: balanceAfter <= 0 ? "REDEEMED" : "ACTIVE",
+          }).where(and(eq(giftCards.id, card.id), gte(giftCards.balanceUsd, deductAmount.toFixed(2))))
+            .returning({ id: giftCards.id });
+          if (!updated.length) throw new Error(`Gift card ${code} insufficient balance`);
+          await tx.insert(giftCardRedemptions).values({
+            giftCardId: card.id, orderId: order.id,
+            amountUsd: deductAmount.toFixed(2),
+            balanceBefore: balanceBefore.toFixed(2),
+            balanceAfter: balanceAfter.toFixed(2),
+          });
+          logger.info({ code, orderId: order.id, deducted: deductAmount }, "Gift card redeemed");
+        }
+      }
 
-    if (input.giftCards?.length) {
-      await redeemGiftCards(order.id, input.giftCards);
+      return { insertedItems: inserted, createdCards: cards };
+    });
+
+    if (createdCards.length) {
+      sendGiftCardEmails(createdCards).catch(() => {});
     }
 
     const metenziFulfilled = insertedItems.length
@@ -197,86 +225,6 @@ async function fulfillFromMetenzi(
   } catch (err) {
     logger.error({ err, orderId }, "Metenzi fulfillment failed (non-fatal)");
     return false;
-  }
-}
-
-function buildEmailItems(items: OrderInput["items"]) {
-  return items.map((it) => ({
-    name: it.productName,
-    variant: it.variantName,
-    quantity: it.quantity,
-    price: `$${(parseFloat(it.priceUsd) * it.quantity).toFixed(2)}`,
-  }));
-}
-
-async function sendOrderConfirmationOnly(
-  billing: OrderInput["billing"],
-  orderNumber: string,
-  orderId: number,
-  items: OrderInput["items"],
-  total: number,
-) {
-  try {
-    await sendOrderConfirmationEmail(billing.email, {
-      orderId,
-      orderRef: orderNumber,
-      items: buildEmailItems(items),
-      total: `$${total.toFixed(2)}`,
-      customerName: billing.firstName,
-    });
-  } catch (err) {
-    logger.error({ err, orderNumber }, "Failed to enqueue confirmation email (non-fatal)");
-  }
-}
-
-async function triggerOrderEmails(
-  billing: OrderInput["billing"],
-  orderNumber: string,
-  orderId: number,
-  items: OrderInput["items"],
-  total: number,
-) {
-  try {
-    await sendOrderConfirmationEmail(billing.email, {
-      orderId,
-      orderRef: orderNumber,
-      items: buildEmailItems(items),
-      total: `$${total.toFixed(2)}`,
-      customerName: billing.firstName,
-    });
-
-    const deliveredKeys = await db
-      .select({
-        keyValue: licenseKeys.keyValue,
-        variantId: licenseKeys.variantId,
-      })
-      .from(licenseKeys)
-      .innerJoin(orderItems, eq(licenseKeys.orderItemId, orderItems.id))
-      .where(eq(orderItems.orderId, orderId));
-
-    if (deliveredKeys.length > 0) {
-      const keys = deliveredKeys.map((dk) => {
-        const item = items.find((it) => it.variantId === dk.variantId);
-        let keyVal: string;
-        try {
-          keyVal = decrypt(dk.keyValue);
-        } catch {
-          keyVal = dk.keyValue;
-        }
-        return {
-          productName: item?.productName ?? "Product",
-          variant: item?.variantName ?? "Standard",
-          licenseKey: keyVal,
-        };
-      });
-      await sendKeyDeliveryEmail(billing.email, {
-        orderRef: orderNumber,
-        customerName: billing.firstName,
-        keys,
-      });
-    }
-  } catch (err) {
-    logger.error({ err, orderNumber }, "Failed to enqueue order emails (non-fatal)");
   }
 }
 
