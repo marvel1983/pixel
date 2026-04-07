@@ -24,6 +24,7 @@ import FaqEditorPage from "./faq-editor";
 import AdminSettingsPage from "./settings";
 import AuditLogPage from "./audit-log";
 import MetenziBalancePage from "./metenzi-balance";
+import CheckoutUpsellPage from "./checkout-upsell";
 
 function AdminPlaceholder({ title }: { title: string }) {
   return (
@@ -61,6 +62,7 @@ export default function AdminRoot() {
           <Route path="/admin/discounts/:id/usage" component={DiscountUsagePage} />
           <Route path="/admin/discounts/:id" component={DiscountFormPage} />
           <Route path="/admin/discounts" component={AdminDiscountsPage} />
+          <Route path="/admin/checkout-upsell" component={CheckoutUpsellPage} />
           <Route path="/admin/customers/:id" component={CustomerDetailPage} />
           <Route path="/admin/customers" component={AdminCustomersPage} />
           <Route path="/admin/reviews" component={AdminReviewsPage} />
