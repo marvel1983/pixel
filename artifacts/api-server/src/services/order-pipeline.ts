@@ -48,6 +48,8 @@ interface OrderInput {
 export async function executeOrderPipeline(input: OrderInput) {
   const { billing, items, orderNumber, total } = input;
 
+  const cppAmount = input.cppSelected ? Math.round(input.subtotal * 0.05 * 100) / 100 : 0;
+
   const [order] = await db
     .insert(orders)
     .values({
@@ -58,6 +60,8 @@ export async function executeOrderPipeline(input: OrderInput) {
       discountUsd: input.discountAmount.toFixed(2),
       totalUsd: total.toFixed(2),
       paymentMethod: "CARD",
+      cppSelected: input.cppSelected,
+      cppAmountUsd: cppAmount.toFixed(2),
     })
     .returning({ id: orders.id });
 

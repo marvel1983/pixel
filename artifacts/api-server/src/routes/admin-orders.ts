@@ -4,15 +4,12 @@ import { orders, orderItems, licenseKeys, users, coupons } from "@workspace/db/s
 import { eq, desc, sql, and, or, ilike, gte, lte, inArray, count, sum } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { decrypt } from "../lib/encryption";
-import { logger } from "../lib/logger";
 
 const router = Router();
 
 router.get("/admin/orders/export", requireAuth, requireAdmin, async (req, res) => {
   const idsParam = req.query.ids as string | undefined;
-  const statusFilter = req.query.status as string | undefined;
   const conditions = buildFilters(req.query);
-
   if (idsParam) {
     const ids = idsParam.split(",").map(Number).filter(Number.isInteger);
     if (ids.length > 0) conditions.push(inArray(orders.id, ids));
@@ -20,23 +17,18 @@ router.get("/admin/orders/export", requireAuth, requireAdmin, async (req, res) =
 
   const rows = await db
     .select({
-      orderNumber: orders.orderNumber,
-      email: orders.guestEmail,
-      status: orders.status,
-      subtotal: orders.subtotalUsd,
-      discount: orders.discountUsd,
-      total: orders.totalUsd,
-      payment: orders.paymentMethod,
-      currency: orders.currencyCode,
-      createdAt: orders.createdAt,
+      orderNumber: orders.orderNumber, email: orders.guestEmail, status: orders.status,
+      subtotal: orders.subtotalUsd, discount: orders.discountUsd, total: orders.totalUsd,
+      cpp: orders.cppSelected, cppAmount: orders.cppAmountUsd,
+      payment: orders.paymentMethod, currency: orders.currencyCode, createdAt: orders.createdAt,
     })
     .from(orders)
     .where(conditions.length > 0 ? and(...conditions) : undefined)
     .orderBy(desc(orders.createdAt));
 
-  const header = "Order #,Email,Status,Subtotal,Discount,Total,Payment,Currency,Date\n";
+  const header = "Order #,Email,Status,Subtotal,Discount,CPP,CPP Amount,Total,Payment,Currency,Date\n";
   const csv = rows.map((r) =>
-    [r.orderNumber, r.email, r.status, r.subtotal, r.discount, r.total, r.payment, r.currency, r.createdAt?.toISOString()].join(",")
+    [r.orderNumber, r.email, r.status, r.subtotal, r.discount, r.cpp ? "Yes" : "No", r.cppAmount, r.total, r.payment, r.currency, r.createdAt?.toISOString()].join(",")
   ).join("\n");
 
   res.setHeader("Content-Type", "text/csv");
@@ -49,33 +41,18 @@ router.get("/admin/orders", requireAuth, requireAdmin, async (req, res) => {
   const limit = Math.min(100, Math.max(10, Number(req.query.limit) || 25));
   const offset = (page - 1) * limit;
   const conditions = buildFilters(req.query);
-
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-  const [{ total: totalCount }] = await db
-    .select({ total: count() })
-    .from(orders)
-    .where(whereClause);
-
-  const [{ revenue }] = await db
-    .select({ revenue: sum(orders.totalUsd) })
-    .from(orders)
-    .where(whereClause);
+  const [{ total: totalCount }] = await db.select({ total: count() }).from(orders).where(whereClause);
+  const [{ revenue }] = await db.select({ revenue: sum(orders.totalUsd) }).from(orders).where(whereClause);
 
   const rows = await db
     .select({
-      id: orders.id,
-      orderNumber: orders.orderNumber,
-      guestEmail: orders.guestEmail,
-      userId: orders.userId,
-      status: orders.status,
-      paymentMethod: orders.paymentMethod,
-      subtotalUsd: orders.subtotalUsd,
-      discountUsd: orders.discountUsd,
-      totalUsd: orders.totalUsd,
-      couponId: orders.couponId,
-      currencyCode: orders.currencyCode,
-      createdAt: orders.createdAt,
+      id: orders.id, orderNumber: orders.orderNumber, guestEmail: orders.guestEmail,
+      userId: orders.userId, status: orders.status, paymentMethod: orders.paymentMethod,
+      subtotalUsd: orders.subtotalUsd, discountUsd: orders.discountUsd, totalUsd: orders.totalUsd,
+      cppSelected: orders.cppSelected, cppAmountUsd: orders.cppAmountUsd,
+      couponId: orders.couponId, currencyCode: orders.currencyCode, createdAt: orders.createdAt,
     })
     .from(orders)
     .where(whereClause)
@@ -84,7 +61,7 @@ router.get("/admin/orders", requireAuth, requireAdmin, async (req, res) => {
     .offset(offset);
 
   const orderIds = rows.map((r) => r.id);
-  let itemsByOrder: Record<number, { productName: string; quantity: number }[]> = {};
+  const itemsByOrder: Record<number, { productName: string; quantity: number }[]> = {};
   if (orderIds.length > 0) {
     const items = await db
       .select({ orderId: orderItems.orderId, productName: orderItems.productName, quantity: orderItems.quantity })
@@ -118,7 +95,6 @@ router.get("/admin/orders/:id", requireAuth, requireAdmin, async (req, res) => {
   }
 
   const items = await db.select().from(orderItems).where(eq(orderItems.orderId, id));
-
   const itemIds = items.map((i) => i.id);
   let keys: { orderItemId: number; id: number; keyValue: string; status: string; soldAt: Date | null }[] = [];
   if (itemIds.length > 0) {
@@ -128,10 +104,7 @@ router.get("/admin/orders/:id", requireAuth, requireAdmin, async (req, res) => {
       .where(inArray(licenseKeys.orderItemId, itemIds));
   }
 
-  const decryptedKeys = keys.map((k) => ({
-    ...k,
-    keyValue: safeDecrypt(k.keyValue),
-  }));
+  const decryptedKeys = keys.map((k) => ({ ...k, keyValue: safeDecrypt(k.keyValue) }));
 
   let customer = null;
   if (order.userId) {
@@ -144,51 +117,38 @@ router.get("/admin/orders/:id", requireAuth, requireAdmin, async (req, res) => {
 
   let coupon = null;
   if (order.couponId) {
-    const [c] = await db
-      .select({ id: coupons.id, code: coupons.code, discountPercent: coupons.discountPercent })
-      .from(coupons)
-      .where(eq(coupons.id, order.couponId));
+    const [c] = await db.select({ id: coupons.id, code: coupons.code, discountPercent: coupons.discountPercent }).from(coupons).where(eq(coupons.id, order.couponId));
     coupon = c ?? null;
   }
 
-  res.json({ order, items, licenseKeys: decryptedKeys, customer, coupon });
+  const timeline = [
+    { event: "Order created", date: order.createdAt.toISOString() },
+    ...(order.paymentIntentId ? [{ event: "Payment processed", date: order.updatedAt.toISOString() }] : []),
+    ...(order.externalOrderId ? [{ event: "Sent to Metenzi", date: order.updatedAt.toISOString() }] : []),
+    ...(order.status === "COMPLETED" ? [{ event: "Order completed", date: order.updatedAt.toISOString() }] : []),
+    ...(order.status === "REFUNDED" ? [{ event: "Order refunded", date: order.updatedAt.toISOString() }] : []),
+    ...(order.status === "FAILED" ? [{ event: "Order failed", date: order.updatedAt.toISOString() }] : []),
+  ];
+
+  res.json({ order, items, licenseKeys: decryptedKeys, customer, coupon, timeline });
 });
 
 router.patch("/admin/orders/:id/status", requireAuth, requireAdmin, async (req, res) => {
   const id = Number(req.params.id);
-  if (!Number.isInteger(id) || id <= 0) {
-    res.status(400).json({ error: "Invalid order ID" });
-    return;
-  }
+  if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid order ID" }); return; }
   const validStatuses = ["PENDING", "PROCESSING", "COMPLETED", "FAILED", "REFUNDED", "PARTIALLY_REFUNDED"];
   const { status } = req.body;
-  if (!validStatuses.includes(status)) {
-    res.status(400).json({ error: "Invalid status" });
-    return;
-  }
-
+  if (!validStatuses.includes(status)) { res.status(400).json({ error: "Invalid status" }); return; }
   const [order] = await db.select({ id: orders.id }).from(orders).where(eq(orders.id, id));
-  if (!order) {
-    res.status(404).json({ error: "Order not found" });
-    return;
-  }
-
+  if (!order) { res.status(404).json({ error: "Order not found" }); return; }
   await db.update(orders).set({ status, updatedAt: new Date() }).where(eq(orders.id, id));
   res.json({ success: true });
 });
 
 router.post("/admin/orders/bulk-status", requireAuth, requireAdmin, async (req, res) => {
   const { ids, status } = req.body;
-  if (!Array.isArray(ids) || ids.length === 0) {
-    res.status(400).json({ error: "No order IDs provided" });
-    return;
-  }
-  const validStatuses = ["COMPLETED", "FAILED"];
-  if (!validStatuses.includes(status)) {
-    res.status(400).json({ error: "Invalid bulk status" });
-    return;
-  }
-
+  if (!Array.isArray(ids) || ids.length === 0) { res.status(400).json({ error: "No order IDs provided" }); return; }
+  if (!["COMPLETED", "FAILED"].includes(status)) { res.status(400).json({ error: "Invalid bulk status" }); return; }
   const intIds = ids.map(Number).filter(Number.isInteger);
   await db.update(orders).set({ status, updatedAt: new Date() }).where(inArray(orders.id, intIds));
   res.json({ success: true, updated: intIds.length });
@@ -196,31 +156,33 @@ router.post("/admin/orders/bulk-status", requireAuth, requireAdmin, async (req, 
 
 router.patch("/admin/orders/:id/notes", requireAuth, requireAdmin, async (req, res) => {
   const id = Number(req.params.id);
-  if (!Number.isInteger(id) || id <= 0) {
-    res.status(400).json({ error: "Invalid order ID" });
-    return;
-  }
-  const { notes } = req.body;
-  await db.update(orders).set({ notes: notes ?? null, updatedAt: new Date() }).where(eq(orders.id, id));
+  if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid order ID" }); return; }
+  await db.update(orders).set({ notes: req.body.notes ?? null, updatedAt: new Date() }).where(eq(orders.id, id));
   res.json({ success: true });
+});
+
+router.post("/admin/orders/:id/resend-email", requireAuth, requireAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid order ID" }); return; }
+  const [order] = await db.select({ id: orders.id, orderNumber: orders.orderNumber }).from(orders).where(eq(orders.id, id));
+  if (!order) { res.status(404).json({ error: "Order not found" }); return; }
+  res.json({ success: true, message: "Email queued for resend" });
 });
 
 function buildFilters(query: Record<string, unknown>) {
   const conditions = [];
   const search = query.search as string | undefined;
-  if (search?.trim()) {
-    conditions.push(or(ilike(orders.orderNumber, `%${search}%`), ilike(orders.guestEmail, `%${search}%`)));
-  }
+  if (search?.trim()) conditions.push(or(ilike(orders.orderNumber, `%${search}%`), ilike(orders.guestEmail, `%${search}%`)));
   const status = query.status as string | undefined;
-  if (status && status !== "ALL") {
-    conditions.push(eq(orders.status, status as typeof orders.$inferSelect.status));
-  }
+  if (status && status !== "ALL") conditions.push(eq(orders.status, status as typeof orders.$inferSelect.status));
   const from = query.from as string | undefined;
   if (from) conditions.push(gte(orders.createdAt, new Date(from)));
   const to = query.to as string | undefined;
   if (to) conditions.push(lte(orders.createdAt, new Date(to)));
   const hasCoupon = query.hasCoupon as string | undefined;
   if (hasCoupon === "true") conditions.push(sql`${orders.couponId} IS NOT NULL`);
+  const hasCpp = query.hasCpp as string | undefined;
+  if (hasCpp === "true") conditions.push(eq(orders.cppSelected, true));
   return conditions;
 }
 

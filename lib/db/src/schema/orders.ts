@@ -4,6 +4,7 @@ import {
   varchar,
   text,
   integer,
+  boolean,
   timestamp,
   numeric,
   pgEnum,
@@ -51,6 +52,8 @@ export const orders = pgTable("orders", {
   currencyRate: numeric("currency_rate", { precision: 12, scale: 6 })
     .notNull()
     .default("1"),
+  cppSelected: boolean("cpp_selected").notNull().default(false),
+  cppAmountUsd: numeric("cpp_amount_usd", { precision: 10, scale: 2 }).notNull().default("0"),
   couponId: integer("coupon_id").references(() => coupons.id),
   paymentIntentId: varchar("payment_intent_id", { length: 255 }),
   externalOrderId: varchar("external_order_id", { length: 255 }),
