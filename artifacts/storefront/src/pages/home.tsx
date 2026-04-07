@@ -32,6 +32,12 @@ export default function HomePage() {
         products={windowsProducts}
       />
 
+      <CategorySection
+        title="Office & Productivity"
+        categorySlug="office-productivity"
+        products={officeProducts}
+      />
+
       <BrandPartnerSection
         brandName="Microsoft Office"
         tagline="Lifetime licenses at unbeatable prices. Word, Excel, PowerPoint & more."

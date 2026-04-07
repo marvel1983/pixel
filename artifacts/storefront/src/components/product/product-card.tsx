@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useCartStore } from "@/stores/cart-store";
 import { useCurrencyStore } from "@/stores/currency-store";
+import { addToRecentlyViewed } from "@/components/home/recently-viewed";
 import type { MockProduct } from "@/lib/mock-data";
 
 interface ProductCardProps {
@@ -40,7 +41,7 @@ export function ProductCard({ product }: ProductCardProps) {
   }
 
   return (
-    <Link href={`/product/${product.slug}`}>
+    <Link href={`/product/${product.slug}`} onClick={() => addToRecentlyViewed(product.id)}>
       <div className="group bg-white border border-border rounded-lg overflow-hidden hover:shadow-md transition-shadow h-full flex flex-col">
         <div className="relative aspect-[4/3] bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center">
           {product.imageUrl ? (
