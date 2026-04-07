@@ -11,6 +11,7 @@ import { useAuthStore } from "@/stores/auth-store";
 import { Breadcrumbs } from "@/components/shop/breadcrumbs";
 import { UserPlus, Eye, EyeOff, Loader2 } from "lucide-react";
 import { GoogleButton } from "@/components/auth/google-button";
+import { setSeoMeta, clearSeoMeta } from "@/lib/seo";
 
 export default function RegisterPage() {
   const { t, i18n } = useTranslation();
@@ -29,8 +30,8 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    document.title = t("seo.registerTitle");
-    return () => { document.title = "PixelCodes"; };
+    setSeoMeta({ title: t("seo.registerTitle"), description: t("seo.registerDescription") });
+    return () => { clearSeoMeta(); };
   }, [t]);
 
   function update(field: string, value: string) {

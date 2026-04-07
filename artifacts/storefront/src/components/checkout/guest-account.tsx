@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,6 +9,7 @@ interface GuestAccountProps {
 }
 
 export function GuestAccount({ onPasswordChange }: GuestAccountProps) {
+  const { t } = useTranslation();
   const [createAccount, setCreateAccount] = useState(false);
   const [password, setPassword] = useState("");
 
@@ -32,22 +34,22 @@ export function GuestAccount({ onPasswordChange }: GuestAccountProps) {
           onCheckedChange={(v) => handleToggle(v === true)}
         />
         <span className="text-sm font-medium">
-          Create an account for faster checkout next time
+          {t("checkout.createAccountLabel")}
         </span>
       </label>
 
       {createAccount && (
         <div>
-          <Label htmlFor="checkout-password">Password</Label>
+          <Label htmlFor="checkout-password">{t("auth.password")}</Label>
           <Input
             id="checkout-password"
             type="password"
-            placeholder="Create a password (min 8 characters)"
+            placeholder={t("checkout.createPasswordPlaceholder")}
             value={password}
             onChange={(e) => handlePasswordChange(e.target.value)}
           />
           <p className="text-xs text-muted-foreground mt-1">
-            Your account will be created with the billing email above
+            {t("checkout.accountEmailNote")}
           </p>
         </div>
       )}

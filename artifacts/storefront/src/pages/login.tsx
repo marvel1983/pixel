@@ -10,6 +10,7 @@ import { useAuthStore } from "@/stores/auth-store";
 import { Breadcrumbs } from "@/components/shop/breadcrumbs";
 import { LogIn, Eye, EyeOff, Loader2 } from "lucide-react";
 import { GoogleButton } from "@/components/auth/google-button";
+import { setSeoMeta, clearSeoMeta } from "@/lib/seo";
 
 export default function LoginPage() {
   const { t } = useTranslation();
@@ -22,8 +23,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    document.title = t("seo.loginTitle");
-    return () => { document.title = "PixelCodes"; };
+    setSeoMeta({ title: t("seo.loginTitle"), description: t("seo.loginDescription") });
+    return () => { clearSeoMeta(); };
   }, [t]);
 
   useEffect(() => {

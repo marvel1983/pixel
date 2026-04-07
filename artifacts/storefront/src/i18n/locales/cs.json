@@ -81,7 +81,12 @@
     "cvc": "CVC",
     "cardName": "Jméno na kartě",
     "additionalServices": "Doplňkové služby",
-    "enhancePurchase": "Vylepšete svůj nákup volitelnými doplňky"
+    "enhancePurchase": "Vylepšete svůj nákup volitelnými doplňky",
+    "selectCountry": "Vyberte zemi",
+    "securedBy": "Zabezpečeno Checkout.com",
+    "createAccountLabel": "Vytvořte si účet pro rychlejší platby",
+    "createPasswordPlaceholder": "Vytvořte heslo (min. 8 znaků)",
+    "accountEmailNote": "Účet bude vytvořen s fakturační e-mailovou adresou"
   },
   "product": {
     "addToCart": "Přidat do košíku",
@@ -204,11 +209,16 @@
   },
   "seo": {
     "homeTitle": "PixelCodes — Digitální softwarové licence",
+    "homeDescription": "Kupte si originální softwarové licenční klíče za nejlepší ceny. Okamžité doručení, podpora 24/7.",
     "bundlesTitle": "Balíčky produktů | PixelCodes",
     "bundlesDescription": "Ušetřete více s kurátorskými balíčky softwaru",
     "cartTitle": "Košík | PixelCodes",
+    "cartDescription": "Zkontrolujte vybrané softwarové licence před nákupem",
     "checkoutTitle": "Pokladna | PixelCodes",
+    "checkoutDescription": "Dokončete nákup bezpečně a obdržíte klíče okamžitě",
     "loginTitle": "Přihlášení | PixelCodes",
-    "registerTitle": "Vytvořit účet | PixelCodes"
+    "loginDescription": "Přihlaste se ke svému účtu PixelCodes pro správu objednávek",
+    "registerTitle": "Vytvořit účet | PixelCodes",
+    "registerDescription": "Vytvořte si bezplatný účet PixelCodes pro rychlejší platby"
   }
 }

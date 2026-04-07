@@ -22,6 +22,7 @@ import { LoyaltyRedeem } from "@/components/checkout/loyalty-redeem";
 import { WalletPayment } from "@/components/checkout/wallet-payment";
 import { CheckoutServices } from "@/components/checkout/checkout-services";
 import { TrustpilotBadge } from "@/components/trustpilot/trustpilot-badge";
+import { setSeoMeta, clearSeoMeta } from "@/lib/seo";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -37,7 +38,7 @@ const INITIAL_PAYMENT: PaymentData = {
 interface TaxInfo { taxRate: number; taxLabel: string; exempt: boolean; b2bEnabled: boolean; priceDisplay: string }
 
 export default function CheckoutPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const items = useCartStore((s) => s.items);
   const coupon = useCartStore((s) => s.coupon);
   const getTotal = useCartStore((s) => s.getTotal);
@@ -46,8 +47,8 @@ export default function CheckoutPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    document.title = t("seo.checkoutTitle");
-    return () => { document.title = "PixelCodes"; };
+    setSeoMeta({ title: t("seo.checkoutTitle"), description: t("seo.checkoutDescription") });
+    return () => { clearSeoMeta(); };
   }, [t]);
 
   const [billing, setBilling] = useState<BillingData>(INITIAL_BILLING);
@@ -172,6 +173,7 @@ export default function CheckoutPage() {
           serviceIds: selectedServiceIds.length > 0 ? selectedServiceIds : undefined,
           payment: { cardToken },
           guestPassword: guestPassword || undefined,
+          locale: i18n.language,
         }),
       });
 

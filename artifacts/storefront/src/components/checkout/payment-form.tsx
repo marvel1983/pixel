@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { CreditCard, Lock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +17,8 @@ interface PaymentFormProps {
 }
 
 export function PaymentForm({ data, errors, onChange }: PaymentFormProps) {
+  const { t } = useTranslation();
+
   function formatCardNumber(val: string) {
     const digits = val.replace(/\D/g, "").slice(0, 16);
     return digits.replace(/(\d{4})(?=\d)/g, "$1 ");
@@ -31,16 +34,16 @@ export function PaymentForm({ data, errors, onChange }: PaymentFormProps) {
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <CreditCard className="h-5 w-5 text-primary" />
-        <h2 className="text-lg font-bold">Payment</h2>
+        <h2 className="text-lg font-bold">{t("checkout.paymentDetails")}</h2>
         <div className="flex items-center gap-1 ml-auto text-xs text-muted-foreground">
           <Lock className="h-3 w-3" />
-          Secured by Checkout.com
+          {t("checkout.securedBy")}
         </div>
       </div>
 
       <div className="border rounded-lg p-4 space-y-3 bg-muted/5">
         <div>
-          <Label htmlFor="cardName">Name on Card *</Label>
+          <Label htmlFor="cardName">{t("checkout.cardName")} *</Label>
           <Input
             id="cardName"
             value={data.cardName}
@@ -52,7 +55,7 @@ export function PaymentForm({ data, errors, onChange }: PaymentFormProps) {
         </div>
 
         <div>
-          <Label htmlFor="cardNumber">Card Number *</Label>
+          <Label htmlFor="cardNumber">{t("checkout.cardNumber")} *</Label>
           <Input
             id="cardNumber"
             value={data.cardNumber}
@@ -65,7 +68,7 @@ export function PaymentForm({ data, errors, onChange }: PaymentFormProps) {
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <Label htmlFor="expiry">Expiry Date *</Label>
+            <Label htmlFor="expiry">{t("checkout.expiry")} *</Label>
             <Input
               id="expiry"
               value={data.expiry}

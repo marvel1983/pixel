@@ -41,11 +41,11 @@ const orderSchema = z.object({
   giftCards: z.array(z.object({ code: z.string(), amount: z.number().positive() })).optional(),
   loyaltyPointsUsed: z.number().int().min(0).optional(),
   serviceIds: z.array(z.number().int().positive()).max(10).optional(),
+  locale: z.string().max(10).optional(),
 });
 
 const CPP_RATE = 0.05;
 const generateOrderNumber = () => `PC-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-
 async function validateAndPriceItems(items: z.infer<typeof orderSchema>["items"]) {
   const variantIds = items.filter((i) => i.variantId > 0).map((i) => i.variantId);
   const dbVariants = await db
@@ -125,6 +125,7 @@ router.post("/orders", async (req, res) => {
   const { billing, items, coupon, cppSelected, vatNumber, total, payment, giftCards: gcInput } = parsed.data;
   let userId: number | undefined;
   let userLocale: string | undefined;
+  if (typeof parsed.data.locale === "string") userLocale = parsed.data.locale.slice(0, 10);
   try {
     const authToken = req.cookies?.token || req.headers.authorization?.replace("Bearer ", "");
     if (authToken) {
@@ -292,8 +293,7 @@ router.post("/orders", async (req, res) => {
     });
   } catch (err) {
     logger.error({ err }, "Order pipeline failed");
-    const msg = err instanceof Error ? err.message : "Failed to process order";
-    res.status(500).json({ error: msg });
+    res.status(500).json({ error: err instanceof Error ? err.message : "Failed to process order" });
   }
 });
 

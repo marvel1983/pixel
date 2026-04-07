@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -43,12 +44,13 @@ const COUNTRIES: [string, string][] = [
 ];
 
 export function BillingForm({ data, errors, onChange, showVatField }: BillingFormProps) {
+  const { t } = useTranslation();
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-bold">Billing Details</h2>
+      <h2 className="text-lg font-bold">{t("checkout.billingDetails")}</h2>
 
       <div>
-        <Label htmlFor="email">Email Address *</Label>
+        <Label htmlFor="email">{t("checkout.email")} *</Label>
         <Input
           id="email"
           type="email"
@@ -61,7 +63,7 @@ export function BillingForm({ data, errors, onChange, showVatField }: BillingFor
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <Label htmlFor="firstName">First Name *</Label>
+          <Label htmlFor="firstName">{t("checkout.firstName")} *</Label>
           <Input
             id="firstName"
             value={data.firstName}
@@ -71,7 +73,7 @@ export function BillingForm({ data, errors, onChange, showVatField }: BillingFor
           {errors.firstName && <p className="text-xs text-destructive mt-1">{errors.firstName}</p>}
         </div>
         <div>
-          <Label htmlFor="lastName">Last Name *</Label>
+          <Label htmlFor="lastName">{t("checkout.lastName")} *</Label>
           <Input
             id="lastName"
             value={data.lastName}
@@ -83,10 +85,10 @@ export function BillingForm({ data, errors, onChange, showVatField }: BillingFor
       </div>
 
       <div>
-        <Label htmlFor="country">Country *</Label>
+        <Label htmlFor="country">{t("checkout.country")} *</Label>
         <Select value={data.country} onValueChange={(v) => onChange("country", v)}>
           <SelectTrigger className={errors.country ? "border-destructive" : ""}>
-            <SelectValue placeholder="Select country" />
+            <SelectValue placeholder={t("checkout.selectCountry")} />
           </SelectTrigger>
           <SelectContent>
             {COUNTRIES.map(([code, name]) => (
@@ -99,7 +101,7 @@ export function BillingForm({ data, errors, onChange, showVatField }: BillingFor
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <Label htmlFor="city">City *</Label>
+          <Label htmlFor="city">{t("checkout.city")} *</Label>
           <Input
             id="city"
             value={data.city}
@@ -109,7 +111,7 @@ export function BillingForm({ data, errors, onChange, showVatField }: BillingFor
           {errors.city && <p className="text-xs text-destructive mt-1">{errors.city}</p>}
         </div>
         <div>
-          <Label htmlFor="zip">Zip / Postal Code *</Label>
+          <Label htmlFor="zip">{t("checkout.zip")} *</Label>
           <Input
             id="zip"
             value={data.zip}
@@ -121,7 +123,7 @@ export function BillingForm({ data, errors, onChange, showVatField }: BillingFor
       </div>
 
       <div>
-        <Label htmlFor="address">Street Address *</Label>
+        <Label htmlFor="address">{t("checkout.address")} *</Label>
         <Input
           id="address"
           value={data.address}
@@ -133,7 +135,7 @@ export function BillingForm({ data, errors, onChange, showVatField }: BillingFor
 
       {showVatField && (
         <div>
-          <Label htmlFor="vatNumber">VAT Number (optional, for B2B tax exemption)</Label>
+          <Label htmlFor="vatNumber">{t("checkout.vatNumber")}</Label>
           <Input
             id="vatNumber"
             value={data.vatNumber ?? ""}

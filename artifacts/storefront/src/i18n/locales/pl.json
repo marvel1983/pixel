@@ -81,7 +81,12 @@
     "cvc": "CVC",
     "cardName": "Imię i nazwisko na karcie",
     "additionalServices": "Dodatkowe usługi",
-    "enhancePurchase": "Wzbogać swój zakup o opcjonalne dodatki"
+    "enhancePurchase": "Wzbogać swój zakup o opcjonalne dodatki",
+    "selectCountry": "Wybierz kraj",
+    "securedBy": "Zabezpieczone przez Checkout.com",
+    "createAccountLabel": "Utwórz konto dla szybszych zakupów",
+    "createPasswordPlaceholder": "Utwórz hasło (min. 8 znaków)",
+    "accountEmailNote": "Konto zostanie utworzone z powyższym adresem e-mail"
   },
   "product": {
     "addToCart": "Dodaj do koszyka",
@@ -204,11 +209,16 @@
   },
   "seo": {
     "homeTitle": "PixelCodes — Cyfrowe licencje na oprogramowanie",
+    "homeDescription": "Kup oryginalne klucze licencyjne w najlepszych cenach. Natychmiastowa dostawa, wsparcie 24/7.",
     "bundlesTitle": "Pakiety produktów | PixelCodes",
     "bundlesDescription": "Oszczędzaj więcej dzięki pakietom oprogramowania",
     "cartTitle": "Koszyk | PixelCodes",
+    "cartDescription": "Sprawdź wybrane licencje przed zakupem",
     "checkoutTitle": "Zamówienie | PixelCodes",
+    "checkoutDescription": "Dokończ zakup bezpiecznie i otrzymaj klucze natychmiast",
     "loginTitle": "Zaloguj się | PixelCodes",
-    "registerTitle": "Utwórz konto | PixelCodes"
+    "loginDescription": "Zaloguj się do konta PixelCodes, aby zarządzać zamówieniami",
+    "registerTitle": "Utwórz konto | PixelCodes",
+    "registerDescription": "Utwórz darmowe konto PixelCodes dla szybszych zakupów"
   }
 }

@@ -74,6 +74,7 @@ router.post("/auth/register", async (req, res) => {
   }
 
   const passwordHash = await bcrypt.hash(password, 12);
+  const locale = typeof req.body.locale === "string" ? req.body.locale.slice(0, 10) : undefined;
 
   const [user] = await db
     .insert(users)
@@ -85,14 +86,13 @@ router.post("/auth/register", async (req, res) => {
       role: "CUSTOMER",
       isActive: true,
       emailVerified: false,
+      ...(locale ? { preferredLocale: locale } : {}),
     })
     .returning();
 
   const token = makeToken(user);
   res.cookie("token", token, COOKIE_OPTS);
   logger.info({ userId: user.id }, "User registered");
-
-  const locale = typeof req.body.locale === "string" ? req.body.locale.slice(0, 10) : undefined;
   sendWelcomeEmail(user.email, firstName, locale).catch((err) =>
     logger.error({ err, userId: user.id }, "Failed to enqueue welcome email"),
   );

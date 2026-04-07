@@ -6,6 +6,7 @@ import { CartItemsTable } from "@/components/cart/cart-items-table";
 import { CartTotals } from "@/components/cart/cart-totals";
 import { EmptyCart } from "@/components/cart/empty-cart";
 import { Breadcrumbs } from "@/components/shop/breadcrumbs";
+import { setSeoMeta, clearSeoMeta } from "@/lib/seo";
 
 export default function CartPage() {
   const { t } = useTranslation();
@@ -13,8 +14,8 @@ export default function CartPage() {
   const isEmpty = items.length === 0;
 
   useEffect(() => {
-    document.title = t("seo.cartTitle");
-    return () => { document.title = "PixelCodes"; };
+    setSeoMeta({ title: t("seo.cartTitle"), description: t("seo.cartDescription") });
+    return () => { clearSeoMeta(); };
   }, [t]);
 
   return (

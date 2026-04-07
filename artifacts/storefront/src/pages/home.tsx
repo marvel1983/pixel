@@ -9,6 +9,7 @@ import { NewAdditions } from "@/components/home/new-additions";
 import { RecentlyViewed } from "@/components/home/recently-viewed";
 import { FeaturedBundles } from "@/components/home/featured-bundles";
 import { TrustpilotCarousel } from "@/components/trustpilot/trustpilot-carousel";
+import { setSeoMeta, clearSeoMeta } from "@/lib/seo";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -53,8 +54,8 @@ export default function HomePage() {
   const [sectionTypes, setSectionTypes] = useState<string[]>(ALL_TYPES);
 
   useEffect(() => {
-    document.title = t("seo.homeTitle");
-    return () => { document.title = "PixelCodes"; };
+    setSeoMeta({ title: t("seo.homeTitle"), description: t("seo.homeDescription") });
+    return () => { clearSeoMeta(); };
   }, [t]);
 
   useEffect(() => {

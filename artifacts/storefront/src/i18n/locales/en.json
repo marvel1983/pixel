@@ -81,7 +81,12 @@
     "cvc": "CVC",
     "cardName": "Name on Card",
     "additionalServices": "Additional Services",
-    "enhancePurchase": "Enhance your purchase with optional add-ons"
+    "enhancePurchase": "Enhance your purchase with optional add-ons",
+    "selectCountry": "Select country",
+    "securedBy": "Secured by Checkout.com",
+    "createAccountLabel": "Create an account for faster checkout next time",
+    "createPasswordPlaceholder": "Create a password (min 8 characters)",
+    "accountEmailNote": "Your account will be created with the billing email above"
   },
   "product": {
     "addToCart": "Add to Cart",
@@ -204,11 +209,16 @@
   },
   "seo": {
     "homeTitle": "PixelCodes — Digital Software Licenses",
+    "homeDescription": "Buy genuine software license keys at the best prices. Instant delivery, 24/7 support.",
     "bundlesTitle": "Product Bundles | PixelCodes",
     "bundlesDescription": "Save more with curated software bundles",
     "cartTitle": "Shopping Cart | PixelCodes",
+    "cartDescription": "Review your selected software licenses before checkout",
     "checkoutTitle": "Checkout | PixelCodes",
+    "checkoutDescription": "Complete your purchase securely and receive your keys instantly",
     "loginTitle": "Sign In | PixelCodes",
-    "registerTitle": "Create Account | PixelCodes"
+    "loginDescription": "Sign in to your PixelCodes account to manage orders and licenses",
+    "registerTitle": "Create Account | PixelCodes",
+    "registerDescription": "Create a free PixelCodes account for faster checkout and order history"
   }
 }
