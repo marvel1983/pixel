@@ -8,6 +8,7 @@ import { useAuthStore } from "@/stores/auth-store";
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
 interface SeoSettings {
+  defaultMetaTitleFormat: string; defaultMetaDescription: string;
   googleAnalyticsId: string; gtmId: string; facebookPixelId: string;
   googleVerificationCode: string; socialShareImage: string;
   robotsTxt: string; customHeadScripts: string; customBodyScripts: string;
@@ -16,6 +17,7 @@ interface SeoSettings {
 }
 
 const defaults: SeoSettings = {
+  defaultMetaTitleFormat: "{title} | PixelCodes", defaultMetaDescription: "",
   googleAnalyticsId: "", gtmId: "", facebookPixelId: "",
   googleVerificationCode: "", socialShareImage: "",
   robotsTxt: "User-agent: *\nAllow: /\n\nSitemap: /sitemap.xml",
@@ -42,6 +44,8 @@ export default function SettingsSeoTrackingTab() {
       if (d?.settings) {
         const s = d.settings;
         setForm({
+          defaultMetaTitleFormat: s.defaultMetaTitleFormat ?? defaults.defaultMetaTitleFormat,
+          defaultMetaDescription: s.defaultMetaDescription ?? "",
           googleAnalyticsId: s.googleAnalyticsId ?? "", gtmId: s.gtmId ?? "",
           facebookPixelId: s.facebookPixelId ?? "", googleVerificationCode: s.googleVerificationCode ?? "",
           socialShareImage: s.socialShareImage ?? "", robotsTxt: s.robotsTxt ?? defaults.robotsTxt,
@@ -82,6 +86,16 @@ export default function SettingsSeoTrackingTab() {
 
   return (
     <div className="space-y-6">
+      <Section title="Default SEO">
+        <Field label="Default Meta Title Format">
+          <input className="w-full rounded-md border px-3 py-2 text-sm" value={form.defaultMetaTitleFormat} onChange={(e) => set("defaultMetaTitleFormat", e.target.value)} placeholder="{title} | PixelCodes" />
+          <p className="text-xs text-muted-foreground mt-1">Use {"{title}"} as placeholder for page title</p>
+        </Field>
+        <Field label="Default Meta Description">
+          <textarea className="w-full rounded-md border px-3 py-2 text-sm min-h-[60px] resize-y" value={form.defaultMetaDescription} onChange={(e) => set("defaultMetaDescription", e.target.value)} placeholder="Your store's default meta description for search engines..." />
+        </Field>
+      </Section>
+
       <Section title="Tracking Codes">
         <div className="grid grid-cols-2 gap-4">
           <Field label="Google Analytics ID"><input className="w-full rounded-md border px-3 py-2 text-sm" value={form.googleAnalyticsId} onChange={(e) => set("googleAnalyticsId", e.target.value)} placeholder="G-XXXXXXXXXX" /></Field>

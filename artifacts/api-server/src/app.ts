@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { maintenanceMiddleware } from "./middleware/maintenance";
 
 declare global {
   namespace Express {
@@ -47,6 +48,6 @@ app.use(
 );
 app.use(express.urlencoded({ extended: true }));
 
-app.use("/api", router);
+app.use("/api", maintenanceMiddleware, router);
 
 export default app;

@@ -4,6 +4,7 @@ import { seoTracking } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
+import { invalidateMaintenanceCache } from "../middleware/maintenance";
 
 const router = Router();
 
@@ -22,12 +23,15 @@ router.get("/admin/settings/seo-tracking", requireAuth, requireAdmin, requirePer
 router.put("/admin/settings/seo-tracking", requireAuth, requireAdmin, requirePermission("manageSettings"), async (req, res) => {
   const settings = await getOrCreateSeo();
   const {
+    defaultMetaTitleFormat, defaultMetaDescription,
     googleAnalyticsId, gtmId, facebookPixelId, googleVerificationCode,
     socialShareImage, robotsTxt, customHeadScripts, customBodyScripts,
     maintenanceMode, maintenanceMessage, maintenanceEstimate, maintenanceBypassIps,
   } = req.body;
 
   const data: Record<string, unknown> = { updatedAt: new Date() };
+  if (typeof defaultMetaTitleFormat === "string") data.defaultMetaTitleFormat = defaultMetaTitleFormat || null;
+  if (typeof defaultMetaDescription === "string") data.defaultMetaDescription = defaultMetaDescription || null;
   if (typeof googleAnalyticsId === "string") data.googleAnalyticsId = googleAnalyticsId || null;
   if (typeof gtmId === "string") data.gtmId = gtmId || null;
   if (typeof facebookPixelId === "string") data.facebookPixelId = facebookPixelId || null;
@@ -42,6 +46,7 @@ router.put("/admin/settings/seo-tracking", requireAuth, requireAdmin, requirePer
   if (Array.isArray(maintenanceBypassIps)) data.maintenanceBypassIps = maintenanceBypassIps;
 
   await db.update(seoTracking).set(data).where(eq(seoTracking.id, settings.id));
+  invalidateMaintenanceCache();
   const [updated] = await db.select().from(seoTracking);
   res.json({ success: true, settings: updated });
 });
@@ -56,14 +61,20 @@ router.post("/admin/settings/seo-tracking/regenerate-sitemap", requireAuth, requ
   res.json({ success: true, message: "Sitemap regeneration queued" });
 });
 
-router.get("/maintenance-status", async (_req, res) => {
+router.get("/maintenance-status", async (req, res) => {
   const rows = await db.select({
     maintenanceMode: seoTracking.maintenanceMode,
     maintenanceMessage: seoTracking.maintenanceMessage,
     maintenanceEstimate: seoTracking.maintenanceEstimate,
+    maintenanceBypassIps: seoTracking.maintenanceBypassIps,
   }).from(seoTracking);
   if (!rows[0] || !rows[0].maintenanceMode) {
     res.json({ maintenance: false }); return;
+  }
+  const clientIp = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.ip || "";
+  const bypassIps = rows[0].maintenanceBypassIps ?? [];
+  if (bypassIps.length > 0 && bypassIps.includes(clientIp)) {
+    res.json({ maintenance: false, bypassed: true }); return;
   }
   res.json({
     maintenance: true,

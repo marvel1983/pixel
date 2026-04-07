@@ -21,6 +21,8 @@ export const notificationPreferences = pgTable("notification_preferences", {
 
 export const seoTracking = pgTable("seo_tracking", {
   id: serial("id").primaryKey(),
+  defaultMetaTitleFormat: varchar("default_meta_title_format", { length: 300 }).default("{title} | PixelCodes"),
+  defaultMetaDescription: text("default_meta_description"),
   googleAnalyticsId: varchar("google_analytics_id", { length: 50 }),
   gtmId: varchar("gtm_id", { length: 50 }),
   facebookPixelId: varchar("facebook_pixel_id", { length: 50 }),
