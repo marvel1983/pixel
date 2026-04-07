@@ -8,6 +8,7 @@ import ProductEditPage from "./product-edit";
 import AdminCategoriesPage from "./categories";
 import AdminOrdersPage from "./orders";
 import OrderDetailPage from "./order-detail";
+import AdminKeysPage from "./keys";
 
 function AdminPlaceholder({ title }: { title: string }) {
   return (
@@ -38,9 +39,7 @@ export default function AdminRoot() {
           <Route path="/admin/transactions">
             <AdminPlaceholder title="Transactions" />
           </Route>
-          <Route path="/admin/fulfillment">
-            <AdminPlaceholder title="Fulfillment" />
-          </Route>
+          <Route path="/admin/fulfillment" component={AdminKeysPage} />
           <Route path="/admin/users">
             <AdminPlaceholder title="Users" />
           </Route>

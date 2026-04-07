@@ -24,6 +24,8 @@ export const auditActionEnum = pgEnum("audit_action", [
   "ROLE_CHANGE",
   "REFUND",
   "KEY_REVOKE",
+  "KEY_REVEAL",
+  "KEY_COPY",
 ]);
 
 export const auditLog = pgTable("audit_log", {
