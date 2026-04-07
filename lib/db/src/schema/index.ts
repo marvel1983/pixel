@@ -16,3 +16,4 @@ export * from "./currency-rates";
 export * from "./audit-log";
 export * from "./compare-sessions";
 export * from "./category-meta";
+export * from "./password-resets";

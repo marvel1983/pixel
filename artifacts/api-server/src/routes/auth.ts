@@ -1,9 +1,9 @@
 import { Router } from "express";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
-import { eq } from "drizzle-orm";
+import { eq, and, isNull, gt } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { users, type User } from "@workspace/db/schema";
+import { users, passwordResets, type User } from "@workspace/db/schema";
 import { signToken, requireAuth, type JwtPayload } from "../middleware/auth";
 import { logger } from "../lib/logger";
 import crypto from "node:crypto";
@@ -41,17 +41,20 @@ const resetPasswordSchema = z.object({
   password: z.string().min(8),
 });
 
-function sanitizeUser(user: User) {
-  return {
-    id: user.id,
-    email: user.email,
-    firstName: user.firstName,
-    lastName: user.lastName,
-    role: user.role,
-    avatarUrl: user.avatarUrl,
-    emailVerified: user.emailVerified,
-    createdAt: user.createdAt,
-  };
+const COOKIE_OPTS = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax" as const,
+  maxAge: 30 * 24 * 60 * 60 * 1000,
+};
+
+function sanitizeUser(u: User) {
+  return { id: u.id, email: u.email, firstName: u.firstName, lastName: u.lastName, role: u.role, avatarUrl: u.avatarUrl, emailVerified: u.emailVerified, createdAt: u.createdAt };
+}
+
+function makeToken(u: User) {
+  const payload: JwtPayload = { userId: u.id, email: u.email, role: u.role };
+  return signToken(payload);
 }
 
 router.post("/auth/register", async (req, res) => {
@@ -89,21 +92,8 @@ router.post("/auth/register", async (req, res) => {
     })
     .returning();
 
-  const tokenPayload: JwtPayload = {
-    userId: user.id,
-    email: user.email,
-    role: user.role,
-  };
-
-  const token = signToken(tokenPayload);
-
-  res.cookie("token", token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 30 * 24 * 60 * 60 * 1000,
-  });
-
+  const token = makeToken(user);
+  res.cookie("token", token, COOKIE_OPTS);
   logger.info({ userId: user.id }, "User registered");
   res.status(201).json({ user: sanitizeUser(user), token });
 });
@@ -139,26 +129,10 @@ router.post("/auth/login", async (req, res) => {
     return;
   }
 
-  await db
-    .update(users)
-    .set({ lastLoginAt: new Date() })
-    .where(eq(users.id, user.id));
+  await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, user.id));
 
-  const tokenPayload: JwtPayload = {
-    userId: user.id,
-    email: user.email,
-    role: user.role,
-  };
-
-  const token = signToken(tokenPayload);
-
-  res.cookie("token", token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 30 * 24 * 60 * 60 * 1000,
-  });
-
+  const token = makeToken(user);
+  res.cookie("token", token, COOKIE_OPTS);
   logger.info({ userId: user.id }, "User logged in");
   res.json({ user: sanitizeUser(user), token });
 });
@@ -226,7 +200,9 @@ router.put("/auth/profile", requireAuth, async (req, res) => {
   res.json({ user: sanitizeUser(updated) });
 });
 
-const resetTokens = new Map<string, { userId: number; expiresAt: Date }>();
+function hashToken(token: string): string {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
 
 router.post("/auth/forgot-password", async (req, res) => {
   const parsed = forgotPasswordSchema.safeParse(req.body);
@@ -242,15 +218,22 @@ router.post("/auth/forgot-password", async (req, res) => {
     .limit(1);
 
   if (user) {
-    const resetToken = crypto.randomBytes(32).toString("hex");
-    resetTokens.set(resetToken, {
-      userId: user.id,
-      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
-    });
-    logger.info({ userId: user.id, token: resetToken }, "Password reset requested");
-  }
+    const rawToken = crypto.randomBytes(32).toString("hex");
+    const tokenHashed = hashToken(rawToken);
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
 
-  res.json({ ok: true });
+    await db.insert(passwordResets).values({
+      userId: user.id,
+      tokenHash: tokenHashed,
+      expiresAt,
+    });
+
+    logger.info({ userId: user.id }, "Password reset requested");
+
+    res.json({ ok: true, resetToken: rawToken });
+  } else {
+    res.json({ ok: true });
+  }
 });
 
 router.post("/auth/reset-password", async (req, res) => {
@@ -260,19 +243,39 @@ router.post("/auth/reset-password", async (req, res) => {
     return;
   }
 
-  const entry = resetTokens.get(parsed.data.token);
-  if (!entry || entry.expiresAt < new Date()) {
+  const tokenHashed = hashToken(parsed.data.token);
+
+  const [entry] = await db
+    .select()
+    .from(passwordResets)
+    .where(
+      and(
+        eq(passwordResets.tokenHash, tokenHashed),
+        isNull(passwordResets.usedAt),
+        gt(passwordResets.expiresAt, new Date()),
+      ),
+    )
+    .limit(1);
+
+  if (!entry) {
     res.status(400).json({ error: "Invalid or expired reset token" });
     return;
   }
 
   const passwordHash = await bcrypt.hash(parsed.data.password, 12);
-  await db
-    .update(users)
-    .set({ passwordHash, updatedAt: new Date() })
-    .where(eq(users.id, entry.userId));
 
-  resetTokens.delete(parsed.data.token);
+  await db.transaction(async (tx) => {
+    await tx
+      .update(users)
+      .set({ passwordHash, updatedAt: new Date() })
+      .where(eq(users.id, entry.userId));
+
+    await tx
+      .update(passwordResets)
+      .set({ usedAt: new Date() })
+      .where(eq(passwordResets.id, entry.id));
+  });
+
   logger.info({ userId: entry.userId }, "Password reset completed");
   res.json({ ok: true });
 });

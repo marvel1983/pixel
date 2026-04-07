@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "wouter";
+import { useLocation, Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,6 +9,7 @@ import { Breadcrumbs } from "@/components/shop/breadcrumbs";
 import { KeyRound, Loader2, CheckCircle2 } from "lucide-react";
 
 export default function ForgotPasswordPage() {
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
@@ -26,7 +27,14 @@ export default function ForgotPasswordPage() {
         body: JSON.stringify({ email }),
       });
 
-      if (res.ok) setSent(true);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.resetToken) {
+          setLocation(`/reset-password/${data.resetToken}`);
+          return;
+        }
+        setSent(true);
+      }
     } catch {
       toast({ title: "Something went wrong", variant: "destructive" });
     } finally {
