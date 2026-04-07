@@ -1,11 +1,28 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { licenseKeys, productVariants, products, orderItems, orders, auditLog } from "@workspace/db/schema";
-import { eq, desc, and, or, ilike, gte, lte, inArray, count, sql } from "drizzle-orm";
+import { eq, desc, and, or, ilike, gte, lte, count, sql } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { decrypt } from "../lib/encryption";
 
 const router = Router();
+
+function makeMask(plaintext: string): string {
+  if (plaintext.length <= 8) return plaintext.slice(0, 2) + "****";
+  return plaintext.slice(0, 4) + "****" + plaintext.slice(-4);
+}
+
+function safeDecrypt(value: string): string {
+  try { return decrypt(value); } catch { return value; }
+}
+
+async function ensureKeyMask(id: number, keyValue: string, currentMask: string | null): Promise<string> {
+  if (currentMask) return currentMask;
+  const plain = safeDecrypt(keyValue);
+  const mask = makeMask(plain);
+  await db.update(licenseKeys).set({ keyMask: mask }).where(eq(licenseKeys.id, id));
+  return mask;
+}
 
 router.get("/admin/keys", requireAuth, requireAdmin, async (req, res) => {
   const page = Math.max(1, Number(req.query.page) || 1);
@@ -37,10 +54,10 @@ router.get("/admin/keys", requireAuth, requireAdmin, async (req, res) => {
   const rows = await db
     .select({
       id: licenseKeys.id,
-      maskedKey: sql<string>`CONCAT(LEFT(${licenseKeys.keyValue}, 4), '****', RIGHT(${licenseKeys.keyValue}, 4))`,
+      keyValue: licenseKeys.keyValue,
+      keyMask: licenseKeys.keyMask,
       status: licenseKeys.status,
       source: licenseKeys.source,
-      variantId: licenseKeys.variantId,
       productName: products.name,
       variantName: productVariants.name,
       sku: productVariants.sku,
@@ -59,8 +76,22 @@ router.get("/admin/keys", requireAuth, requireAdmin, async (req, res) => {
     .limit(limit)
     .offset(offset);
 
+  const keys = await Promise.all(rows.map(async (r) => ({
+    id: r.id,
+    maskedKey: await ensureKeyMask(r.id, r.keyValue, r.keyMask),
+    status: r.status,
+    source: r.source,
+    productName: r.productName,
+    variantName: r.variantName,
+    sku: r.sku,
+    orderNumber: r.orderNumber,
+    customerEmail: r.customerEmail,
+    soldAt: r.soldAt,
+    createdAt: r.createdAt,
+  })));
+
   res.json({
-    keys: rows, total, page, limit,
+    keys, total, page, limit,
     stats: {
       total: Object.values(statsMap).reduce((a, b) => a + b, 0),
       delivered: statsMap["SOLD"] ?? 0,
@@ -107,6 +138,12 @@ router.post("/admin/keys/:id/copy-audit", requireAuth, requireAdmin, async (req,
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     res.status(400).json({ error: "Invalid key ID" });
+    return;
+  }
+
+  const [key] = await db.select({ id: licenseKeys.id }).from(licenseKeys).where(eq(licenseKeys.id, id));
+  if (!key) {
+    res.status(404).json({ error: "Key not found" });
     return;
   }
 
@@ -191,6 +228,7 @@ function buildFilters(query: Record<string, unknown>) {
   const search = query.search as string | undefined;
   if (search?.trim()) {
     conditions.push(or(
+      ilike(licenseKeys.keyMask, `%${search}%`),
       ilike(orders.orderNumber, `%${search}%`),
       ilike(products.name, `%${search}%`),
       ilike(productVariants.sku, `%${search}%`),
@@ -209,10 +247,6 @@ function buildFilters(query: Record<string, unknown>) {
     conditions.push(lte(licenseKeys.createdAt, endOfDay));
   }
   return conditions;
-}
-
-function safeDecrypt(value: string): string {
-  try { return decrypt(value); } catch { return value; }
 }
 
 export default router;

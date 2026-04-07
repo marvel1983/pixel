@@ -31,6 +31,7 @@ export const licenseKeys = pgTable("license_keys", {
     .notNull()
     .references(() => productVariants.id),
   keyValue: text("key_value").notNull(),
+  keyMask: varchar("key_mask", { length: 20 }),
   status: keyStatusEnum("status").notNull().default("AVAILABLE"),
   source: keySourceEnum("source").notNull().default("MANUAL"),
   orderItemId: integer("order_item_id").references(() => orderItems.id),

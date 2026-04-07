@@ -126,9 +126,11 @@ async function handleOrderFulfilled(data: FulfilledData) {
 
     for (const key of keys) {
       const encryptedKey = encrypt(key);
+      const keyMask = key.length <= 8 ? key.slice(0, 2) + "****" : key.slice(0, 4) + "****" + key.slice(-4);
       await db.insert(licenseKeys).values({
         variantId,
         keyValue: encryptedKey,
+        keyMask,
         status: "SOLD",
         source: "API",
         orderItemId: dbItem?.id,
