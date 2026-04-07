@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useLocation, Link } from "wouter";
 import { cn } from "@/lib/utils";
 import {
@@ -29,11 +30,15 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useAuthStore } from "@/stores/auth-store";
+
+const API = import.meta.env.VITE_API_URL ?? "/api";
 
 interface NavItem {
   label: string;
   href: string;
   icon: LucideIcon;
+  badgeKey?: string;
 }
 
 interface NavSection {
@@ -56,7 +61,7 @@ const sections: NavSection[] = [
       { label: "Categories", href: "/admin/categories", icon: Tags },
       { label: "Platforms", href: "/admin/platforms", icon: Layers },
       { label: "Reviews", href: "/admin/reviews", icon: MessageSquare },
-      { label: "Q&A", href: "/admin/qa", icon: HelpCircle },
+      { label: "Q&A", href: "/admin/qa", icon: HelpCircle, badgeKey: "pendingQA" },
     ],
   },
   {
@@ -117,6 +122,20 @@ interface AdminSidebarProps {
 
 export function AdminSidebar({ onNavigate }: AdminSidebarProps) {
   const [location] = useLocation();
+  const token = useAuthStore((s) => s.token);
+  const [badges, setBadges] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    if (!token) return;
+    fetch(`${API}/admin/qa/stats`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.pending) setBadges((prev) => ({ ...prev, pendingQA: data.pending }));
+      })
+      .catch(() => {});
+  }, [token]);
 
   return (
     <div className="flex h-full flex-col border-r bg-white">
@@ -138,6 +157,7 @@ export function AdminSidebar({ onNavigate }: AdminSidebarProps) {
               <div className="space-y-0.5">
                 {section.items.map((item) => {
                   const active = isActive(location, item.href);
+                  const badgeCount = item.badgeKey ? badges[item.badgeKey] ?? 0 : 0;
                   return (
                     <Link
                       key={item.href}
@@ -152,6 +172,11 @@ export function AdminSidebar({ onNavigate }: AdminSidebarProps) {
                     >
                       <item.icon className={cn("h-4 w-4", active ? "text-blue-700" : "text-gray-400")} />
                       {item.label}
+                      {badgeCount > 0 && (
+                        <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+                          {badgeCount}
+                        </span>
+                      )}
                     </Link>
                   );
                 })}

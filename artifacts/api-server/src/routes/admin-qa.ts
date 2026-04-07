@@ -105,10 +105,8 @@ router.post("/admin/qa/bulk-status", ...guard, async (req, res) => {
   }
   const numIds = ids.filter((id): id is number => typeof id === "number" && id > 0);
   if (numIds.length === 0) { res.status(400).json({ error: "No valid IDs" }); return; }
-  for (const id of numIds) {
-    await db.update(productQuestions).set({ status, updatedAt: new Date() })
-      .where(eq(productQuestions.id, id));
-  }
+  await db.update(productQuestions).set({ status, updatedAt: new Date() })
+    .where(inArray(productQuestions.id, numIds));
   res.json({ success: true, count: numIds.length });
 });
 
@@ -173,9 +171,7 @@ router.post("/admin/qa/bulk-delete", ...guard, async (req, res) => {
   if (!Array.isArray(ids)) { res.status(400).json({ error: "Invalid request" }); return; }
   const numIds = ids.filter((id): id is number => typeof id === "number" && id > 0);
   if (numIds.length === 0) { res.status(400).json({ error: "No valid IDs" }); return; }
-  for (const id of numIds) {
-    await db.delete(productQuestions).where(eq(productQuestions.id, id));
-  }
+  await db.delete(productQuestions).where(inArray(productQuestions.id, numIds));
   res.json({ success: true, count: numIds.length });
 });
 
