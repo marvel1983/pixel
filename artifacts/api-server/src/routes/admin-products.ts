@@ -132,8 +132,11 @@ router.post("/admin/products/sync", requireAuth, requireAdmin, async (_req, res)
   }
 });
 
-router.get("/admin/products/export", requireAuth, requireAdmin, async (_req, res) => {
-  const rows = await db
+router.get("/admin/products/export", requireAuth, requireAdmin, async (req, res) => {
+  const idsParam = (req.query.ids as string) ?? "";
+  const filterIds = idsParam ? idsParam.split(",").map(Number).filter((n) => Number.isInteger(n) && n > 0) : [];
+
+  const baseQuery = db
     .select({
       id: products.id,
       name: products.name,
@@ -145,6 +148,10 @@ router.get("/admin/products/export", requireAuth, requireAdmin, async (_req, res
     .from(products)
     .leftJoin(categories, eq(products.categoryId, categories.id))
     .orderBy(asc(products.name));
+
+  const rows = filterIds.length > 0
+    ? await baseQuery.where(inArray(products.id, filterIds))
+    : await baseQuery;
 
   const variants = await db
     .select()

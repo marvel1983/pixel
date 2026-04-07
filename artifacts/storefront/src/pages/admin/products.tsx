@@ -82,8 +82,9 @@ export default function AdminProductsPage() {
     fetchProducts();
   };
 
-  const handleExport = async () => {
-    const res = await fetch(`${API_URL}/admin/products/export`, {
+  const handleExport = async (ids?: number[]) => {
+    const params = ids?.length ? `?ids=${ids.join(",")}` : "";
+    const res = await fetch(`${API_URL}/admin/products/export${params}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) return;
@@ -142,7 +143,7 @@ export default function AdminProductsPage() {
             <RefreshCw className={`mr-1 h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
             Sync from Metenzi
           </Button>
-          <Button size="sm" variant="outline" onClick={handleExport}>
+          <Button size="sm" variant="outline" onClick={() => handleExport()}>
             <Download className="mr-1 h-4 w-4" /> Export CSV
           </Button>
         </div>
@@ -181,8 +182,8 @@ export default function AdminProductsPage() {
           <span className="font-medium">{selected.size} selected</span>
           <Button size="sm" variant="outline" onClick={() => handleBulk("activate")}>Set Active</Button>
           <Button size="sm" variant="outline" onClick={() => handleBulk("deactivate")}>Set Inactive</Button>
-          <Button size="sm" variant="outline" onClick={handleExport}>
-            <Download className="mr-1 h-3 w-3" /> Export CSV
+          <Button size="sm" variant="outline" onClick={() => handleExport(Array.from(selected))}>
+            <Download className="mr-1 h-3 w-3" /> Export Selected
           </Button>
         </div>
       )}
