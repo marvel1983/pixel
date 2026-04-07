@@ -55,13 +55,15 @@ router.get("/admin/blog/posts/:id", requireAuth, requireAdmin, async (req, res) 
 
 router.post("/admin/blog/posts", requireAuth, requireAdmin, async (req, res) => {
   try {
-    const { title, slug, excerpt, content, coverImageUrl, categoryId, tags, status, seoTitle, seoDescription } = req.body;
+    const { title, slug, excerpt, content, coverImageUrl, categoryId, tags, status, seoTitle, seoDescription, scheduledAt } = req.body;
     const isPublished = status === "published";
+    const isScheduled = status === "scheduled" && scheduledAt;
     const [post] = await db.insert(blogPosts).values({
       title, slug, excerpt, content, coverImageUrl,
       categoryId: categoryId || null, authorId: req.user!.userId,
       tags: tags || null, status: status || "draft",
       isPublished, publishedAt: isPublished ? new Date() : null,
+      scheduledAt: isScheduled ? new Date(scheduledAt) : null,
       seoTitle, seoDescription,
     }).returning();
     res.json(post);
@@ -74,8 +76,9 @@ router.post("/admin/blog/posts", requireAuth, requireAdmin, async (req, res) => 
 router.put("/admin/blog/posts/:id", requireAuth, requireAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const { title, slug, excerpt, content, coverImageUrl, categoryId, tags, status, seoTitle, seoDescription } = req.body;
+    const { title, slug, excerpt, content, coverImageUrl, categoryId, tags, status, seoTitle, seoDescription, scheduledAt } = req.body;
     const isPublished = status === "published";
+    const isScheduled = status === "scheduled" && scheduledAt;
     const existing = await db.select().from(blogPosts).where(eq(blogPosts.id, id));
     if (!existing.length) return res.status(404).json({ error: "Post not found" });
 
@@ -85,6 +88,7 @@ router.put("/admin/blog/posts/:id", requireAuth, requireAdmin, async (req, res) 
       categoryId: categoryId || null, tags: tags || null,
       status: status || "draft", isPublished,
       publishedAt: isPublished ? publishedAt : null,
+      scheduledAt: isScheduled ? new Date(scheduledAt) : null,
       seoTitle, seoDescription, updatedAt: new Date(),
     }).where(eq(blogPosts.id, id)).returning();
     res.json(post);

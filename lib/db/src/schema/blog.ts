@@ -33,6 +33,7 @@ export const blogPosts = pgTable("blog_posts", {
   status: varchar("status", { length: 20 }).notNull().default("draft"),
   isPublished: boolean("is_published").notNull().default(false),
   publishedAt: timestamp("published_at"),
+  scheduledAt: timestamp("scheduled_at"),
   seoTitle: varchar("seo_title", { length: 200 }),
   seoDescription: varchar("seo_description", { length: 300 }),
   viewCount: integer("view_count").notNull().default(0),

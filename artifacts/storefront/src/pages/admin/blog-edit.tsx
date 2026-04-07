@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
-import { ArrowLeft, Save, Loader2, Eye } from "lucide-react";
+import { ArrowLeft, Save, Loader2, Eye, Clock, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthStore } from "@/stores/auth-store";
+import { RichTextEditor } from "@/components/admin/rich-text-editor";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -26,6 +27,7 @@ export default function BlogEditPage() {
     title: "", slug: "", excerpt: "", content: "",
     coverImageUrl: "", categoryId: "", tags: "",
     status: "draft", seoTitle: "", seoDescription: "",
+    scheduledAt: "",
   });
 
   const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
@@ -45,6 +47,7 @@ export default function BlogEditPage() {
             categoryId: data.categoryId ? String(data.categoryId) : "",
             tags: data.tags || "", status: data.status || "draft",
             seoTitle: data.seoTitle || "", seoDescription: data.seoDescription || "",
+            scheduledAt: data.scheduledAt ? new Date(data.scheduledAt).toISOString().slice(0, 16) : "",
           });
         }).catch(() => toast({ title: "Failed to load post", variant: "destructive" }))
         .finally(() => setLoading(false));
@@ -68,6 +71,7 @@ export default function BlogEditPage() {
       ...form,
       status: status || form.status,
       categoryId: form.categoryId ? parseInt(form.categoryId) : null,
+      scheduledAt: status === "scheduled" && form.scheduledAt ? form.scheduledAt : null,
     };
     try {
       const url = isNew ? `${API}/admin/blog/posts` : `${API}/admin/blog/posts/${id}`;
@@ -85,17 +89,28 @@ export default function BlogEditPage() {
 
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin" /></div>;
 
+  const statusLabel = form.status === "published" ? "Published" : form.status === "scheduled" ? "Scheduled" : "Draft";
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={() => setLocation("/admin/blog")}>
             <ArrowLeft className="h-4 w-4 mr-1" /> Back
           </Button>
           <h1 className="text-xl font-bold">{isNew ? "New Post" : "Edit Post"}</h1>
+          <span className="text-xs px-2 py-0.5 rounded bg-muted">{statusLabel}</span>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => handleSave("draft")} disabled={saving}>Save Draft</Button>
+          <Button variant="outline" onClick={() => handleSave("draft")} disabled={saving}>
+            <Save className="h-4 w-4 mr-1" /> Draft
+          </Button>
+          <Button variant="secondary" onClick={() => {
+            if (!form.scheduledAt) { toast({ title: "Set a schedule date first", variant: "destructive" }); return; }
+            handleSave("scheduled");
+          }} disabled={saving}>
+            <Clock className="h-4 w-4 mr-1" /> Schedule
+          </Button>
           <Button onClick={() => handleSave("published")} disabled={saving}>
             {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Eye className="h-4 w-4 mr-1" />}
             Publish
@@ -123,10 +138,9 @@ export default function BlogEditPage() {
                 placeholder="Brief description..." rows={2} />
             </div>
             <div>
-              <Label>Content (HTML)</Label>
-              <Textarea value={form.content} onChange={(e) => set("content", e.target.value)}
-                placeholder="<p>Write your article content...</p>" rows={16}
-                className="font-mono text-sm" />
+              <Label>Content</Label>
+              <RichTextEditor content={form.content} onChange={(html) => set("content", html)}
+                placeholder="Write your article content..." />
             </div>
           </div>
         </div>
@@ -149,6 +163,11 @@ export default function BlogEditPage() {
             <div>
               <Label>Tags (comma separated)</Label>
               <Input value={form.tags} onChange={(e) => set("tags", e.target.value)} placeholder="windows, software, tips" />
+            </div>
+            <div>
+              <Label className="flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5" /> Schedule Date</Label>
+              <Input type="datetime-local" value={form.scheduledAt}
+                onChange={(e) => set("scheduledAt", e.target.value)} />
             </div>
           </div>
 

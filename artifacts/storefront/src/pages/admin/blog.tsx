@@ -21,25 +21,36 @@ interface AdminPost {
   authorName: string | null;
 }
 
+interface Category { id: number; name: string; slug: string; }
+
 export default function AdminBlogPage() {
   const { token } = useAuthStore();
   const { toast } = useToast();
   const [posts, setPosts] = useState<AdminPost[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
   const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 
-  useEffect(() => { loadPosts(); }, [page, statusFilter]);
+  useEffect(() => {
+    fetch(`${API}/admin/blog/categories`, { headers, credentials: "include" })
+      .then((r) => r.json()).then((d) => setCategories(d.categories || []))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => { loadPosts(); }, [page, statusFilter, categoryFilter]);
 
   async function loadPosts() {
     setLoading(true);
     try {
       const params = new URLSearchParams({ page: String(page) });
       if (statusFilter) params.set("status", statusFilter);
+      if (categoryFilter) params.set("categoryId", categoryFilter);
       if (search) params.set("search", search);
       const res = await fetch(`${API}/admin/blog/posts?${params}`, { headers, credentials: "include" });
       if (res.ok) {
@@ -66,7 +77,7 @@ export default function AdminBlogPage() {
         <Link href="/admin/blog/new"><Button className="gap-1.5"><Plus className="h-4 w-4" /> New Post</Button></Link>
       </div>
 
-      <div className="flex gap-3 flex-wrap">
+      <div className="flex gap-3 flex-wrap items-center">
         <form onSubmit={handleSearch} className="flex gap-2">
           <Input placeholder="Search posts..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-60" />
           <Button type="submit" variant="outline" size="icon"><Search className="h-4 w-4" /></Button>
@@ -77,6 +88,13 @@ export default function AdminBlogPage() {
               onClick={() => { setStatusFilter(f.value); setPage(1); }}>{f.label}</Button>
           ))}
         </div>
+        {categories.length > 0 && (
+          <select className="rounded-md border px-3 py-1.5 text-sm bg-white"
+            value={categoryFilter} onChange={(e) => { setCategoryFilter(e.target.value); setPage(1); }}>
+            <option value="">All Categories</option>
+            {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        )}
       </div>
 
       <div className="rounded-lg border bg-white overflow-hidden">
