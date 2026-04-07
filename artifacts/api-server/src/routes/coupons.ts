@@ -47,11 +47,13 @@ router.post("/coupons/validate", async (req, res) => {
       return;
     }
     const discount = parseFloat(dbCoupon.discountValue);
+    const isPercentage = dbCoupon.discountType === "PERCENTAGE";
     res.json({
       valid: true,
       code: dbCoupon.code,
       discount,
-      label: `${discount}% off`,
+      discountType: dbCoupon.discountType,
+      label: isPercentage ? `${discount}% off` : `$${discount} off`,
     });
     return;
   }
