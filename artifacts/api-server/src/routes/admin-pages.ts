@@ -23,9 +23,9 @@ router.get("/admin/pages/:id", requireAuth, requireAdmin, async (req, res) => {
 router.put("/admin/pages/:id", requireAuth, requireAdmin, async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
-  const { title, content, metaTitle, metaDescription, isPublished, sortOrder } = req.body;
+  const { title, slug, content, metaTitle, metaDescription, isPublished, sortOrder } = req.body;
   if (!title || typeof title !== "string") { res.status(400).json({ error: "Title required" }); return; }
-  await db.update(pages).set({
+  const updateData: Record<string, unknown> = {
     title: title.trim(),
     content: content ?? null,
     metaTitle: metaTitle ? String(metaTitle).slice(0, 60) : null,
@@ -33,7 +33,14 @@ router.put("/admin/pages/:id", requireAuth, requireAdmin, async (req, res) => {
     isPublished: isPublished !== false,
     sortOrder: Number(sortOrder) || 0,
     updatedAt: new Date(),
-  }).where(eq(pages.id, id));
+  };
+  if (slug && typeof slug === "string") {
+    const cleanSlug = slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, "");
+    const [dup] = await db.select({ id: pages.id }).from(pages).where(eq(pages.slug, cleanSlug));
+    if (dup && dup.id !== id) { res.status(409).json({ error: "Slug already exists" }); return; }
+    updateData.slug = cleanSlug;
+  }
+  await db.update(pages).set(updateData).where(eq(pages.id, id));
   const [updated] = await db.select().from(pages).where(eq(pages.id, id));
   if (!updated) { res.status(404).json({ error: "Not found" }); return; }
   res.json({ page: updated });

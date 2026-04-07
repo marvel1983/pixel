@@ -68,7 +68,7 @@ export default function AdminStaticPagesPage() {
                 <td className="px-4 py-3 text-muted-foreground text-xs">{new Date(p.updatedAt).toLocaleDateString()}</td>
                 <td className="px-4 py-3 text-right space-x-1">
                   <button className="p-1.5 hover:bg-gray-100 rounded" onClick={() => navigate(`/admin/pages/${p.id}`)}><Pencil className="h-4 w-4" /></button>
-                  <button className="p-1.5 hover:bg-gray-100 rounded" onClick={() => window.open(`/page/${p.slug}`, "_blank")}>{p.isPublished ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4 text-muted-foreground" />}</button>
+                  <button className="p-1.5 hover:bg-gray-100 rounded" onClick={() => window.open(`/${p.slug}`, "_blank")}>{p.isPublished ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4 text-muted-foreground" />}</button>
                   <button className="p-1.5 hover:bg-red-50 rounded text-red-500" onClick={() => del(p.id)}><Trash2 className="h-4 w-4" /></button>
                 </td>
               </tr>

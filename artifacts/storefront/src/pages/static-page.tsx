@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { useRoute } from "wouter";
+import { useLocation } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
 import DOMPurify from "dompurify";
+import NotFound from "./not-found";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -11,15 +12,17 @@ interface PageData {
 }
 
 export default function StaticPageView() {
-  const [, params] = useRoute("/page/:slug");
+  const [location] = useLocation();
+  const slug = location.replace(/^\//, "").replace(/\/$/, "");
   const [page, setPage] = useState<PageData | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
-    if (!params?.slug) return;
+    if (!slug) { setNotFound(true); setLoading(false); return; }
     setLoading(true);
-    fetch(`${API}/pages/${params.slug}`)
+    setNotFound(false);
+    fetch(`${API}/pages/${slug}`)
       .then(async (r) => {
         if (!r.ok) { setNotFound(true); return; }
         const d = await r.json();
@@ -28,10 +31,10 @@ export default function StaticPageView() {
         else document.title = `${d.page.title} - PixelCodes`;
       })
       .finally(() => setLoading(false));
-  }, [params?.slug]);
+  }, [slug]);
 
   if (loading) return <div className="max-w-4xl mx-auto px-4 py-12 space-y-4"><Skeleton className="h-10 w-1/2" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-3/4" /><Skeleton className="h-4 w-5/6" /></div>;
-  if (notFound || !page) return <div className="max-w-4xl mx-auto px-4 py-12 text-center"><h1 className="text-2xl font-bold mb-2">Page Not Found</h1><p className="text-muted-foreground">The page you're looking for doesn't exist.</p></div>;
+  if (notFound || !page) return <NotFound />;
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-12">
