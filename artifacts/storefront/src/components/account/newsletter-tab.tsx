@@ -15,27 +15,10 @@ export function NewsletterTab() {
   const [toggling, setToggling] = useState(false);
 
   useEffect(() => {
-    if (!user?.email) return;
-    fetch(`${API}/newsletter/subscribe`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: user.email, source: "account" }),
-    })
-      .then((r) => r.json())
-      .then((d) => {
-        setSubscribed(d.message?.includes("already subscribed") || d.message?.includes("Subscribed") || false);
-      })
-      .catch(() => setSubscribed(false))
-      .finally(() => setLoading(false));
-  }, []);
-
-  useEffect(() => {
     if (!user?.email) { setLoading(false); return; }
     fetch(`${API}/newsletter/status?email=${encodeURIComponent(user.email)}`)
       .then((r) => r.ok ? r.json() : null)
-      .then((d) => {
-        if (d) setSubscribed(d.subscribed);
-      })
+      .then((d) => { if (d) setSubscribed(d.subscribed); })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [user?.email]);
