@@ -8,7 +8,7 @@ import {
   reviews,
   users,
 } from "@workspace/db/schema";
-import { eq, sql, and, gte, lte, count, sum, desc, lt } from "drizzle-orm";
+import { eq, sql, and, gte, lte, count, sum, desc, lt, inArray } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { getMetenziConfig } from "../lib/metenzi-config";
 import { getBalance } from "../lib/metenzi-endpoints";
@@ -112,7 +112,7 @@ router.get(
           productName: orderItems.productName,
         })
         .from(orderItems)
-        .where(sql`${orderItems.orderId} IN (${sql.join(orderIds.map((id) => sql`${id}`), sql`, `)})`);
+        .where(inArray(orderItems.orderId, orderIds));
       for (const item of items) {
         if (!itemsByOrder[item.orderId]) itemsByOrder[item.orderId] = [];
         itemsByOrder[item.orderId].push(item.productName);
@@ -190,10 +190,18 @@ router.post(
   requireAdmin,
   async (req, res) => {
     const reviewId = Number(req.params.id);
-    await db
+    if (!Number.isInteger(reviewId) || reviewId <= 0) {
+      res.status(400).json({ error: "Invalid review ID" });
+      return;
+    }
+    const result = await db
       .update(reviews)
       .set({ isApproved: true, updatedAt: new Date() })
       .where(eq(reviews.id, reviewId));
+    if (result.rowCount === 0) {
+      res.status(404).json({ error: "Review not found" });
+      return;
+    }
     res.json({ success: true });
   },
 );
@@ -204,7 +212,15 @@ router.delete(
   requireAdmin,
   async (req, res) => {
     const reviewId = Number(req.params.id);
-    await db.delete(reviews).where(eq(reviews.id, reviewId));
+    if (!Number.isInteger(reviewId) || reviewId <= 0) {
+      res.status(400).json({ error: "Invalid review ID" });
+      return;
+    }
+    const result = await db.delete(reviews).where(eq(reviews.id, reviewId));
+    if (result.rowCount === 0) {
+      res.status(404).json({ error: "Review not found" });
+      return;
+    }
     res.json({ success: true });
   },
 );

@@ -115,19 +115,23 @@ export function PendingReviewsSection() {
   }, [token]);
 
   const handleApprove = async (id: number) => {
-    await fetch(`${API_URL}/admin/dashboard/reviews/${id}/approve`, {
+    const res = await fetch(`${API_URL}/admin/dashboard/reviews/${id}/approve`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
     });
-    setReviews((prev) => prev.filter((r) => r.id !== id));
+    if (res.ok) {
+      setReviews((prev) => prev.filter((r) => r.id !== id));
+    }
   };
 
   const handleReject = async (id: number) => {
-    await fetch(`${API_URL}/admin/dashboard/reviews/${id}`, {
+    const res = await fetch(`${API_URL}/admin/dashboard/reviews/${id}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` },
     });
-    setReviews((prev) => prev.filter((r) => r.id !== id));
+    if (res.ok) {
+      setReviews((prev) => prev.filter((r) => r.id !== id));
+    }
   };
 
   if (loading) {
