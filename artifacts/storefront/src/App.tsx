@@ -66,7 +66,7 @@ function AuthSyncEffect() {
   useEffect(() => {
     return useAuthStore.subscribe((state, prev) => {
       if (prev.token && !state.token) {
-        useWishlistStore.getState().clearAll();
+        useWishlistStore.getState().clearLocal();
       }
     });
   }, []);

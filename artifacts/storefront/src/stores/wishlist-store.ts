@@ -28,6 +28,7 @@ interface WishlistState {
   toggleProduct: (id: number) => void;
   hasProduct: (id: number) => boolean;
   clearAll: () => void;
+  clearLocal: () => void;
   syncWithServer: (token: string) => Promise<void>;
 }
 
@@ -88,6 +89,8 @@ export const useWishlistStore = create<WishlistState>()(
           });
         }
       },
+
+      clearLocal: () => set({ productIds: [] }),
 
       syncWithServer: async (token: string) => {
         try {
