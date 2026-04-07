@@ -25,7 +25,7 @@ async function findOrCreateCategory(categoryName: string): Promise<number> {
 
   const [created] = await db
     .insert(categories)
-    .values({ name: categoryName, slug })
+    .values({ name: categoryName, displayName: categoryName, slug, showInNav: true })
     .returning({ id: categories.id });
 
   return created.id;

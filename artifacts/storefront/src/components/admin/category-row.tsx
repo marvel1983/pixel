@@ -2,25 +2,29 @@ import { Pencil, X, Check, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 
-interface AdminCategory {
+export interface AdminCategory {
   id: number;
   name: string;
+  displayName: string | null;
   slug: string;
   description: string | null;
   imageUrl: string | null;
   parentId: number | null;
   sortOrder: number;
   isActive: boolean;
+  showInNav: boolean;
   productCount: number;
 }
 
-interface EditState {
+export interface EditState {
   name: string;
+  displayName: string;
   slug: string;
   description: string;
   imageUrl: string;
   sortOrder: number;
   isActive: boolean;
+  showInNav: boolean;
   parentId: number | null;
 }
 
@@ -33,25 +37,31 @@ interface RowProps {
   onStartEdit: () => void;
   onCancel: () => void;
   onSave: () => void;
-  onToggle: () => void;
+  onToggleNav: () => void;
   onDelete: () => void;
   onEditChange: (updates: Partial<EditState>) => void;
 }
 
-export function CategoryRow({ cat, isEditing, editState, allCats, saving, onStartEdit, onCancel, onSave, onToggle, onDelete, onEditChange }: RowProps) {
+export function CategoryRow({ cat, isEditing, editState, allCats, saving, onStartEdit, onCancel, onSave, onToggleNav, onDelete, onEditChange }: RowProps) {
   if (!isEditing) {
     return (
       <tr className="border-b last:border-0 hover:bg-gray-50">
         <td className="px-4 py-3">
           <div className="flex items-center gap-2">
             {cat.imageUrl && <img src={cat.imageUrl} alt="" className="h-8 w-8 rounded object-cover" />}
-            <span className="font-medium">{cat.name}</span>
+            <div>
+              <span className="font-medium">{cat.name}</span>
+              {cat.name !== (cat.displayName ?? cat.name) && (
+                <span className="text-xs text-muted-foreground ml-1">(source)</span>
+              )}
+            </div>
           </div>
         </td>
+        <td className="px-4 py-3 text-muted-foreground">{cat.displayName ?? cat.name}</td>
         <td className="px-4 py-3"><Badge variant="secondary">{cat.productCount}</Badge></td>
         <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{cat.slug}</td>
         <td className="px-4 py-3 text-muted-foreground">{cat.sortOrder}</td>
-        <td className="px-4 py-3"><Switch checked={cat.isActive} onCheckedChange={onToggle} /></td>
+        <td className="px-4 py-3"><Switch checked={cat.showInNav} onCheckedChange={onToggleNav} /></td>
         <td className="px-4 py-3">
           <div className="flex gap-1">
             <button onClick={onStartEdit} className="p-1 rounded hover:bg-gray-200">
@@ -73,8 +83,11 @@ export function CategoryRow({ cat, isEditing, editState, allCats, saving, onStar
     <>
       <tr className="border-b bg-blue-50/50">
         <td className="px-4 py-3">
-          <input className="w-full rounded-md border px-2 py-1.5 text-sm" value={editState.name}
-            onChange={(e) => onEditChange({ name: e.target.value })} />
+          <span className="text-sm text-muted-foreground">{cat.name}</span>
+        </td>
+        <td className="px-4 py-3">
+          <input className="w-full rounded-md border px-2 py-1.5 text-sm" value={editState.displayName}
+            onChange={(e) => onEditChange({ displayName: e.target.value })} placeholder="Display name..." />
         </td>
         <td className="px-4 py-3"><Badge variant="secondary">{cat.productCount}</Badge></td>
         <td className="px-4 py-3">
@@ -86,7 +99,7 @@ export function CategoryRow({ cat, isEditing, editState, allCats, saving, onStar
             onChange={(e) => onEditChange({ sortOrder: Number(e.target.value) })} />
         </td>
         <td className="px-4 py-3">
-          <Switch checked={editState.isActive} onCheckedChange={(v) => onEditChange({ isActive: v })} />
+          <Switch checked={editState.showInNav} onCheckedChange={(v) => onEditChange({ showInNav: v })} />
         </td>
         <td className="px-4 py-3">
           <div className="flex gap-1">
@@ -100,8 +113,8 @@ export function CategoryRow({ cat, isEditing, editState, allCats, saving, onStar
         </td>
       </tr>
       <tr className="border-b bg-blue-50/30">
-        <td colSpan={6} className="px-4 py-3">
-          <div className="grid gap-3 sm:grid-cols-2">
+        <td colSpan={7} className="px-4 py-3">
+          <div className="grid gap-3 sm:grid-cols-3">
             <div>
               <label className="mb-1 block text-xs font-medium">Description</label>
               <textarea className="w-full rounded-md border px-2 py-1.5 text-sm" rows={2}

@@ -12,6 +12,7 @@ router.get("/admin/categories", requireAuth, requireAdmin, async (_req, res) => 
     .select({
       id: categories.id,
       name: categories.name,
+      displayName: categories.displayName,
       slug: categories.slug,
       description: categories.description,
       imageUrl: categories.imageUrl,
@@ -20,6 +21,7 @@ router.get("/admin/categories", requireAuth, requireAdmin, async (_req, res) => 
       parentId: categories.parentId,
       sortOrder: categories.sortOrder,
       isActive: categories.isActive,
+      showInNav: categories.showInNav,
       createdAt: categories.createdAt,
       productCount: sql<number>`(
         SELECT COUNT(*)::int FROM products p WHERE p.category_id = ${categories.id}
@@ -38,11 +40,7 @@ router.get("/admin/categories/:id", requireAuth, requireAdmin, async (req, res) 
     return;
   }
 
-  const [category] = await db
-    .select()
-    .from(categories)
-    .where(eq(categories.id, id));
-
+  const [category] = await db.select().from(categories).where(eq(categories.id, id));
   if (!category) {
     res.status(404).json({ error: "Category not found" });
     return;
@@ -69,7 +67,9 @@ router.put("/admin/categories/:id", requireAuth, requireAdmin, async (req, res) 
     .update(categories)
     .set({
       name: body.name,
+      displayName: body.displayName ?? null,
       slug: body.slug,
+      showInNav: Boolean(body.showInNav),
       description: body.description ?? null,
       imageUrl: body.imageUrl ?? null,
       metaTitle: body.metaTitle ?? null,
@@ -92,7 +92,7 @@ router.patch("/admin/categories/:id/toggle", requireAuth, requireAdmin, async (r
   }
 
   const [cat] = await db
-    .select({ isActive: categories.isActive })
+    .select({ showInNav: categories.showInNav })
     .from(categories)
     .where(eq(categories.id, id));
 
@@ -103,10 +103,10 @@ router.patch("/admin/categories/:id/toggle", requireAuth, requireAdmin, async (r
 
   await db
     .update(categories)
-    .set({ isActive: !cat.isActive, updatedAt: new Date() })
+    .set({ showInNav: !cat.showInNav, updatedAt: new Date() })
     .where(eq(categories.id, id));
 
-  res.json({ isActive: !cat.isActive });
+  res.json({ showInNav: !cat.showInNav });
 });
 
 router.post("/admin/categories", requireAuth, requireAdmin, async (req, res) => {
@@ -130,11 +130,13 @@ router.post("/admin/categories", requireAuth, requireAdmin, async (req, res) => 
     .insert(categories)
     .values({
       name: body.name,
+      displayName: body.displayName ?? body.name,
       slug: body.slug,
       description: body.description ?? null,
       imageUrl: body.imageUrl ?? null,
       sortOrder: Number(body.sortOrder) || 0,
       isActive: body.isActive !== false,
+      showInNav: body.showInNav !== false,
     })
     .returning();
 

@@ -3,33 +3,9 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthStore } from "@/stores/auth-store";
-import { CategoryRow } from "@/components/admin/category-row";
+import { CategoryRow, type AdminCategory, type EditState } from "@/components/admin/category-row";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "/api";
-
-interface AdminCategory {
-  id: number;
-  name: string;
-  slug: string;
-  description: string | null;
-  imageUrl: string | null;
-  metaTitle: string | null;
-  metaDescription: string | null;
-  parentId: number | null;
-  sortOrder: number;
-  isActive: boolean;
-  productCount: number;
-}
-
-interface EditState {
-  name: string;
-  slug: string;
-  description: string;
-  imageUrl: string;
-  sortOrder: number;
-  isActive: boolean;
-  parentId: number | null;
-}
 
 export default function AdminCategoriesPage() {
   const [cats, setCats] = useState<AdminCategory[]>([]);
@@ -37,7 +13,7 @@ export default function AdminCategoriesPage() {
   const [editId, setEditId] = useState<number | null>(null);
   const [editState, setEditState] = useState<EditState | null>(null);
   const [showCreate, setShowCreate] = useState(false);
-  const [newCat, setNewCat] = useState({ name: "", slug: "", sortOrder: 0 });
+  const [newCat, setNewCat] = useState({ name: "", slug: "", displayName: "", sortOrder: 0 });
   const [saving, setSaving] = useState(false);
   const token = useAuthStore((s) => s.token);
 
@@ -57,9 +33,10 @@ export default function AdminCategoriesPage() {
   const startEdit = (cat: AdminCategory) => {
     setEditId(cat.id);
     setEditState({
-      name: cat.name, slug: cat.slug, description: cat.description ?? "",
+      name: cat.name, displayName: cat.displayName ?? cat.name,
+      slug: cat.slug, description: cat.description ?? "",
       imageUrl: cat.imageUrl ?? "", sortOrder: cat.sortOrder,
-      isActive: cat.isActive, parentId: cat.parentId,
+      isActive: cat.isActive, showInNav: cat.showInNav, parentId: cat.parentId,
     });
   };
 
@@ -78,7 +55,7 @@ export default function AdminCategoriesPage() {
     fetchCategories();
   };
 
-  const handleToggle = async (id: number) => {
+  const handleToggleNav = async (id: number) => {
     await fetch(`${API_URL}/admin/categories/${id}/toggle`, {
       method: "PATCH",
       headers: { Authorization: `Bearer ${token}` },
@@ -92,11 +69,11 @@ export default function AdminCategoriesPage() {
     const res = await fetch(`${API_URL}/admin/categories`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify(newCat),
+      body: JSON.stringify({ ...newCat, displayName: newCat.displayName || newCat.name }),
     });
     setSaving(false);
     if (res.ok) {
-      setNewCat({ name: "", slug: "", sortOrder: 0 });
+      setNewCat({ name: "", slug: "", displayName: "", sortOrder: 0 });
       setShowCreate(false);
       fetchCategories();
     }
@@ -130,11 +107,17 @@ export default function AdminCategoriesPage() {
       {showCreate && (
         <div className="rounded-lg border bg-white p-4 space-y-3">
           <h3 className="font-semibold text-sm">New Category</h3>
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-4">
             <div>
-              <label className="mb-1 block text-xs font-medium">Name</label>
+              <label className="mb-1 block text-xs font-medium">Name (source)</label>
               <input className="w-full rounded-md border px-3 py-2 text-sm" value={newCat.name}
-                onChange={(e) => setNewCat({ ...newCat, name: e.target.value, slug: autoSlug(e.target.value) })} />
+                onChange={(e) => setNewCat({ ...newCat, name: e.target.value, slug: autoSlug(e.target.value), displayName: newCat.displayName || "" })} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium">Display Name</label>
+              <input className="w-full rounded-md border px-3 py-2 text-sm" value={newCat.displayName}
+                onChange={(e) => setNewCat({ ...newCat, displayName: e.target.value })}
+                placeholder={newCat.name || "Same as name"} />
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium">Slug</label>
@@ -165,7 +148,8 @@ export default function AdminCategoriesPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-gray-50 text-left">
-                <th className="px-4 py-3 font-medium text-muted-foreground">Category</th>
+                <th className="px-4 py-3 font-medium text-muted-foreground">Category Name</th>
+                <th className="px-4 py-3 font-medium text-muted-foreground">Display Name</th>
                 <th className="px-4 py-3 font-medium text-muted-foreground">Products</th>
                 <th className="px-4 py-3 font-medium text-muted-foreground">Slug</th>
                 <th className="px-4 py-3 font-medium text-muted-foreground">Sort</th>
@@ -179,7 +163,7 @@ export default function AdminCategoriesPage() {
                   editState={editId === cat.id ? editState : null} allCats={cats}
                   saving={saving}
                   onStartEdit={() => startEdit(cat)} onCancel={cancelEdit}
-                  onSave={saveEdit} onToggle={() => handleToggle(cat.id)}
+                  onSave={saveEdit} onToggleNav={() => handleToggleNav(cat.id)}
                   onDelete={() => handleDelete(cat.id, cat.name)}
                   onEditChange={(updates) => editState && setEditState({ ...editState, ...updates })} />
               ))}
