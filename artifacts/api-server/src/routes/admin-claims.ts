@@ -120,6 +120,21 @@ router.post("/admin/claims", requireAuth, requireAdmin, async (req, res) => {
     return;
   }
 
+  let resolvedOrderId = orderId ? Number(orderId) : null;
+  if (!resolvedOrderId && licenseKeyId) {
+    const [keyRow] = await db
+      .select({ orderItemId: licenseKeys.orderItemId })
+      .from(licenseKeys)
+      .where(eq(licenseKeys.id, Number(licenseKeyId)));
+    if (keyRow?.orderItemId) {
+      const [itemRow] = await db
+        .select({ orderId: orderItems.orderId })
+        .from(orderItems)
+        .where(eq(orderItems.id, keyRow.orderItemId));
+      if (itemRow) resolvedOrderId = itemRow.orderId;
+    }
+  }
+
   let metenziClaimId: string | null = null;
   try {
     const config = await getMetenziConfig();
@@ -138,7 +153,7 @@ router.post("/admin/claims", requireAuth, requireAdmin, async (req, res) => {
   }
 
   const [claim] = await db.insert(claims).values({
-    orderId: orderId ? Number(orderId) : null,
+    orderId: resolvedOrderId,
     licenseKeyId: licenseKeyId ? Number(licenseKeyId) : null,
     customerEmail: customerEmail.trim(),
     reason,

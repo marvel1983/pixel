@@ -119,6 +119,7 @@ export default function AdminClaimsPage() {
                 <th className="px-3 py-3 font-medium text-muted-foreground">Status</th>
                 <th className="px-3 py-3 font-medium text-muted-foreground">Notes</th>
                 <th className="px-3 py-3 font-medium text-muted-foreground">Created</th>
+                <th className="px-3 py-3 font-medium text-muted-foreground">Resolved</th>
                 <th className="px-3 py-3 font-medium text-muted-foreground w-20">Actions</th>
               </tr>
             </thead>
@@ -133,6 +134,7 @@ export default function AdminClaimsPage() {
                   <td className="px-3 py-3"><span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[r.status] ?? "bg-gray-100"}`}>{r.status}</span></td>
                   <td className="px-3 py-3 text-xs text-muted-foreground max-w-[160px] truncate">{r.notes ?? "—"}</td>
                   <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">{new Date(r.createdAt).toLocaleDateString()}</td>
+                  <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">{r.resolvedAt ? new Date(r.resolvedAt).toLocaleDateString() : "—"}</td>
                   <td className="px-3 py-3">
                     {r.metenziClaimId && (
                       <button onClick={() => refreshClaim(r.id)} className="p-1 rounded hover:bg-gray-200" title="Refresh from Metenzi" disabled={refreshingId === r.id}>
@@ -142,7 +144,7 @@ export default function AdminClaimsPage() {
                   </td>
                 </tr>
               ))}
-              {rows.length === 0 && <tr><td colSpan={9} className="px-3 py-12 text-center text-muted-foreground">No claims found</td></tr>}
+              {rows.length === 0 && <tr><td colSpan={10} className="px-3 py-12 text-center text-muted-foreground">No claims found</td></tr>}
             </tbody>
           </table>
         </div>
