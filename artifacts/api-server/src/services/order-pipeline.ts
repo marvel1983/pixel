@@ -47,21 +47,20 @@ export async function executeOrderPipeline(input: OrderInput) {
 
   const cppAmount = input.cppSelected ? Math.round(input.subtotal * 0.05 * 100) / 100 : 0;
 
+  const walletUsed = input.walletAmountUsd && input.walletAmountUsd > 0;
+  const cardNeeded = walletUsed ? total - input.walletAmountUsd! > 0.01 : true;
+  const payMethod = walletUsed ? (cardNeeded ? "MIXED" : "WALLET") : "CARD";
+
   const [order] = await db
     .insert(orders)
     .values({
-      orderNumber,
-      guestEmail: billing.email,
-      status: "PENDING",
-      subtotalUsd: input.subtotal.toFixed(2),
-      discountUsd: input.discountAmount.toFixed(2),
-      totalUsd: total.toFixed(2),
-      paymentMethod: "CARD",
-      cppSelected: input.cppSelected,
-      cppAmountUsd: cppAmount.toFixed(2),
-      taxRate: input.taxRate.toFixed(2),
-      taxAmountUsd: input.taxAmount.toFixed(2),
-      vatNumber: input.vatNumber,
+      orderNumber, guestEmail: billing.email, status: "PENDING",
+      subtotalUsd: input.subtotal.toFixed(2), discountUsd: input.discountAmount.toFixed(2),
+      totalUsd: total.toFixed(2), paymentMethod: payMethod,
+      walletAmountUsed: walletUsed ? input.walletAmountUsd!.toFixed(2) : "0.00",
+      userId: input.userId ?? null, cppSelected: input.cppSelected,
+      cppAmountUsd: cppAmount.toFixed(2), taxRate: input.taxRate.toFixed(2),
+      taxAmountUsd: input.taxAmount.toFixed(2), vatNumber: input.vatNumber,
     })
     .returning({ id: orders.id });
 
