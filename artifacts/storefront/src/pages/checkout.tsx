@@ -108,6 +108,7 @@ export default function CheckoutPage() {
       const res = await fetch(`${API}/orders`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({
           billing, items, coupon, cppSelected,
           vatNumber: billing.vatNumber || undefined,
