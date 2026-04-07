@@ -2,19 +2,16 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthStore } from "@/stores/auth-store";
-import { Wallet, ArrowUpCircle, ArrowDownCircle, Loader2, Plus } from "lucide-react";
+import { Wallet, ArrowUpCircle, ArrowDownCircle, Loader2, Plus, CreditCard } from "lucide-react";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
 interface WalletTx {
-  id: number;
-  type: string;
-  amountUsd: string;
-  balanceAfter: string;
-  description: string | null;
-  createdAt: string;
+  id: number; type: string; amountUsd: string; balanceAfter: string;
+  description: string | null; createdAt: string;
 }
 
 export function WalletTab() {
@@ -26,6 +23,9 @@ export function WalletTab() {
   const [transactions, setTransactions] = useState<WalletTx[]>([]);
   const [loading, setLoading] = useState(true);
   const [topUpAmount, setTopUpAmount] = useState("");
+  const [cardNumber, setCardNumber] = useState("");
+  const [cardExpiry, setCardExpiry] = useState("");
+  const [cardCvc, setCardCvc] = useState("");
   const [topping, setTopping] = useState(false);
   const [showTopUp, setShowTopUp] = useState(false);
 
@@ -39,15 +39,10 @@ export function WalletTab() {
       ]);
       if (balRes.ok) {
         const d = await balRes.json();
-        setBalance(d.balanceUsd);
-        setTotalDeposited(d.totalDeposited);
-        setTotalSpent(d.totalSpent);
+        setBalance(d.balanceUsd); setTotalDeposited(d.totalDeposited); setTotalSpent(d.totalSpent);
       }
-      if (txRes.ok) {
-        const d = await txRes.json();
-        setTransactions(d.transactions);
-      }
-    } catch { /* ignore */ } finally { setLoading(false); }
+      if (txRes.ok) { const d = await txRes.json(); setTransactions(d.transactions); }
+    } catch {} finally { setLoading(false); }
   }
 
   useEffect(() => { loadData(); }, [token]);
@@ -58,16 +53,28 @@ export function WalletTab() {
     if (!amt || amt < 5 || amt > 500) {
       toast({ title: "Amount must be between $5 and $500", variant: "destructive" }); return;
     }
+    const digits = cardNumber.replace(/\s/g, "");
+    if (digits.length < 13 || digits.length > 19) {
+      toast({ title: "Enter a valid card number", variant: "destructive" }); return;
+    }
+    if (!/^\d{2}\/\d{2}$/.test(cardExpiry)) {
+      toast({ title: "Enter expiry as MM/YY", variant: "destructive" }); return;
+    }
+    if (!/^\d{3,4}$/.test(cardCvc)) {
+      toast({ title: "Enter a valid CVC", variant: "destructive" }); return;
+    }
+    const cardToken = `tok_${digits.slice(-4)}_${Date.now()}`;
     setTopping(true);
     try {
       const res = await fetch(`${API}/wallet/topup`, {
         method: "POST", headers, credentials: "include",
-        body: JSON.stringify({ amountUsd: amt, cardToken: "tok_simulated_success" }),
+        body: JSON.stringify({ amountUsd: amt, cardToken }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       toast({ title: `$${amt.toFixed(2)} added to wallet` });
-      setTopUpAmount(""); setShowTopUp(false);
+      setTopUpAmount(""); setCardNumber(""); setCardExpiry(""); setCardCvc("");
+      setShowTopUp(false);
       loadData();
     } catch (err) {
       toast({ title: err instanceof Error ? err.message : "Top-up failed", variant: "destructive" });
@@ -109,20 +116,41 @@ export function WalletTab() {
 
       {showTopUp && (
         <Card>
-          <CardHeader><CardTitle className="text-base">Add Funds</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base flex items-center gap-2"><CreditCard className="h-4 w-4" /> Add Funds</CardTitle></CardHeader>
           <CardContent>
-            <form onSubmit={handleTopUp} className="flex gap-2">
-              <Input type="number" min="5" max="500" step="0.01" placeholder="Amount ($5–$500)"
-                value={topUpAmount} onChange={(e) => setTopUpAmount(e.target.value)} className="max-w-[200px]" />
-              <Button type="submit" disabled={topping}>
-                {topping ? <Loader2 className="h-4 w-4 animate-spin" /> : "Top Up"}
+            <form onSubmit={handleTopUp} className="space-y-3">
+              <div>
+                <Label className="text-sm">Amount</Label>
+                <Input type="number" min="5" max="500" step="0.01" placeholder="Amount ($5–$500)"
+                  value={topUpAmount} onChange={(e) => setTopUpAmount(e.target.value)} />
+                <div className="flex gap-2 mt-2">
+                  {[10, 25, 50, 100].map((v) => (
+                    <Button key={v} type="button" variant="outline" size="sm" onClick={() => setTopUpAmount(String(v))}>${v}</Button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <Label className="text-sm">Card Number</Label>
+                <Input placeholder="4242 4242 4242 4242" value={cardNumber}
+                  onChange={(e) => setCardNumber(e.target.value)} maxLength={19} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-sm">Expiry</Label>
+                  <Input placeholder="MM/YY" value={cardExpiry}
+                    onChange={(e) => setCardExpiry(e.target.value)} maxLength={5} />
+                </div>
+                <div>
+                  <Label className="text-sm">CVC</Label>
+                  <Input placeholder="123" value={cardCvc}
+                    onChange={(e) => setCardCvc(e.target.value)} maxLength={4} />
+                </div>
+              </div>
+              <Button type="submit" className="w-full" disabled={topping}>
+                {topping ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                {topping ? "Processing..." : `Top Up $${parseFloat(topUpAmount || "0").toFixed(2)}`}
               </Button>
             </form>
-            <div className="flex gap-2 mt-2">
-              {[10, 25, 50, 100].map((v) => (
-                <Button key={v} variant="outline" size="sm" onClick={() => setTopUpAmount(String(v))}>${v}</Button>
-              ))}
-            </div>
           </CardContent>
         </Card>
       )}
