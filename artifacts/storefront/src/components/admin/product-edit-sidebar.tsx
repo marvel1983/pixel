@@ -1,25 +1,5 @@
 import { Switch } from "@/components/ui/switch";
-
-interface ProductData {
-  id: number;
-  name: string;
-  slug: string;
-  shortDescription: string | null;
-  description: string | null;
-  type: string;
-  categoryId: number | null;
-  imageUrl: string | null;
-  metaTitle: string | null;
-  metaDescription: string | null;
-  isFeatured: boolean;
-  isActive: boolean;
-  sortOrder: number;
-}
-
-interface CategoryOption {
-  id: number;
-  name: string;
-}
+import type { ProductData, CategoryOption } from "@/pages/admin/product-edit";
 
 interface ProductEditSidebarProps {
   product: ProductData;
@@ -34,17 +14,11 @@ export function ProductEditSidebar({ product, categories, onUpdate }: ProductEdi
         <h2 className="font-semibold">Status</h2>
         <div className="flex items-center justify-between">
           <span className="text-sm">Active</span>
-          <Switch
-            checked={product.isActive}
-            onCheckedChange={(v) => onUpdate("isActive", v)}
-          />
+          <Switch checked={product.isActive} onCheckedChange={(v) => onUpdate("isActive", v)} />
         </div>
         <div className="flex items-center justify-between">
           <span className="text-sm">Featured</span>
-          <Switch
-            checked={product.isFeatured}
-            onCheckedChange={(v) => onUpdate("isFeatured", v)}
-          />
+          <Switch checked={product.isFeatured} onCheckedChange={(v) => onUpdate("isFeatured", v)} />
         </div>
       </div>
 
@@ -52,28 +26,17 @@ export function ProductEditSidebar({ product, categories, onUpdate }: ProductEdi
         <h2 className="font-semibold">Organization</h2>
         <div>
           <label className="mb-1 block text-sm font-medium">Category</label>
-          <select
-            className="w-full rounded-md border px-3 py-2 text-sm"
+          <select className="w-full rounded-md border px-3 py-2 text-sm"
             value={product.categoryId ?? ""}
-            onChange={(e) =>
-              onUpdate("categoryId", e.target.value ? Number(e.target.value) : null)
-            }
-          >
+            onChange={(e) => onUpdate("categoryId", e.target.value ? Number(e.target.value) : null)}>
             <option value="">No category</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
+            {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </div>
         <div>
           <label className="mb-1 block text-sm font-medium">Product Type</label>
-          <select
-            className="w-full rounded-md border px-3 py-2 text-sm"
-            value={product.type}
-            onChange={(e) => onUpdate("type", e.target.value)}
-          >
+          <select className="w-full rounded-md border px-3 py-2 text-sm" value={product.type}
+            onChange={(e) => onUpdate("type", e.target.value)}>
             <option value="SOFTWARE">Software</option>
             <option value="GAME">Game</option>
             <option value="SUBSCRIPTION">Subscription</option>
@@ -83,12 +46,8 @@ export function ProductEditSidebar({ product, categories, onUpdate }: ProductEdi
         </div>
         <div>
           <label className="mb-1 block text-sm font-medium">Sort Order</label>
-          <input
-            type="number"
-            className="w-full rounded-md border px-3 py-2 text-sm"
-            value={product.sortOrder}
-            onChange={(e) => onUpdate("sortOrder", Number(e.target.value))}
-          />
+          <input type="number" className="w-full rounded-md border px-3 py-2 text-sm"
+            value={product.sortOrder} onChange={(e) => onUpdate("sortOrder", Number(e.target.value))} />
         </div>
       </div>
 
@@ -105,12 +64,9 @@ export function ProductEditSidebar({ product, categories, onUpdate }: ProductEdi
         )}
         <div>
           <label className="mb-1 block text-sm font-medium">Image URL</label>
-          <input
-            className="w-full rounded-md border px-3 py-2 text-sm"
-            value={product.imageUrl ?? ""}
-            onChange={(e) => onUpdate("imageUrl", e.target.value || null)}
-            placeholder="https://..."
-          />
+          <input className="w-full rounded-md border px-3 py-2 text-sm"
+            value={product.imageUrl ?? ""} onChange={(e) => onUpdate("imageUrl", e.target.value || null)}
+            placeholder="https://..." />
         </div>
       </div>
     </div>

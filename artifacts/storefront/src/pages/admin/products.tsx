@@ -29,6 +29,8 @@ interface AdminProduct {
   variants: Variant[];
 }
 
+interface CategoryOption { id: number; name: string; }
+
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [total, setTotal] = useState(0);
@@ -39,7 +41,10 @@ export default function AdminProductsPage() {
   const [query, setQuery] = useState("");
   const [catFilter, setCatFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [platformFilter, setPlatformFilter] = useState("");
   const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [cats, setCats] = useState<CategoryOption[]>([]);
+  const [platforms, setPlatforms] = useState<string[]>([]);
   const token = useAuthStore((s) => s.token);
   const [, setLocation] = useLocation();
 
@@ -49,6 +54,7 @@ export default function AdminProductsPage() {
     if (query) params.set("q", query);
     if (catFilter) params.set("cat", catFilter);
     if (statusFilter) params.set("status", statusFilter);
+    if (platformFilter) params.set("platform", platformFilter);
     fetch(`${API_URL}/admin/products?${params}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
@@ -57,10 +63,12 @@ export default function AdminProductsPage() {
         setProducts(d.products);
         setTotal(d.total);
         setTotalPages(d.totalPages);
+        if (d.categories) setCats(d.categories);
+        if (d.platforms) setPlatforms(d.platforms);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [token, page, query, catFilter, statusFilter]);
+  }, [token, page, query, catFilter, statusFilter, platformFilter]);
 
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
@@ -93,10 +101,7 @@ export default function AdminProductsPage() {
     if (ids.length === 0) return;
     await fetch(`${API_URL}/admin/products/bulk`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify({ ids, action }),
     });
     setSelected(new Set());
@@ -153,11 +158,18 @@ export default function AdminProductsPage() {
             onChange={(e) => { setQuery(e.target.value); setPage(1); }}
           />
         </div>
-        <select
-          className="rounded-md border px-3 py-2 text-sm"
-          value={statusFilter}
-          onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-        >
+        <select className="rounded-md border px-3 py-2 text-sm" value={catFilter}
+          onChange={(e) => { setCatFilter(e.target.value); setPage(1); }}>
+          <option value="">All Categories</option>
+          {cats.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+        <select className="rounded-md border px-3 py-2 text-sm" value={platformFilter}
+          onChange={(e) => { setPlatformFilter(e.target.value); setPage(1); }}>
+          <option value="">All Platforms</option>
+          {platforms.map((p) => <option key={p} value={p}>{p}</option>)}
+        </select>
+        <select className="rounded-md border px-3 py-2 text-sm" value={statusFilter}
+          onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}>
           <option value="">All Status</option>
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
@@ -169,6 +181,9 @@ export default function AdminProductsPage() {
           <span className="font-medium">{selected.size} selected</span>
           <Button size="sm" variant="outline" onClick={() => handleBulk("activate")}>Set Active</Button>
           <Button size="sm" variant="outline" onClick={() => handleBulk("deactivate")}>Set Inactive</Button>
+          <Button size="sm" variant="outline" onClick={handleExport}>
+            <Download className="mr-1 h-3 w-3" /> Export CSV
+          </Button>
         </div>
       )}
 
@@ -200,37 +215,24 @@ export default function AdminProductsPage() {
                       <Checkbox checked={selected.has(p.id)} onCheckedChange={() => toggleSelect(p.id)} />
                     </td>
                     <td className="px-4 py-3">
-                      <div
-                        className="flex items-center gap-3 cursor-pointer"
-                        onClick={() => setLocation(`/admin/products/${p.id}`)}
-                      >
+                      <div className="flex items-center gap-3 cursor-pointer" onClick={() => setLocation(`/admin/products/${p.id}`)}>
                         <div className="h-10 w-10 rounded bg-gray-100 flex items-center justify-center overflow-hidden flex-shrink-0">
-                          {p.imageUrl ? (
-                            <img src={p.imageUrl} alt="" className="h-full w-full object-cover" />
-                          ) : (
-                            <span className="text-xs text-gray-400">IMG</span>
-                          )}
+                          {p.imageUrl ? <img src={p.imageUrl} alt="" className="h-full w-full object-cover" /> : <span className="text-xs text-gray-400">IMG</span>}
                         </div>
                         <div className="min-w-0">
                           <p className="font-medium truncate">{p.name}</p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {p.variants.map((v) => v.sku).join(", ") || "No SKU"}
-                          </p>
+                          <p className="text-xs text-muted-foreground truncate">{p.variants.map((v) => v.sku).join(", ") || "No SKU"}</p>
                         </div>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">{p.categoryName ?? "—"}</td>
                     <td className="px-4 py-3 font-medium">{minPrice(p.variants)}</td>
                     <td className="px-4 py-3">
-                      <Badge variant="secondary" className={stock === 0 ? "bg-red-100 text-red-800" : stock < 5 ? "bg-orange-100 text-orange-800" : "bg-green-100 text-green-800"}>
-                        {stock}
-                      </Badge>
+                      <Badge variant="secondary" className={stock === 0 ? "bg-red-100 text-red-800" : stock < 5 ? "bg-orange-100 text-orange-800" : "bg-green-100 text-green-800"}>{stock}</Badge>
                     </td>
                     <td className="px-4 py-3">
-                      <button
-                        onClick={() => handleToggle(p.id)}
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors ${p.isActive ? "bg-green-100 text-green-800 hover:bg-green-200" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
-                      >
+                      <button onClick={() => handleToggle(p.id)}
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors ${p.isActive ? "bg-green-100 text-green-800 hover:bg-green-200" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
                         {p.isActive ? "Active" : "Inactive"}
                       </button>
                     </td>
@@ -244,9 +246,7 @@ export default function AdminProductsPage() {
 
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">
-            Page {page} of {totalPages}
-          </span>
+          <span className="text-sm text-muted-foreground">Page {page} of {totalPages}</span>
           <div className="flex gap-1">
             <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage(page - 1)}>
               <ChevronLeft className="h-4 w-4" />

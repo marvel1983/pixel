@@ -5,10 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthStore } from "@/stores/auth-store";
 import { ProductEditSidebar } from "@/components/admin/product-edit-sidebar";
+import { ProductEditContent } from "@/components/admin/product-edit-content";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "/api";
 
-interface ProductData {
+export interface ProductData {
   id: number;
   name: string;
   slug: string;
@@ -22,9 +23,12 @@ interface ProductData {
   isFeatured: boolean;
   isActive: boolean;
   sortOrder: number;
+  keyFeatures: string[];
+  systemRequirements: Record<string, string>;
+  relatedProductIds: number[];
 }
 
-interface VariantData {
+export interface VariantData {
   id: number;
   name: string;
   sku: string;
@@ -35,10 +39,8 @@ interface VariantData {
   isActive: boolean;
 }
 
-interface CategoryOption {
-  id: number;
-  name: string;
-}
+export interface CategoryOption { id: number; name: string; }
+export interface ProductOption { id: number; name: string; }
 
 export default function ProductEditPage() {
   const [, params] = useRoute("/admin/products/:id");
@@ -47,6 +49,7 @@ export default function ProductEditPage() {
   const [product, setProduct] = useState<ProductData | null>(null);
   const [variants, setVariants] = useState<VariantData[]>([]);
   const [cats, setCats] = useState<CategoryOption[]>([]);
+  const [allProducts, setAllProducts] = useState<ProductOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -60,9 +63,15 @@ export default function ProductEditPage() {
     })
       .then((r) => r.json())
       .then((d) => {
-        setProduct(d.product);
+        setProduct({
+          ...d.product,
+          keyFeatures: d.product.keyFeatures ?? [],
+          systemRequirements: d.product.systemRequirements ?? {},
+          relatedProductIds: d.product.relatedProductIds ?? [],
+        });
         setVariants(d.variants);
         setCats(d.categories);
+        setAllProducts(d.allProducts ?? []);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -78,10 +87,7 @@ export default function ProductEditPage() {
     setSaving(true);
     const res = await fetch(`${API_URL}/admin/products/${product.id}`, {
       method: "PUT",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify(product),
     });
     setSaving(false);
@@ -93,9 +99,7 @@ export default function ProductEditPage() {
       <div className="space-y-4">
         <Skeleton className="h-8 w-64" />
         <div className="grid gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-2 space-y-4">
-            <Skeleton className="h-[400px]" />
-          </div>
+          <div className="lg:col-span-2 space-y-4"><Skeleton className="h-[400px]" /></div>
           <Skeleton className="h-[400px]" />
         </div>
       </div>
@@ -123,103 +127,14 @@ export default function ProductEditPage() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-4">
-          <div className="rounded-lg border bg-white p-6 space-y-4">
-            <h2 className="font-semibold">Content</h2>
-            <div>
-              <label className="mb-1 block text-sm font-medium">Name</label>
-              <input
-                className="w-full rounded-md border px-3 py-2 text-sm"
-                value={product.name}
-                onChange={(e) => updateField("name", e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">Slug</label>
-              <input
-                className="w-full rounded-md border px-3 py-2 text-sm"
-                value={product.slug}
-                onChange={(e) => updateField("slug", e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">Short Description</label>
-              <textarea
-                className="w-full rounded-md border px-3 py-2 text-sm"
-                rows={2}
-                value={product.shortDescription ?? ""}
-                onChange={(e) => updateField("shortDescription", e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">Description</label>
-              <textarea
-                className="w-full rounded-md border px-3 py-2 text-sm font-mono"
-                rows={8}
-                value={product.description ?? ""}
-                onChange={(e) => updateField("description", e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="rounded-lg border bg-white p-6 space-y-4">
-            <h2 className="font-semibold">SEO</h2>
-            <div>
-              <label className="mb-1 block text-sm font-medium">Meta Title</label>
-              <input
-                className="w-full rounded-md border px-3 py-2 text-sm"
-                value={product.metaTitle ?? ""}
-                onChange={(e) => updateField("metaTitle", e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium">Meta Description</label>
-              <textarea
-                className="w-full rounded-md border px-3 py-2 text-sm"
-                rows={3}
-                value={product.metaDescription ?? ""}
-                onChange={(e) => updateField("metaDescription", e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="rounded-lg border bg-white p-6 space-y-3">
-            <h2 className="font-semibold">Variants (Read-only from Metenzi)</h2>
-            {variants.length === 0 ? (
-              <p className="text-muted-foreground text-sm">No variants.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b text-left">
-                      <th className="py-2 pr-4 font-medium text-muted-foreground">SKU</th>
-                      <th className="py-2 pr-4 font-medium text-muted-foreground">Name</th>
-                      <th className="py-2 pr-4 font-medium text-muted-foreground">Platform</th>
-                      <th className="py-2 pr-4 font-medium text-muted-foreground">Price</th>
-                      <th className="py-2 font-medium text-muted-foreground">Stock</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {variants.map((v) => (
-                      <tr key={v.id} className="border-b last:border-0">
-                        <td className="py-2 pr-4 font-mono text-xs">{v.sku}</td>
-                        <td className="py-2 pr-4">{v.name}</td>
-                        <td className="py-2 pr-4 text-muted-foreground">{v.platform ?? "—"}</td>
-                        <td className="py-2 pr-4 font-medium">${v.priceUsd}</td>
-                        <td className="py-2">{v.stockCount}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+          <ProductEditContent
+            product={product}
+            variants={variants}
+            allProducts={allProducts}
+            onUpdate={updateField}
+          />
         </div>
-
-        <ProductEditSidebar
-          product={product}
-          categories={cats}
-          onUpdate={updateField}
-        />
+        <ProductEditSidebar product={product} categories={cats} onUpdate={updateField} />
       </div>
     </div>
   );

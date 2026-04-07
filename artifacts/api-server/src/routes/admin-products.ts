@@ -80,6 +80,14 @@ router.get("/admin/products", requireAuth, requireAdmin, async (req, res) => {
     }
   }
 
+  const cats = await db
+    .select({ id: categories.id, name: categories.name })
+    .from(categories)
+    .where(eq(categories.isActive, true))
+    .orderBy(asc(categories.name));
+
+  const platforms = ["WINDOWS", "MAC", "LINUX", "STEAM", "ORIGIN", "UPLAY", "GOG", "EPIC", "XBOX", "PLAYSTATION", "NINTENDO", "OTHER"];
+
   res.json({
     products: rows.map((r) => ({
       ...r,
@@ -88,6 +96,8 @@ router.get("/admin/products", requireAuth, requireAdmin, async (req, res) => {
     total,
     page,
     totalPages: Math.ceil(total / limit),
+    categories: cats,
+    platforms,
   });
 });
 
@@ -189,7 +199,13 @@ router.get("/admin/products/:id", requireAuth, requireAdmin, async (req, res) =>
     .where(eq(categories.isActive, true))
     .orderBy(asc(categories.name));
 
-  res.json({ product, variants, categories: cats });
+  const allProducts = await db
+    .select({ id: products.id, name: products.name })
+    .from(products)
+    .where(sql`${products.id} != ${id}`)
+    .orderBy(asc(products.name));
+
+  res.json({ product, variants, categories: cats, allProducts });
 });
 
 router.put("/admin/products/:id", requireAuth, requireAdmin, async (req, res) => {
@@ -214,6 +230,9 @@ router.put("/admin/products/:id", requireAuth, requireAdmin, async (req, res) =>
       metaDescription: body.metaDescription,
       isFeatured: body.isFeatured,
       isActive: body.isActive,
+      keyFeatures: body.keyFeatures ?? [],
+      systemRequirements: body.systemRequirements ?? {},
+      relatedProductIds: body.relatedProductIds ?? [],
       sortOrder: body.sortOrder,
       updatedAt: new Date(),
     })
