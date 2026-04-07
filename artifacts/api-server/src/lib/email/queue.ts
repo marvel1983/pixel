@@ -1,6 +1,6 @@
 import { db } from "@workspace/db";
 import { emailQueue } from "@workspace/db/schema";
-import { eq, and, lt, sql } from "drizzle-orm";
+import { eq, and, lt } from "drizzle-orm";
 import { sendEmail } from "./mailer";
 import { logger } from "../logger";
 
@@ -43,9 +43,14 @@ export async function processEmailQueue(): Promise<{ processed: number; failed: 
     try {
       const sent = await sendEmail(email.to, email.subject, email.html);
       if (!sent) {
+        const newAttempts = email.attempts + 1;
         await db
           .update(emailQueue)
-          .set({ attempts: email.attempts + 1, lastError: "SMTP not configured" })
+          .set({
+            attempts: newAttempts,
+            lastError: "SMTP not configured",
+            status: newAttempts >= email.maxAttempts ? "failed" : "pending",
+          })
           .where(eq(emailQueue.id, email.id));
         failed++;
         continue;
