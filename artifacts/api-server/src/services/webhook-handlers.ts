@@ -101,6 +101,11 @@ async function handleOrderFulfilled(data: FulfilledData) {
 
   if (existingKeys.length > 0) {
     logger.info({ orderId: order.id }, "Webhook order.fulfilled already processed (idempotent skip)");
+    await logAuditEvent("UPDATE", "order", order.id, {
+      webhookEvent: "order.fulfilled",
+      metenziOrderId: data.orderId,
+      duplicate: true,
+    });
     return;
   }
 
