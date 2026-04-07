@@ -5,6 +5,7 @@ import {
   orderItems,
   licenseKeys,
   auditLog,
+  users,
 } from "@workspace/db/schema";
 import { encrypt } from "../lib/encryption";
 import { sendKeyDeliveryEmail } from "../lib/email";
@@ -58,23 +59,56 @@ async function findOrderByMetenziId(metenziOrderId: string) {
       id: orders.id,
       orderNumber: orders.orderNumber,
       guestEmail: orders.guestEmail,
+      userId: orders.userId,
     })
     .from(orders)
     .where(eq(orders.externalOrderId, metenziOrderId))
     .limit(1);
-  return order ?? null;
+  if (!order) return null;
+
+  let email = order.guestEmail;
+  if (!email && order.userId) {
+    const [user] = await db
+      .select({ email: users.email })
+      .from(users)
+      .where(eq(users.id, order.userId))
+      .limit(1);
+    email = user?.email ?? null;
+  }
+  return { ...order, email };
 }
 
 async function handleOrderFulfilled(data: FulfilledData) {
   logger.info({ metenziOrderId: data.orderId }, "Processing order.fulfilled webhook");
 
   const order = await findOrderByMetenziId(data.orderId);
+  if (!order) {
+    logger.warn({ metenziOrderId: data.orderId }, "No matching local order for fulfilled webhook");
+    await logAuditEvent("UPDATE", "order", null, {
+      webhookEvent: "order.fulfilled",
+      metenziOrderId: data.orderId,
+      error: "no matching local order",
+    });
+    return;
+  }
+
+  const existingKeys = await db
+    .select({ id: licenseKeys.id })
+    .from(licenseKeys)
+    .innerJoin(orderItems, eq(licenseKeys.orderItemId, orderItems.id))
+    .where(eq(orderItems.orderId, order.id))
+    .limit(1);
+
+  if (existingKeys.length > 0) {
+    logger.info({ orderId: order.id }, "Webhook order.fulfilled already processed (idempotent skip)");
+    return;
+  }
 
   const keysToDeliver: { productName: string; variant: string; licenseKey: string }[] = [];
 
   for (const item of data.items) {
     const variantId = parseInt(item.variantId, 10);
-    if (Number.isNaN(variantId) || !order) continue;
+    if (Number.isNaN(variantId)) continue;
 
     const dbItems = await db
       .select({ id: orderItems.id, productName: orderItems.productName, variantName: orderItems.variantName })
@@ -104,24 +138,22 @@ async function handleOrderFulfilled(data: FulfilledData) {
     }
   }
 
-  if (order) {
-    await db
-      .update(orders)
-      .set({ status: "COMPLETED", updatedAt: new Date() })
-      .where(eq(orders.id, order.id));
+  await db
+    .update(orders)
+    .set({ status: "COMPLETED", updatedAt: new Date() })
+    .where(eq(orders.id, order.id));
 
-    if (keysToDeliver.length > 0 && order.guestEmail) {
-      sendKeyDeliveryEmail(order.guestEmail, {
-        orderRef: order.orderNumber,
-        customerName: "Customer",
-        keys: keysToDeliver,
-      }).catch((err) =>
-        logger.error({ err }, "Failed to enqueue key delivery email from webhook"),
-      );
-    }
+  if (keysToDeliver.length > 0 && order.email) {
+    sendKeyDeliveryEmail(order.email, {
+      orderRef: order.orderNumber,
+      customerName: "Customer",
+      keys: keysToDeliver,
+    }).catch((err) =>
+      logger.error({ err }, "Failed to enqueue key delivery email from webhook"),
+    );
   }
 
-  await logAuditEvent("UPDATE", "order", order?.id ?? null, {
+  await logAuditEvent("UPDATE", "order", order.id, {
     webhookEvent: "order.fulfilled",
     metenziOrderId: data.orderId,
     keysDelivered: keysToDeliver.length,

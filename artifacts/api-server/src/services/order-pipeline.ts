@@ -10,7 +10,7 @@ import {
 import { processPayment } from "./payment";
 import { getMetenziConfig } from "../lib/metenzi-config";
 import { createOrder as metenziCreateOrder } from "../lib/metenzi-endpoints";
-import { encrypt, decrypt } from "../lib/encryption";
+import { decrypt } from "../lib/encryption";
 import { logger } from "../lib/logger";
 import { sendOrderConfirmationEmail, sendKeyDeliveryEmail } from "../lib/email";
 import bcrypt from "bcryptjs";
@@ -95,11 +95,15 @@ export async function executeOrderPipeline(input: OrderInput) {
       )
       .returning({ id: orderItems.id, variantId: orderItems.variantId });
 
-    await fulfillFromMetenzi(order.id, items, insertedItems);
+    const metenziFulfilled = await fulfillFromMetenzi(order.id, items, insertedItems);
 
-    await updateOrderStatus(order.id, "COMPLETED");
-
-    await triggerOrderEmails(billing, orderNumber, order.id, items, total);
+    if (metenziFulfilled) {
+      await updateOrderStatus(order.id, "PROCESSING");
+      await sendOrderConfirmationOnly(billing, orderNumber, order.id, items, total);
+    } else {
+      await updateOrderStatus(order.id, "COMPLETED");
+      await triggerOrderEmails(billing, orderNumber, order.id, items, total);
+    }
 
     if (input.guestPassword) {
       await createGuestAccount(billing, input.guestPassword);
@@ -123,13 +127,13 @@ async function updateOrderStatus(orderId: number, status: OrderStatus) {
 async function fulfillFromMetenzi(
   orderId: number,
   items: OrderInput["items"],
-  insertedItems: { id: number; variantId: number }[],
-) {
+  _insertedItems: { id: number; variantId: number }[],
+): Promise<boolean> {
   try {
     const config = await getMetenziConfig();
     if (!config) {
       logger.warn({ orderId }, "Metenzi not configured, skipping fulfillment");
-      return;
+      return false;
     }
 
     const metenziItems = items.map((it) => ({
@@ -144,35 +148,42 @@ async function fulfillFromMetenzi(
       .where(eq(orders.id, orderId));
     logger.info(
       { orderId, metenziOrderId: metenziOrder.id },
-      "Metenzi order created",
+      "Metenzi order placed, awaiting fulfillment webhook",
     );
 
-    for (const metenziItem of metenziOrder.items) {
-      const dbItem = insertedItems.find(
-        (i) => String(i.variantId) === metenziItem.variantId,
-      );
-      if (!dbItem) continue;
-
-      const keysToInsert = Array.from({ length: metenziItem.quantity }, (_, idx) => {
-        const encryptedKey = encrypt(
-          `KEY-${metenziOrder.id}-${metenziItem.variantId}-${idx}`,
-        );
-        return {
-          variantId: dbItem.variantId,
-          keyValue: encryptedKey,
-          status: "SOLD" as const,
-          source: "API" as const,
-          orderItemId: dbItem.id,
-          soldAt: new Date(),
-        };
-      });
-
-      await db.insert(licenseKeys).values(keysToInsert);
-    }
-
-    logger.info({ orderId }, "License keys stored");
+    return true;
   } catch (err) {
     logger.error({ err, orderId }, "Metenzi fulfillment failed (non-fatal)");
+    return false;
+  }
+}
+
+function buildEmailItems(items: OrderInput["items"]) {
+  return items.map((it) => ({
+    name: it.productName,
+    variant: it.variantName,
+    quantity: it.quantity,
+    price: `$${(parseFloat(it.priceUsd) * it.quantity).toFixed(2)}`,
+  }));
+}
+
+async function sendOrderConfirmationOnly(
+  billing: OrderInput["billing"],
+  orderNumber: string,
+  orderId: number,
+  items: OrderInput["items"],
+  total: number,
+) {
+  try {
+    await sendOrderConfirmationEmail(billing.email, {
+      orderId,
+      orderRef: orderNumber,
+      items: buildEmailItems(items),
+      total: `$${total.toFixed(2)}`,
+      customerName: billing.firstName,
+    });
+  } catch (err) {
+    logger.error({ err, orderNumber }, "Failed to enqueue confirmation email (non-fatal)");
   }
 }
 
@@ -184,17 +195,10 @@ async function triggerOrderEmails(
   total: number,
 ) {
   try {
-    const emailItems = items.map((it) => ({
-      name: it.productName,
-      variant: it.variantName,
-      quantity: it.quantity,
-      price: `$${(parseFloat(it.priceUsd) * it.quantity).toFixed(2)}`,
-    }));
-
     await sendOrderConfirmationEmail(billing.email, {
       orderId,
       orderRef: orderNumber,
-      items: emailItems,
+      items: buildEmailItems(items),
       total: `$${total.toFixed(2)}`,
       customerName: billing.firstName,
     });
