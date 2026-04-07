@@ -89,6 +89,7 @@ const sections: NavSection[] = [
   {
     title: "SYSTEM",
     items: [
+      { label: "Tax / VAT", href: "/admin/tax-settings", icon: Receipt },
       { label: "Settings", href: "/admin/settings", icon: Settings },
       { label: "Audit Log", href: "/admin/audit-log", icon: ClipboardList },
       { label: "Metenzi Balance", href: "/admin/metenzi-balance", icon: Wallet },

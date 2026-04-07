@@ -29,6 +29,7 @@ import HomepageSectionsPage from "./homepage-sections";
 import BrandSectionsPage from "./brand-sections";
 import EmailTemplatesPage from "./email-templates";
 import EmailTemplateEditPage from "./email-template-edit";
+import TaxSettingsPage from "./tax-settings";
 
 function AdminPlaceholder({ title }: { title: string }) {
   return (
@@ -74,6 +75,7 @@ export default function AdminRoot() {
           <Route path="/admin/brand-sections" component={BrandSectionsPage} />
           <Route path="/admin/email-templates/:id" component={EmailTemplateEditPage} />
           <Route path="/admin/email-templates" component={EmailTemplatesPage} />
+          <Route path="/admin/tax-settings" component={TaxSettingsPage} />
           <Route path="/admin/banners" component={AdminBannersPage} />
           <Route path="/admin/users">
             <AdminPlaceholder title="Users" />

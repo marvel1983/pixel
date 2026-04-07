@@ -22,3 +22,4 @@ export * from "./claims";
 export * from "./checkout-upsell";
 export * from "./homepage-sections";
 export * from "./email-templates";
+export * from "./tax-settings";

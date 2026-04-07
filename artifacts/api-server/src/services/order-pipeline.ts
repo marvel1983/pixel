@@ -39,6 +39,9 @@ interface OrderInput {
   cppSelected: boolean;
   subtotal: number;
   discountAmount: number;
+  taxRate: number;
+  taxAmount: number;
+  vatNumber: string | null;
   total: number;
   orderNumber: string;
   cardToken: string;
@@ -62,6 +65,9 @@ export async function executeOrderPipeline(input: OrderInput) {
       paymentMethod: "CARD",
       cppSelected: input.cppSelected,
       cppAmountUsd: cppAmount.toFixed(2),
+      taxRate: input.taxRate.toFixed(2),
+      taxAmountUsd: input.taxAmount.toFixed(2),
+      vatNumber: input.vatNumber,
     })
     .returning({ id: orders.id });
 

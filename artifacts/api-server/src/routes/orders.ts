@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { z } from "zod";
-import { inArray } from "drizzle-orm";
+import { inArray, eq } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { productVariants } from "@workspace/db/schema";
+import { productVariants, taxSettings, taxRates } from "@workspace/db/schema";
 import { executeOrderPipeline } from "../services/order-pipeline";
 import { validateCouponServerSide } from "../services/coupon-service";
 import { logger } from "../lib/logger";
@@ -44,6 +44,7 @@ const orderSchema = z.object({
     .nullable()
     .optional(),
   cppSelected: z.boolean().optional(),
+  vatNumber: z.string().max(50).optional(),
   total: currencyStr,
   payment: z.object({ cardToken: z.string().min(1) }),
   guestPassword: z.string().min(8).optional(),
@@ -91,7 +92,7 @@ router.post("/orders", async (req, res) => {
     return;
   }
 
-  const { billing, items, coupon, cppSelected, total, payment } = parsed.data;
+  const { billing, items, coupon, cppSelected, vatNumber, total, payment } = parsed.data;
 
   const { error: priceError } = await validateAndPriceItems(items);
   if (priceError) {
@@ -115,7 +116,23 @@ router.post("/orders", async (req, res) => {
   const discountPct = serverCoupon?.pct ?? 0;
   const discountAmount = subtotal * (discountPct / 100);
   const cppAmount = cppSelected ? Math.round(subtotal * CPP_RATE * 100) / 100 : 0;
-  const computedTotal = subtotal - discountAmount + cppAmount;
+
+  let taxRate = 0;
+  let taxAmount = 0;
+  const [taxConfig] = await db.select().from(taxSettings);
+  if (taxConfig?.enabled) {
+    const isExempt = taxConfig.b2bExemptionEnabled && vatNumber && vatNumber.length >= 8;
+    if (!isExempt) {
+      taxRate = parseFloat(taxConfig.defaultRate);
+      const country = billing.country.toUpperCase();
+      const [cr] = await db.select().from(taxRates).where(eq(taxRates.countryCode, country));
+      if (cr?.isEnabled) taxRate = parseFloat(cr.rate);
+      const taxableAmount = subtotal - discountAmount + cppAmount;
+      taxAmount = Math.round(taxableAmount * (taxRate / 100) * 100) / 100;
+    }
+  }
+
+  const computedTotal = subtotal - discountAmount + cppAmount + taxAmount;
 
   if (Math.abs(computedTotal - parseFloat(total)) > 0.02) {
     res.status(400).json({ error: "Total mismatch. Please refresh and try again." });
@@ -130,6 +147,9 @@ router.post("/orders", async (req, res) => {
       cppSelected: cppSelected ?? false,
       subtotal,
       discountAmount,
+      taxRate,
+      taxAmount,
+      vatNumber: vatNumber ?? null,
       total: computedTotal,
       orderNumber: generateOrderNumber(),
       cardToken: payment.cardToken,
