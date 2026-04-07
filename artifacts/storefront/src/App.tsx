@@ -10,6 +10,8 @@ import OutletPage from "@/pages/outlet";
 import HotOffersPage from "@/pages/hot-offers";
 import ProductDetailPage from "@/pages/product-detail";
 import CartPage from "@/pages/cart";
+import CheckoutPage from "@/pages/checkout";
+import OrderCompletePage from "@/pages/order-complete";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -25,6 +27,8 @@ function Router() {
         <Route path="/hot-offers" component={HotOffersPage} />
         <Route path="/product/:slug" component={ProductDetailPage} />
         <Route path="/cart" component={CartPage} />
+        <Route path="/checkout" component={CheckoutPage} />
+        <Route path="/order-complete/:orderNumber" component={OrderCompletePage} />
         <Route component={NotFound} />
       </Switch>
     </SiteLayout>
