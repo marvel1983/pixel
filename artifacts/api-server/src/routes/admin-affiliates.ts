@@ -46,7 +46,9 @@ router.get("/admin/affiliates", ...guard, async (req, res) => {
     .orderBy(desc(affiliateProfiles.createdAt))
     .limit(limit).offset(offset);
 
-  const [totalRow] = await db.select({ c: count() }).from(affiliateProfiles);
+  const totalQuery = db.select({ c: count() }).from(affiliateProfiles)
+    .innerJoin(users, eq(affiliateProfiles.userId, users.id));
+  const [totalRow] = whereClause ? await totalQuery.where(whereClause) : await totalQuery;
   res.json({ affiliates: rows, total: totalRow?.c ?? 0, page, limit });
 });
 
@@ -119,7 +121,9 @@ router.post("/admin/affiliates/:id/mark-paid", ...guard, async (req, res) => {
   res.json({ success: true, paidAmount: actualPaid.toFixed(2) });
 });
 
-router.get("/admin/affiliate-settings", ...guard, async (_req, res) => {
+const settingsGuard = [requireAuth, requireAdmin, requirePermission("manageSettings")];
+
+router.get("/admin/affiliate-settings", ...settingsGuard, async (_req, res) => {
   let [settings] = await db.select().from(affiliateSettings);
   if (!settings) {
     [settings] = await db.insert(affiliateSettings).values({}).returning();
@@ -127,7 +131,7 @@ router.get("/admin/affiliate-settings", ...guard, async (_req, res) => {
   res.json({ settings });
 });
 
-router.put("/admin/affiliate-settings", ...guard, async (req, res) => {
+router.put("/admin/affiliate-settings", ...settingsGuard, async (req, res) => {
   const { enabled, defaultCommissionRate, minimumPayout, holdPeriodDays,
     autoApprove, cookieDurationDays, programDescription, termsAndConditions } = req.body;
   const [existing] = await db.select().from(affiliateSettings);
