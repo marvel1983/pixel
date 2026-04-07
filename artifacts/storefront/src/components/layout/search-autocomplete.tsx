@@ -8,10 +8,22 @@ import { useCurrencyStore } from "@/stores/currency-store";
 
 const MAX_SUGGESTIONS = 6;
 const DEBOUNCE_MS = 300;
+const API_URL = import.meta.env.VITE_API_URL ?? "/api";
+
+interface SuggestionItem {
+  id: number;
+  name: string;
+  slug: string;
+  imageUrl: string | null;
+  categorySlug: string;
+  priceUsd: number;
+  compareAtPriceUsd: number | null;
+}
 
 export function SearchAutocomplete() {
   const [query, setQuery] = useState("");
-  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<SuggestionItem[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [activeIdx, setActiveIdx] = useState(-1);
   const [, setLocation] = useLocation();
@@ -21,16 +33,57 @@ export function SearchAutocomplete() {
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
-    timerRef.current = setTimeout(() => setDebouncedQuery(query), DEBOUNCE_MS);
+    if (!query.trim()) {
+      setSuggestions([]);
+      setTotalCount(0);
+      return;
+    }
+
+    timerRef.current = setTimeout(() => {
+      fetch(`${API_URL}/search?q=${encodeURIComponent(query.trim())}&limit=${MAX_SUGGESTIONS}`)
+        .then((r) => r.json())
+        .then((data) => {
+          const items: SuggestionItem[] = (data.items ?? []).map((p: any) => {
+            const v = p.variants?.[0];
+            return {
+              id: p.id,
+              name: p.name,
+              slug: p.slug,
+              imageUrl: p.imageUrl,
+              categorySlug: p.categoryId ? `cat-${p.categoryId}` : "",
+              priceUsd: parseFloat(v?.priceUsd ?? "0"),
+              compareAtPriceUsd: v?.compareAtPriceUsd
+                ? parseFloat(v.compareAtPriceUsd)
+                : null,
+            };
+          });
+          setSuggestions(items);
+          setTotalCount(data.total ?? items.length);
+          if (items.length > 0) setIsOpen(true);
+        })
+        .catch(() => {
+          const local = searchProducts(MOCK_PRODUCTS, query.trim());
+          const items: SuggestionItem[] = local
+            .slice(0, MAX_SUGGESTIONS)
+            .map((p) => ({
+              id: p.id,
+              name: p.name,
+              slug: p.slug,
+              imageUrl: p.imageUrl,
+              categorySlug: p.categorySlug,
+              priceUsd: parseFloat(p.variants[0]?.priceUsd ?? "0"),
+              compareAtPriceUsd: p.variants[0]?.compareAtPriceUsd
+                ? parseFloat(p.variants[0].compareAtPriceUsd)
+                : null,
+            }));
+          setSuggestions(items);
+          setTotalCount(local.length);
+          if (items.length > 0) setIsOpen(true);
+        });
+    }, DEBOUNCE_MS);
+
     return () => clearTimeout(timerRef.current);
   }, [query]);
-
-  const results = useMemo(
-    () => searchProducts(MOCK_PRODUCTS, debouncedQuery),
-    [debouncedQuery],
-  );
-  const suggestions = results.slice(0, MAX_SUGGESTIONS);
-  const totalCount = results.length;
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -58,7 +111,7 @@ export function SearchAutocomplete() {
     (slug: string) => {
       setIsOpen(false);
       setQuery("");
-      setDebouncedQuery("");
+      setSuggestions([]);
       inputRef.current?.blur();
       setLocation(`/product/${slug}`);
     },
@@ -66,31 +119,22 @@ export function SearchAutocomplete() {
   );
 
   function handleKeyDown(e: React.KeyboardEvent) {
-    if (!isOpen || suggestions.length === 0) {
-      if (e.key === "Enter" && query.trim()) {
-        navigateToSearch(query.trim());
-      }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (query.trim()) navigateToSearch(query.trim());
       return;
     }
+
+    if (!isOpen || suggestions.length === 0) return;
 
     switch (e.key) {
       case "ArrowDown":
         e.preventDefault();
-        setActiveIdx((prev) =>
-          prev < suggestions.length ? prev + 1 : 0,
-        );
+        setActiveIdx((prev) => (prev < suggestions.length ? prev + 1 : 0));
         break;
       case "ArrowUp":
         e.preventDefault();
         setActiveIdx((prev) => (prev <= 0 ? suggestions.length : prev - 1));
-        break;
-      case "Enter":
-        e.preventDefault();
-        if (activeIdx >= 0 && activeIdx < suggestions.length) {
-          navigateToProduct(suggestions[activeIdx].slug);
-        } else {
-          navigateToSearch(query.trim());
-        }
         break;
       case "Escape":
         setIsOpen(false);
@@ -114,7 +158,7 @@ export function SearchAutocomplete() {
           setActiveIdx(-1);
         }}
         onFocus={() => {
-          if (query.trim()) setIsOpen(true);
+          if (query.trim() && suggestions.length > 0) setIsOpen(true);
         }}
         onKeyDown={handleKeyDown}
         autoComplete="off"
@@ -123,64 +167,51 @@ export function SearchAutocomplete() {
         aria-haspopup="listbox"
       />
 
-      {isOpen && debouncedQuery.trim() && suggestions.length > 0 && (
+      {isOpen && suggestions.length > 0 && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-border rounded-lg shadow-lg z-50 overflow-hidden">
           <ul role="listbox" className="py-1">
-            {suggestions.map((product, idx) => {
-              const variant = product.variants[0];
-              const price = variant ? parseFloat(variant.priceUsd) : 0;
-              const comparePrice = variant?.compareAtPriceUsd
-                ? parseFloat(variant.compareAtPriceUsd)
-                : null;
-
-              return (
-                <li
-                  key={product.id}
-                  role="option"
-                  aria-selected={idx === activeIdx}
-                  className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors ${
-                    idx === activeIdx
-                      ? "bg-primary/5"
-                      : "hover:bg-muted/50"
-                  }`}
-                  onMouseEnter={() => setActiveIdx(idx)}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    navigateToProduct(product.slug);
-                  }}
-                >
-                  <div className="w-10 h-10 rounded bg-muted flex items-center justify-center shrink-0 overflow-hidden">
-                    {product.imageUrl ? (
-                      <img
-                        src={product.imageUrl}
-                        alt={product.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <Package className="h-5 w-5 text-muted-foreground/40" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">
-                      {product.name}
-                    </p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {product.categorySlug.replace(/-/g, " ")}
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <span className="text-sm font-bold text-foreground">
-                      {format(price)}
+            {suggestions.map((item, idx) => (
+              <li
+                key={item.id}
+                role="option"
+                aria-selected={idx === activeIdx}
+                className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors ${
+                  idx === activeIdx ? "bg-primary/5" : "hover:bg-muted/50"
+                }`}
+                onMouseEnter={() => setActiveIdx(idx)}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  navigateToProduct(item.slug);
+                }}
+              >
+                <div className="w-10 h-10 rounded bg-muted flex items-center justify-center shrink-0 overflow-hidden">
+                  {item.imageUrl ? (
+                    <img
+                      src={item.imageUrl}
+                      alt={item.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <Package className="h-5 w-5 text-muted-foreground/40" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">
+                    {item.name}
+                  </p>
+                </div>
+                <div className="text-right shrink-0">
+                  <span className="text-sm font-bold text-foreground">
+                    {format(item.priceUsd)}
+                  </span>
+                  {item.compareAtPriceUsd && (
+                    <span className="block text-[10px] text-muted-foreground line-through">
+                      {format(item.compareAtPriceUsd)}
                     </span>
-                    {comparePrice && (
-                      <span className="block text-[10px] text-muted-foreground line-through">
-                        {format(comparePrice)}
-                      </span>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
+                  )}
+                </div>
+              </li>
+            ))}
           </ul>
 
           <div

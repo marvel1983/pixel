@@ -2,7 +2,7 @@ import { Router, type Request, type Response } from "express";
 import { db } from "@workspace/db";
 import { products, productVariants } from "@workspace/db/schema";
 import { eq, ilike, or, and, sql, inArray } from "drizzle-orm";
-import { z } from "zod/v4";
+import { z } from "zod";
 
 const router = Router();
 
@@ -22,20 +22,26 @@ router.get("/search", async (req: Request, res: Response) => {
   const { q, limit, offset } = parsed.data;
   const pattern = `%${q}%`;
 
-  const nameCondition = and(
+  const skuMatchSubquery = db
+    .selectDistinct({ productId: productVariants.productId })
+    .from(productVariants)
+    .where(and(eq(productVariants.isActive, true), ilike(productVariants.sku, pattern)));
+
+  const whereClause = and(
     eq(products.isActive, true),
     or(
       ilike(products.name, pattern),
       ilike(products.slug, pattern),
       ilike(products.description, pattern),
       ilike(products.shortDescription, pattern),
+      inArray(products.id, skuMatchSubquery),
     ),
   );
 
   const [countResult] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(products)
-    .where(nameCondition);
+    .where(whereClause);
 
   const results = await db
     .select({
@@ -49,7 +55,7 @@ router.get("/search", async (req: Request, res: Response) => {
       categoryId: products.categoryId,
     })
     .from(products)
-    .where(nameCondition)
+    .where(whereClause)
     .orderBy(
       sql`CASE WHEN ${products.name} ILIKE ${pattern} THEN 0 ELSE 1 END`,
       products.name,
@@ -89,63 +95,6 @@ router.get("/search", async (req: Request, res: Response) => {
           inArray(productVariants.productId, productIds),
         ),
       );
-  }
-
-  if (results.length === 0) {
-    const skuMatches = await db
-      .select({ productId: productVariants.productId })
-      .from(productVariants)
-      .where(
-        and(
-          eq(productVariants.isActive, true),
-          ilike(productVariants.sku, pattern),
-        ),
-      )
-      .limit(limit);
-
-    if (skuMatches.length > 0) {
-      const skuPids = [...new Set(skuMatches.map((m) => m.productId))];
-      const skuProducts = await db
-        .select({
-          id: products.id,
-          name: products.name,
-          slug: products.slug,
-          imageUrl: products.imageUrl,
-          avgRating: products.avgRating,
-          reviewCount: products.reviewCount,
-          isFeatured: products.isFeatured,
-          categoryId: products.categoryId,
-        })
-        .from(products)
-        .where(and(eq(products.isActive, true), inArray(products.id, skuPids)));
-
-      const skuVariants = await db
-        .select({
-          id: productVariants.id,
-          productId: productVariants.productId,
-          name: productVariants.name,
-          sku: productVariants.sku,
-          platform: productVariants.platform,
-          priceUsd: productVariants.priceUsd,
-          compareAtPriceUsd: productVariants.compareAtPriceUsd,
-          stockCount: productVariants.stockCount,
-        })
-        .from(productVariants)
-        .where(
-          and(
-            eq(productVariants.isActive, true),
-            inArray(productVariants.productId, skuPids),
-          ),
-        );
-
-      const items = skuProducts.map((p) => ({
-        ...p,
-        variants: skuVariants.filter((v) => v.productId === p.id),
-      }));
-
-      res.json({ items, total: skuProducts.length, limit, offset });
-      return;
-    }
   }
 
   const total = countResult?.count ?? 0;

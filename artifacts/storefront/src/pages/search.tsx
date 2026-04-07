@@ -1,8 +1,7 @@
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useSearch } from "wouter";
 import { Link } from "wouter";
-import { MOCK_PRODUCTS } from "@/lib/mock-data";
-import { searchProducts } from "@/lib/search-utils";
+import { MOCK_PRODUCTS, type MockProduct } from "@/lib/mock-data";
 import {
   useListingFilters,
   applyFilters,
@@ -12,23 +11,67 @@ import { Breadcrumbs } from "@/components/shop/breadcrumbs";
 import { FilterSidebar } from "@/components/shop/filter-sidebar";
 import { ProductGrid } from "@/components/shop/product-grid";
 import { ProductCard } from "@/components/product/product-card";
-import { SearchX, ArrowRight } from "lucide-react";
+import { SearchX, ArrowRight, Loader2 } from "lucide-react";
+
+const API_URL = import.meta.env.VITE_API_URL ?? "/api";
+
+function toMockProduct(item: any): MockProduct {
+  return {
+    id: item.id,
+    name: item.name,
+    slug: item.slug,
+    imageUrl: item.imageUrl,
+    categorySlug: item.categoryId ? `cat-${item.categoryId}` : "uncategorized",
+    avgRating: parseFloat(item.avgRating ?? "0"),
+    reviewCount: item.reviewCount ?? 0,
+    isFeatured: item.isFeatured ?? false,
+    isNew: false,
+    description: item.description,
+    variants: (item.variants ?? []).map((v: any) => ({
+      id: v.id,
+      name: v.name,
+      sku: v.sku,
+      platform: v.platform ?? "OTHER",
+      priceUsd: v.priceUsd,
+      compareAtPriceUsd: v.compareAtPriceUsd,
+      stockCount: v.stockCount ?? 0,
+    })),
+  };
+}
 
 export default function SearchPage() {
   const rawSearch = useSearch();
   const params = new URLSearchParams(rawSearch);
   const query = params.get("q") ?? "";
   const { filters, setFilters, perPage } = useListingFilters();
+  const [apiResults, setApiResults] = useState<MockProduct[]>([]);
+  const [apiTotal, setApiTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
 
-  const searchResults = useMemo(
-    () => searchProducts(MOCK_PRODUCTS, query),
-    [query],
-  );
+  useEffect(() => {
+    if (!query.trim()) {
+      setApiResults([]);
+      setApiTotal(0);
+      return;
+    }
+    setLoading(true);
+    fetch(`${API_URL}/search?q=${encodeURIComponent(query.trim())}&limit=50`)
+      .then((r) => r.json())
+      .then((data) => {
+        setApiResults(data.items.map(toMockProduct));
+        setApiTotal(data.total ?? data.items.length);
+      })
+      .catch(() => {
+        setApiResults([]);
+        setApiTotal(0);
+      })
+      .finally(() => setLoading(false));
+  }, [query]);
 
   const { items, totalPages, currentPage, totalItems } = useMemo(() => {
-    const filtered = applyFilters(searchResults, filters);
+    const filtered = applyFilters(apiResults, filters);
     return paginate(filtered, filters.page, perPage);
-  }, [searchResults, filters, perPage]);
+  }, [apiResults, filters, perPage]);
 
   const popularProducts = useMemo(
     () =>
@@ -45,13 +88,21 @@ export default function SearchPage() {
       {query ? (
         <>
           <h1 className="text-2xl font-bold text-foreground mb-6">
-            {totalItems} {totalItems === 1 ? "result" : "results"} for &ldquo;
-            {query}&rdquo;
+            {loading ? (
+              <span className="flex items-center gap-2">
+                <Loader2 className="h-5 w-5 animate-spin" /> Searching...
+              </span>
+            ) : (
+              <>
+                {apiTotal} {apiTotal === 1 ? "result" : "results"} for &ldquo;
+                {query}&rdquo;
+              </>
+            )}
           </h1>
 
-          {searchResults.length === 0 ? (
+          {!loading && apiResults.length === 0 ? (
             <NoResultsState query={query} suggestions={popularProducts} />
-          ) : (
+          ) : !loading ? (
             <div className="flex flex-col lg:flex-row gap-6">
               <FilterSidebar filters={filters} onFilterChange={setFilters} />
               <ProductGrid
@@ -64,7 +115,7 @@ export default function SearchPage() {
                 onPageChange={(page) => setFilters({ page })}
               />
             </div>
-          )}
+          ) : null}
         </>
       ) : (
         <NoResultsState query="" suggestions={popularProducts} />
@@ -78,7 +129,7 @@ function NoResultsState({
   suggestions,
 }: {
   query: string;
-  suggestions: typeof MOCK_PRODUCTS;
+  suggestions: MockProduct[];
 }) {
   return (
     <div className="text-center py-12">
