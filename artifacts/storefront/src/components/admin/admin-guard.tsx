@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuthStore } from "@/stores/auth-store";
 
@@ -11,8 +12,13 @@ export function AdminGuard({ children }: AdminGuardProps) {
   const isAdmin = useAuthStore((s) => s.isAdmin);
   const [, setLocation] = useLocation();
 
+  useEffect(() => {
+    if (!isAuthenticated()) {
+      setLocation("/login");
+    }
+  }, [isAuthenticated, setLocation]);
+
   if (!isAuthenticated()) {
-    setLocation("/login");
     return null;
   }
 
