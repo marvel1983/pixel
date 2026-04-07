@@ -11,7 +11,7 @@ import { processPayment } from "./payment";
 import { createGiftCardForOrder, sendGiftCardEmails, redeemGiftCards } from "./gift-card-service";
 import { createCommissionForOrder } from "./affiliate-service";
 import { markCartRecovered } from "./abandoned-cart-service";
-import { awardOrderPoints, redeemPoints, getOrCreateAccount, addPoints } from "./loyalty-service";
+import { awardOrderPoints, redeemPoints, getOrCreateAccount, restorePoints } from "./loyalty-service";
 import { getMetenziConfig } from "../lib/metenzi-config";
 import { createOrder as metenziCreateOrder } from "../lib/metenzi-endpoints";
 import { logger } from "../lib/logger";
@@ -102,8 +102,8 @@ export async function executeOrderPipeline(input: OrderInput) {
 
     if (!paymentResult.success) {
       if (loyaltyRedeemed && loyaltyAccountId && input.loyaltyPointsUsed) {
-        await addPoints(loyaltyAccountId, input.loyaltyPointsUsed, "REFUND",
-          `Points restored: payment failed for order ${orderNumber}`);
+        await restorePoints(loyaltyAccountId, input.loyaltyPointsUsed,
+          `Points restored: payment failed for order ${orderNumber}`, order.id);
       }
       await updateOrderStatus(order.id, "FAILED");
       throw new Error(paymentResult.error ?? "Payment declined");

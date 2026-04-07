@@ -73,6 +73,18 @@ export async function addPoints(
   return tx;
 }
 
+export async function restorePoints(accountId: number, points: number, description: string, orderId?: number) {
+  const [account] = await db.select().from(loyaltyAccounts).where(eq(loyaltyAccounts.id, accountId)).limit(1);
+  if (!account) return;
+  const newBalance = account.pointsBalance + points;
+  await db.update(loyaltyAccounts)
+    .set({ pointsBalance: newBalance, updatedAt: new Date() })
+    .where(eq(loyaltyAccounts.id, accountId));
+  await db.insert(loyaltyTransactions).values({
+    accountId, type: "REFUND", points, balance: newBalance, description, orderId,
+  });
+}
+
 export async function redeemPoints(accountId: number, points: number, orderId?: number) {
   const config = await getLoyaltyConfig();
   if (!config?.enabled) throw new Error("Loyalty program not active");
