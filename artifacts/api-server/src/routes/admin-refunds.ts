@@ -1,12 +1,19 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { refunds, orders, users } from "@workspace/db/schema";
-import { eq, desc, and, or, ilike, gte, lte, count, sql } from "drizzle-orm";
+import { eq, desc, and, or, ilike, gte, lte, count } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
-import crypto from "crypto";
+import { processRefund, updateOrderRefundStatus } from "../lib/refund-service";
 
 const router = Router();
+
+const VALID_STATUSES = ["PENDING", "PROCESSING", "COMPLETED", "FAILED"] as const;
+type RefundStatus = (typeof VALID_STATUSES)[number];
+
+function isValidStatus(s: string): s is RefundStatus {
+  return (VALID_STATUSES as readonly string[]).includes(s);
+}
 
 router.get("/admin/refunds", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
   const { status, search, from, to, page: pg, limit: lm } = req.query;
@@ -15,7 +22,9 @@ router.get("/admin/refunds", requireAuth, requireAdmin, requirePermission("manag
   const offset = (page - 1) * limit;
 
   const conditions = [];
-  if (status && status !== "ALL") conditions.push(eq(refunds.status, status as any));
+  if (typeof status === "string" && status !== "ALL" && isValidStatus(status)) {
+    conditions.push(eq(refunds.status, status));
+  }
   if (from) conditions.push(gte(refunds.createdAt, new Date(from as string)));
   if (to) conditions.push(lte(refunds.createdAt, new Date(to as string)));
   if (search) {
@@ -83,26 +92,23 @@ router.post("/admin/refunds", requireAuth, requireAdmin, requirePermission("mana
     res.status(400).json({ error: `Maximum refundable amount is $${maxRefundable.toFixed(2)}` }); return;
   }
 
-  const externalRefundId = `rf_${crypto.randomBytes(8).toString("hex")}`;
-
   const [refund] = await db.insert(refunds).values({
     orderId, initiatedBy: req.user!.userId,
     amountUsd: parseFloat(amount).toFixed(2),
     reason, notes: notes || null,
     notifyCustomer: notifyCustomer ?? true,
-    status: "PROCESSING", externalRefundId,
+    status: "PENDING",
   }).returning();
 
-  await db.update(refunds).set({ status: "COMPLETED", processedAt: new Date() })
-    .where(eq(refunds.id, refund.id));
+  const result = await processRefund(refund.id);
 
-  const updatedRefunded = refundedTotal + parseFloat(amount);
-  const orderTotal = parseFloat(order.totalUsd);
-  const newStatus = updatedRefunded >= orderTotal - 0.01 ? "REFUNDED" : "PARTIALLY_REFUNDED";
-  await db.update(orders).set({ status: newStatus, updatedAt: new Date() })
-    .where(eq(orders.id, orderId));
+  const [updated] = await db.select().from(refunds).where(eq(refunds.id, refund.id));
 
-  res.json({ success: true, refund: { ...refund, status: "COMPLETED" } });
+  if (!result.success) {
+    res.status(500).json({ error: result.error, refund: updated }); return;
+  }
+
+  res.json({ success: true, refund: updated });
 });
 
 router.post("/admin/refunds/:id/retry", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
@@ -113,20 +119,13 @@ router.post("/admin/refunds/:id/retry", requireAuth, requireAdmin, requirePermis
     res.status(400).json({ error: "Only failed refunds can be retried" }); return;
   }
 
-  const newExternalId = `rf_${crypto.randomBytes(8).toString("hex")}`;
-  await db.update(refunds).set({
-    status: "COMPLETED", externalRefundId: newExternalId,
-    failureReason: null, processedAt: new Date(),
-  }).where(eq(refunds.id, id));
+  await db.update(refunds).set({ status: "PENDING", failureReason: null })
+    .where(eq(refunds.id, id));
 
-  const [order] = await db.select().from(orders).where(eq(orders.id, refund.orderId));
-  if (order) {
-    const allRefunds = await db.select().from(refunds).where(eq(refunds.orderId, refund.orderId));
-    const total = allRefunds.filter((r) => r.status !== "FAILED")
-      .reduce((s, r) => s + parseFloat(r.amountUsd), 0) + parseFloat(refund.amountUsd);
-    const newStatus = total >= parseFloat(order.totalUsd) - 0.01 ? "REFUNDED" : "PARTIALLY_REFUNDED";
-    await db.update(orders).set({ status: newStatus, updatedAt: new Date() })
-      .where(eq(orders.id, refund.orderId));
+  const result = await processRefund(id);
+
+  if (!result.success) {
+    res.status(500).json({ error: result.error }); return;
   }
 
   res.json({ success: true });
