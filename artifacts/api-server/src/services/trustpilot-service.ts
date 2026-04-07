@@ -1,7 +1,7 @@
 import { db } from "@workspace/db";
 import { siteSettings, trustpilotInvites } from "@workspace/db/schema";
 import { decrypt } from "../lib/encryption";
-import { lte, isNull, eq } from "drizzle-orm";
+import { lte, isNull, eq, and } from "drizzle-orm";
 import { logger } from "../lib/logger";
 
 interface InviteParams {
@@ -34,9 +34,11 @@ export async function scheduleTrustpilotInvite(params: InviteParams) {
 
 export async function processPendingInvites() {
   const pending = await db.select().from(trustpilotInvites)
-    .where(lte(trustpilotInvites.scheduledAt, new Date()))
-    .where(isNull(trustpilotInvites.sentAt))
-    .where(eq(trustpilotInvites.failed, false))
+    .where(and(
+      lte(trustpilotInvites.scheduledAt, new Date()),
+      isNull(trustpilotInvites.sentAt),
+      eq(trustpilotInvites.failed, false),
+    ))
     .limit(10);
 
   if (!pending.length) return;

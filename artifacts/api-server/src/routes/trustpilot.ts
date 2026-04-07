@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { siteSettings } from "@workspace/db/schema";
+import { eq } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import { encrypt, decrypt } from "../lib/encryption";
@@ -53,7 +54,7 @@ router.put("/admin/trustpilot", requireAuth, requireAdmin, requirePermission("ma
   if (rows.length === 0) {
     await db.insert(siteSettings).values(update);
   } else {
-    await db.update(siteSettings).set(update);
+    await db.update(siteSettings).set(update).where(eq(siteSettings.id, rows[0].id));
   }
   res.json({ ok: true });
 });
@@ -98,7 +99,11 @@ router.post("/admin/trustpilot/test-invite", requireAuth, requireAdmin, requireP
 });
 
 router.post("/admin/trustpilot/clear-api-key", requireAuth, requireAdmin, requirePermission("manageSettings"), async (_req, res) => {
-  await db.update(siteSettings).set({ trustpilotApiKeyEncrypted: null, updatedAt: new Date() });
+  const rows = await db.select({ id: siteSettings.id }).from(siteSettings).limit(1);
+  if (rows.length) {
+    await db.update(siteSettings).set({ trustpilotApiKeyEncrypted: null, updatedAt: new Date() })
+      .where(eq(siteSettings.id, rows[0].id));
+  }
   res.json({ ok: true });
 });
 
