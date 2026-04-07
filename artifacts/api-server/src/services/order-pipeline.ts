@@ -42,7 +42,6 @@ interface OrderInput {
   loyaltyPointsUsed?: number; loyaltyDiscount?: number;
   walletAmountUsd?: number; userId?: number;
   services?: Array<{ id: number; name: string; priceUsd: string }>;
-  servicesAmount?: number;
 }
 
 export async function executeOrderPipeline(input: OrderInput) {

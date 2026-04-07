@@ -185,11 +185,12 @@ router.post("/orders", async (req, res) => {
   }
   let servicesAmount = 0;
   let validatedServices: Array<{ id: number; name: string; priceUsd: string }> = [];
-  if (parsed.data.serviceIds?.length) {
+  const dedupedServiceIds = [...new Set(parsed.data.serviceIds ?? [])];
+  if (dedupedServiceIds.length) {
     const dbServices = await db.select().from(checkoutServices)
-      .where(inArray(checkoutServices.id, parsed.data.serviceIds));
+      .where(inArray(checkoutServices.id, dedupedServiceIds));
     const enabledServices = dbServices.filter((s) => s.enabled);
-    if (enabledServices.length !== parsed.data.serviceIds.length) {
+    if (enabledServices.length !== dedupedServiceIds.length) {
       res.status(400).json({ error: "One or more selected services are unavailable" }); return;
     }
     validatedServices = enabledServices.map((s) => ({ id: s.id, name: s.name, priceUsd: s.priceUsd }));
@@ -280,7 +281,6 @@ router.post("/orders", async (req, res) => {
       walletAmountUsd: walletDeduction > 0 ? walletDeduction : undefined,
       userId,
       services: validatedServices.length > 0 ? validatedServices : undefined,
-      servicesAmount,
     });
 
     res.status(201).json({
