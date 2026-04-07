@@ -25,8 +25,14 @@ router.get("/admin/refunds", requireAuth, requireAdmin, requirePermission("manag
   if (typeof status === "string" && status !== "ALL" && isValidStatus(status)) {
     conditions.push(eq(refunds.status, status));
   }
-  if (from) conditions.push(gte(refunds.createdAt, new Date(from as string)));
-  if (to) conditions.push(lte(refunds.createdAt, new Date(to as string)));
+  if (from) {
+    const fromDate = new Date(from as string);
+    if (!isNaN(fromDate.getTime())) conditions.push(gte(refunds.createdAt, fromDate));
+  }
+  if (to) {
+    const toDate = new Date(to as string);
+    if (!isNaN(toDate.getTime())) conditions.push(lte(refunds.createdAt, toDate));
+  }
   if (search) {
     conditions.push(or(
       ilike(orders.orderNumber, `%${search}%`),
@@ -78,6 +84,12 @@ router.post("/admin/refunds", requireAuth, requireAdmin, requirePermission("mana
     res.status(400).json({ error: "orderId, amount, and reason are required" }); return;
   }
 
+  const parsedAmount = parseFloat(amount);
+  if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+    res.status(400).json({ error: "Amount must be a positive number" }); return;
+  }
+  const roundedAmount = Math.round(parsedAmount * 100) / 100;
+
   const [order] = await db.select().from(orders).where(eq(orders.id, orderId));
   if (!order) { res.status(404).json({ error: "Order not found" }); return; }
 
@@ -88,13 +100,13 @@ router.post("/admin/refunds", requireAuth, requireAdmin, requirePermission("mana
     .reduce((sum, r) => sum + parseFloat(r.amountUsd), 0);
   const maxRefundable = parseFloat(order.totalUsd) - refundedTotal;
 
-  if (parseFloat(amount) > maxRefundable + 0.01) {
+  if (roundedAmount > maxRefundable + 0.01) {
     res.status(400).json({ error: `Maximum refundable amount is $${maxRefundable.toFixed(2)}` }); return;
   }
 
   const [refund] = await db.insert(refunds).values({
     orderId, initiatedBy: req.user!.userId,
-    amountUsd: parseFloat(amount).toFixed(2),
+    amountUsd: roundedAmount.toFixed(2),
     reason, notes: notes || null,
     notifyCustomer: notifyCustomer ?? true,
     status: "PENDING",
