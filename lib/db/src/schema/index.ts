@@ -17,3 +17,4 @@ export * from "./audit-log";
 export * from "./compare-sessions";
 export * from "./category-meta";
 export * from "./password-resets";
+export * from "./email-queue";

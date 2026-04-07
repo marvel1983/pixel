@@ -33,6 +33,12 @@ export const siteSettings = pgTable("site_settings", {
   trustpilotUrl: text("trustpilot_url"),
   metaTitleTemplate: varchar("meta_title_template", { length: 300 }),
   metaDescription: text("meta_description"),
+  smtpHost: varchar("smtp_host", { length: 255 }),
+  smtpPort: integer("smtp_port").default(587),
+  smtpUser: varchar("smtp_user", { length: 255 }),
+  smtpPass: text("smtp_pass"),
+  smtpFrom: varchar("smtp_from", { length: 255 }),
+  smtpSecure: boolean("smtp_secure").notNull().default(false),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
