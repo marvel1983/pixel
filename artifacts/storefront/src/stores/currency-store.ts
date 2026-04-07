@@ -16,14 +16,16 @@ export const SUPPORTED_CURRENCIES = [
 
 export type CurrencyCode = (typeof SUPPORTED_CURRENCIES)[number]["code"];
 
+export const BASE_CURRENCY = "USD";
+
 interface CurrencyState {
   code: CurrencyCode;
   rates: Record<string, number>;
   lastFetched: number | null;
   setCode: (code: CurrencyCode) => void;
   setRates: (rates: Record<string, number>) => void;
-  convert: (usdAmount: number) => number;
-  format: (usdAmount: number) => string;
+  convert: (baseAmount: number) => number;
+  format: (baseAmount: number) => string;
   fetchRates: () => Promise<void>;
 }
 
@@ -32,7 +34,7 @@ const RATE_CACHE_MS = 60 * 60 * 1000;
 export const useCurrencyStore = create<CurrencyState>()(
   persist(
     (set, get) => ({
-      code: "USD",
+      code: BASE_CURRENCY as CurrencyCode,
       rates: {},
       lastFetched: null,
 
@@ -40,19 +42,19 @@ export const useCurrencyStore = create<CurrencyState>()(
 
       setRates: (rates) => set({ rates, lastFetched: Date.now() }),
 
-      convert: (usdAmount) => {
+      convert: (baseAmount) => {
         const { code, rates } = get();
-        if (code === "USD") return usdAmount;
+        if (code === BASE_CURRENCY) return baseAmount;
         const rate = rates[code];
-        if (!rate) return usdAmount;
-        return usdAmount * rate;
+        if (!rate) return baseAmount;
+        return baseAmount * rate;
       },
 
-      format: (usdAmount) => {
+      format: (baseAmount) => {
         const { code, rates } = get();
-        const hasRate = code === "USD" || !!rates[code];
-        const displayCode = hasRate ? code : "USD";
-        const converted = get().convert(usdAmount);
+        const hasRate = code === BASE_CURRENCY || !!rates[code];
+        const displayCode = hasRate ? code : BASE_CURRENCY;
+        const converted = get().convert(baseAmount);
         const currency = SUPPORTED_CURRENCIES.find((c) => c.code === displayCode);
         if (displayCode === "HUF" || displayCode === "CZK") {
           return `${Math.round(converted)} ${currency?.symbol ?? displayCode}`;

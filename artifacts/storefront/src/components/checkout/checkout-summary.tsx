@@ -1,7 +1,7 @@
 import { Package, Minus, Plus } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useCartStore } from "@/stores/cart-store";
-import { useCurrencyStore } from "@/stores/currency-store";
+import { useCurrencyStore, BASE_CURRENCY } from "@/stores/currency-store";
 import { getCppAmount } from "./cpp-section";
 
 interface CheckoutSummaryProps {
@@ -13,7 +13,7 @@ export function CheckoutSummary({ cppSelected }: CheckoutSummaryProps) {
   const coupon = useCartStore((s) => s.coupon);
   const getTotal = useCartStore((s) => s.getTotal);
   const updateQuantity = useCartStore((s) => s.updateQuantity);
-  const { format } = useCurrencyStore();
+  const { format, code: currencyCode } = useCurrencyStore();
 
   const subtotal = getTotal();
   const discountAmount = coupon ? subtotal * (coupon.pct / 100) : 0;
@@ -89,6 +89,12 @@ export function CheckoutSummary({ cppSelected }: CheckoutSummaryProps) {
         <span>Total</span>
         <span>{format(total)}</span>
       </div>
+
+      {currencyCode !== BASE_CURRENCY && (
+        <p className="text-xs text-muted-foreground text-center">
+          Payment processed in {BASE_CURRENCY}. Displayed price is approximate.
+        </p>
+      )}
     </div>
   );
 }
