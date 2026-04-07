@@ -32,6 +32,9 @@ export default function AdminRoot() {
           <Route path="/admin/platforms">
             <AdminPlaceholder title="Platforms" />
           </Route>
+          <Route path="/admin/orders/:id">
+            <AdminPlaceholder title="Order Detail" />
+          </Route>
           <Route path="/admin/orders">
             <AdminPlaceholder title="Orders" />
           </Route>

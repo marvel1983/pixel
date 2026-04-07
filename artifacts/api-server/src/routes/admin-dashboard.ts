@@ -148,7 +148,7 @@ router.get(
       .where(
         and(
           eq(productVariants.isActive, true),
-          lt(productVariants.stockCount, productVariants.lowStockThreshold),
+          lt(productVariants.stockCount, 5),
         ),
       )
       .orderBy(productVariants.stockCount)
