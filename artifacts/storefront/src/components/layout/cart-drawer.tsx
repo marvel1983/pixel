@@ -49,7 +49,7 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
           <>
             <div className="flex-1 overflow-y-auto -mx-6 px-6 space-y-4 py-4">
               {items.map((item) => (
-                <CartItemRow key={item.variantId} item={item} />
+                <CartItemRow key={`${item.bundleId ?? 's'}-${item.variantId}`} item={item} />
               ))}
             </div>
 
@@ -112,7 +112,7 @@ function CartItemRow({ item }: { item: CartItem }) {
               variant="outline"
               size="icon"
               className="h-6 w-6"
-              onClick={() => updateQuantity(item.variantId, item.quantity - 1)}
+              onClick={() => updateQuantity(item.variantId, item.quantity - 1, item.bundleId)}
             >
               <Minus className="h-3 w-3" />
             </Button>
@@ -121,7 +121,7 @@ function CartItemRow({ item }: { item: CartItem }) {
               variant="outline"
               size="icon"
               className="h-6 w-6"
-              onClick={() => updateQuantity(item.variantId, item.quantity + 1)}
+              onClick={() => updateQuantity(item.variantId, item.quantity + 1, item.bundleId)}
             >
               <Plus className="h-3 w-3" />
             </Button>
@@ -132,7 +132,7 @@ function CartItemRow({ item }: { item: CartItem }) {
               variant="ghost"
               size="icon"
               className="h-6 w-6 text-muted-foreground hover:text-destructive"
-              onClick={() => removeItem(item.variantId)}
+              onClick={() => removeItem(item.variantId, item.bundleId)}
             >
               <Trash2 className="h-3 w-3" />
             </Button>

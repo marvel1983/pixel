@@ -41,7 +41,7 @@ export function CheckoutSummary({ cppSelected, taxRate = 0, taxLabel = "VAT", pr
         {items.map((item) => {
           const price = parseFloat(item.priceUsd);
           return (
-            <div key={item.variantId} className="flex items-center gap-3">
+            <div key={`${item.bundleId ?? 's'}-${item.variantId}`} className="flex items-center gap-3">
               <div className="w-10 h-10 rounded bg-muted flex items-center justify-center shrink-0">
                 {item.imageUrl ? (
                   <img src={item.imageUrl} alt="" className="w-full h-full object-contain rounded" />
@@ -54,14 +54,14 @@ export function CheckoutSummary({ cppSelected, taxRate = 0, taxLabel = "VAT", pr
                 <div className="flex items-center gap-1 mt-0.5">
                   <button
                     className="w-5 h-5 rounded border flex items-center justify-center hover:bg-muted"
-                    onClick={() => updateQuantity(item.variantId, item.quantity - 1)}
+                    onClick={() => updateQuantity(item.variantId, item.quantity - 1, item.bundleId)}
                   >
                     <Minus className="h-3 w-3" />
                   </button>
                   <span className="text-xs w-5 text-center">{item.quantity}</span>
                   <button
                     className="w-5 h-5 rounded border flex items-center justify-center hover:bg-muted"
-                    onClick={() => updateQuantity(item.variantId, item.quantity + 1)}
+                    onClick={() => updateQuantity(item.variantId, item.quantity + 1, item.bundleId)}
                   >
                     <Plus className="h-3 w-3" />
                   </button>

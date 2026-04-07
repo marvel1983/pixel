@@ -96,15 +96,22 @@ export default function BundlesPage() {
                   {b.shortDescription && (
                     <p className="text-sm text-muted-foreground line-clamp-2">{b.shortDescription}</p>
                   )}
-                  <div className="flex flex-wrap gap-1">
-                    {b.items.slice(0, 4).map((item) => (
-                      <Badge key={item.productId} variant="secondary" className="text-xs">
-                        {item.productName}
-                      </Badge>
-                    ))}
+                  <div className="flex items-center gap-2">
+                    <div className="flex -space-x-2">
+                      {b.items.slice(0, 4).map((item) => (
+                        <div key={item.productId} className="w-9 h-9 rounded-full border-2 border-white bg-muted flex items-center justify-center overflow-hidden" title={item.productName}>
+                          {item.productImage ? (
+                            <img src={item.productImage} alt={item.productName} className="w-full h-full object-cover" />
+                          ) : (
+                            <Package className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </div>
+                      ))}
+                    </div>
                     {b.items.length > 4 && (
-                      <Badge variant="outline" className="text-xs">+{b.items.length - 4} more</Badge>
+                      <span className="text-xs text-muted-foreground">+{b.items.length - 4} more</span>
                     )}
+                    <Badge variant="secondary" className="text-xs ml-auto">{b.items.length} products</Badge>
                   </div>
                   <div className="flex items-center justify-between pt-2 border-t">
                     <div>

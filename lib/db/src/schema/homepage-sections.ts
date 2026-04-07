@@ -17,6 +17,7 @@ export const sectionTypeEnum = pgEnum("section_type", [
   "NEW_ADDITIONS",
   "PRODUCT_SPOTLIGHT",
   "FEATURED_TEXT_BANNER",
+  "FEATURED_BUNDLES",
 ]);
 
 export const homepageSections = pgTable("homepage_sections", {

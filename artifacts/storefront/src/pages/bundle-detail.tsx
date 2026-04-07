@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "wouter";
+import DOMPurify from "dompurify";
 import { Package, Check, ShoppingCart, ArrowLeft, Loader2, Tag } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -28,7 +29,7 @@ export default function BundleDetailPage() {
   const params = useParams<{ slug: string }>();
   const [bundle, setBundle] = useState<BundleDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const addItem = useCartStore((s) => s.addItem);
+  const addBundleItems = useCartStore((s) => s.addBundleItems);
   const format = useCurrencyStore((s) => s.format);
   const { toast } = useToast();
 
@@ -55,21 +56,24 @@ export default function BundleDetailPage() {
   const savingsPct = Math.round((savings / parseFloat(bundle.individualTotal)) * 100);
 
   function addBundleToCart() {
-    for (const item of bundle!.items) {
-      const v = item.variants[0];
-      if (!v) continue;
-      const discountRatio = parseFloat(bundle!.bundlePriceUsd) / parseFloat(bundle!.individualTotal);
-      const discountedPrice = (parseFloat(v.priceUsd) * discountRatio).toFixed(2);
-      addItem({
-        variantId: v.id,
-        productId: item.productId,
-        productName: item.productName,
-        variantName: `${v.name} (Bundle)`,
-        imageUrl: item.productImage,
-        priceUsd: discountedPrice,
-        platform: v.platform ?? undefined,
+    const discountRatio = parseFloat(bundle!.bundlePriceUsd) / parseFloat(bundle!.individualTotal);
+    const bundleCartItems = bundle!.items
+      .filter((item) => item.variants[0])
+      .map((item) => {
+        const v = item.variants[0];
+        const discountedPrice = (parseFloat(v.priceUsd) * discountRatio).toFixed(2);
+        return {
+          variantId: v.id,
+          productId: item.productId,
+          productName: item.productName,
+          variantName: `${v.name} (Bundle)`,
+          imageUrl: item.productImage,
+          priceUsd: discountedPrice,
+          originalPriceUsd: v.priceUsd,
+          platform: v.platform ?? undefined,
+        };
       });
-    }
+    addBundleItems(bundle!.id, bundle!.name, bundleCartItems);
     toast({ title: "Bundle added to cart!", description: `${bundle!.name} has been added.` });
   }
 
@@ -89,7 +93,7 @@ export default function BundleDetailPage() {
           {bundle.description && (
             <Card>
               <CardContent className="pt-6 prose prose-sm max-w-none">
-                <div dangerouslySetInnerHTML={{ __html: bundle.description }} />
+                <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(bundle.description) }} />
               </CardContent>
             </Card>
           )}

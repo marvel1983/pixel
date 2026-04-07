@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Package, Plus, Search, Copy, Trash2, Pencil, Eye, EyeOff, Star } from "lucide-react";
+import { Package, Plus, Search, Copy, Trash2, Pencil, Eye, EyeOff, Star, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -204,6 +204,9 @@ function BundleDialog({ open, onOpenChange, editing, setEditing, saving, onSave,
   if (!editing) return null;
   const upd = (field: string, val: any) => setEditing({ ...editing, [field]: val });
 
+  const selectedProducts = selectedIds.map((id) => products.find((p) => p.id === id)).filter(Boolean);
+  const bundlePrice = parseFloat(editing.bundlePriceUsd) || 0;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -217,6 +220,12 @@ function BundleDialog({ open, onOpenChange, editing, setEditing, saving, onSave,
             <div><Label>Bundle Price (USD)</Label><Input type="number" step="0.01" value={editing.bundlePriceUsd} onChange={(e) => upd("bundlePriceUsd", e.target.value)} /></div>
             <div><Label>Sort Order</Label><Input type="number" value={editing.sortOrder} onChange={(e) => upd("sortOrder", parseInt(e.target.value) || 0)} /></div>
           </div>
+          {selectedIds.length >= 2 && bundlePrice > 0 && (
+            <div className="p-3 bg-green-50 border border-green-200 rounded text-sm flex items-center gap-2">
+              <Tag className="h-4 w-4 text-green-600" />
+              <span className="text-green-800">Bundle: <strong>{selectedIds.length} products</strong> at <strong>${bundlePrice.toFixed(2)}</strong>. Savings auto-calculated from individual product prices on storefront.</span>
+            </div>
+          )}
           <div><Label>Short Description</Label><Input value={editing.shortDescription ?? ""} onChange={(e) => upd("shortDescription", e.target.value)} /></div>
           <div><Label>Description</Label><Textarea rows={3} value={editing.description ?? ""} onChange={(e) => upd("description", e.target.value)} /></div>
           <div><Label>Image URL</Label><Input value={editing.imageUrl ?? ""} onChange={(e) => upd("imageUrl", e.target.value)} /></div>

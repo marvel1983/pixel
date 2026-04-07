@@ -5,6 +5,7 @@ import { BrandPartnerSection } from "@/components/home/brand-partner-section";
 import { FeaturedSpotlight } from "@/components/home/featured-spotlight";
 import { NewAdditions } from "@/components/home/new-additions";
 import { RecentlyViewed } from "@/components/home/recently-viewed";
+import { FeaturedBundles } from "@/components/home/featured-bundles";
 
 const windowsProducts = MOCK_PRODUCTS.filter(
   (p) => p.categorySlug === "operating-systems",
@@ -61,6 +62,8 @@ export default function HomePage() {
         bgColor="bg-gradient-to-br from-purple-600 to-indigo-700"
         products={gameProducts}
       />
+
+      <FeaturedBundles />
 
       <NewAdditions products={newProducts} />
 
