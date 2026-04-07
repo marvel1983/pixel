@@ -3,11 +3,7 @@ import { useSearch } from "wouter";
 import { Link } from "wouter";
 import { MOCK_PRODUCTS, type MockProduct } from "@/lib/mock-data";
 import type { SearchResponse, SearchProduct } from "@/lib/search-types";
-import {
-  useListingFilters,
-  applyFilters,
-  paginate,
-} from "@/lib/use-listing-filters";
+import { useListingFilters } from "@/lib/use-listing-filters";
 import { Breadcrumbs } from "@/components/shop/breadcrumbs";
 import { FilterSidebar } from "@/components/shop/filter-sidebar";
 import { ProductGrid } from "@/components/shop/product-grid";
@@ -27,7 +23,6 @@ function toMockProduct(item: SearchProduct): MockProduct {
     reviewCount: item.reviewCount ?? 0,
     isFeatured: item.isFeatured ?? false,
     isNew: false,
-    description: undefined,
     variants: item.variants.map((v) => ({
       id: v.id,
       name: v.name,
@@ -40,47 +35,54 @@ function toMockProduct(item: SearchProduct): MockProduct {
   };
 }
 
+function buildApiUrl(
+  query: string,
+  filters: ReturnType<typeof useListingFilters>["filters"],
+  perPage: number,
+): string {
+  const p = new URLSearchParams();
+  p.set("q", query.trim());
+  p.set("limit", String(perPage));
+  p.set("offset", String((filters.page - 1) * perPage));
+  if (filters.categories.length) p.set("cat", filters.categories.join(","));
+  if (filters.platforms.length) p.set("plat", filters.platforms.join(","));
+  if (filters.minPrice > 0) p.set("min", String(filters.minPrice));
+  if (filters.maxPrice < 9999) p.set("max", String(filters.maxPrice));
+  if (filters.inStockOnly) p.set("stock", "1");
+  if (filters.sort !== "newest") p.set("sort", filters.sort);
+  return `${API_URL}/search?${p.toString()}`;
+}
+
 export default function SearchPage() {
   const rawSearch = useSearch();
   const params = new URLSearchParams(rawSearch);
   const query = params.get("q") ?? "";
   const { filters, setFilters, perPage } = useListingFilters();
-  const [apiResults, setApiResults] = useState<MockProduct[]>([]);
-  const [apiTotal, setApiTotal] = useState(0);
+  const [items, setItems] = useState<MockProduct[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!query.trim()) {
-      setApiResults([]);
-      setApiTotal(0);
+      setItems([]);
+      setTotal(0);
       return;
     }
     setLoading(true);
-    const offset = (filters.page - 1) * perPage;
-    const url = `${API_URL}/search?q=${encodeURIComponent(query.trim())}&limit=${perPage}&offset=${offset}`;
-    fetch(url)
+    fetch(buildApiUrl(query, filters, perPage))
       .then((r) => r.json())
       .then((data: SearchResponse) => {
-        setApiResults(data.items.map(toMockProduct));
-        setApiTotal(data.total);
+        setItems(data.items.map(toMockProduct));
+        setTotal(data.total);
       })
       .catch(() => {
-        setApiResults([]);
-        setApiTotal(0);
+        setItems([]);
+        setTotal(0);
       })
       .finally(() => setLoading(false));
-  }, [query, filters.page, perPage]);
+  }, [query, filters, perPage]);
 
-  const { items, totalPages, currentPage, totalItems } = useMemo(() => {
-    const filtered = applyFilters(apiResults, filters);
-    const serverTotalPages = Math.max(1, Math.ceil(apiTotal / perPage));
-    return {
-      items: filtered,
-      totalPages: serverTotalPages,
-      currentPage: filters.page,
-      totalItems: apiTotal,
-    };
-  }, [apiResults, filters, perPage, apiTotal]);
+  const totalPages = Math.max(1, Math.ceil(total / perPage));
 
   const popularProducts = useMemo(
     () =>
@@ -103,21 +105,21 @@ export default function SearchPage() {
               </span>
             ) : (
               <>
-                {apiTotal} {apiTotal === 1 ? "result" : "results"} for &ldquo;
+                {total} {total === 1 ? "result" : "results"} for &ldquo;
                 {query}&rdquo;
               </>
             )}
           </h1>
 
-          {!loading && apiResults.length === 0 ? (
+          {!loading && items.length === 0 ? (
             <NoResultsState query={query} suggestions={popularProducts} />
           ) : !loading ? (
             <div className="flex flex-col lg:flex-row gap-6">
               <FilterSidebar filters={filters} onFilterChange={setFilters} />
               <ProductGrid
                 products={items}
-                totalItems={totalItems}
-                currentPage={currentPage}
+                totalItems={total}
+                currentPage={filters.page}
                 totalPages={totalPages}
                 sort={filters.sort}
                 onSortChange={(sort) => setFilters({ sort })}

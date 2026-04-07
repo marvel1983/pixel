@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { db } from "@workspace/db";
 import { products, productVariants, categories } from "@workspace/db/schema";
-import { eq, ilike, or, and, sql, inArray } from "drizzle-orm";
+import { eq, ilike, or, and, sql, inArray, gte, lte, gt, asc, desc } from "drizzle-orm";
 import { z } from "zod";
 
 const router = Router();
@@ -10,6 +10,12 @@ const searchQuerySchema = z.object({
   q: z.string().min(1).max(200),
   limit: z.coerce.number().int().min(1).max(50).default(24),
   offset: z.coerce.number().int().min(0).default(0),
+  cat: z.string().optional(),
+  plat: z.string().optional(),
+  min: z.coerce.number().min(0).optional(),
+  max: z.coerce.number().min(0).optional(),
+  stock: z.enum(["0", "1"]).optional(),
+  sort: z.string().optional(),
 });
 
 router.get("/search", async (req: Request, res: Response) => {
@@ -19,31 +25,35 @@ router.get("/search", async (req: Request, res: Response) => {
     return;
   }
 
-  const { q, limit, offset } = parsed.data;
+  const { q, limit, offset, cat, plat, min, max, stock, sort } = parsed.data;
   const pattern = `%${q}%`;
 
-  const skuMatchSubquery = db
+  const skuSub = db
     .selectDistinct({ productId: productVariants.productId })
     .from(productVariants)
     .where(and(eq(productVariants.isActive, true), ilike(productVariants.sku, pattern)));
 
-  const whereClause = and(
+  const conditions = [
     eq(products.isActive, true),
     or(
       ilike(products.name, pattern),
       ilike(products.slug, pattern),
       ilike(products.description, pattern),
       ilike(products.shortDescription, pattern),
-      inArray(products.id, skuMatchSubquery),
+      inArray(products.id, skuSub),
     ),
-  );
+  ];
 
-  const [countResult] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(products)
-    .where(whereClause);
+  if (cat) {
+    const slugs = cat.split(",").filter(Boolean);
+    if (slugs.length > 0) {
+      conditions.push(inArray(categories.slug, slugs));
+    }
+  }
 
-  const results = await db
+  const whereClause = and(...conditions);
+
+  const baseQuery = db
     .select({
       id: products.id,
       name: products.name,
@@ -55,26 +65,66 @@ router.get("/search", async (req: Request, res: Response) => {
       categorySlug: categories.slug,
     })
     .from(products)
+    .leftJoin(categories, eq(products.categoryId, categories.id));
+
+  const variantFilters = [];
+  if (plat) {
+    const platforms = plat.split(",").filter(Boolean);
+    if (platforms.length > 0) variantFilters.push(inArray(productVariants.platform, platforms));
+  }
+  if (min !== undefined) variantFilters.push(gte(productVariants.priceUsd, String(min)));
+  if (max !== undefined) variantFilters.push(lte(productVariants.priceUsd, String(max)));
+  if (stock === "1") variantFilters.push(gt(productVariants.stockCount, 0));
+
+  const hasVarFilters = variantFilters.length > 0;
+
+  let filteredProductIds: number[] | null = null;
+  if (hasVarFilters) {
+    const varRows = await db
+      .selectDistinct({ productId: productVariants.productId })
+      .from(productVariants)
+      .where(and(eq(productVariants.isActive, true), ...variantFilters));
+    filteredProductIds = varRows.map((r) => r.productId);
+    if (filteredProductIds.length === 0) {
+      res.json({ items: [], total: 0, limit, offset });
+      return;
+    }
+  }
+
+  const fullWhere = filteredProductIds
+    ? and(whereClause, inArray(products.id, filteredProductIds))
+    : whereClause;
+
+  const [countResult] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(products)
     .leftJoin(categories, eq(products.categoryId, categories.id))
-    .where(whereClause)
-    .orderBy(
-      sql`CASE WHEN ${products.name} ILIKE ${pattern} THEN 0 ELSE 1 END`,
-      products.name,
-    )
+    .where(fullWhere);
+
+  const orderClauses = [];
+  switch (sort) {
+    case "name-asc": orderClauses.push(asc(products.name)); break;
+    case "name-desc": orderClauses.push(desc(products.name)); break;
+    case "price-asc": orderClauses.push(asc(products.avgRating)); break;
+    case "price-desc": orderClauses.push(desc(products.avgRating)); break;
+    default:
+      orderClauses.push(
+        sql`CASE WHEN ${products.name} ILIKE ${pattern} THEN 0 ELSE 1 END`,
+        asc(products.name),
+      );
+  }
+
+  const results = await baseQuery
+    .where(fullWhere)
+    .orderBy(...orderClauses)
     .limit(limit)
     .offset(offset);
 
   const productIds = results.map((r) => r.id);
-
   let variants: {
-    id: number;
-    productId: number;
-    name: string;
-    sku: string;
-    platform: string | null;
-    priceUsd: string;
-    compareAtPriceUsd: string | null;
-    stockCount: number;
+    id: number; productId: number; name: string; sku: string;
+    platform: string | null; priceUsd: string;
+    compareAtPriceUsd: string | null; stockCount: number;
   }[] = [];
 
   if (productIds.length > 0) {
@@ -90,12 +140,7 @@ router.get("/search", async (req: Request, res: Response) => {
         stockCount: productVariants.stockCount,
       })
       .from(productVariants)
-      .where(
-        and(
-          eq(productVariants.isActive, true),
-          inArray(productVariants.productId, productIds),
-        ),
-      );
+      .where(and(eq(productVariants.isActive, true), inArray(productVariants.productId, productIds)));
   }
 
   const total = countResult?.count ?? 0;
