@@ -35,6 +35,8 @@ export function useListingFilters() {
       merged.page = 1;
     }
     const p = new URLSearchParams();
+    const existingQ = params.get("q");
+    if (existingQ) p.set("q", existingQ);
     if (merged.categories.length) p.set("cat", merged.categories.join(","));
     if (merged.platforms.length) p.set("plat", merged.platforms.join(","));
     if (merged.minPrice > 0) p.set("min", merged.minPrice.toString());

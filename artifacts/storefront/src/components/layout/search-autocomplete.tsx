@@ -183,25 +183,23 @@ export function SearchAutocomplete() {
             })}
           </ul>
 
-          {totalCount > MAX_SUGGESTIONS && (
-            <div
-              className={`border-t border-border px-3 py-2.5 cursor-pointer transition-colors flex items-center justify-center gap-1.5 ${
-                activeIdx === suggestions.length
-                  ? "bg-primary/5"
-                  : "hover:bg-muted/50"
-              }`}
-              onMouseEnter={() => setActiveIdx(suggestions.length)}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                navigateToSearch(query.trim());
-              }}
-            >
-              <span className="text-sm text-primary font-medium">
-                View all {totalCount} results
-              </span>
-              <ArrowRight className="h-3.5 w-3.5 text-primary" />
-            </div>
-          )}
+          <div
+            className={`border-t border-border px-3 py-2.5 cursor-pointer transition-colors flex items-center justify-center gap-1.5 ${
+              activeIdx === suggestions.length
+                ? "bg-primary/5"
+                : "hover:bg-muted/50"
+            }`}
+            onMouseEnter={() => setActiveIdx(suggestions.length)}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              navigateToSearch(query.trim());
+            }}
+          >
+            <span className="text-sm text-primary font-medium">
+              View all {totalCount} {totalCount === 1 ? "result" : "results"}
+            </span>
+            <ArrowRight className="h-3.5 w-3.5 text-primary" />
+          </div>
         </div>
       )}
     </div>

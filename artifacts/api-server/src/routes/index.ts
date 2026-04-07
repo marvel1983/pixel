@@ -9,6 +9,7 @@ import orderLookupRouter from "./order-lookup";
 import wishlistRouter from "./wishlist";
 import currenciesRouter from "./currencies";
 import webhooksRouter from "./webhooks";
+import searchRouter from "./search";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(orderLookupRouter);
 router.use(wishlistRouter);
 router.use(currenciesRouter);
 router.use(webhooksRouter);
+router.use(searchRouter);
 
 export default router;
