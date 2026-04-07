@@ -25,3 +25,4 @@ export * from "./email-templates";
 export * from "./tax-settings";
 export * from "./admin-permissions";
 export * from "./refunds";
+export * from "./notification-preferences";

@@ -8,9 +8,13 @@ const SettingsCurrenciesTab = lazy(() => import("./settings-currencies"));
 const SettingsSmtpTab = lazy(() => import("./settings-smtp"));
 const SettingsWebhooksTab = lazy(() => import("./settings-webhooks"));
 const SettingsLiveChatTab = lazy(() => import("./settings-livechat"));
+const SettingsNotificationsTab = lazy(() => import("./settings-notifications"));
+const SettingsSeoTrackingTab = lazy(() => import("./settings-seo-tracking"));
 
 const tabs = [
   { key: "general", label: "General" },
+  { key: "notifications", label: "Notifications" },
+  { key: "seo-tracking", label: "SEO & Tracking" },
   { key: "cpp-fees", label: "CPP & Fees" },
   { key: "currencies", label: "Currencies" },
   { key: "smtp", label: "SMTP" },
@@ -39,6 +43,8 @@ export default function AdminSettingsPage() {
       </div>
       <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading...</div>}>
         {activeTab === "general" && <SettingsGeneralTab />}
+        {activeTab === "notifications" && <SettingsNotificationsTab />}
+        {activeTab === "seo-tracking" && <SettingsSeoTrackingTab />}
         {activeTab === "cpp-fees" && <SettingsCppFeesTab />}
         {activeTab === "currencies" && <SettingsCurrenciesTab />}
         {activeTab === "smtp" && <SettingsSmtpTab />}

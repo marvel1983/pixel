@@ -7,6 +7,7 @@ import { SiteLayout } from "@/components/layout/site-layout";
 import { useAuthStore } from "@/stores/auth-store";
 import { useWishlistStore } from "@/stores/wishlist-store";
 import { useCurrencyStore } from "@/stores/currency-store";
+import { useMaintenanceCheck, MaintenancePage } from "@/components/maintenance-page";
 import HomePage from "@/pages/home";
 import ShopPage from "@/pages/shop";
 import CategoryPage from "@/pages/category";
@@ -33,37 +34,48 @@ import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
 
-function Router() {
+function StorefrontWithMaintenance() {
+  const { info, checked } = useMaintenanceCheck();
+  if (!checked) return null;
+  if (info?.maintenance) {
+    return <MaintenancePage message={info.message} estimate={info.estimate} />;
+  }
+  return (
+    <SiteLayout>
+      <Switch>
+        <Route path="/" component={HomePage} />
+        <Route path="/search" component={SearchPage} />
+        <Route path="/shop" component={ShopPage} />
+        <Route path="/category/:slug" component={CategoryPage} />
+        <Route path="/outlet" component={OutletPage} />
+        <Route path="/hot-offers" component={HotOffersPage} />
+        <Route path="/product/:slug" component={ProductDetailPage} />
+        <Route path="/cart" component={CartPage} />
+        <Route path="/checkout" component={CheckoutPage} />
+        <Route path="/order-complete/:orderNumber" component={OrderCompletePage} />
+        <Route path="/order-lookup" component={OrderLookupPage} />
+        <Route path="/account/orders" component={AccountOrdersPage} />
+        <Route path="/login" component={LoginPage} />
+        <Route path="/register" component={RegisterPage} />
+        <Route path="/forgot-password" component={ForgotPasswordPage} />
+        <Route path="/reset-password/:token" component={ResetPasswordPage} />
+        <Route path="/account" component={AccountPage} />
+        <Route path="/wishlist" component={WishlistPage} />
+        <Route path="/compare" component={ComparePage} />
+        <Route component={StaticPageView} />
+      </Switch>
+    </SiteLayout>
+  );
+}
+
+function AppRouter() {
   return (
     <Switch>
       <Route path="/admin/accept-invite" component={AcceptInvitePage} />
       <Route path="/admin" component={AdminRoot} />
       <Route path="/admin/:rest*" component={AdminRoot} />
       <Route>
-        <SiteLayout>
-          <Switch>
-            <Route path="/" component={HomePage} />
-            <Route path="/search" component={SearchPage} />
-            <Route path="/shop" component={ShopPage} />
-            <Route path="/category/:slug" component={CategoryPage} />
-            <Route path="/outlet" component={OutletPage} />
-            <Route path="/hot-offers" component={HotOffersPage} />
-            <Route path="/product/:slug" component={ProductDetailPage} />
-            <Route path="/cart" component={CartPage} />
-            <Route path="/checkout" component={CheckoutPage} />
-            <Route path="/order-complete/:orderNumber" component={OrderCompletePage} />
-            <Route path="/order-lookup" component={OrderLookupPage} />
-            <Route path="/account/orders" component={AccountOrdersPage} />
-            <Route path="/login" component={LoginPage} />
-            <Route path="/register" component={RegisterPage} />
-            <Route path="/forgot-password" component={ForgotPasswordPage} />
-            <Route path="/reset-password/:token" component={ResetPasswordPage} />
-            <Route path="/account" component={AccountPage} />
-            <Route path="/wishlist" component={WishlistPage} />
-            <Route path="/compare" component={ComparePage} />
-            <Route component={StaticPageView} />
-          </Switch>
-        </SiteLayout>
+        <StorefrontWithMaintenance />
       </Route>
     </Switch>
   );
@@ -95,7 +107,7 @@ function App() {
       <TooltipProvider>
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
           <AppInitEffect />
-          <Router />
+          <AppRouter />
         </WouterRouter>
         <Toaster />
       </TooltipProvider>
