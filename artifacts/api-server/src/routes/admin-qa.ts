@@ -103,11 +103,13 @@ router.post("/admin/qa/bulk-status", ...guard, async (req, res) => {
   if (!Array.isArray(ids) || !["APPROVED", "REJECTED"].includes(status)) {
     res.status(400).json({ error: "Invalid request" }); return;
   }
-  for (const id of ids) {
+  const numIds = ids.filter((id): id is number => typeof id === "number" && id > 0);
+  if (numIds.length === 0) { res.status(400).json({ error: "No valid IDs" }); return; }
+  for (const id of numIds) {
     await db.update(productQuestions).set({ status, updatedAt: new Date() })
       .where(eq(productQuestions.id, id));
   }
-  res.json({ success: true, count: ids.length });
+  res.json({ success: true, count: numIds.length });
 });
 
 router.post("/admin/qa/:id/answer", ...guard, async (req, res) => {
@@ -141,9 +143,8 @@ router.post("/admin/qa/:id/answer", ...guard, async (req, res) => {
     .where(eq(productQuestions.id, id));
 
   if (q) {
-    const baseUrl = process.env["REPLIT_DEV_DOMAIN"]
-      ? `https://${process.env["REPLIT_DEV_DOMAIN"]}`
-      : "https://localhost";
+    const baseUrl = process.env.APP_PUBLIC_URL
+      ?? `https://${process.env["REPLIT_DEV_DOMAIN"] ?? "localhost"}`;
     const productUrl = `${baseUrl}/product/${q.productSlug}`;
     const { subject, html } = qaAnsweredEmail({
       askerName: q.question.askerName,
@@ -170,10 +171,12 @@ router.delete("/admin/qa/:id", ...guard, async (req, res) => {
 router.post("/admin/qa/bulk-delete", ...guard, async (req, res) => {
   const { ids } = req.body;
   if (!Array.isArray(ids)) { res.status(400).json({ error: "Invalid request" }); return; }
-  for (const id of ids) {
+  const numIds = ids.filter((id): id is number => typeof id === "number" && id > 0);
+  if (numIds.length === 0) { res.status(400).json({ error: "No valid IDs" }); return; }
+  for (const id of numIds) {
     await db.delete(productQuestions).where(eq(productQuestions.id, id));
   }
-  res.json({ success: true, count: ids.length });
+  res.json({ success: true, count: numIds.length });
 });
 
 export default router;
