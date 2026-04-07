@@ -75,8 +75,12 @@ export default function AccountOrdersPage() {
       if (res.ok) {
         const data = await res.json();
         setOrders(data.orders);
+      } else {
+        setOrders([]);
+        toast({ title: "Failed to load orders", variant: "destructive" });
       }
     } catch {
+      setOrders([]);
       toast({ title: "Failed to load orders", variant: "destructive" });
     } finally {
       setLoading(false);
@@ -87,9 +91,11 @@ export default function AccountOrdersPage() {
     setLoadingDetail(true);
     try {
       const baseUrl = import.meta.env.VITE_API_URL ?? "/api";
-      const res = await fetch(`${baseUrl}/orders/${orderNumber}?email=${encodeURIComponent(email)}`);
+      const res = await fetch(`${baseUrl}/orders/${orderNumber}?email=${encodeURIComponent(email.trim())}`);
       if (res.ok) {
         setSelectedOrder(await res.json());
+      } else {
+        toast({ title: "Failed to load order details", variant: "destructive" });
       }
     } catch {
       toast({ title: "Failed to load order", variant: "destructive" });
