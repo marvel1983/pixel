@@ -30,7 +30,7 @@ export function FlashSaleBanner() {
 
   return (
     <div
-      className="relative flex items-center justify-center gap-3 px-4 py-2 text-white text-sm"
+      className="sticky top-0 z-50 relative flex items-center justify-center gap-3 px-4 py-2 text-white text-sm"
       style={{ backgroundColor: banner.bannerColor || "#ef4444" }}
     >
       <Link href="/flash-sale" className="flex items-center gap-2 hover:opacity-90">

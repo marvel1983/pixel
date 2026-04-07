@@ -7,6 +7,7 @@ import { useCartStore } from "@/stores/cart-store";
 import { useWishlistStore } from "@/stores/wishlist-store";
 import { useCompareStore } from "@/stores/compare-store";
 import { useToast } from "@/hooks/use-toast";
+import { CountdownTimer } from "@/components/flash-sale/countdown-timer";
 import type { MockProduct, MockVariant } from "@/lib/mock-data";
 
 interface ProductInfoProps {
@@ -106,6 +107,13 @@ export function ProductInfo({ product }: ProductInfoProps) {
           </>
         )}
       </div>
+      {flashSale && (
+        <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+          <Zap className="h-4 w-4 text-red-600 fill-red-600" />
+          <span className="text-sm font-medium text-red-700">Sale ends in</span>
+          <CountdownTimer endsAt={flashSale.endsAt} size="sm" onExpired={() => setFlashSale(null)} />
+        </div>
+      )}
 
       {product.variants.length > 1 && (
         <div>

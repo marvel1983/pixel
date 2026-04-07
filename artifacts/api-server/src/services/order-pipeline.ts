@@ -51,7 +51,7 @@ interface OrderInput {
   guestPassword?: string;
   giftCards?: Array<{ code: string; amount: number }>;
   affiliateRefCode?: string;
-  flashVariantIds?: number[];
+  flashVariantMap?: Map<number, number>;
 }
 
 export async function executeOrderPipeline(input: OrderInput) {
@@ -160,8 +160,8 @@ export async function executeOrderPipeline(input: OrderInput) {
       await triggerOrderEmails(billing, orderNumber, order.id, items, total);
     }
 
-    if (input.flashVariantIds?.length) {
-      incrementFlashSaleSoldCounts(input.flashVariantIds, items).catch((err) => {
+    if (input.flashVariantMap?.size) {
+      incrementFlashSaleSoldCounts(input.flashVariantMap, items).catch((err) => {
         logger.error({ err, orderNumber }, "Failed to increment flash sale sold counts (non-fatal)");
       });
     }
@@ -242,19 +242,22 @@ async function createGuestAccount(billing: OrderInput["billing"], password: stri
 }
 
 async function incrementFlashSaleSoldCounts(
-  flashVariantIds: number[],
+  flashVariantMap: Map<number, number>,
   items: OrderInput["items"],
 ) {
-  const qtyMap = new Map<number, number>();
+  const qtyMap = new Map<string, { variantId: number; flashSaleId: number; qty: number }>();
   for (const item of items) {
-    if (flashVariantIds.includes(item.variantId)) {
-      qtyMap.set(item.variantId, (qtyMap.get(item.variantId) || 0) + item.quantity);
-    }
+    const flashSaleId = flashVariantMap.get(item.variantId);
+    if (flashSaleId === undefined) continue;
+    const key = `${flashSaleId}-${item.variantId}`;
+    const existing = qtyMap.get(key);
+    if (existing) existing.qty += item.quantity;
+    else qtyMap.set(key, { variantId: item.variantId, flashSaleId, qty: item.quantity });
   }
-  for (const [variantId, qty] of qtyMap) {
+  for (const { variantId, flashSaleId, qty } of qtyMap.values()) {
     await db.update(flashSaleProducts)
-      .set({ soldCount: sql`${flashSaleProducts.soldCount} + ${qty}` })
-      .where(eq(flashSaleProducts.variantId, variantId));
+      .set({ soldCount: sql`LEAST(${flashSaleProducts.soldCount} + ${qty}, ${flashSaleProducts.maxQuantity})` })
+      .where(and(eq(flashSaleProducts.variantId, variantId), eq(flashSaleProducts.flashSaleId, flashSaleId)));
   }
-  logger.info({ variantIds: flashVariantIds }, "Flash sale sold counts incremented");
+  logger.info({ count: qtyMap.size }, "Flash sale sold counts incremented");
 }

@@ -64,7 +64,9 @@ function generateOrderNumber() {
   return `PC-${ts}-${rand}`;
 }
 
-async function getFlashSalePrices(variantIds: number[]): Promise<Map<number, string>> {
+interface FlashSaleInfo { salePriceUsd: string; soldCount: number; maxQuantity: number; flashSaleId: number }
+
+async function getFlashSaleInfo(variantIds: number[]): Promise<Map<number, FlashSaleInfo>> {
   if (variantIds.length === 0) return new Map();
   const now = new Date();
   const rows = await db.select({
@@ -72,6 +74,7 @@ async function getFlashSalePrices(variantIds: number[]): Promise<Map<number, str
     salePriceUsd: flashSaleProducts.salePriceUsd,
     soldCount: flashSaleProducts.soldCount,
     maxQuantity: flashSaleProducts.maxQuantity,
+    flashSaleId: flashSaleProducts.flashSaleId,
   }).from(flashSaleProducts)
     .innerJoin(flashSales, eq(flashSaleProducts.flashSaleId, flashSales.id))
     .where(and(
@@ -81,9 +84,9 @@ async function getFlashSalePrices(variantIds: number[]): Promise<Map<number, str
       lte(flashSales.startsAt, now),
       gte(flashSales.endsAt, now),
     ));
-  const map = new Map<number, string>();
+  const map = new Map<number, FlashSaleInfo>();
   for (const r of rows) {
-    if (r.soldCount < r.maxQuantity) map.set(r.variantId, r.salePriceUsd);
+    if (r.soldCount < r.maxQuantity) map.set(r.variantId, r);
   }
   return map;
 }
@@ -96,30 +99,34 @@ async function validateAndPriceItems(items: z.infer<typeof orderSchema>["items"]
     .where(inArray(productVariants.id, variantIds));
 
   if (dbVariants.length === 0) {
-    return { prices: null, flashVariantIds: [] as number[], error: null };
+    return { prices: null, flashVariantMap: new Map<number, number>(), error: null };
   }
 
   const priceMap = new Map(dbVariants.map((v) => [v.id, v.priceUsd]));
 
   if (dbVariants.length !== variantIds.length) {
     const missing = variantIds.filter((id) => !priceMap.has(id));
-    return { prices: null, flashVariantIds: [] as number[], error: `Variant(s) not found: ${missing.join(", ")}` };
+    return { prices: null, flashVariantMap: new Map<number, number>(), error: `Variant(s) not found: ${missing.join(", ")}` };
   }
 
-  const flashPrices = await getFlashSalePrices(variantIds);
-  const flashVariantIds: number[] = [];
+  const flashInfo = await getFlashSaleInfo(variantIds);
+  const flashVariantMap = new Map<number, number>();
 
   for (const item of items) {
     const dbPrice = priceMap.get(item.variantId);
     if (!dbPrice) continue;
-    const flashPrice = flashPrices.get(item.variantId);
-    if (flashPrice && item.priceUsd === flashPrice) {
-      flashVariantIds.push(item.variantId);
+    const fi = flashInfo.get(item.variantId);
+    if (fi && item.priceUsd === fi.salePriceUsd) {
+      const remaining = fi.maxQuantity - fi.soldCount;
+      if (item.quantity > remaining) {
+        return { prices: null, flashVariantMap, error: `Only ${remaining} left in flash sale for ${item.productName}` };
+      }
+      flashVariantMap.set(item.variantId, fi.flashSaleId);
     } else if (dbPrice !== item.priceUsd) {
-      return { prices: null, flashVariantIds: [] as number[], error: `Price changed for ${item.productName}` };
+      return { prices: null, flashVariantMap, error: `Price changed for ${item.productName}` };
     }
   }
-  return { prices: priceMap, flashVariantIds, error: null };
+  return { prices: priceMap, flashVariantMap, error: null };
 }
 
 router.post("/orders", async (req, res) => {
@@ -143,7 +150,7 @@ router.post("/orders", async (req, res) => {
     }
   }
 
-  const { error: priceError, flashVariantIds } = await validateAndPriceItems(items);
+  const { error: priceError, flashVariantMap } = await validateAndPriceItems(items);
   if (priceError) {
     res.status(400).json({ error: priceError });
     return;
@@ -234,7 +241,7 @@ router.post("/orders", async (req, res) => {
       guestPassword: parsed.data.guestPassword,
       giftCards: serverGiftCards,
       affiliateRefCode: getRefCookie(req),
-      flashVariantIds: flashVariantIds || [],
+      flashVariantMap: flashVariantMap.size > 0 ? flashVariantMap : undefined,
     });
 
     res.status(201).json({
