@@ -4,6 +4,7 @@ import {
   varchar,
   numeric,
   boolean,
+  integer,
   timestamp,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
@@ -15,6 +16,7 @@ export const currencyRates = pgTable("currency_rates", {
   symbol: varchar("symbol", { length: 5 }).notNull().default("$"),
   rateToUsd: numeric("rate_to_usd", { precision: 12, scale: 6 }).notNull(),
   enabled: boolean("enabled").notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 

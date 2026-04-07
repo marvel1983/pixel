@@ -37,7 +37,7 @@ router.put("/admin/settings/cpp-fees", requireAuth, requireAdmin, async (req, re
 
 router.get("/admin/settings/currencies", requireAuth, requireAdmin, async (_req, res) => {
   const [s] = await db.select({ defaultCurrency: siteSettings.defaultCurrency }).from(siteSettings);
-  const rates = await db.select().from(currencyRates).orderBy(currencyRates.currencyCode);
+  const rates = await db.select().from(currencyRates).orderBy(currencyRates.sortOrder, currencyRates.currencyCode);
   res.json({ defaultCurrency: s?.defaultCurrency ?? "USD", currencies: rates });
 });
 
@@ -60,6 +60,15 @@ router.post("/admin/settings/currencies", requireAuth, requireAdmin, async (req,
   if (existing) { res.status(409).json({ error: "Currency already exists" }); return; }
   const [created] = await db.insert(currencyRates).values({ currencyCode: code, symbol, rateToUsd: rate, enabled: true }).returning();
   res.json(created);
+});
+
+router.put("/admin/settings/currencies/reorder", requireAuth, requireAdmin, async (req, res) => {
+  const ids = req.body.ids;
+  if (!Array.isArray(ids) || ids.length === 0) { res.status(400).json({ error: "ids array required" }); return; }
+  for (let i = 0; i < ids.length; i++) {
+    await db.update(currencyRates).set({ sortOrder: i }).where(eq(currencyRates.id, Number(ids[i])));
+  }
+  res.json({ success: true });
 });
 
 router.put("/admin/settings/currencies/:id", requireAuth, requireAdmin, async (req, res) => {
