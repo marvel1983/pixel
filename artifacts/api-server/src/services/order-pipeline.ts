@@ -66,6 +66,7 @@ export async function executeOrderPipeline(input: OrderInput) {
 
   let loyaltyRedeemed = false;
   let loyaltyAccountId: number | undefined;
+  let walletDebited = false;
   try {
     if (input.loyaltyPointsUsed && input.loyaltyPointsUsed > 0 && input.userId) {
       const acct = await getOrCreateAccount(input.userId);
@@ -75,8 +76,6 @@ export async function executeOrderPipeline(input: OrderInput) {
     }
 
     await updateOrderStatus(order.id, "PROCESSING");
-
-    let walletDebited = false;
     if (input.walletAmountUsd && input.walletAmountUsd > 0 && input.userId) {
       await debitWallet(input.userId, input.walletAmountUsd, "PURCHASE",
         `Order ${orderNumber}`, `order:${order.id}`);

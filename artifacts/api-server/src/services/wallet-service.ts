@@ -31,16 +31,18 @@ export async function creditWallet(
   const wallet = await getOrCreateWallet(userId);
 
   const isDeposit = type === "TOPUP";
+  const amtSql = sql`${amount.toFixed(2)}::numeric`;
   return db.transaction(async (tx) => {
-    const setFields: Record<string, any> = {
-      balanceUsd: sql`${walletAccounts.balanceUsd}::numeric + ${amount.toFixed(2)}::numeric`,
-      updatedAt: new Date(),
-    };
-    if (isDeposit) {
-      setFields.totalDeposited = sql`${walletAccounts.totalDeposited}::numeric + ${amount.toFixed(2)}::numeric`;
-    }
-    const [updated] = await tx.update(walletAccounts).set(setFields)
-      .where(eq(walletAccounts.id, wallet.id)).returning();
+    const [updated] = isDeposit
+      ? await tx.update(walletAccounts).set({
+          balanceUsd: sql`${walletAccounts.balanceUsd}::numeric + ${amtSql}`,
+          totalDeposited: sql`${walletAccounts.totalDeposited}::numeric + ${amtSql}`,
+          updatedAt: new Date(),
+        }).where(eq(walletAccounts.id, wallet.id)).returning()
+      : await tx.update(walletAccounts).set({
+          balanceUsd: sql`${walletAccounts.balanceUsd}::numeric + ${amtSql}`,
+          updatedAt: new Date(),
+        }).where(eq(walletAccounts.id, wallet.id)).returning();
 
     const [txn] = await tx.insert(walletTransactions).values({
       userId, type, amountUsd: amount.toFixed(2),
