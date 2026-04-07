@@ -67,7 +67,8 @@ export function CategoryRow({ cat, isEditing, editState, allCats, saving, onStar
             <button onClick={onStartEdit} className="p-1 rounded hover:bg-gray-200">
               <Pencil className="h-4 w-4 text-gray-500" />
             </button>
-            <button onClick={onDelete} className="p-1 rounded hover:bg-red-100"
+            <button onClick={onDelete} disabled={cat.productCount > 0}
+              className="p-1 rounded hover:bg-red-100 disabled:opacity-30 disabled:cursor-not-allowed"
               title={cat.productCount > 0 ? "Cannot delete: has products" : "Delete"}>
               <Trash2 className="h-4 w-4 text-gray-400" />
             </button>

@@ -86,7 +86,24 @@ router.put("/admin/categories/:id", requireAuth, requireAdmin, async (req, res) 
     return;
   }
 
+  const [exists] = await db.select({ id: categories.id }).from(categories).where(eq(categories.id, id));
+  if (!exists) {
+    res.status(404).json({ error: "Category not found" });
+    return;
+  }
+
   const body = req.body;
+
+  if (body.slug) {
+    const [slugConflict] = await db
+      .select({ id: categories.id })
+      .from(categories)
+      .where(sql`${categories.slug} = ${body.slug} AND ${categories.id} != ${id}`);
+    if (slugConflict) {
+      res.status(409).json({ error: "Slug already in use by another category" });
+      return;
+    }
+  }
 
   await db
     .update(categories)
