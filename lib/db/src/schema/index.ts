@@ -18,3 +18,4 @@ export * from "./compare-sessions";
 export * from "./category-meta";
 export * from "./password-resets";
 export * from "./email-queue";
+export * from "./claims";

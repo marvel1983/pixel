@@ -9,6 +9,7 @@ import AdminCategoriesPage from "./categories";
 import AdminOrdersPage from "./orders";
 import OrderDetailPage from "./order-detail";
 import AdminKeysPage from "./keys";
+import AdminClaimsPage from "./claims";
 
 function AdminPlaceholder({ title }: { title: string }) {
   return (
@@ -40,6 +41,7 @@ export default function AdminRoot() {
             <AdminPlaceholder title="Transactions" />
           </Route>
           <Route path="/admin/fulfillment" component={AdminKeysPage} />
+          <Route path="/admin/claims" component={AdminClaimsPage} />
           <Route path="/admin/users">
             <AdminPlaceholder title="Users" />
           </Route>
