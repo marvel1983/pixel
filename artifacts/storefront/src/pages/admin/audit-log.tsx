@@ -15,6 +15,7 @@ interface LogEntry {
   ipAddress: string | null; userAgent: string | null;
   createdAt: string; userName: string | null; userEmail: string | null;
 }
+interface AuditUser { id: number; email: string; username: string | null }
 
 const ACTION_COLORS: Record<string, string> = {
   CREATE: "bg-green-100 text-green-800", UPDATE: "bg-blue-100 text-blue-800",
@@ -22,12 +23,20 @@ const ACTION_COLORS: Record<string, string> = {
   SETTINGS_CHANGE: "bg-yellow-100 text-yellow-800", EXPORT: "bg-gray-100 text-gray-800",
 };
 
+function detailsSummary(d: Record<string, unknown> | null): string {
+  if (!d || Object.keys(d).length === 0) return "—";
+  const entries = Object.entries(d).slice(0, 3);
+  return entries.map(([k, v]) => `${k}: ${typeof v === "object" ? JSON.stringify(v) : String(v)}`).join(", ");
+}
+
 export default function AuditLogPage() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [actions, setActions] = useState<string[]>([]);
+  const [auditUsers, setAuditUsers] = useState<AuditUser[]>([]);
   const [action, setAction] = useState("all");
+  const [userId, setUserId] = useState("all");
   const [search, setSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -35,16 +44,18 @@ export default function AuditLogPage() {
   const [loading, setLoading] = useState(true);
   const limit = 50;
   const token = localStorage.getItem("token");
-  const headers = { Authorization: `Bearer ${token}` };
+  const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
 
   useEffect(() => {
     fetch(`${API}/admin/audit-log/actions`, { headers }).then((r) => r.json()).then(setActions).catch(() => {});
+    fetch(`${API}/admin/audit-log/users`, { headers }).then((r) => r.json()).then(setAuditUsers).catch(() => {});
   }, []);
 
   const fetchLogs = useCallback(() => {
     setLoading(true);
     const params = new URLSearchParams({ page: String(page), limit: String(limit) });
     if (action !== "all") params.set("action", action);
+    if (userId !== "all") params.set("userId", userId);
     if (search) params.set("search", search);
     if (dateFrom) params.set("from", dateFrom);
     if (dateTo) params.set("to", dateTo);
@@ -52,7 +63,7 @@ export default function AuditLogPage() {
       .then((r) => r.json())
       .then((d) => { setLogs(d.logs); setTotal(d.total); })
       .finally(() => setLoading(false));
-  }, [page, action, search, dateFrom, dateTo]);
+  }, [page, action, userId, search, dateFrom, dateTo]);
 
   useEffect(() => { fetchLogs(); }, [fetchLogs]);
 
@@ -85,6 +96,13 @@ export default function AuditLogPage() {
             {actions.map((a) => <SelectItem key={a} value={a}>{a}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Select value={userId} onValueChange={(v) => { setUserId(v); setPage(1); }}>
+          <SelectTrigger className="w-[200px]"><SelectValue placeholder="All Users" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Users</SelectItem>
+            {auditUsers.map((u) => <SelectItem key={u.id} value={String(u.id)}>{u.email}</SelectItem>)}
+          </SelectContent>
+        </Select>
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder="Search entity type..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} className="pl-9" />
@@ -92,23 +110,24 @@ export default function AuditLogPage() {
         <Input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setPage(1); }} className="w-[160px]" />
         <Input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setPage(1); }} className="w-[160px]" />
       </div>
-      <div className="rounded-lg border bg-white">
+      <div className="rounded-lg border bg-white overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="border-b bg-gray-50 text-left text-xs font-medium text-muted-foreground">
             <th className="px-4 py-3">User</th><th className="px-4 py-3">Action</th>
-            <th className="px-4 py-3">Target</th><th className="px-4 py-3">IP</th>
-            <th className="px-4 py-3">Timestamp</th>
+            <th className="px-4 py-3">Target</th><th className="px-4 py-3 min-w-[200px]">Details</th>
+            <th className="px-4 py-3">IP</th><th className="px-4 py-3">Timestamp</th>
           </tr></thead>
           <tbody>
-            {loading ? <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">Loading...</td></tr>
-            : logs.length === 0 ? <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">No audit events found</td></tr>
+            {loading ? <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">Loading...</td></tr>
+            : logs.length === 0 ? <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">No audit events found</td></tr>
             : logs.map((log) => (
               <tr key={log.id} className="border-b cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => setSelected(log)}>
                 <td className="px-4 py-3">{log.userName || log.userEmail || "System"}</td>
                 <td className="px-4 py-3"><Badge className={ACTION_COLORS[log.action] ?? "bg-gray-100 text-gray-800"} variant="secondary">{log.action}</Badge></td>
                 <td className="px-4 py-3">{log.entityType}{log.entityId ? ` #${log.entityId}` : ""}</td>
+                <td className="px-4 py-3 text-xs text-muted-foreground max-w-[250px] truncate">{detailsSummary(log.details)}</td>
                 <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{log.ipAddress ?? "—"}</td>
-                <td className="px-4 py-3 text-muted-foreground">{new Date(log.createdAt).toLocaleString()}</td>
+                <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{new Date(log.createdAt).toLocaleString()}</td>
               </tr>
             ))}
           </tbody>
