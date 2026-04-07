@@ -181,4 +181,43 @@ router.put("/admin/settings/google-oauth", requireAuth, requireAdmin, requirePer
   res.json({ ok: true });
 });
 
+router.post("/admin/settings/google-oauth/test", requireAuth, requireAdmin, requirePermission("manageSettings"), async (_req, res) => {
+  const [s] = await db.select({
+    enabled: siteSettings.googleOAuthEnabled,
+    clientId: siteSettings.googleClientId,
+    clientSecret: siteSettings.googleClientSecret,
+  }).from(siteSettings);
+
+  if (!s?.clientId || !s?.clientSecret) {
+    res.json({ success: false, message: "Client ID and Client Secret are required" });
+    return;
+  }
+
+  try {
+    const secret = decrypt(s.clientSecret);
+    const tokenUrl = "https://oauth2.googleapis.com/token";
+    const testRes = await fetch(tokenUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        client_id: s.clientId,
+        client_secret: secret,
+        grant_type: "client_credentials",
+      }),
+    });
+    const body = await testRes.json() as { error?: string; error_description?: string };
+    if (body.error === "invalid_client") {
+      res.json({ success: false, message: "Invalid Client ID or Client Secret" });
+    } else if (body.error === "unauthorized_client" || body.error === "unsupported_grant_type") {
+      res.json({ success: true, message: "Credentials are valid (Google recognized the client)" });
+    } else if (body.error) {
+      res.json({ success: true, message: `Google responded: ${body.error_description || body.error}` });
+    } else {
+      res.json({ success: true, message: "Connection successful" });
+    }
+  } catch (e) {
+    res.json({ success: false, message: `Connection failed: ${(e as Error).message}` });
+  }
+});
+
 export default router;

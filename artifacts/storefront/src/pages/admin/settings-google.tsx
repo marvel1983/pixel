@@ -15,6 +15,8 @@ export default function SettingsGoogleTab() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [enabled, setEnabled] = useState(false);
   const [clientId, setClientId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
@@ -54,6 +56,24 @@ export default function SettingsGoogleTab() {
       toast({ title: "Failed to save", variant: "destructive" });
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleTest() {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const res = await fetch(`${API}/admin/settings/google-oauth/test`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        credentials: "include",
+      });
+      const data = await res.json();
+      setTestResult(data);
+    } catch {
+      setTestResult({ success: false, message: "Failed to reach server" });
+    } finally {
+      setTesting(false);
     }
   }
 
@@ -120,10 +140,21 @@ export default function SettingsGoogleTab() {
             </code>
           </div>
 
-          <Button onClick={handleSave} disabled={saving}>
-            {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-            Save Settings
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button onClick={handleSave} disabled={saving}>
+              {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Save Settings
+            </Button>
+            <Button variant="outline" onClick={handleTest} disabled={testing || !hasSecret}>
+              {testing && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Test Connection
+            </Button>
+          </div>
+          {testResult && (
+            <p className={`text-sm mt-2 ${testResult.success ? "text-green-600" : "text-red-600"}`}>
+              {testResult.message}
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -166,6 +166,9 @@ async function handleLoginOrRegister(
   if (!user) {
     [user] = await db.select().from(users).where(eq(users.email, profile.email.toLowerCase())).limit(1);
     if (user) {
+      if (!user.isActive) {
+        return res.redirect(`${baseUrl}/login?error=${encodeURIComponent("Account deactivated")}`);
+      }
       await db.update(users).set({
         googleId: profile.id, emailVerified: true, lastLoginAt: new Date(), updatedAt: new Date(),
         avatarUrl: user.avatarUrl ?? profile.picture ?? null,
