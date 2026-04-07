@@ -1,6 +1,7 @@
 import {
   useCurrencyStore,
   SUPPORTED_CURRENCIES,
+  BASE_CURRENCY,
   type CurrencyCode,
 } from "@/stores/currency-store";
 import {
@@ -13,8 +14,13 @@ import {
 
 export function CurrencySelector() {
   const code = useCurrencyStore((s) => s.code);
+  const rates = useCurrencyStore((s) => s.rates);
   const setCode = useCurrencyStore((s) => s.setCode);
   const current = SUPPORTED_CURRENCIES.find((c) => c.code === code);
+
+  const available = SUPPORTED_CURRENCIES.filter(
+    (c) => c.code === BASE_CURRENCY || !!rates[c.code],
+  );
 
   return (
     <Select value={code} onValueChange={(v) => setCode(v as CurrencyCode)}>
@@ -25,7 +31,7 @@ export function CurrencySelector() {
         </span>
       </SelectTrigger>
       <SelectContent>
-        {SUPPORTED_CURRENCIES.map((c) => (
+        {available.map((c) => (
           <SelectItem key={c.code} value={c.code} className="text-sm">
             <span className="flex items-center gap-2">
               <span>{c.flag}</span>

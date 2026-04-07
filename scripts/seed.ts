@@ -7,6 +7,7 @@ import {
   siteSettings,
   faqs,
   apiProviders,
+  currencyRates,
 } from "@workspace/db/schema";
 import bcrypt from "bcryptjs";
 import { eq } from "drizzle-orm";
@@ -279,6 +280,18 @@ async function seed() {
     isActive: false,
     rateLimit: 60,
   });
+
+  await db.insert(currencyRates).values([
+    { currencyCode: "EUR", rateToUsd: "0.92" },
+    { currencyCode: "GBP", rateToUsd: "0.79" },
+    { currencyCode: "PLN", rateToUsd: "4.02" },
+    { currencyCode: "CZK", rateToUsd: "23.5" },
+    { currencyCode: "HUF", rateToUsd: "365" },
+    { currencyCode: "CAD", rateToUsd: "1.36" },
+    { currencyCode: "AUD", rateToUsd: "1.53" },
+    { currencyCode: "BRL", rateToUsd: "5.05" },
+    { currencyCode: "TRY", rateToUsd: "32.5" },
+  ]);
 
   console.log("Seeding complete!");
   await pool.end();
