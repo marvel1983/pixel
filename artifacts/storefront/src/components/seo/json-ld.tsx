@@ -195,9 +195,12 @@ const ROUTE_LABELS: Record<string, string> = {
   category: "Category", product: "Product", deals: "Deals",
 };
 
+const PAGES_WITH_SPECIFIC_BREADCRUMBS = ["product", "category", "blog", "faq"];
+
 export function RouteBreadcrumbJsonLd({ path }: { path: string }) {
   const segments = path.split("/").filter(Boolean);
   if (segments.length === 0 || segments[0] === "admin") return null;
+  if (PAGES_WITH_SPECIFIC_BREADCRUMBS.includes(segments[0])) return null;
   const items = [{ label: "Home", href: "/" }];
   let href = "";
   for (const seg of segments) {
