@@ -11,6 +11,8 @@ import { CountdownTimer } from "@/components/flash-sale/countdown-timer";
 import { ViewerCount } from "@/components/social-proof/viewer-count";
 import { SoldBadge } from "@/components/social-proof/sold-badge";
 import { StockUrgencyBadge } from "@/components/social-proof/stock-urgency";
+import { RegionBadge } from "@/components/product/region-badge";
+import { PlatformBadge, ActivationGuideLink } from "@/components/product/platform-badge";
 import type { MockProduct, MockVariant } from "@/lib/mock-data";
 
 interface ProductInfoProps {
@@ -60,6 +62,7 @@ export function ProductInfo({ product }: ProductInfoProps) {
         imageUrl: product.imageUrl,
         priceUsd: flashSale ? flashSale.salePriceUsd : selectedVariant.priceUsd,
         platform: selectedVariant.platform,
+        regionRestrictions: product.regionRestrictions,
       });
     }
   }
@@ -118,6 +121,12 @@ export function ProductInfo({ product }: ProductInfoProps) {
           <CountdownTimer endsAt={flashSale.endsAt} size="sm" onExpired={() => setFlashSale(null)} />
         </div>
       )}
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <RegionBadge regions={product.regionRestrictions ?? []} />
+        <PlatformBadge platformType={product.platformType} />
+      </div>
+      <ActivationGuideLink platformType={product.platformType} />
 
       {product.variants.length > 1 && (
         <div>

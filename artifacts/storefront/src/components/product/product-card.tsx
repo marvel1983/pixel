@@ -13,6 +13,8 @@ import { addToRecentlyViewed } from "@/components/home/recently-viewed";
 import { useToast } from "@/hooks/use-toast";
 import { StockUrgencyBadge } from "@/components/social-proof/stock-urgency";
 import { SoldBadge } from "@/components/social-proof/sold-badge";
+import { RegionBadge } from "@/components/product/region-badge";
+import { PlatformBadge } from "@/components/product/platform-badge";
 import type { MockProduct } from "@/lib/mock-data";
 
 interface ProductCardProps {
@@ -60,6 +62,7 @@ export function ProductCard({ product, flashSalePrice: flashSalePriceProp }: Pro
       imageUrl: product.imageUrl,
       priceUsd: flashSalePrice || variant.priceUsd,
       platform: variant.platform,
+      regionRestrictions: product.regionRestrictions,
     });
   }
 
@@ -145,6 +148,10 @@ export function ProductCard({ product, flashSalePrice: flashSalePriceProp }: Pro
             </span>
             <StockUrgencyBadge stockCount={variant.stockCount} compact />
             <SoldBadge productId={product.id} compact />
+          </div>
+          <div className="flex items-center gap-1 mb-1 flex-wrap">
+            <RegionBadge regions={product.regionRestrictions ?? []} compact />
+            <PlatformBadge platformType={product.platformType} compact />
           </div>
 
           <div className="mt-auto pt-2 flex items-end justify-between">

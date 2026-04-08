@@ -242,6 +242,8 @@ router.put("/admin/products/:id", requireAuth, requireAdmin, requirePermission("
       systemRequirements: body.systemRequirements ?? {},
       relatedProductIds: body.relatedProductIds ?? [],
       crossSellProductIds: body.crossSellProductIds ?? [],
+      regionRestrictions: body.regionRestrictions ?? [],
+      platformType: body.platformType || null,
       sortOrder: body.sortOrder,
       updatedAt: new Date(),
     })

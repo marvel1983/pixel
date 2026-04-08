@@ -13,6 +13,7 @@ export interface CartItem {
   bundleId?: number;
   bundleName?: string;
   originalPriceUsd?: string;
+  regionRestrictions?: string[];
 }
 
 export interface CouponData {

@@ -22,6 +22,7 @@ import { LoyaltyRedeem } from "@/components/checkout/loyalty-redeem";
 import { WalletPayment } from "@/components/checkout/wallet-payment";
 import { CheckoutServices } from "@/components/checkout/checkout-services";
 import { TrustpilotBadge } from "@/components/trustpilot/trustpilot-badge";
+import { CheckoutRegionBlock, hasRegionMismatch } from "@/components/cart/region-warning";
 import { setSeoMeta, clearSeoMeta } from "@/lib/seo";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
@@ -66,6 +67,7 @@ export default function CheckoutPage() {
   const [selectedServiceIds, setSelectedServiceIds] = useState<number[]>([]);
   const [servicePrices, setServicePrices] = useState<Map<number, number>>(new Map());
   const [newsletterOptIn, setNewsletterOptIn] = useState(true);
+  const [regionAcknowledged, setRegionAcknowledged] = useState(false);
 
   const capturedRef = useRef("");
 
@@ -131,6 +133,15 @@ export default function CheckoutPage() {
   async function handleSubmit() {
     const bResult = validateBilling(billing);
     setBillingErrors(bResult.errors);
+
+    const hasRegionIssue = items.some((item) => {
+      const cartItem = item as typeof item & { regionRestrictions?: string[] };
+      return cartItem.regionRestrictions?.length && hasRegionMismatch(cartItem.regionRestrictions, billing.country);
+    });
+    if (hasRegionIssue && !regionAcknowledged) {
+      toast({ title: "Region mismatch", description: "Please acknowledge the region restriction warning before proceeding.", variant: "destructive" });
+      return;
+    }
 
     const subtotal = getTotal();
     const discount = coupon ? subtotal * (coupon.pct / 100) : 0;
@@ -210,6 +221,7 @@ export default function CheckoutPage() {
       <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
         <div className="space-y-6">
           <BillingForm data={billing} errors={billingErrors} onChange={handleBillingChange} showVatField={taxInfo.b2bEnabled} />
+          <CheckoutRegionBlock items={items} customerCountry={billing.country} acknowledged={regionAcknowledged} onAcknowledge={setRegionAcknowledged} />
           <Separator />
           <GuestAccount onPasswordChange={setGuestPassword} />
           <Separator />

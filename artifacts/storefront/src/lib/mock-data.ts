@@ -11,6 +11,8 @@ export interface MockProduct {
   isNew: boolean;
   description?: string;
   warranty?: string;
+  regionRestrictions?: string[];
+  platformType?: string | null;
 }
 
 export interface MockVariant {
@@ -31,7 +33,7 @@ export const MOCK_PRODUCTS: MockProduct[] = [
     description: "Professional edition of Windows 11 with advanced security, remote desktop, and enterprise management features.",
     warranty: "Lifetime license",
     variants: [{ id: 1, name: "Digital Key", sku: "WIN11PRO-KEY", platform: "WINDOWS", priceUsd: "29.99", compareAtPriceUsd: "199.99", stockCount: 500 }],
-    isFeatured: true, isNew: false,
+    isFeatured: true, isNew: false, regionRestrictions: [], platformType: "MICROSOFT",
   },
   {
     id: 2, name: "Windows 11 Home", slug: "windows-11-home",
@@ -40,7 +42,7 @@ export const MOCK_PRODUCTS: MockProduct[] = [
     description: "Windows 11 Home edition with a modern interface, Snap layouts, widgets, and integrated Teams.",
     warranty: "Lifetime license",
     variants: [{ id: 2, name: "Digital Key", sku: "WIN11HOME-KEY", platform: "WINDOWS", priceUsd: "19.99", compareAtPriceUsd: "139.99", stockCount: 800 }],
-    isFeatured: false, isNew: false,
+    isFeatured: false, isNew: false, regionRestrictions: ["EU"], platformType: "MICROSOFT",
   },
   {
     id: 3, name: "Windows 10 Pro", slug: "windows-10-pro",

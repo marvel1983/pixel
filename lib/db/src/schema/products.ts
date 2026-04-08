@@ -55,6 +55,8 @@ export const products = pgTable("products", {
   systemRequirements: jsonb("system_requirements").$type<Record<string, string>>().default({}),
   relatedProductIds: jsonb("related_product_ids").$type<number[]>().default([]),
   crossSellProductIds: jsonb("cross_sell_product_ids").$type<number[]>().default([]),
+  regionRestrictions: jsonb("region_restrictions").$type<string[]>().default([]),
+  platformType: varchar("platform_type", { length: 50 }),
   sortOrder: integer("sort_order").notNull().default(0),
   avgRating: numeric("avg_rating", { precision: 3, scale: 2 }).default("0"),
   reviewCount: integer("review_count").notNull().default(0),

@@ -3,6 +3,9 @@ import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
 import type { ProductData, CategoryOption, ProductOption } from "@/pages/admin/product-edit";
 
+const REGION_OPTIONS = ["EU", "NA", "LATAM", "ASIA", "RU", "UK"];
+const PLATFORM_OPTIONS = ["STEAM", "ORIGIN", "UPLAY", "GOG", "EPIC", "BATTLENET", "MICROSOFT", "XBOX", "PLAYSTATION", "NINTENDO"];
+
 interface ProductEditSidebarProps {
   product: ProductData;
   categories: CategoryOption[];
@@ -64,6 +67,42 @@ export function ProductEditSidebar({ product, categories, allProducts, onUpdate 
           <label className="mb-1 block text-sm font-medium">Sort Order</label>
           <input type="number" className="w-full rounded-md border px-3 py-2 text-sm"
             value={product.sortOrder} onChange={(e) => onUpdate("sortOrder", Number(e.target.value))} />
+        </div>
+      </div>
+
+      <div className="rounded-lg border bg-white p-6 space-y-4">
+        <h2 className="font-semibold">Region & Platform</h2>
+        <div>
+          <label className="mb-1 block text-sm font-medium">Region Restrictions</label>
+          <p className="text-xs text-muted-foreground mb-2">Leave empty for global availability</p>
+          <div className="flex flex-wrap gap-1.5">
+            {(product.regionRestrictions ?? []).map((r) => (
+              <Badge key={r} variant="secondary" className="gap-1 text-xs">
+                {r}
+                <button onClick={() => onUpdate("regionRestrictions", (product.regionRestrictions ?? []).filter((x) => x !== r))}><X className="h-3 w-3" /></button>
+              </Badge>
+            ))}
+          </div>
+          <select className="w-full rounded-md border px-3 py-2 text-sm mt-2" value=""
+            onChange={(e) => {
+              if (e.target.value) {
+                const current = product.regionRestrictions ?? [];
+                if (!current.includes(e.target.value)) onUpdate("regionRestrictions", [...current, e.target.value]);
+              }
+            }}>
+            <option value="">Add region restriction...</option>
+            {REGION_OPTIONS.filter((r) => !(product.regionRestrictions ?? []).includes(r)).map((r) => (
+              <option key={r} value={r}>{r}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="mb-1 block text-sm font-medium">Platform Type</label>
+          <select className="w-full rounded-md border px-3 py-2 text-sm" value={product.platformType ?? ""}
+            onChange={(e) => onUpdate("platformType", e.target.value || null)}>
+            <option value="">No platform</option>
+            {PLATFORM_OPTIONS.map((p) => <option key={p} value={p}>{p}</option>)}
+          </select>
         </div>
       </div>
 

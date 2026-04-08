@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { X, Plus, Minus, Trash2, ShoppingBag } from "lucide-react";
+import { X, Plus, Minus, Trash2, ShoppingBag, AlertTriangle, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -48,6 +48,7 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
         ) : (
           <>
             <div className="flex-1 overflow-y-auto -mx-6 px-6 space-y-4 py-4">
+              <CartDrawerRegionWarning items={items} />
               {items.map((item) => (
                 <CartItemRow key={`${item.bundleId ?? 's'}-${item.variantId}`} item={item} />
               ))}
@@ -81,6 +82,20 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
         )}
       </SheetContent>
     </Sheet>
+  );
+}
+
+function CartDrawerRegionWarning({ items }: { items: CartItem[] }) {
+  const restricted = items.filter((i) => i.regionRestrictions && i.regionRestrictions.length > 0);
+  if (restricted.length === 0) return null;
+  return (
+    <div className="border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950 rounded-lg p-2.5 flex items-start gap-2">
+      <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
+      <div className="text-xs text-amber-700 dark:text-amber-300">
+        <span className="font-medium">Region-locked items: </span>
+        {restricted.map((i) => `${i.productName} (${i.regionRestrictions?.join(", ")})`).join(", ")}
+      </div>
+    </div>
   );
 }
 

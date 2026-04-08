@@ -27,6 +27,8 @@ export interface ProductData {
   systemRequirements: Record<string, string>;
   relatedProductIds: number[];
   crossSellProductIds: number[];
+  regionRestrictions: string[];
+  platformType: string | null;
 }
 
 export interface VariantData {
