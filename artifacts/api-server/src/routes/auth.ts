@@ -9,6 +9,7 @@ import { logger } from "../lib/logger";
 import { sendWelcomeEmail, sendPasswordResetEmail } from "../lib/email";
 import { awardWelcomeBonus } from "../services/loyalty-service";
 import crypto from "node:crypto";
+import { authLoginLimit, authRegisterLimit, authPasswordResetLimit } from "../middleware/rate-limit";
 
 const router = Router();
 
@@ -46,7 +47,7 @@ function makeToken(u: User) {
   return signToken({ userId: u.id, email: u.email, role: u.role } as JwtPayload);
 }
 
-router.post("/auth/register", async (req, res) => {
+router.post("/auth/register", authRegisterLimit, async (req, res) => {
   const parsed = registerSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.issues[0].message });
@@ -96,7 +97,7 @@ router.post("/auth/register", async (req, res) => {
   res.status(201).json({ user: sanitizeUser(user), token });
 });
 
-router.post("/auth/login", async (req, res) => {
+router.post("/auth/login", authLoginLimit, async (req, res) => {
   const parsed = loginSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Email and password are required" });
@@ -215,7 +216,7 @@ function hashToken(token: string): string {
   return crypto.createHash("sha256").update(token).digest("hex");
 }
 
-router.post("/auth/forgot-password", async (req, res) => {
+router.post("/auth/forgot-password", authPasswordResetLimit, async (req, res) => {
   const parsed = forgotPasswordSchema.safeParse(req.body);
   if (!parsed.success) {
     res.json({ ok: true });

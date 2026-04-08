@@ -52,11 +52,10 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
-      const baseUrl = import.meta.env.VITE_API_URL ?? "/api";
-      const res = await fetch(`${baseUrl}/auth/register`, {
+      const { apiFetch } = await import("@/lib/api-client");
+      const res = await apiFetch("/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({
           email: form.email,
           password: form.password,

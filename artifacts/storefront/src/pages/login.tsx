@@ -41,11 +41,10 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const baseUrl = import.meta.env.VITE_API_URL ?? "/api";
-      const res = await fetch(`${baseUrl}/auth/login`, {
+      const { apiFetch } = await import("@/lib/api-client");
+      const res = await apiFetch("/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ email, password }),
       });
 

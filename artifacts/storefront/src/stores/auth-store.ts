@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import i18n from "@/i18n";
+import { apiFetch } from "@/lib/api-client";
 
 export interface AuthUser {
   id: number;
@@ -40,11 +41,7 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: () => {
-        const baseUrl = import.meta.env.VITE_API_URL ?? "/api";
-        fetch(`${baseUrl}/auth/logout`, {
-          method: "POST",
-          credentials: "include",
-        }).catch(() => {});
+        apiFetch("/auth/logout", { method: "POST" }).catch(() => {});
         set({ user: null, token: null });
       },
 

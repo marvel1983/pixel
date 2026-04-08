@@ -22,8 +22,8 @@ export default function ForgotPasswordPage() {
     setLoading(true);
 
     try {
-      const baseUrl = import.meta.env.VITE_API_URL ?? "/api";
-      const res = await fetch(`${baseUrl}/auth/forgot-password`, {
+      const { apiFetch } = await import("@/lib/api-client");
+      const res = await apiFetch("/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),

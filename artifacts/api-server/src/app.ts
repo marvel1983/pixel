@@ -6,6 +6,9 @@ import router from "./routes";
 import { logger } from "./lib/logger";
 import { maintenanceMiddleware } from "./middleware/maintenance";
 import { referralTracking } from "./middleware/referral";
+import { securityHeaders } from "./middleware/security-headers";
+import { csrfProtection, csrfTokenEndpoint } from "./middleware/csrf";
+import { publicLimit } from "./middleware/rate-limit";
 
 declare global {
   namespace Express {
@@ -49,6 +52,8 @@ app.use(
 );
 app.use(express.urlencoded({ extended: true }));
 
-app.use("/api", referralTracking, maintenanceMiddleware, router);
+app.use(securityHeaders);
+app.get("/api/csrf-token", csrfTokenEndpoint);
+app.use("/api", publicLimit, csrfProtection, referralTracking, maintenanceMiddleware, router);
 
 export default app;
