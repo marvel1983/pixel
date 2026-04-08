@@ -57,8 +57,7 @@ export function registerAllWorkers() {
 
   registerWorker("reports", "idempotency-cleanup", async () => {
     const { db } = await import("@workspace/db");
-    const { idempotencyKeys } = await import("@workspace/db/schema");
-    const { lt, sql } = await import("drizzle-orm");
+    const { sql } = await import("drizzle-orm");
     const result = await db.execute(sql`DELETE FROM idempotency_keys WHERE expires_at < NOW()`);
     const count = result.rowCount ?? 0;
     if (count > 0) logger.info({ count }, "Cleaned expired idempotency keys");

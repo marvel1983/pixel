@@ -74,6 +74,7 @@ export default function CheckoutPage() {
   const isBusinessApproved = !!user?.businessApproved;
 
   const capturedRef = useRef("");
+  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -125,8 +126,6 @@ export default function CheckoutPage() {
     setPayment((prev) => ({ ...prev, [field]: value }));
     if (paymentErrors[field]) setPaymentErrors((prev) => ({ ...prev, [field]: undefined }));
   }
-
-  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
 
   async function handleSubmit() {
     const bResult = validateBilling(billing);
