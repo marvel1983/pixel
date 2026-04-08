@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useCookieConsentStore } from "@/stores/cookie-consent-store";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -73,9 +74,11 @@ export function useTrustpilot() {
 export function useTrustpilotWidget(containerRef: React.RefObject<HTMLElement | null>, businessUnitId: string | null) {
   const [widgetLoaded, setWidgetLoaded] = useState(false);
   const attempted = useRef(false);
+  const consent = useCookieConsentStore((s) => s.consent);
+  const hasMarketingConsent = consent?.marketing === true;
 
   useEffect(() => {
-    if (attempted.current || !businessUnitId || !containerRef.current) return;
+    if (attempted.current || !businessUnitId || !containerRef.current || !hasMarketingConsent) return;
     attempted.current = true;
     loadTrustpilotWidget().then((ok) => {
       if (ok && window.Trustpilot && containerRef.current) {
@@ -85,7 +88,7 @@ export function useTrustpilotWidget(containerRef: React.RefObject<HTMLElement | 
         } catch { setWidgetLoaded(false); }
       }
     });
-  }, [businessUnitId, containerRef]);
+  }, [businessUnitId, containerRef, hasMarketingConsent]);
 
   return widgetLoaded;
 }

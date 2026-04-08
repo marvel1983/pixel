@@ -3,40 +3,27 @@ import { X, Shield, BarChart3, Megaphone, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useCookieConsentStore, type CookieConsent } from "@/stores/cookie-consent-store";
+import { useConsentConfig } from "@/hooks/use-consent-config";
+import type { ComponentType } from "react";
 
-const CATEGORIES = [
-  {
-    key: "necessary" as const,
-    label: "Strictly Necessary",
-    icon: Shield,
-    description: "These cookies are essential for the website to function properly. They enable core functionality such as security, network management, and account access. You cannot disable these cookies.",
-    locked: true,
-  },
-  {
-    key: "analytics" as const,
-    label: "Analytics",
-    icon: BarChart3,
-    description: "These cookies help us understand how visitors interact with our website by collecting and reporting information anonymously. This helps us improve our website experience.",
-    locked: false,
-  },
-  {
-    key: "marketing" as const,
-    label: "Marketing",
-    icon: Megaphone,
-    description: "These cookies are used to track visitors across websites. The intention is to display ads that are relevant and engaging for the individual user.",
-    locked: false,
-  },
-  {
-    key: "preferences" as const,
-    label: "Preferences",
-    icon: Settings2,
-    description: "These cookies enable the website to provide enhanced functionality and personalization, such as remembering your language preference or region.",
-    locked: false,
-  },
+interface Category {
+  key: keyof CookieConsent;
+  labelKey: "necessaryLabel" | "analyticsLabel" | "marketingLabel" | "preferencesLabel";
+  descKey: "necessaryDesc" | "analyticsDesc" | "marketingDesc" | "preferencesDesc";
+  icon: ComponentType<{ className?: string }>;
+  locked: boolean;
+}
+
+const CATEGORIES: Category[] = [
+  { key: "necessary", labelKey: "necessaryLabel", descKey: "necessaryDesc", icon: Shield, locked: true },
+  { key: "analytics", labelKey: "analyticsLabel", descKey: "analyticsDesc", icon: BarChart3, locked: false },
+  { key: "marketing", labelKey: "marketingLabel", descKey: "marketingDesc", icon: Megaphone, locked: false },
+  { key: "preferences", labelKey: "preferencesLabel", descKey: "preferencesDesc", icon: Settings2, locked: false },
 ];
 
 export function CookiePreferencesModal() {
   const { consent, closeModal, setConsent, acceptAll, rejectAll } = useCookieConsentStore();
+  const { config } = useConsentConfig();
   const [local, setLocal] = useState<CookieConsent>(
     consent || { necessary: true, analytics: false, marketing: false, preferences: false }
   );
@@ -44,10 +31,6 @@ export function CookiePreferencesModal() {
   function toggle(key: keyof CookieConsent) {
     if (key === "necessary") return;
     setLocal((prev) => ({ ...prev, [key]: !prev[key] }));
-  }
-
-  function savePreferences() {
-    setConsent(local, "customize");
   }
 
   return (
@@ -64,7 +47,7 @@ export function CookiePreferencesModal() {
           <p className="text-sm text-muted-foreground mb-4">
             Manage your cookie preferences below. Necessary cookies cannot be disabled as they are required
             for the site to function. For more information, see our{" "}
-            <a href="/privacy" className="underline text-primary">Privacy Policy</a>.
+            <a href={config.privacyPolicyUrl} className="underline text-primary">Privacy Policy</a>.
           </p>
 
           {CATEGORIES.map((cat) => (
@@ -75,27 +58,23 @@ export function CookiePreferencesModal() {
                     <cat.icon className="h-4 w-4 text-gray-600" />
                   </div>
                   <div>
-                    <span className="font-medium text-sm">{cat.label}</span>
+                    <span className="font-medium text-sm">{config[cat.labelKey]}</span>
                     {cat.locked && (
                       <span className="ml-2 text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">Always On</span>
                     )}
                   </div>
                 </div>
-                <Switch
-                  checked={local[cat.key]}
-                  onCheckedChange={() => toggle(cat.key)}
-                  disabled={cat.locked}
-                />
+                <Switch checked={local[cat.key]} onCheckedChange={() => toggle(cat.key)} disabled={cat.locked} />
               </div>
-              <p className="text-xs text-muted-foreground mt-2 leading-relaxed">{cat.description}</p>
+              <p className="text-xs text-muted-foreground mt-2 leading-relaxed">{config[cat.descKey]}</p>
             </div>
           ))}
         </div>
 
         <div className="p-5 border-t flex gap-2 justify-end sticky bottom-0 bg-white rounded-b-xl">
-          <Button variant="outline" size="sm" onClick={rejectAll}>Reject All</Button>
-          <Button variant="outline" size="sm" onClick={acceptAll}>Accept All</Button>
-          <Button size="sm" onClick={savePreferences}>Save Preferences</Button>
+          <Button variant="outline" size="sm" onClick={rejectAll}>{config.rejectAllLabel}</Button>
+          <Button variant="outline" size="sm" onClick={acceptAll}>{config.acceptAllLabel}</Button>
+          <Button size="sm" onClick={() => setConsent(local, "customize")}>{config.savePrefsLabel}</Button>
         </div>
       </div>
     </div>

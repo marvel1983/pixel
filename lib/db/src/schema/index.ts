@@ -40,3 +40,4 @@ export * from "./trustpilot";
 export * from "./social-proof";
 export * from "./i18n";
 export * from "./consent-log";
+export * from "./consent-config";

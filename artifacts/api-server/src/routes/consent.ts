@@ -1,14 +1,21 @@
 import { Router } from "express";
 import { createHash } from "crypto";
 import { db } from "@workspace/db";
-import { consentLogs, seoTracking } from "@workspace/db/schema";
-import { desc, sql } from "drizzle-orm";
+import { consentLogs, seoTracking, consentConfig } from "@workspace/db/schema";
+import { desc, sql, eq } from "drizzle-orm";
 import { optionalAuth, requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 
 const router = Router();
 
 const VALID_ACTIONS = ["accept_all", "reject_all", "customize"];
+
+async function getOrCreateConfig() {
+  const rows = await db.select().from(consentConfig);
+  if (rows.length > 0) return rows[0];
+  const [created] = await db.insert(consentConfig).values({}).returning();
+  return created;
+}
 
 function hashIp(ip: string): string {
   return createHash("sha256").update(ip + (process.env.ENCRYPTION_KEY || "salt")).digest("hex").slice(0, 64);
@@ -79,6 +86,37 @@ router.get("/admin/consent/logs", ...auth, async (req, res) => {
   } catch {
     res.status(500).json({ error: "Failed to fetch consent logs" });
   }
+});
+
+router.get("/consent/config", async (_req, res) => {
+  try {
+    const cfg = await getOrCreateConfig();
+    const { id, updatedAt, ...rest } = cfg;
+    res.json(rest);
+  } catch {
+    res.json({ bannerTitle: "We value your privacy" });
+  }
+});
+
+router.get("/admin/consent/config", ...auth, async (_req, res) => {
+  try { res.json({ config: await getOrCreateConfig() }); } catch { res.status(500).json({ error: "Failed" }); }
+});
+
+router.put("/admin/consent/config", ...auth, async (req, res) => {
+  try {
+    const cfg = await getOrCreateConfig();
+    const fields = [
+      "bannerTitle", "bannerText", "privacyPolicyUrl", "acceptAllLabel", "rejectAllLabel",
+      "customizeLabel", "savePrefsLabel", "necessaryLabel", "necessaryDesc", "analyticsLabel",
+      "analyticsDesc", "marketingLabel", "marketingDesc", "preferencesLabel", "preferencesDesc",
+    ] as const;
+    const data: Record<string, unknown> = { updatedAt: new Date() };
+    for (const f of fields) {
+      if (typeof req.body[f] === "string") data[f] = req.body[f].slice(0, f.endsWith("Desc") || f === "bannerText" ? 1000 : 200);
+    }
+    await db.update(consentConfig).set(data).where(eq(consentConfig.id, cfg.id));
+    res.json({ success: true, config: await getOrCreateConfig() });
+  } catch { res.status(500).json({ error: "Failed to update config" }); }
 });
 
 router.get("/admin/consent/stats", ...auth, async (_req, res) => {

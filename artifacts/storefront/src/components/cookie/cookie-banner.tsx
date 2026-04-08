@@ -2,10 +2,12 @@ import { useEffect } from "react";
 import { Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCookieConsentStore } from "@/stores/cookie-consent-store";
+import { useConsentConfig } from "@/hooks/use-consent-config";
 import { CookiePreferencesModal } from "./cookie-preferences-modal";
 
 export function CookieBanner() {
   const { showBanner, showModal, acceptAll, rejectAll, openModal, loadFromCookie } = useCookieConsentStore();
+  const { config } = useConsentConfig();
 
   useEffect(() => {
     loadFromCookie();
@@ -24,23 +26,22 @@ export function CookieBanner() {
                   <Shield className="h-5 w-5 text-blue-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-sm mb-1">We value your privacy</h3>
+                  <h3 className="font-semibold text-sm mb-1">{config.bannerTitle}</h3>
                   <p className="text-sm text-muted-foreground leading-relaxed">
-                    We use cookies to enhance your browsing experience, serve personalized content, and analyze
-                    our traffic. By clicking "Accept All", you consent to our use of cookies.{" "}
-                    <a href="/privacy" className="underline text-primary hover:text-primary/80">Privacy Policy</a>
+                    {config.bannerText}{" "}
+                    <a href={config.privacyPolicyUrl} className="underline text-primary hover:text-primary/80">Privacy Policy</a>
                   </p>
                 </div>
               </div>
               <div className="flex gap-2 shrink-0 w-full sm:w-auto">
                 <Button variant="outline" size="sm" onClick={rejectAll} className="flex-1 sm:flex-none">
-                  Reject All
+                  {config.rejectAllLabel}
                 </Button>
                 <Button variant="outline" size="sm" onClick={openModal} className="flex-1 sm:flex-none">
-                  Customize
+                  {config.customizeLabel}
                 </Button>
                 <Button size="sm" onClick={acceptAll} className="flex-1 sm:flex-none">
-                  Accept All
+                  {config.acceptAllLabel}
                 </Button>
               </div>
             </div>
