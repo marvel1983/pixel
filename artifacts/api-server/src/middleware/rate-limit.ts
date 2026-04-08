@@ -91,12 +91,22 @@ export function getRateLimitConfig(): RateLimitConfig {
   return { ...config };
 }
 
+function clamp(val: unknown, min: number, max: number): number | undefined {
+  if (typeof val !== "number" || !Number.isInteger(val)) return undefined;
+  return Math.max(min, Math.min(max, val));
+}
+
 export function updateRateLimitConfig(updates: Partial<RateLimitConfig>) {
-  if (updates.authLogin !== undefined) config.authLogin = updates.authLogin;
-  if (updates.authRegister !== undefined) config.authRegister = updates.authRegister;
-  if (updates.authReset !== undefined) config.authReset = updates.authReset;
-  if (updates.public !== undefined) config.public = updates.public;
-  if (updates.admin !== undefined) config.admin = updates.admin;
+  const login = clamp(updates.authLogin, 1, 100);
+  const register = clamp(updates.authRegister, 1, 100);
+  const reset = clamp(updates.authReset, 1, 100);
+  const pub = clamp(updates.public, 10, 1000);
+  const admin = clamp(updates.admin, 10, 1000);
+  if (login !== undefined) config.authLogin = login;
+  if (register !== undefined) config.authRegister = register;
+  if (reset !== undefined) config.authReset = reset;
+  if (pub !== undefined) config.public = pub;
+  if (admin !== undefined) config.admin = admin;
 }
 
 function dynamicLimit(configKey: keyof RateLimitConfig, name: string) {
