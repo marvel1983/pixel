@@ -73,11 +73,14 @@ export default function HomePage() {
       .catch(() => {});
   }, []);
 
+  const otherSections = sectionTypes.filter((type) => type !== "HERO_SLIDER");
+
   return (
     <div className="container mx-auto px-4 py-6 space-y-8">
       <OrganizationJsonLd />
       <WebSiteJsonLd />
-      {sectionTypes.map((type) => renderSection(type, t))}
+      <HeroBanner />
+      {otherSections.map((type) => renderSection(type, t))}
       <TrustpilotCarousel />
       <RecentlyViewed />
     </div>
