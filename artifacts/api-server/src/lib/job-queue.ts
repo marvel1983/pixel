@@ -59,7 +59,7 @@ interface ClaimedRow { id: number; queue: string; name: string; payload: Record<
 
 async function claimJob(queueName: string): Promise<ClaimedRow | null> {
   const now = new Date();
-  const result = await db.execute<ClaimedRow>(sql`
+  const result = await db.execute(sql`
     UPDATE job_queue SET status = 'active', started_at = NOW(), attempts = attempts + 1
     WHERE id = (
       SELECT id FROM job_queue
@@ -70,7 +70,7 @@ async function claimJob(queueName: string): Promise<ClaimedRow | null> {
     )
     RETURNING id, queue, name, payload, attempts, max_attempts
   `);
-  const rows = Array.isArray(result) ? result : [];
+  const rows = (result as { rows: ClaimedRow[] }).rows;
   return rows.length > 0 ? rows[0] : null;
 }
 
