@@ -61,6 +61,7 @@ function OverviewTab({ stats }: { stats: SurveyStats }) {
         <div className="border rounded-lg bg-white p-5">
           <div className="flex items-center gap-2 mb-2"><TrendingUp className="h-4 w-4 text-blue-600" /><span className="text-xs text-muted-foreground font-medium">NPS Score</span></div>
           <p className={`text-3xl font-bold ${stats.nps >= 50 ? "text-green-600" : stats.nps >= 0 ? "text-amber-600" : "text-red-600"}`}>{stats.nps}</p>
+          <p className="text-[10px] text-muted-foreground mt-1">4-5★ promoters · 3★ passive · 1-2★ detractors</p>
         </div>
         <div className="border rounded-lg bg-white p-5">
           <div className="flex items-center gap-2 mb-2"><Star className="h-4 w-4 text-amber-500" /><span className="text-xs text-muted-foreground font-medium">Average Rating</span></div>

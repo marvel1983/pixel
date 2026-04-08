@@ -79,19 +79,25 @@ export async function submitSurvey(token: string, rating: number, comment?: stri
 
 async function createLowRatingTicket(survey: typeof surveyResponses.$inferSelect, rating: number, comment?: string) {
   try {
-    const maxResult = await db.select({ mx: sql<string>`COALESCE(MAX(CAST(SUBSTRING(ticket_number FROM 5) AS INTEGER)), 0)` }).from(supportTickets);
-    const nextNum = parseInt(maxResult[0]?.mx ?? "0", 10) + 1;
-    const ticketNumber = `TKT-${String(nextNum).padStart(5, "0")}`;
-
-    const [ticket] = await db.insert(supportTickets).values({
-      ticketNumber,
-      userId: survey.userId,
-      orderId: survey.orderId,
-      category: "ORDER_ISSUE",
-      subject: `Low survey rating (${rating}/5) - Order follow-up`,
-      status: "OPEN",
-      priority: rating === 1 ? "HIGH" : "MEDIUM",
-    }).returning();
+    let ticket;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const maxResult = await db.select({ mx: sql<string>`COALESCE(MAX(CAST(SUBSTRING(ticket_number FROM 5) AS INTEGER)), 0)` }).from(supportTickets);
+      const nextNum = parseInt(maxResult[0]?.mx ?? "0", 10) + 1 + attempt;
+      const ticketNumber = `TKT-${String(nextNum).padStart(5, "0")}`;
+      try {
+        [ticket] = await db.insert(supportTickets).values({
+          ticketNumber,
+          userId: survey.userId,
+          orderId: survey.orderId,
+          category: "ORDER_ISSUE",
+          subject: `Low survey rating (${rating}/5) - Order follow-up`,
+          status: "OPEN",
+          priority: rating === 1 ? "HIGH" : "MEDIUM",
+        }).returning();
+        break;
+      } catch { continue; }
+    }
+    if (!ticket) return;
 
     await db.insert(ticketMessages).values({
       ticketId: ticket.id,
