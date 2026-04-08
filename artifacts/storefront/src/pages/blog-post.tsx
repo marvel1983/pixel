@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Breadcrumbs } from "@/components/shop/breadcrumbs";
 import { BlogSidebar } from "@/components/blog/blog-sidebar";
+import { ArticleJsonLd, BreadcrumbJsonLd } from "@/components/seo/json-ld";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -71,13 +72,17 @@ export default function BlogPostPage() {
   const tagList = post.tags?.split(",").map((t) => t.trim()).filter(Boolean) || [];
   const shareUrl = typeof window !== "undefined" ? window.location.href : "";
 
+  const breadcrumbs = [
+    { label: "Blog", href: "/blog" },
+    ...(post.categoryName ? [{ label: post.categoryName, href: `/blog?category=${post.categorySlug}` }] : []),
+    { label: post.title },
+  ];
+
   return (
     <div className="container mx-auto px-4 py-6">
-      <Breadcrumbs crumbs={[
-        { label: "Blog", href: "/blog" },
-        ...(post.categoryName ? [{ label: post.categoryName, href: `/blog?category=${post.categorySlug}` }] : []),
-        { label: post.title },
-      ]} />
+      <ArticleJsonLd post={post} />
+      <BreadcrumbJsonLd items={breadcrumbs} />
+      <Breadcrumbs crumbs={breadcrumbs} />
 
       <div className="flex flex-col lg:flex-row gap-8 mt-4">
         <article className="flex-1 max-w-3xl">

@@ -16,6 +16,7 @@ import { TrustpilotBadge } from "@/components/trustpilot/trustpilot-badge";
 import { BundleCrossSell } from "@/components/product-detail/bundle-cross-sell";
 import { addToRecentlyViewed } from "@/components/home/recently-viewed";
 import { setSeoMeta, clearSeoMeta } from "@/lib/seo";
+import { ProductJsonLd, BreadcrumbJsonLd } from "@/components/seo/json-ld";
 import { Separator } from "@/components/ui/separator";
 
 const CATEGORY_NAMES: Record<string, string> = {
@@ -71,15 +72,17 @@ export default function ProductDetailPage() {
 
   const categoryName = CATEGORY_NAMES[product.categorySlug] ?? product.categorySlug;
 
+  const breadcrumbs = [
+    { label: "Shop", href: "/shop" },
+    { label: categoryName, href: `/category/${product.categorySlug}` },
+    { label: product.name },
+  ];
+
   return (
     <div className="container mx-auto px-4 py-6 space-y-8">
-      <Breadcrumbs
-        crumbs={[
-          { label: "Shop", href: "/shop" },
-          { label: categoryName, href: `/category/${product.categorySlug}` },
-          { label: product.name },
-        ]}
-      />
+      <ProductJsonLd product={product} />
+      <BreadcrumbJsonLd items={breadcrumbs} />
+      <Breadcrumbs crumbs={breadcrumbs} />
 
       <div className="grid gap-8 lg:grid-cols-2">
         <ProductImage imageUrl={product.imageUrl} productName={product.name} />

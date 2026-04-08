@@ -10,6 +10,7 @@ import {
 import { Breadcrumbs } from "@/components/shop/breadcrumbs";
 import { FilterSidebar } from "@/components/shop/filter-sidebar";
 import { ProductGrid } from "@/components/shop/product-grid";
+import { CollectionPageJsonLd, BreadcrumbJsonLd } from "@/components/seo/json-ld";
 
 const CATEGORY_KEYS: Record<string, string> = {
   "operating-systems": "categories.operatingSystems",
@@ -39,14 +40,16 @@ export default function CategoryPage() {
     return paginate(filtered, filters.page, perPage);
   }, [categoryProducts, filters, perPage]);
 
+  const breadcrumbs = [
+    { label: t("shop.title"), href: "/shop" },
+    { label: categoryName },
+  ];
+
   return (
     <div className="container mx-auto px-4 py-6">
-      <Breadcrumbs
-        crumbs={[
-          { label: t("shop.title"), href: "/shop" },
-          { label: categoryName },
-        ]}
-      />
+      <CollectionPageJsonLd name={categoryName} slug={slug} />
+      <BreadcrumbJsonLd items={breadcrumbs} />
+      <Breadcrumbs crumbs={breadcrumbs} />
       <h1 className="text-2xl font-bold text-foreground mb-6">
         {categoryName}
       </h1>
