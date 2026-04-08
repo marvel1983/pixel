@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
+import { useCookieConsentStore } from "@/stores/cookie-consent-store";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
 export function LiveChatWidget() {
   const [injected, setInjected] = useState(false);
+  const consent = useCookieConsentStore((s) => s.consent);
+  const hasPreferencesConsent = consent?.preferences === true;
 
   useEffect(() => {
-    if (injected) return;
+    if (injected || !hasPreferencesConsent) return;
     fetch(`${API}/settings/live-chat`)
       .then((r) => r.json())
       .then((d) => {
@@ -24,7 +27,7 @@ export function LiveChatWidget() {
         setInjected(true);
       })
       .catch(() => {});
-  }, [injected]);
+  }, [injected, hasPreferencesConsent]);
 
   return null;
 }
