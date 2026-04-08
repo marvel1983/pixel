@@ -1,4 +1,5 @@
 import { logger } from "../lib/logger";
+import { checkoutCircuit } from "../lib/circuit-instances";
 
 export interface RefundRequest {
   paymentIntentId: string;
@@ -12,7 +13,7 @@ export interface RefundResult {
   error?: string;
 }
 
-export async function processProviderRefund(params: RefundRequest): Promise<RefundResult> {
+async function rawProcessProviderRefund(params: RefundRequest): Promise<RefundResult> {
   logger.info(
     { paymentIntentId: params.paymentIntentId, amount: params.amount },
     "Checkout.com: processing refund",
@@ -36,4 +37,15 @@ export async function processProviderRefund(params: RefundRequest): Promise<Refu
   );
 
   return { success: true, refundId };
+}
+
+export async function processProviderRefund(params: RefundRequest): Promise<RefundResult> {
+  return checkoutCircuit.exec(
+    () => rawProcessProviderRefund(params),
+    async () => ({
+      success: false,
+      refundId: "",
+      error: "Payment processing temporarily unavailable, please try again shortly",
+    }),
+  );
 }

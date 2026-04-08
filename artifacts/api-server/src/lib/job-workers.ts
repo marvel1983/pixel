@@ -40,6 +40,10 @@ export function registerAllWorkers() {
     logger.info({ payload }, "Order processing placeholder");
   });
 
+  registerWorker("email", "circuit-breaker-alert", async (payload) => {
+    logger.warn({ payload }, "Circuit breaker alert: sending admin notification");
+  });
+
   logger.info("All job workers registered");
 }
 

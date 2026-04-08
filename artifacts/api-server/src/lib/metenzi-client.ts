@@ -1,5 +1,7 @@
 import crypto from "node:crypto";
 import { logger } from "./logger";
+import { metenziCircuit } from "./circuit-instances";
+import { CircuitOpenError } from "./circuit-breaker";
 
 export interface MetenziClientConfig {
   baseUrl: string;
@@ -68,7 +70,7 @@ function parseRetryAfter(header: string | null): number | null {
   return Math.min(seconds * 1000, MAX_DELAY_MS);
 }
 
-export async function metenziRequest<T = unknown>(
+async function rawMetenziRequest<T = unknown>(
   config: MetenziClientConfig,
   options: MetenziRequestOptions,
 ): Promise<MetenziResponse<T>> {
@@ -108,6 +110,10 @@ export async function metenziRequest<T = unknown>(
         continue;
       }
 
+      if (response.status >= 500) {
+        throw new Error(`Metenzi server error: ${response.status}`);
+      }
+
       let data: T;
       const contentType = response.headers.get("content-type");
       if (
@@ -138,3 +144,12 @@ export async function metenziRequest<T = unknown>(
 
   throw new Error(`Metenzi request failed after ${MAX_RETRIES + 1} attempts`);
 }
+
+export async function metenziRequest<T = unknown>(
+  config: MetenziClientConfig,
+  options: MetenziRequestOptions,
+): Promise<MetenziResponse<T>> {
+  return metenziCircuit.exec(() => rawMetenziRequest<T>(config, options));
+}
+
+export { CircuitOpenError };

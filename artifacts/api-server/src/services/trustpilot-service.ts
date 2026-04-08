@@ -3,6 +3,7 @@ import { siteSettings, trustpilotInvites } from "@workspace/db/schema";
 import { decrypt } from "../lib/encryption";
 import { lte, isNull, eq, and, lt, sql } from "drizzle-orm";
 import { logger } from "../lib/logger";
+import { trustpilotCircuit } from "../lib/circuit-instances";
 
 interface InviteParams {
   email: string;
@@ -54,37 +55,40 @@ export async function processPendingInvites() {
 
   for (const invite of pending) {
     try {
-      const response = await fetch(
-        `https://invitations-api.trustpilot.com/v1/private/business-units/${buid}/email-invitations`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json", apikey: apiKey },
-          body: JSON.stringify({
-            consumerEmail: invite.email,
-            consumerName: invite.name,
-            referenceNumber: invite.orderNumber,
-            locale: "en-US",
-            senderEmail: s.fromEmail || "noreply@pixelcodes.com",
-            senderName: s.siteName || "PixelCodes",
-            replyTo: s.supportEmail || s.contactEmail || "support@pixelcodes.com",
-            serviceReviewInvitation: {
-              templateId: "default",
-              redirectUri: s.trustpilotUrl || "https://pixelcodes.com",
-            },
-          }),
+      await trustpilotCircuit.exec(async () => {
+        const response = await fetch(
+          `https://invitations-api.trustpilot.com/v1/private/business-units/${buid}/email-invitations`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json", apikey: apiKey },
+            body: JSON.stringify({
+              consumerEmail: invite.email,
+              consumerName: invite.name,
+              referenceNumber: invite.orderNumber,
+              locale: "en-US",
+              senderEmail: s.fromEmail || "noreply@pixelcodes.com",
+              senderName: s.siteName || "PixelCodes",
+              replyTo: s.supportEmail || s.contactEmail || "support@pixelcodes.com",
+              serviceReviewInvitation: {
+                templateId: "default",
+                redirectUri: s.trustpilotUrl || "https://pixelcodes.com",
+              },
+            }),
+          }
+        );
+        if (response.status >= 500) throw new Error(`Trustpilot server error: ${response.status}`);
+        if (response.ok) {
+          await db.update(trustpilotInvites).set({ sentAt: new Date() }).where(eq(trustpilotInvites.id, invite.id));
+        } else {
+          const errText = await response.text();
+          const newAttempts = invite.attempts + 1;
+          const isFinal = newAttempts >= invite.maxAttempts;
+          await db.update(trustpilotInvites).set({
+            attempts: newAttempts, failed: isFinal, lastError: errText.slice(0, 500),
+            scheduledAt: isFinal ? invite.scheduledAt : new Date(Date.now() + 30 * 60 * 1000),
+          }).where(eq(trustpilotInvites.id, invite.id));
         }
-      );
-      if (response.ok) {
-        await db.update(trustpilotInvites).set({ sentAt: new Date() }).where(eq(trustpilotInvites.id, invite.id));
-      } else {
-        const errText = await response.text();
-        const newAttempts = invite.attempts + 1;
-        const isFinal = newAttempts >= invite.maxAttempts;
-        await db.update(trustpilotInvites).set({
-          attempts: newAttempts, failed: isFinal, lastError: errText.slice(0, 500),
-          scheduledAt: isFinal ? invite.scheduledAt : new Date(Date.now() + 30 * 60 * 1000),
-        }).where(eq(trustpilotInvites.id, invite.id));
-      }
+      });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Unknown error";
       const newAttempts = invite.attempts + 1;

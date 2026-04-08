@@ -1,4 +1,5 @@
 import { logger } from "../lib/logger";
+import { checkoutCircuit } from "../lib/circuit-instances";
 
 export interface PaymentRequest {
   amount: string;
@@ -13,7 +14,7 @@ export interface PaymentResult {
   error?: string;
 }
 
-export async function processPayment(params: PaymentRequest): Promise<PaymentResult> {
+async function rawProcessPayment(params: PaymentRequest): Promise<PaymentResult> {
   logger.info(
     { amount: params.amount, email: params.email },
     "Checkout.com: processing payment",
@@ -37,4 +38,15 @@ export async function processPayment(params: PaymentRequest): Promise<PaymentRes
   );
 
   return { success: true, paymentIntentId };
+}
+
+export async function processPayment(params: PaymentRequest): Promise<PaymentResult> {
+  return checkoutCircuit.exec(
+    () => rawProcessPayment(params),
+    async () => ({
+      success: false,
+      paymentIntentId: "",
+      error: "Payment processing temporarily unavailable, please try again shortly",
+    }),
+  );
 }

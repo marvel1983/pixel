@@ -73,6 +73,7 @@ import quotesRouter from "./quotes";
 import adminQuotesRouter from "./admin-quotes";
 import surveysRouter from "./surveys";
 import adminJobsRouter from "./admin-jobs";
+import adminCircuitBreakerRouter from "./admin-circuit-breaker";
 
 const router: IRouter = Router();
 
@@ -150,5 +151,6 @@ router.use(quotesRouter);
 router.use(adminQuotesRouter);
 router.use(surveysRouter);
 router.use(adminJobsRouter);
+router.use(adminCircuitBreakerRouter);
 
 export default router;

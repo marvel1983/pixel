@@ -32,6 +32,7 @@ import {
   Zap,
   BookOpen,
   ListTodo,
+  Activity,
   type LucideIcon,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -123,6 +124,7 @@ const sections: NavSection[] = [
       { label: "Audit Log", href: "/admin/audit-log", icon: ClipboardList },
       { label: "Metenzi Balance", href: "/admin/metenzi-balance", icon: Wallet },
       { label: "Job Queue", href: "/admin/jobs", icon: ListTodo },
+      { label: "System Status", href: "/admin/system-status", icon: Activity },
     ],
   },
 ];
