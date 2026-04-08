@@ -83,6 +83,7 @@ export function WalletTab() {
       setShowTopUp(false);
       loadData();
     } catch (err) {
+      idempotencyKeyRef.current = crypto.randomUUID();
       toast({ title: err instanceof Error ? err.message : t("wallet.topUpFailed"), variant: "destructive" });
     } finally { setTopping(false); }
   }

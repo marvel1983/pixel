@@ -204,6 +204,7 @@ export default function CheckoutPage() {
       clearCart();
       setLocation(`/order-complete/${data.orderNumber}`);
     } catch (err) {
+      setIdempotencyKey(crypto.randomUUID());
       toast({
         title: t("checkout.orderFailed"),
         description: err instanceof Error ? err.message : t("checkout.tryAgain"),

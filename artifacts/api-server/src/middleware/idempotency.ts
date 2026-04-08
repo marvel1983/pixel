@@ -17,6 +17,13 @@ function advisoryLockId(key: string): number {
   return hash.readInt32BE(0);
 }
 
+function markFailed(recordId: number) {
+  db.update(idempotencyKeys)
+    .set({ status: "FAILED", updatedAt: new Date() })
+    .where(eq(idempotencyKeys.id, recordId))
+    .catch((err) => logger.error({ err, recordId }, "Failed to mark idempotency key as FAILED"));
+}
+
 export function requireIdempotencyKey() {
   return async (req: Request, res: Response, next: NextFunction) => {
     const idempotencyKey = req.headers[KEY_HEADER] as string | undefined;
@@ -52,21 +59,16 @@ export function requireIdempotencyKey() {
             };
           }
           if (existing.status === "PROCESSING") {
-            const ageMs = Date.now() - existing.updatedAt.getTime();
-            if (ageMs < 120_000) {
-              return { action: "in_flight" as const };
-            }
+            return { action: "in_flight" as const };
+          }
+          if (existing.status === "FAILED") {
             await tx
               .update(idempotencyKeys)
               .set({ status: "PROCESSING", updatedAt: new Date() })
               .where(eq(idempotencyKeys.id, existing.id));
             return { action: "proceed" as const, recordId: existing.id };
           }
-          await tx
-            .update(idempotencyKeys)
-            .set({ status: "PROCESSING", updatedAt: new Date() })
-            .where(eq(idempotencyKeys.id, existing.id));
-          return { action: "proceed" as const, recordId: existing.id };
+          return { action: "in_flight" as const };
         }
 
         const [record] = await tx.insert(idempotencyKeys).values({
@@ -95,20 +97,29 @@ export function requireIdempotencyKey() {
 
       const recordId = result.recordId;
       const origJson = res.json.bind(res);
-      res.json = function (body: any) {
+      res.json = function (body: unknown) {
         const statusCode = res.statusCode;
-        db.update(idempotencyKeys)
-          .set({
-            status: "COMPLETED",
-            responseCode: statusCode,
-            responseBody: body,
-            updatedAt: new Date(),
-          })
-          .where(eq(idempotencyKeys.id, recordId))
-          .then(() => {})
-          .catch((err) => logger.error({ err, recordId }, "Failed to save idempotency response"));
+        if (statusCode >= 200 && statusCode < 500) {
+          db.update(idempotencyKeys)
+            .set({
+              status: "COMPLETED",
+              responseCode: statusCode,
+              responseBody: body as Record<string, unknown>,
+              updatedAt: new Date(),
+            })
+            .where(eq(idempotencyKeys.id, recordId))
+            .catch((err) => logger.error({ err, recordId }, "Failed to save idempotency response"));
+        } else {
+          markFailed(recordId);
+        }
         return origJson(body);
       };
+
+      res.on("close", () => {
+        if (!res.writableFinished) {
+          markFailed(recordId);
+        }
+      });
 
       next();
     } catch (err) {
