@@ -5,6 +5,7 @@ import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useCartStore } from "@/stores/cart-store";
+import { useAuthStore } from "@/stores/auth-store";
 import { useToast } from "@/hooks/use-toast";
 import { Breadcrumbs } from "@/components/shop/breadcrumbs";
 import { CartProgress } from "@/components/cart/cart-progress";
@@ -68,6 +69,9 @@ export default function CheckoutPage() {
   const [servicePrices, setServicePrices] = useState<Map<number, number>>(new Map());
   const [newsletterOptIn, setNewsletterOptIn] = useState(true);
   const [regionAcknowledged, setRegionAcknowledged] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<"card" | "invoice">("card");
+  const user = useAuthStore((s) => s.user);
+  const isBusinessApproved = !!user?.businessApproved;
 
   const capturedRef = useRef("");
 
@@ -99,15 +103,13 @@ export default function CheckoutPage() {
     return () => clearTimeout(timer);
   }, [billing.email, items, coupon]);
 
-  if (items.length === 0) {
-    return (
-      <div className="container mx-auto px-4 py-6">
-        <Breadcrumbs crumbs={[{ label: t("cart.title"), href: "/cart" }, { label: t("checkout.title") }]} />
-        <CartProgress step={2} />
-        <EmptyCart />
-      </div>
-    );
-  }
+  if (items.length === 0) return (
+    <div className="container mx-auto px-4 py-6">
+      <Breadcrumbs crumbs={[{ label: t("cart.title"), href: "/cart" }, { label: t("checkout.title") }]} />
+      <CartProgress step={2} />
+      <EmptyCart />
+    </div>
+  );
 
   function handleBillingChange(field: keyof BillingData, value: string) {
     setBilling((prev) => ({ ...prev, [field]: value }));
@@ -158,14 +160,15 @@ export default function CheckoutPage() {
     const total = Math.max(0, preGcTotal - gcTotal);
 
     const walletCoversAll = walletAmount >= total - 0.01;
-    const pResult = walletCoversAll ? { valid: true, errors: {} } : validatePayment(payment);
+    const skipCard = walletCoversAll || paymentMethod === "invoice";
+    const pResult = skipCard ? { valid: true, errors: {} } : validatePayment(payment);
     setPaymentErrors(pResult.errors as Partial<Record<keyof PaymentData, string>>);
     if (!bResult.valid || !pResult.valid) return;
 
     setSubmitting(true);
     try {
       let cardToken: string | undefined;
-      if (!walletCoversAll) {
+      if (!skipCard) {
         const cardDigits = payment.cardNumber.replace(/\s/g, "");
         cardToken = `tok_${cardDigits.slice(-4)}_${Date.now()}`;
       }
@@ -183,6 +186,7 @@ export default function CheckoutPage() {
           walletAmountUsd: walletAmount > 0 ? walletAmount : undefined,
           serviceIds: selectedServiceIds.length > 0 ? selectedServiceIds : undefined,
           payment: { cardToken },
+          paymentMethod: paymentMethod === "invoice" ? "net30" : "card",
           guestPassword: guestPassword || undefined,
           locale: i18n.language,
         }),
@@ -254,7 +258,23 @@ export default function CheckoutPage() {
             return Math.max(0, bt + tax - appliedGiftCards.reduce((a, c) => a + c.applied, 0));
           })()} onWalletChange={setWalletAmount} />
           <Separator />
-          <PaymentForm data={payment} errors={paymentErrors} onChange={handlePaymentChange} />
+          {isBusinessApproved && (
+            <div className="border rounded-lg p-4 space-y-3">
+              <p className="text-sm font-semibold">Payment Method</p>
+              <div className="flex gap-3">
+                <label className={`flex-1 border rounded-lg p-3 cursor-pointer text-center text-sm transition-colors ${paymentMethod === "card" ? "border-primary bg-primary/5" : ""}`}>
+                  <input type="radio" name="payMethod" className="sr-only" checked={paymentMethod === "card"} onChange={() => setPaymentMethod("card")} />
+                  <span className="font-medium">Credit Card</span>
+                </label>
+                <label className={`flex-1 border rounded-lg p-3 cursor-pointer text-center text-sm transition-colors ${paymentMethod === "invoice" ? "border-primary bg-primary/5" : ""}`}>
+                  <input type="radio" name="payMethod" className="sr-only" checked={paymentMethod === "invoice"} onChange={() => setPaymentMethod("invoice")} />
+                  <span className="font-medium">Invoice (Net 30)</span>
+                </label>
+              </div>
+              {paymentMethod === "invoice" && <p className="text-xs text-muted-foreground">Payment due within 30 days. An invoice will be sent to your billing email.</p>}
+            </div>
+          )}
+          {paymentMethod === "card" && <PaymentForm data={payment} errors={paymentErrors} onChange={handlePaymentChange} />}
           <TrustpilotBadge variant="full" />
           <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
             <input type="checkbox" checked={newsletterOptIn} onChange={(e) => setNewsletterOptIn(e.target.checked)} />

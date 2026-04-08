@@ -11,6 +11,9 @@ export interface AuthUser {
   avatarUrl: string | null;
   preferredLocale?: string | null;
   preferredTheme?: string | null;
+  isBusinessAccount?: boolean;
+  businessApproved?: boolean;
+  companyName?: string | null;
 }
 
 interface AuthState {

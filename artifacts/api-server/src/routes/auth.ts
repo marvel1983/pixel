@@ -39,7 +39,7 @@ const resetPasswordSchema = z.object({ token: z.string().min(1), password: z.str
 const COOKIE_OPTS = { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax" as const, maxAge: 30 * 24 * 60 * 60 * 1000 };
 
 function sanitizeUser(u: User) {
-  return { id: u.id, email: u.email, firstName: u.firstName, lastName: u.lastName, role: u.role, avatarUrl: u.avatarUrl, emailVerified: u.emailVerified, googleId: u.googleId, createdAt: u.createdAt, preferredLocale: u.preferredLocale, preferredTheme: u.preferredTheme };
+  return { id: u.id, email: u.email, firstName: u.firstName, lastName: u.lastName, role: u.role, avatarUrl: u.avatarUrl, emailVerified: u.emailVerified, googleId: u.googleId, createdAt: u.createdAt, preferredLocale: u.preferredLocale, preferredTheme: u.preferredTheme, isBusinessAccount: u.isBusinessAccount, businessApproved: u.businessApproved, companyName: u.companyName };
 }
 
 function makeToken(u: User) {

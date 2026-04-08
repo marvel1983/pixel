@@ -36,6 +36,7 @@ const orderSchema = z.object({
   cppSelected: z.boolean().optional(),
   vatNumber: z.string().max(50).optional(), total: currencyStr,
   payment: z.object({ cardToken: z.string().optional() }),
+  paymentMethod: z.enum(["card", "net30"]).optional(),
   walletAmountUsd: z.number().min(0).optional(),
   guestPassword: z.string().min(8).optional(),
   giftCards: z.array(z.object({ code: z.string(), amount: z.number().positive() })).optional(),
@@ -247,10 +248,11 @@ router.post("/orders", async (req, res) => {
       res.status(400).json({ error: "Insufficient wallet balance" }); return;
     }
   }
+  const isNet30 = parsed.data.paymentMethod === "net30";
+  if (isNet30 && !userId) { res.status(401).json({ error: "Login required for invoice payment" }); return; }
+  if (isNet30) { const [u] = await db.select({ ba: users.businessApproved }).from(users).where(eq(users.id, userId!)).limit(1); if (!u?.ba) { res.status(403).json({ error: "Invoice payment requires an approved business account" }); return; } }
   const cardTotal = Math.max(0, computedTotal - walletDeduction);
-  if (cardTotal > 0.01 && !payment.cardToken) {
-    res.status(400).json({ error: "Card payment required for remaining amount" }); return;
-  }
+  if (cardTotal > 0.01 && !payment.cardToken && !isNet30) { res.status(400).json({ error: "Card payment required" }); return; }
 
   try {
     const pricedItems = items.map((it) => {
@@ -274,6 +276,7 @@ router.post("/orders", async (req, res) => {
       total: computedTotal,
       orderNumber: generateOrderNumber(),
       cardToken: payment.cardToken ?? "",
+      paymentMethod: isNet30 ? "net30" : "card",
       guestPassword: parsed.data.guestPassword,
       giftCards: serverGiftCards,
       affiliateRefCode: getRefCookie(req),
@@ -286,11 +289,7 @@ router.post("/orders", async (req, res) => {
       locale: userLocale,
     });
 
-    res.status(201).json({
-      orderNumber: result.orderNumber,
-      status: result.status,
-      message: "Order placed successfully",
-    });
+    res.status(201).json({ orderNumber: result.orderNumber, status: result.status, message: "Order placed successfully" });
   } catch (err) {
     logger.error({ err }, "Order pipeline failed");
     res.status(500).json({ error: err instanceof Error ? err.message : "Failed to process order" });

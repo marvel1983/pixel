@@ -5,6 +5,7 @@ import { eq, desc, and, isNull, or, sql } from "drizzle-orm";
 import { requireAuth } from "../middleware/auth";
 import { requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
+import { enqueueEmail } from "../lib/email/queue";
 import { z } from "zod/v4";
 
 const router = Router();
@@ -47,6 +48,9 @@ router.put("/admin/quotes/:id", ...adminMiddleware, async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     const data = updateQuoteSchema.parse(req.body);
+    const [existing] = await db.select().from(quoteRequests).where(eq(quoteRequests.id, id));
+    if (!existing) { res.status(404).json({ error: "Quote not found" }); return; }
+
     const [updated] = await db.update(quoteRequests)
       .set({
         ...(data.status && { status: data.status }),
@@ -56,7 +60,19 @@ router.put("/admin/quotes/:id", ...adminMiddleware, async (req, res) => {
       })
       .where(eq(quoteRequests.id, id))
       .returning();
-    if (!updated) { res.status(404).json({ error: "Quote not found" }); return; }
+
+    if (data.status === "QUOTED" && data.customPricing) {
+      const pricingRows = data.customPricing.map((p) =>
+        `<tr><td style="padding:8px;border:1px solid #ddd">${p.productName}</td><td style="padding:8px;border:1px solid #ddd;text-align:center">${p.quantity}</td><td style="padding:8px;border:1px solid #ddd;text-align:right">$${p.unitPrice}</td></tr>`
+      ).join("");
+      await enqueueEmail(
+        updated.contactEmail,
+        `Your Custom Quote #${updated.id} from PixelCodes`,
+        `<div style="font-family:sans-serif;max-width:600px;margin:0 auto"><h2>Your Custom Quote</h2><p>Dear ${updated.contactName},</p><p>Thank you for your interest in our business program. Here is your custom quote:</p><table style="width:100%;border-collapse:collapse;margin:16px 0"><thead><tr style="background:#f5f5f5"><th style="padding:8px;border:1px solid #ddd;text-align:left">Product</th><th style="padding:8px;border:1px solid #ddd">Qty</th><th style="padding:8px;border:1px solid #ddd;text-align:right">Unit Price</th></tr></thead><tbody>${pricingRows}</tbody></table>${updated.adminNotes ? `<p><strong>Notes:</strong> ${updated.adminNotes}</p>` : ""}<p>This quote is valid for 30 days. Reply to this email to accept or discuss.</p><p>Best regards,<br>PixelCodes Business Team</p></div>`,
+        { quoteId: updated.id, type: "quote_response" },
+      );
+    }
+
     res.json({ quote: updated });
   } catch (err) {
     if (err instanceof z.ZodError) {
