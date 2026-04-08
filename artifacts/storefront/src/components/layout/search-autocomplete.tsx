@@ -173,7 +173,7 @@ export function SearchAutocomplete() {
       />
 
       {isOpen && suggestions.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-border rounded-lg shadow-lg z-50 overflow-hidden">
+        <div className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg z-50 overflow-hidden">
           <ul role="listbox" className="py-1">
             {suggestions.map((item, idx) => (
               <li

@@ -83,7 +83,7 @@ export function ProductCard({ product, flashSalePrice: flashSalePriceProp }: Pro
 
   return (
     <Link href={`/product/${product.slug}`} onClick={() => addToRecentlyViewed(product.id)}>
-      <div className="group bg-white border border-border rounded-lg overflow-hidden hover:shadow-md transition-shadow h-full flex flex-col">
+      <div className="group bg-card border border-border rounded-lg overflow-hidden hover:shadow-md transition-shadow h-full flex flex-col">
         <div className="relative aspect-[4/3] bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center">
           {product.imageUrl ? (
             <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />

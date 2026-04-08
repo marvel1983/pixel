@@ -40,7 +40,7 @@ export function ProductImage({ imageUrl, productName }: ProductImageProps) {
           >
             <X className="h-8 w-8" />
           </button>
-          <div className="max-w-3xl max-h-[80vh] bg-white rounded-lg p-8 flex items-center justify-center">
+          <div className="max-w-3xl max-h-[80vh] bg-card rounded-lg p-8 flex items-center justify-center">
             {imageUrl ? (
               <img
                 src={imageUrl}

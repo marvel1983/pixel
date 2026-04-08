@@ -20,7 +20,7 @@ export function CookieBanner() {
       {showBanner && (
         <div className="fixed bottom-0 left-0 right-0 z-50 p-4 animate-in slide-in-from-bottom duration-300">
           <div className="container mx-auto max-w-4xl">
-            <div className="bg-white border rounded-xl shadow-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <div className="bg-card border rounded-xl shadow-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
               <div className="flex items-start gap-3 flex-1">
                 <div className="p-2 rounded-lg bg-blue-50 shrink-0 mt-0.5">
                   <Shield className="h-5 w-5 text-blue-600" />

@@ -114,10 +114,10 @@ export default function FlashSalePage() {
           const soldOut = remaining <= 0;
 
           return (
-            <div key={p.id} className="relative border rounded-lg overflow-hidden bg-white group">
+            <div key={p.id} className="relative border rounded-lg overflow-hidden bg-card group">
               <Badge className="absolute top-2 left-2 z-10 bg-red-500 text-white text-[10px]">-{pctOff}%</Badge>
               <Link href={`/product/${p.productSlug}`}>
-                <div className="aspect-square bg-gray-50 flex items-center justify-center p-2">
+                <div className="aspect-square bg-muted flex items-center justify-center p-2">
                   {p.productImage ? (
                     <img src={p.productImage} alt={p.productName} className="max-h-full max-w-full object-contain" />
                   ) : (

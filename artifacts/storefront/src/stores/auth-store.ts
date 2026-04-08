@@ -10,6 +10,7 @@ export interface AuthUser {
   role: "CUSTOMER" | "ADMIN" | "SUPER_ADMIN";
   avatarUrl: string | null;
   preferredLocale?: string | null;
+  preferredTheme?: string | null;
 }
 
 interface AuthState {

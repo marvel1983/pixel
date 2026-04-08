@@ -77,7 +77,7 @@ export function ProductUpsell() {
       <div className="space-y-2">
         {offers.map((o) => (
           <div key={o.variantId} className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded bg-white border flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded bg-card border flex items-center justify-center shrink-0">
               {o.imageUrl ? (
                 <img src={o.imageUrl} alt="" className="w-full h-full object-contain rounded" />
               ) : (

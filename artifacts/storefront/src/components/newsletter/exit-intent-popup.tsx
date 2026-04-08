@@ -74,7 +74,7 @@ export function ExitIntentPopup() {
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60" onClick={dismiss}>
       <div
-        className="relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden animate-in zoom-in-95 duration-200"
+        className="relative bg-card rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden animate-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         <button onClick={dismiss} className="absolute top-3 right-3 p-1 rounded-full hover:bg-gray-100 z-10">

@@ -52,7 +52,7 @@ export function GiftCardInput({ appliedCards, onApply, onRemove, remainingTotal 
   };
 
   return (
-    <div className="rounded-lg border bg-white">
+    <div className="rounded-lg border bg-card">
       <button className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium" onClick={() => setOpen(!open)}>
         <span className="flex items-center gap-2">
           <Gift className="h-4 w-4 text-blue-600" />

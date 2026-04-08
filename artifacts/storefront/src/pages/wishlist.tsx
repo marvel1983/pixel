@@ -113,7 +113,7 @@ export default function WishlistPage() {
             const price = parseFloat(v.priceUsd);
             const comparePrice = v.compareAtPriceUsd ? parseFloat(v.compareAtPriceUsd) : null;
             return (
-              <div key={p.id} className="bg-white border rounded-lg overflow-hidden flex flex-col">
+              <div key={p.id} className="bg-card border rounded-lg overflow-hidden flex flex-col">
                 <Link href={`/product/${p.slug}`}>
                   <div className="aspect-[4/3] bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center">
                     {p.imageUrl ? (

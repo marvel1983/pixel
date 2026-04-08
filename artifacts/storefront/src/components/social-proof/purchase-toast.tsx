@@ -69,7 +69,7 @@ export function PurchaseToastProvider() {
 
   return (
     <div className="fixed bottom-4 left-4 z-50 animate-in slide-in-from-bottom-4 fade-in duration-300 max-w-xs">
-      <div className="bg-white border border-border rounded-lg shadow-lg p-3 flex gap-3 items-start">
+      <div className="bg-card border border-border rounded-lg shadow-lg p-3 flex gap-3 items-start">
         <div className="w-10 h-10 rounded bg-muted flex items-center justify-center flex-shrink-0">
           {current.productImageUrl ? (
             <img src={current.productImageUrl} alt="" className="w-10 h-10 rounded object-cover" />

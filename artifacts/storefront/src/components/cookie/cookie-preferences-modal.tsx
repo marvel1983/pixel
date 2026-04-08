@@ -35,10 +35,10 @@ export function CookiePreferencesModal() {
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-5 border-b sticky top-0 bg-white rounded-t-xl">
+      <div className="bg-card rounded-xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-5 border-b sticky top-0 bg-card rounded-t-xl">
           <h2 className="font-bold text-lg">Cookie Preferences</h2>
-          <button onClick={closeModal} className="p-1 rounded-md hover:bg-gray-100">
+          <button onClick={closeModal} className="p-1 rounded-md hover:bg-muted">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -54,7 +54,7 @@ export function CookiePreferencesModal() {
             <div key={cat.key} className="border rounded-lg p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="p-1.5 rounded bg-gray-100">
+                  <div className="p-1.5 rounded bg-muted">
                     <cat.icon className="h-4 w-4 text-gray-600" />
                   </div>
                   <div>
@@ -71,7 +71,7 @@ export function CookiePreferencesModal() {
           ))}
         </div>
 
-        <div className="p-5 border-t flex gap-2 justify-end sticky bottom-0 bg-white rounded-b-xl">
+        <div className="p-5 border-t flex gap-2 justify-end sticky bottom-0 bg-card rounded-b-xl">
           <Button variant="outline" size="sm" onClick={rejectAll}>{config.rejectAllLabel}</Button>
           <Button variant="outline" size="sm" onClick={acceptAll}>{config.acceptAllLabel}</Button>
           <Button size="sm" onClick={() => setConsent(local, "customize")}>{config.savePrefsLabel}</Button>

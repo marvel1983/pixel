@@ -27,6 +27,7 @@ import { useCompareStore } from "@/stores/compare-store";
 import { useAuthStore } from "@/stores/auth-store";
 import { CurrencySelector } from "./currency-selector";
 import { LanguageSelector } from "../shop/language-selector";
+import { ThemeToggle } from "./theme-toggle";
 import { CartDrawer } from "./cart-drawer";
 import { MobileDrawer } from "./mobile-drawer";
 import { CategoriesDropdown } from "./categories-dropdown";
@@ -94,6 +95,7 @@ export function NavBar() {
           <div className="ml-auto flex items-center gap-1">
             <LanguageSelector />
             <CurrencySelector />
+            <ThemeToggle />
 
             <Link href="/compare">
               <Button

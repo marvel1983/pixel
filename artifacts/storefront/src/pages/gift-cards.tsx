@@ -60,13 +60,13 @@ export default function GiftCardsPage() {
           <p className="text-muted-foreground">{t("giftCard.subtitle")}</p>
         </div>
 
-        <div className="rounded-lg border bg-white p-6 space-y-6">
+        <div className="rounded-lg border bg-card p-6 space-y-6">
           <div>
             <h3 className="font-semibold mb-3">{t("giftCard.selectAmount")}</h3>
             <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
               {PRESETS.map((p) => (
                 <button key={p} onClick={() => { setAmount(p); setIsCustom(false); }}
-                  className={`rounded-lg border py-3 text-sm font-semibold transition-colors ${!isCustom && amount === p ? "bg-blue-600 text-white border-blue-600" : "bg-white hover:bg-blue-50 hover:border-blue-300"}`}>
+                  className={`rounded-lg border py-3 text-sm font-semibold transition-colors ${!isCustom && amount === p ? "bg-blue-600 text-white border-blue-600" : "bg-card hover:bg-blue-50 dark:hover:bg-blue-950 hover:border-blue-300"}`}>
                   ${p}
                 </button>
               ))}
@@ -118,7 +118,7 @@ export default function GiftCardsPage() {
             </Button>
           </div>
 
-          <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 text-sm text-muted-foreground">
+          <div className="flex items-start gap-3 p-3 rounded-lg bg-muted text-sm text-muted-foreground">
             <Send className="h-4 w-4 mt-0.5 flex-shrink-0" />
             <p>{t("giftCard.deliveryNote")}</p>
           </div>

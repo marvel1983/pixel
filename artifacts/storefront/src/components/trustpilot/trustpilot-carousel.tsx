@@ -71,14 +71,14 @@ function FallbackCarousel() {
   return (
     <div className="relative max-w-5xl mx-auto">
       <button onClick={() => setCurrent((p) => Math.max(0, p - 1))} disabled={current === 0}
-        className="absolute -left-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center disabled:opacity-30 hover:bg-gray-50">
+        className="absolute -left-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-card shadow-md flex items-center justify-center disabled:opacity-30 hover:bg-muted">
         <ChevronLeft className="h-5 w-5" />
       </button>
       <div className="overflow-hidden">
         <div className="flex transition-transform duration-500 ease-in-out" style={{ transform: `translateX(-${current * (100 / visibleCount)}%)` }}>
           {STATIC_REVIEWS.map((review) => (
             <div key={review.id} className="w-1/3 flex-shrink-0 px-3">
-              <div className="bg-white border rounded-xl p-5 h-full flex flex-col shadow-sm">
+              <div className="bg-card border rounded-xl p-5 h-full flex flex-col shadow-sm">
                 <div className="flex items-center justify-between mb-3">
                   <TrustpilotStars rating={review.rating} size="sm" />
                   <Quote className="h-4 w-4 text-green-200" />
@@ -94,7 +94,7 @@ function FallbackCarousel() {
         </div>
       </div>
       <button onClick={() => setCurrent((p) => Math.min(maxIndex, p + 1))} disabled={current >= maxIndex}
-        className="absolute -right-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center disabled:opacity-30 hover:bg-gray-50">
+        className="absolute -right-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-card shadow-md flex items-center justify-center disabled:opacity-30 hover:bg-muted">
         <ChevronRight className="h-5 w-5" />
       </button>
     </div>

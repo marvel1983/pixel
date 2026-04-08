@@ -1,6 +1,8 @@
+import { useEffect } from "react";
 import { Switch, Route } from "wouter";
 import { AdminLayout } from "@/components/admin/admin-layout";
 import { AdminGuard } from "@/components/admin/admin-guard";
+import { useThemeStore } from "@/stores/theme-store";
 import AdminDashboard from "./dashboard";
 import AnalyticsPage from "./analytics";
 import AdminProductsPage from "./products";
@@ -61,6 +63,14 @@ function AdminPlaceholder({ title }: { title: string }) {
 }
 
 export default function AdminRoot() {
+  const theme = useThemeStore((s) => s.theme);
+  useEffect(() => {
+    document.documentElement.classList.remove("dark");
+    return () => {
+      if (theme === "dark") document.documentElement.classList.add("dark");
+    };
+  }, [theme]);
+
   return (
     <AdminGuard>
       <AdminLayout>

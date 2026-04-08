@@ -113,7 +113,7 @@ export default function SupportTicketPage() {
         <CardContent className="space-y-4">
           <div className="space-y-3">
             {messages.map((msg) => (
-              <div key={msg.id} className={`p-4 rounded-lg ${msg.isStaff ? "bg-blue-50 border-l-4 border-blue-400" : "bg-gray-50"}`}>
+              <div key={msg.id} className={`p-4 rounded-lg ${msg.isStaff ? "bg-blue-50 dark:bg-blue-950 border-l-4 border-blue-400" : "bg-muted"}`}>
                 <div className="flex items-center gap-2 mb-2">
                   {msg.isStaff ? <Headphones className="h-4 w-4 text-blue-600" /> : <User className="h-4 w-4 text-gray-600" />}
                   <span className="font-medium text-sm">{msg.isStaff ? "Support Team" : msg.senderName}</span>

@@ -93,7 +93,7 @@ export function PaymentForm({ data, errors, onChange }: PaymentFormProps) {
 
         <div className="flex gap-2 pt-1">
           {["Visa", "Mastercard", "Amex", "PayPal"].map((m) => (
-            <span key={m} className="text-[10px] px-2 py-0.5 rounded border bg-white text-muted-foreground font-medium">
+            <span key={m} className="text-[10px] px-2 py-0.5 rounded border bg-card text-muted-foreground font-medium">
               {m}
             </span>
           ))}

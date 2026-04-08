@@ -125,7 +125,7 @@ export function AffiliateTab() {
                 Request Payout {available < minPayout && `(min $${minPayout})`}
               </Button>
             </div>
-            <div className="bg-white p-2 rounded border">
+            <div className="bg-card p-2 rounded border">
               <QRCode value={refUrl} size={80} />
             </div>
           </div>

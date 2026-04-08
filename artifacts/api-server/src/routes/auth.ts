@@ -45,7 +45,7 @@ const COOKIE_OPTS = {
 };
 
 function sanitizeUser(u: User) {
-  return { id: u.id, email: u.email, firstName: u.firstName, lastName: u.lastName, role: u.role, avatarUrl: u.avatarUrl, emailVerified: u.emailVerified, googleId: u.googleId, createdAt: u.createdAt, preferredLocale: u.preferredLocale };
+  return { id: u.id, email: u.email, firstName: u.firstName, lastName: u.lastName, role: u.role, avatarUrl: u.avatarUrl, emailVerified: u.emailVerified, googleId: u.googleId, createdAt: u.createdAt, preferredLocale: u.preferredLocale, preferredTheme: u.preferredTheme };
 }
 
 function makeToken(u: User) {
@@ -207,6 +207,15 @@ router.put("/auth/profile", requireAuth, async (req, res) => {
     .returning();
 
   res.json({ user: sanitizeUser(updated) });
+});
+
+router.put("/account/theme", requireAuth, async (req, res) => {
+  const theme = req.body?.theme;
+  if (theme !== "light" && theme !== "dark") {
+    res.status(400).json({ error: "Invalid theme" }); return;
+  }
+  await db.update(users).set({ preferredTheme: theme, updatedAt: new Date() }).where(eq(users.id, req.user!.userId));
+  res.json({ success: true });
 });
 
 function hashToken(token: string): string {

@@ -6,7 +6,7 @@ import { SearchAutocomplete } from "./search-autocomplete";
 export function TopBar() {
   const { t } = useTranslation();
   return (
-    <div className="w-full bg-white border-b border-border">
+    <div className="w-full bg-background border-b border-border">
       <div className="container mx-auto px-4 py-3 flex items-center gap-4">
         <Link href="/" className="flex items-center gap-2 shrink-0">
           <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">

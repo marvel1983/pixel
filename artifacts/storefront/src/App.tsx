@@ -10,6 +10,7 @@ import { useWishlistStore } from "@/stores/wishlist-store";
 import { useCurrencyStore } from "@/stores/currency-store";
 import { useFlashSaleStore } from "@/stores/flash-sale-store";
 import { useLoyaltyStore } from "@/stores/loyalty-store";
+import { useThemeStore } from "@/stores/theme-store";
 import { useMaintenanceCheck, MaintenancePage } from "@/components/maintenance-page";
 import { CookieBanner } from "@/components/cookie/cookie-banner";
 import { ConsentGatedScripts } from "@/components/cookie/consent-scripts";
@@ -128,6 +129,7 @@ function AppRouter() {
 function AppInitEffect() {
   const token = useAuthStore((s) => s.token);
   useEffect(() => {
+    useThemeStore.getState().init();
     useCurrencyStore.getState().fetchRates();
     useFlashSaleStore.getState().load();
     useLoyaltyStore.getState().load();
@@ -135,6 +137,7 @@ function AppInitEffect() {
   useEffect(() => {
     if (token) {
       useWishlistStore.getState().syncWithServer(token);
+      useThemeStore.getState().applyUserTheme();
     }
   }, [token]);
   useEffect(() => {

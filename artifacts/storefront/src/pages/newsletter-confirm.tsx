@@ -34,7 +34,7 @@ export default function NewsletterConfirmPage() {
     <div className="container mx-auto px-4 py-8 max-w-lg">
       <Breadcrumbs crumbs={[{ label: t("nav.support"), href: "/" }, { label: t("newsletter.confirmation") }]} />
 
-      <div className="mt-8 rounded-lg border bg-white p-8 text-center">
+      <div className="mt-8 rounded-lg border bg-card p-8 text-center">
         {status === "loading" && (
           <div className="space-y-3">
             <Loader2 className="h-10 w-10 mx-auto animate-spin text-blue-600" />
