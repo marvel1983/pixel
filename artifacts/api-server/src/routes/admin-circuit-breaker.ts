@@ -11,7 +11,15 @@ const guard = [requireAuth, requireAdmin, requirePermission("manageSettings")];
 
 router.get("/admin/system-status/circuits", ...guard, async (_req, res) => {
   const circuits = getAllCircuitStatus();
-  res.json({ circuits });
+  const alerts: string[] = [];
+  for (const [name, info] of Object.entries(circuits)) {
+    if (info.state === "OPEN") {
+      if (name === "metenzi") alerts.push("Supplier Temporarily Unavailable");
+      else if (name === "checkout") alerts.push("Payment Processing Unavailable");
+      else alerts.push(`${name} service unavailable`);
+    }
+  }
+  res.json({ circuits, alerts });
 });
 
 router.post("/admin/system-status/circuits/:name/reset", ...guard, async (req, res) => {

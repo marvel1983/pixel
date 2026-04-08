@@ -37,6 +37,8 @@ export class CircuitBreaker {
   private lastStateChangeAt = Date.now();
   private lastSuccessAt: number | null = null;
   private lastError: string | null = null;
+  private halfOpenProbeInFlight = false;
+  private lastHalfOpenAttempt: number | null = null;
   private config: Required<CircuitBreakerConfig>;
 
   constructor(config: Partial<CircuitBreakerConfig> & { name: string }) {
@@ -72,6 +74,18 @@ export class CircuitBreaker {
       }
     }
 
+    if (this.state === "HALF_OPEN") {
+      const now = Date.now();
+      const tooSoon = this.lastHalfOpenAttempt !== null &&
+        (now - this.lastHalfOpenAttempt) < this.config.halfOpenTestIntervalMs;
+      if (this.halfOpenProbeInFlight || tooSoon) {
+        if (fallback) return fallback();
+        throw new CircuitOpenError(this.config.name);
+      }
+      this.halfOpenProbeInFlight = true;
+      this.lastHalfOpenAttempt = now;
+    }
+
     try {
       const result = await fn();
       this.onSuccess();
@@ -90,6 +104,8 @@ export class CircuitBreaker {
     this.state = "CLOSED";
     this.failures = 0;
     this.lastError = null;
+    this.halfOpenProbeInFlight = false;
+    this.lastHalfOpenAttempt = null;
     this.lastStateChangeAt = Date.now();
     if (prev !== "CLOSED") {
       this.logStateChange(prev, "CLOSED", "manual_reset");
@@ -98,6 +114,7 @@ export class CircuitBreaker {
 
   private onSuccess(): void {
     this.lastSuccessAt = Date.now();
+    this.halfOpenProbeInFlight = false;
     if (this.state === "HALF_OPEN") {
       this.transition("CLOSED");
     }
@@ -108,6 +125,7 @@ export class CircuitBreaker {
     this.failures++;
     this.lastFailureAt = Date.now();
     this.lastError = err instanceof Error ? err.message : String(err);
+    this.halfOpenProbeInFlight = false;
 
     if (this.state === "HALF_OPEN") {
       this.transition("OPEN");

@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import { encrypt, decrypt } from "../lib/encryption";
+import { trustpilotCircuit } from "../lib/circuit-instances";
 
 const router = Router();
 
@@ -71,27 +72,30 @@ router.post("/admin/trustpilot/test-invite", requireAuth, requireAdmin, requireP
   try {
     const apiKey = decrypt(rows[0].trustpilotApiKeyEncrypted);
     const buid = rows[0].trustpilotBusinessUnitId;
-    const response = await fetch(`https://invitations-api.trustpilot.com/v1/private/business-units/${buid}/email-invitations`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        apikey: apiKey,
-      },
-      body: JSON.stringify({
-        consumerEmail: email,
-        consumerName: name,
-        referenceNumber: `TEST-${Date.now()}`,
-        locale: "en-US",
-        senderEmail: rows[0].fromEmail || "noreply@pixelcodes.com",
-        senderName: rows[0].siteName || "PixelCodes",
-        replyTo: rows[0].supportEmail || rows[0].contactEmail || "support@pixelcodes.com",
-        serviceReviewInvitation: { templateId: "default", redirectUri: rows[0].trustpilotUrl || "https://pixelcodes.com" },
-      }),
+    await trustpilotCircuit.exec(async () => {
+      const response = await fetch(`https://invitations-api.trustpilot.com/v1/private/business-units/${buid}/email-invitations`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: apiKey,
+        },
+        body: JSON.stringify({
+          consumerEmail: email,
+          consumerName: name,
+          referenceNumber: `TEST-${Date.now()}`,
+          locale: "en-US",
+          senderEmail: rows[0].fromEmail || "noreply@pixelcodes.com",
+          senderName: rows[0].siteName || "PixelCodes",
+          replyTo: rows[0].supportEmail || rows[0].contactEmail || "support@pixelcodes.com",
+          serviceReviewInvitation: { templateId: "default", redirectUri: rows[0].trustpilotUrl || "https://pixelcodes.com" },
+        }),
+      });
+      if (response.status >= 500) throw new Error(`Trustpilot server error: ${response.status}`);
+      if (!response.ok) {
+        const errTxt = await response.text();
+        throw new Error(`Trustpilot API error: ${errTxt}`);
+      }
     });
-    if (!response.ok) {
-      const err = await response.text();
-      res.status(response.status).json({ error: `Trustpilot API error: ${err}` }); return;
-    }
     res.json({ ok: true, message: "Test invite sent successfully" });
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : "Failed to send invite" });

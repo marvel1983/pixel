@@ -17,6 +17,8 @@ import { debitWallet, creditWallet } from "./wallet-service";
 import { getMetenziConfig } from "../lib/metenzi-config";
 import { createOrder as metenziCreateOrder } from "../lib/metenzi-endpoints";
 import { logger } from "../lib/logger";
+import { enqueueJob } from "../lib/job-queue";
+import { CircuitOpenError } from "../lib/circuit-breaker";
 import { sendOrderConfirmationOnly, triggerOrderEmails } from "./order-emails";
 import { scheduleTrustpilotInvite } from "./trustpilot-service";
 import { recordPurchaseEvents } from "./social-proof-service";
@@ -250,7 +252,22 @@ async function fulfillFromMetenzi(orderId: number, items: OrderInput["items"], _
     await db.update(orders).set({ externalOrderId: metenziOrder.id }).where(eq(orders.id, orderId));
     logger.info({ orderId, metenziOrderId: metenziOrder.id }, "Metenzi order placed, awaiting fulfillment webhook");
     return true;
-  } catch (err) { logger.error({ err, orderId }, "Metenzi fulfillment failed (non-fatal)"); return false; }
+  } catch (err) {
+    const isCircuitOpen = err instanceof CircuitOpenError;
+    logger.error({ err, orderId, circuitOpen: isCircuitOpen }, "Metenzi fulfillment failed");
+    enqueueJob({
+      queue: "order-processing",
+      name: "metenzi-retry-fulfillment",
+      priority: 3,
+      maxAttempts: 5,
+      payload: {
+        orderId,
+        items: items.map((it) => ({ variantId: it.variantId, quantity: it.quantity })),
+      },
+      scheduledAt: new Date(Date.now() + (isCircuitOpen ? 60_000 : 30_000)),
+    }).catch((e) => logger.error({ e, orderId }, "Failed to enqueue fulfillment retry"));
+    return false;
+  }
 }
 
 async function createGuestAccount(billing: OrderInput["billing"], password: string) {

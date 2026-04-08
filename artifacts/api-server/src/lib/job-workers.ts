@@ -36,12 +36,40 @@ export function registerAllWorkers() {
     logger.info({ payload }, "Report generation placeholder");
   });
 
+  registerWorker("order-processing", "metenzi-retry-fulfillment", async (payload) => {
+    const { orderId, items } = payload as { orderId: number; items: Array<{ variantId: number; quantity: number }> };
+    const { getMetenziConfig } = await import("../lib/metenzi-config");
+    const { createOrder: metenziCreateOrder } = await import("../lib/metenzi-endpoints");
+    const config = await getMetenziConfig();
+    if (!config) { logger.warn({ orderId }, "Metenzi not configured, skipping retry"); return; }
+    const metenziItems = items.map((it) => ({ variantId: String(it.variantId), quantity: it.quantity }));
+    const metenziOrder = await metenziCreateOrder(config, metenziItems);
+    const { db } = await import("@workspace/db");
+    const { orders } = await import("@workspace/db/schema");
+    const { eq } = await import("drizzle-orm");
+    await db.update(orders).set({ externalOrderId: metenziOrder.id, status: "PROCESSING" }).where(eq(orders.id, orderId));
+    logger.info({ orderId, metenziOrderId: metenziOrder.id }, "Metenzi retry fulfillment succeeded");
+  });
+
   registerQueueWorker("order-processing", async (payload) => {
     logger.info({ payload }, "Order processing placeholder");
   });
 
   registerWorker("email", "circuit-breaker-alert", async (payload) => {
-    logger.warn({ payload }, "Circuit breaker alert: sending admin notification");
+    const { service, from, to, failures, lastError } = payload as Record<string, unknown>;
+    logger.warn({ service, from, to, failures }, "Circuit breaker OPEN alert");
+    const { enqueueEmail } = await import("./email/queue");
+    const subject = `[ALERT] Circuit Breaker OPEN: ${service}`;
+    const html = `<h2>Circuit Breaker Alert</h2>
+      <p>The <strong>${service}</strong> service circuit breaker has transitioned from <strong>${from}</strong> to <strong>${to}</strong>.</p>
+      <p><strong>Failures:</strong> ${failures}</p>
+      <p><strong>Last Error:</strong> ${lastError || "N/A"}</p>
+      <p>Requests to this service are being rejected with fallback responses. Check the <a href="/admin/system-status">System Status</a> page for details.</p>`;
+    const { db } = await import("@workspace/db");
+    const { siteSettings } = await import("@workspace/db/schema");
+    const rows = await db.select({ email: siteSettings.contactEmail }).from(siteSettings).limit(1);
+    const adminEmail = rows[0]?.email || "admin@pixelcodes.com";
+    await enqueueEmail(adminEmail, subject, html, { type: "circuit-breaker-alert", service });
   });
 
   logger.info("All job workers registered");

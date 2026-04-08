@@ -43,6 +43,7 @@ function formatTime(ts: number | null) {
 export default function SystemStatusPage() {
   const token = useAuthStore((s) => s.token);
   const [circuits, setCircuits] = useState<Record<string, CircuitInfo>>({});
+  const [alerts, setAlerts] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [resetting, setResetting] = useState<string | null>(null);
 
@@ -55,6 +56,7 @@ export default function SystemStatusPage() {
       if (res.ok) {
         const data = await res.json();
         setCircuits(data.circuits);
+        setAlerts(data.alerts ?? []);
       }
     } catch {
     } finally {
@@ -102,7 +104,7 @@ export default function SystemStatusPage() {
       </div>
 
       {!allHealthy && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 space-y-1">
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-red-600" />
             <span className="font-medium text-red-800">
@@ -111,6 +113,9 @@ export default function SystemStatusPage() {
               {halfOpenCount > 0 && `${halfOpenCount} service(s) recovering`}
             </span>
           </div>
+          {alerts.map((alert, i) => (
+            <p key={i} className="text-sm text-red-700 ml-7">{alert}</p>
+          ))}
         </div>
       )}
 
