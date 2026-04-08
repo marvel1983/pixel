@@ -86,6 +86,7 @@ const sections: NavSection[] = [
       { label: "Affiliate Settings", href: "/admin/affiliate-settings", icon: Settings },
       { label: "Abandoned Carts", href: "/admin/abandoned-carts", icon: ShoppingCart },
       { label: "Cart Recovery Settings", href: "/admin/abandoned-cart-settings", icon: Settings },
+      { label: "Quotes", href: "/admin/quotes", icon: ClipboardList },
     ],
   },
   {

@@ -51,6 +51,7 @@ import { ExitIntentPopup } from "@/components/newsletter/exit-intent-popup";
 import { PurchaseToastProvider } from "@/components/social-proof/purchase-toast";
 import BlogPage from "@/pages/blog";
 import BlogPostPage from "@/pages/blog-post";
+import BusinessPage from "@/pages/business";
 import StaticPageView from "@/pages/static-page";
 import AdminRoot from "@/pages/admin/index";
 import AcceptInvitePage from "@/pages/admin/accept-invite";
@@ -100,6 +101,7 @@ function StorefrontWithMaintenance() {
         <Route path="/support/tickets/:ticketNumber" component={SupportTicketPage} />
         <Route path="/blog/:slug" component={BlogPostPage} />
         <Route path="/blog" component={BlogPage} />
+        <Route path="/business" component={BusinessPage} />
         <Route path="/newsletter/confirm" component={NewsletterConfirmPage} />
         <Route path="/newsletter/unsubscribe" component={NewsletterUnsubscribePage} />
         <Route component={StaticPageView} />

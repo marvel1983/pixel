@@ -69,6 +69,8 @@ import adminI18nRouter from "./admin-i18n";
 import blogRouter from "./blog";
 import adminBlogRouter from "./admin-blog";
 import consentRouter from "./consent";
+import quotesRouter from "./quotes";
+import adminQuotesRouter from "./admin-quotes";
 
 const router: IRouter = Router();
 
@@ -142,5 +144,7 @@ router.use(adminI18nRouter);
 router.use(blogRouter);
 router.use(adminBlogRouter);
 router.use(consentRouter);
+router.use(quotesRouter);
+router.use(adminQuotesRouter);
 
 export default router;

@@ -13,6 +13,7 @@ import { SoldBadge } from "@/components/social-proof/sold-badge";
 import { StockUrgencyBadge } from "@/components/social-proof/stock-urgency";
 import { RegionBadge } from "@/components/product/region-badge";
 import { PlatformBadge, ActivationGuideLink } from "@/components/product/platform-badge";
+import { VolumePricing } from "@/components/product-detail/volume-pricing";
 import type { MockProduct, MockVariant } from "@/lib/mock-data";
 
 interface ProductInfoProps {
@@ -175,6 +176,8 @@ export function ProductInfo({ product }: ProductInfoProps) {
         </span>
         <StockUrgencyBadge stockCount={selectedVariant.stockCount} />
       </div>
+
+      <VolumePricing productId={product.id} basePrice={selectedVariant.priceUsd} />
 
       <div className="flex gap-3">
         <Button
