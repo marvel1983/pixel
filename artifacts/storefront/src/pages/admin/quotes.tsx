@@ -53,11 +53,12 @@ export default function AdminQuotesPage() {
       .filter((p) => pricingMap[p.productId] && Number(pricingMap[p.productId]) > 0)
       .map((p) => ({ productId: p.productId, productName: p.productName, quantity: p.quantity, unitPrice: Number(pricingMap[p.productId]) })) : undefined;
     try {
-      await fetch(`${API}/admin/quotes/${id}`, {
+      const res = await fetch(`${API}/admin/quotes/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status, ...(adminNotes !== undefined && { adminNotes }), ...(customPricing && customPricing.length > 0 && { customPricing }) }),
       });
+      if (!res.ok) { const d = await res.json().catch(() => ({})); throw new Error((d as Record<string, string>).error ?? "Update failed"); }
       toast({ title: `Quote #${id} updated to ${status}` });
       fetchQuotes();
     } catch { toast({ title: "Update failed", variant: "destructive" }); }
