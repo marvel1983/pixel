@@ -20,6 +20,7 @@ const windowsProducts = MOCK_PRODUCTS.filter((p) => p.categorySlug === "operatin
 const officeProducts = MOCK_PRODUCTS.filter((p) => p.categorySlug === "office-productivity");
 const antivirusProducts = MOCK_PRODUCTS.filter((p) => p.categorySlug === "antivirus-security");
 const gameProducts = MOCK_PRODUCTS.filter((p) => p.categorySlug === "games");
+const devProducts = MOCK_PRODUCTS.filter((p) => p.categorySlug === "servers-development");
 const newProducts = MOCK_PRODUCTS.filter((p) => p.isNew);
 const featuredProducts = MOCK_PRODUCTS.filter((p) => p.isFeatured);
 
@@ -33,14 +34,18 @@ function renderSection(type: string, t: (key: string, opts?: Record<string, stri
         <CategorySection title={t("home.windowsOS")} categorySlug="operating-systems" products={windowsProducts} />
         <CategorySection title={t("home.officeProductivity")} categorySlug="office-productivity" products={officeProducts} />
         <CategorySection title={t("home.antivirusSecurity")} categorySlug="antivirus-security" products={antivirusProducts} />
+        <CategorySection title="PC Games" categorySlug="games" products={gameProducts} />
+        <CategorySection title="Development & Creative" categorySlug="servers-development" products={devProducts} />
       </div>
     );
     case "BRAND_SECTIONS": return (
       <div key={type} className="space-y-8">
         <BrandPartnerSection brandName="Microsoft Office" tagline={t("home.msOfficeTagline")}
-          ctaLink="/category/office-productivity" bgColor="bg-gradient-to-br from-orange-500 to-red-600" products={officeProducts} />
+          ctaLink="/category/office-productivity" bgColor="bg-gradient-to-br from-orange-500 to-red-600"
+          bannerImage="/banners/office-brand-banner.png" products={officeProducts} />
         <BrandPartnerSection brandName="PC Games" tagline={t("home.pcGamesTagline")}
-          ctaLink="/category/games" bgColor="bg-gradient-to-br from-purple-600 to-indigo-700" products={gameProducts} />
+          ctaLink="/category/games" bgColor="bg-gradient-to-br from-purple-600 to-indigo-700"
+          bannerImage="/banners/gaming-brand-banner.png" products={gameProducts} />
       </div>
     );
     case "PRODUCT_SPOTLIGHT": return <FeaturedSpotlight key={type} products={featuredProducts} />;

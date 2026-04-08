@@ -1,0 +1,230 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "t2nx04GURaAP9ORFOVadF"
+uri = "file://artifacts/storefront/public/products/windows-11-pro.png"
+type = "image"
+title = "Windows 11 Pro box"
+
+[[generated]]
+id = "r4eX5yau_X7qC1Torujzs"
+uri = "file://artifacts/storefront/public/products/windows-11-home.png"
+type = "image"
+title = "Windows 11 Home box"
+
+[[generated]]
+id = "NJyS67TXX7XAX_1f38PTE"
+uri = "file://artifacts/storefront/public/products/windows-10-pro.png"
+type = "image"
+title = "Windows 10 Pro box"
+
+[[generated]]
+id = "gRyThHobcUgbB3QKVdsMv"
+uri = "file://artifacts/storefront/public/products/windows-10-home.png"
+type = "image"
+title = "Windows 10 Home box"
+
+[[generated]]
+id = "yACAlUi2Vz7aR7fIP-cMS"
+uri = "file://artifacts/storefront/public/products/windows-server-2022.png"
+type = "image"
+title = "Windows Server 2022 box"
+
+[[generated]]
+id = "nn1Zb8cBKZIMNs5NEBNSv"
+uri = "file://artifacts/storefront/public/products/windows-server-2019.png"
+type = "image"
+title = "Windows Server 2019 box"
+
+[[generated]]
+id = "yr-L_V3hby6tAkLZzvfAA"
+uri = "file://artifacts/storefront/public/products/office-2024-pro-plus.png"
+type = "image"
+title = "Office 2024 Pro Plus box"
+
+[[generated]]
+id = "gfLgCd_t44Pp_cQTecCvg"
+uri = "file://artifacts/storefront/public/products/office-2024-home.png"
+type = "image"
+title = "Office 2024 Home box"
+
+[[generated]]
+id = "VWbASSs-llj7ErB3lbua7"
+uri = "file://artifacts/storefront/public/products/office-2021-pro-plus.png"
+type = "image"
+title = "Office 2021 Pro Plus box"
+
+[[generated]]
+id = "8-i6YAN6cBq0shxMhGo6S"
+uri = "file://artifacts/storefront/public/products/microsoft-365.png"
+type = "image"
+title = "Microsoft 365 box"
+
+[[generated]]
+id = "yLj-e6iH7Kj7aFErRVJ4z"
+uri = "file://artifacts/storefront/public/products/project-2021.png"
+type = "image"
+title = "Project 2021 box"
+
+[[generated]]
+id = "hfPAlcUH_5tMkevVsOZsE"
+uri = "file://artifacts/storefront/public/products/visio-2021.png"
+type = "image"
+title = "Visio 2021 box"
+
+[[generated]]
+id = "swPHFFDIFdTdNIb932C0U"
+uri = "file://artifacts/storefront/public/products/norton-360.png"
+type = "image"
+title = "Norton 360 Deluxe box"
+
+[[generated]]
+id = "QJOfkWFWugQWWykJl2ZMg"
+uri = "file://artifacts/storefront/public/products/kaspersky-total.png"
+type = "image"
+title = "Kaspersky Total Security box"
+
+[[generated]]
+id = "nRHpTEIO1ik-ORBay-JH7"
+uri = "file://artifacts/storefront/public/products/bitdefender-total.png"
+type = "image"
+title = "Bitdefender Total Security box"
+
+[[generated]]
+id = "36lCeHCi939WF_BGZsbrH"
+uri = "file://artifacts/storefront/public/products/mcafee-total.png"
+type = "image"
+title = "McAfee Total Protection box"
+
+[[generated]]
+id = "OBN9dxaW7lCbR5UiOVso8"
+uri = "file://artifacts/storefront/public/products/malwarebytes.png"
+type = "image"
+title = "Malwarebytes Premium box"
+
+[[generated]]
+id = "SIA_QBK7K8nG5i8HhdZOF"
+uri = "file://artifacts/storefront/public/products/eset-nod32.png"
+type = "image"
+title = "ESET NOD32 box"
+
+[[generated]]
+id = "ABfBRR4urxw14NySfXGvQ"
+uri = "file://artifacts/storefront/public/products/elden-ring.png"
+type = "image"
+title = "Elden Ring game cover"
+
+[[generated]]
+id = "Zrm-hkJI-zQ3Fsppeo1bY"
+uri = "file://artifacts/storefront/public/products/cyberpunk-2077.png"
+type = "image"
+title = "Cyberpunk 2077 game cover"
+
+[[generated]]
+id = "cQSD0E4ZvlIp8V36OKRLo"
+uri = "file://artifacts/storefront/public/products/hogwarts-legacy.png"
+type = "image"
+title = "Hogwarts Legacy game cover"
+
+[[generated]]
+id = "c4NFDZNZEaGqsDDqXkti7"
+uri = "file://artifacts/storefront/public/products/rdr2.png"
+type = "image"
+title = "RDR2 game cover"
+
+[[generated]]
+id = "X9mAoJobmiEjv-THNmGuG"
+uri = "file://artifacts/storefront/public/products/baldurs-gate-3.png"
+type = "image"
+title = "Baldur's Gate 3 game cover"
+
+[[generated]]
+id = "APhQog5paV7gHX1HIle72"
+uri = "file://artifacts/storefront/public/products/gta-v.png"
+type = "image"
+title = "GTA V game cover"
+
+[[generated]]
+id = "zNyHsKMoGE-BNKFg6X5hG"
+uri = "file://artifacts/storefront/public/products/witcher-3.png"
+type = "image"
+title = "Witcher 3 game cover"
+
+[[generated]]
+id = "TTd63DQC2iU8MMxfgQpcZ"
+uri = "file://artifacts/storefront/public/products/starfield.png"
+type = "image"
+title = "Starfield game cover"
+
+[[generated]]
+id = "mpSfxOOoKZD-hnh1xSiMh"
+uri = "file://artifacts/storefront/public/products/visual-studio-2022.png"
+type = "image"
+title = "Visual Studio 2022 box"
+
+[[generated]]
+id = "k-YPdU-l-Fiii79UeN1CQ"
+uri = "file://artifacts/storefront/public/products/adobe-cc.png"
+type = "image"
+title = "Adobe Creative Cloud box"
+
+[[generated]]
+id = "cE5Wkqnlft431l5cEmehQ"
+uri = "file://artifacts/storefront/public/products/autocad-2024.png"
+type = "image"
+title = "AutoCAD 2024 box"
+
+[[generated]]
+id = "aA4BGGXBWGhHpBDBM3BoW"
+uri = "file://artifacts/storefront/public/products/sql-server-2022.png"
+type = "image"
+title = "SQL Server 2022 box"
+
+[[generated]]
+id = "S9xF5qnvzqFHpT18MQrgh"
+uri = "file://artifacts/storefront/public/banners/windows-sale-banner.png"
+type = "image"
+title = "Windows sale hero banner"
+
+[[generated]]
+id = "vrVzIyZZOU6-vM_P3gc8t"
+uri = "file://artifacts/storefront/public/banners/office-sale-banner.png"
+type = "image"
+title = "Office suite sale banner"
+
+[[generated]]
+id = "S8kn-jCFDvh2e-it90Axm"
+uri = "file://artifacts/storefront/public/banners/gaming-sale-banner.png"
+type = "image"
+title = "Gaming deals hero banner"
+
+[[generated]]
+id = "_sgoNK1542iaBbaskwpYk"
+uri = "file://artifacts/storefront/public/banners/security-banner.png"
+type = "image"
+title = "Security software banner"
+
+[[generated]]
+id = "5KrN75ZzNasve_F0CrecA"
+uri = "file://artifacts/storefront/public/banners/office-brand-banner.png"
+type = "image"
+title = "Office brand partner banner"
+
+[[generated]]
+id = "0yOcqWlFB_OH1-eZAa0rg"
+uri = "file://artifacts/storefront/public/banners/gaming-brand-banner.png"
+type = "image"
+title = "Gaming brand partner banner"
+
+[[generated]]
+id = "AEUOjhCaQpkf6dE5qZLmL"
+uri = "file://artifacts/storefront/public/products/intellij-idea.png"
+type = "image"
+title = "IntelliJ IDEA box"
+
+[[generated]]
+id = "cK4kQN2i2J7mu_ulcia1m"
+uri = "file://artifacts/storefront/public/products/vmware-workstation.png"
+type = "image"
+title = "VMware Workstation box"

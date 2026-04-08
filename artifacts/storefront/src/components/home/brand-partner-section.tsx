@@ -11,6 +11,7 @@ interface BrandPartnerSectionProps {
   tagline: string;
   ctaLink: string;
   bgColor: string;
+  bannerImage?: string;
   products: MockProduct[];
 }
 
@@ -19,6 +20,7 @@ export function BrandPartnerSection({
   tagline,
   ctaLink,
   bgColor,
+  bannerImage,
   products,
 }: BrandPartnerSectionProps) {
   const { t } = useTranslation();
@@ -38,19 +40,27 @@ export function BrandPartnerSection({
   return (
     <section className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4">
       <div
-        className={`${bgColor} rounded-lg p-6 flex flex-col justify-center text-white min-h-[200px]`}
+        className={`${bgColor} rounded-lg p-6 flex flex-col justify-end text-white min-h-[200px] relative overflow-hidden`}
       >
-        <h3 className="text-xl font-bold mb-2">{brandName}</h3>
-        <p className="text-white/80 text-sm mb-4">{tagline}</p>
-        <Link href={ctaLink}>
-          <Button
-            variant="outline"
-            className="border-white text-white hover:bg-white/20 w-fit"
-          >
-            {t("home.shopBrand", { brand: brandName })}
-            <ChevronRight className="h-4 w-4 ml-1" />
-          </Button>
-        </Link>
+        {bannerImage && (
+          <>
+            <img src={bannerImage} alt={brandName} className="absolute inset-0 w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+          </>
+        )}
+        <div className="relative z-10">
+          <h3 className="text-xl font-bold mb-2">{brandName}</h3>
+          <p className="text-white/80 text-sm mb-4">{tagline}</p>
+          <Link href={ctaLink}>
+            <Button
+              variant="outline"
+              className="border-white text-white hover:bg-white/20 w-fit"
+            >
+              {t("home.shopBrand", { brand: brandName })}
+              <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <div className="relative group">

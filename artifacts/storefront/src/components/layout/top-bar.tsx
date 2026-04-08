@@ -8,13 +8,8 @@ export function TopBar() {
   return (
     <div className="w-full bg-background border-b border-border">
       <div className="container mx-auto px-4 py-3 flex items-center gap-4">
-        <Link href="/" className="flex items-center gap-2 shrink-0">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">PC</span>
-          </div>
-          <span className="text-xl font-bold text-foreground hidden sm:block">
-            PixelCodes
-          </span>
+        <Link href="/" className="flex items-center shrink-0">
+          <img src="/logo.png" alt="PixelCodes" className="h-8 w-auto" />
         </Link>
 
         <SearchAutocomplete />

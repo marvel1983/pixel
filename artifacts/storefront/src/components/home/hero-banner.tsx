@@ -3,17 +3,12 @@ import { useTranslation } from "react-i18next";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-
-const BANNER_CONFIG = [
-  { titleKey: "home.banner1Title", subtitleKey: "home.banner1Subtitle", ctaKey: "home.shopNow", ctaLink: "/product/windows-11-pro", bgColor: "from-blue-600 to-blue-800" },
-  { titleKey: "home.banner2Title", subtitleKey: "home.banner2Subtitle", ctaKey: "home.banner2Cta", ctaLink: "/product/office-2024-pro-plus", bgColor: "from-orange-500 to-red-600" },
-  { titleKey: "home.banner3Title", subtitleKey: "home.banner3Subtitle", ctaKey: "home.banner3Cta", ctaLink: "/category/games", bgColor: "from-purple-600 to-indigo-700" },
-];
+import { MOCK_BANNERS } from "@/lib/mock-data";
 
 export function HeroBanner() {
   const { t } = useTranslation();
   const [current, setCurrent] = useState(0);
-  const total = BANNER_CONFIG.length;
+  const total = MOCK_BANNERS.length;
 
   const next = useCallback(
     () => setCurrent((c) => (c + 1) % total),
@@ -29,28 +24,34 @@ export function HeroBanner() {
     return () => clearInterval(timer);
   }, [next]);
 
-  const banner = BANNER_CONFIG[current];
+  const banner = MOCK_BANNERS[current];
 
   return (
     <div className="relative w-full overflow-hidden rounded-xl">
-      <div
-        className={`bg-gradient-to-r ${banner.bgColor} px-8 py-16 md:py-20 text-white transition-all duration-500`}
-      >
-        <div className="max-w-2xl mx-auto text-center">
-          <h2 className="text-2xl md:text-4xl font-bold mb-3">
-            {t(banner.titleKey)}
-          </h2>
-          <p className="text-white/80 text-sm md:text-lg mb-6">
-            {t(banner.subtitleKey)}
-          </p>
-          <Link href={banner.ctaLink}>
-            <Button
-              size="lg"
-              className="bg-white text-slate-900 hover:bg-white/90 font-semibold"
-            >
-              {t(banner.ctaKey)}
-            </Button>
-          </Link>
+      <div className="relative h-[280px] md:h-[360px] transition-all duration-500">
+        <img
+          src={banner.imageUrl}
+          alt={banner.title}
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent" />
+        <div className="relative h-full flex items-center px-8 md:px-16">
+          <div className="max-w-lg">
+            <h2 className="text-2xl md:text-4xl font-bold mb-3 text-white drop-shadow-lg">
+              {banner.title}
+            </h2>
+            <p className="text-white/90 text-sm md:text-lg mb-6 drop-shadow">
+              {banner.subtitle}
+            </p>
+            <Link href={banner.ctaLink}>
+              <Button
+                size="lg"
+                className="bg-white text-slate-900 hover:bg-white/90 font-semibold"
+              >
+                {banner.ctaText}
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -70,7 +71,7 @@ export function HeroBanner() {
       </button>
 
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-        {BANNER_CONFIG.map((_, i) => (
+        {MOCK_BANNERS.map((_, i) => (
           <button
             key={i}
             onClick={() => setCurrent(i)}
