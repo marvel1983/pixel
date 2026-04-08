@@ -14,11 +14,13 @@ const SettingsGoogleTab = lazy(() => import("./settings-google"));
 const SettingsLoyaltyTab = lazy(() => import("./settings-loyalty"));
 const SettingsTrustpilotTab = lazy(() => import("./settings-trustpilot"));
 const SettingsSocialProofTab = lazy(() => import("./settings-social-proof"));
+const SettingsConsentTab = lazy(() => import("./settings-consent"));
 
 const tabs = [
   { key: "general", label: "General" },
   { key: "notifications", label: "Notifications" },
   { key: "seo-tracking", label: "SEO & Tracking" },
+  { key: "consent", label: "Cookie Consent" },
   { key: "cpp-fees", label: "CPP & Fees" },
   { key: "currencies", label: "Currencies" },
   { key: "loyalty", label: "Loyalty" },
@@ -53,6 +55,7 @@ export default function AdminSettingsPage() {
         {activeTab === "general" && <SettingsGeneralTab />}
         {activeTab === "notifications" && <SettingsNotificationsTab />}
         {activeTab === "seo-tracking" && <SettingsSeoTrackingTab />}
+        {activeTab === "consent" && <SettingsConsentTab />}
         {activeTab === "cpp-fees" && <SettingsCppFeesTab />}
         {activeTab === "currencies" && <SettingsCurrenciesTab />}
         {activeTab === "smtp" && <SettingsSmtpTab />}

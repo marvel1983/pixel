@@ -11,6 +11,8 @@ import { useCurrencyStore } from "@/stores/currency-store";
 import { useFlashSaleStore } from "@/stores/flash-sale-store";
 import { useLoyaltyStore } from "@/stores/loyalty-store";
 import { useMaintenanceCheck, MaintenancePage } from "@/components/maintenance-page";
+import { CookieBanner } from "@/components/cookie/cookie-banner";
+import { ConsentGatedScripts } from "@/components/cookie/consent-scripts";
 import HomePage from "@/pages/home";
 import ShopPage from "@/pages/shop";
 import CategoryPage from "@/pages/category";
@@ -104,6 +106,8 @@ function StorefrontWithMaintenance() {
       <ExitIntentPopup />
       <PurchaseToastProvider />
       <HreflangTags />
+      <CookieBanner />
+      <ConsentGatedScripts />
     </SiteLayout>
   );
 }

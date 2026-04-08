@@ -39,3 +39,4 @@ export * from "./checkout-services";
 export * from "./trustpilot";
 export * from "./social-proof";
 export * from "./i18n";
+export * from "./consent-log";

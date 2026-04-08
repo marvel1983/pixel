@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { useTranslation } from "react-i18next";
-import { Mail, Loader2, Check } from "lucide-react";
+import { Mail, Loader2, Check, Cookie } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { TrustpilotMicro } from "@/components/trustpilot/trustpilot-micro";
+import { useCookieConsentStore } from "@/stores/cookie-consent-store";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -122,6 +123,12 @@ export function Footer() {
                 {t(link.key)}
               </Link>
             ))}
+            <button
+              onClick={() => useCookieConsentStore.getState().openModal()}
+              className="hover:text-slate-300 transition-colors inline-flex items-center gap-1"
+            >
+              <Cookie className="h-3 w-3" /> Cookie Settings
+            </button>
           </div>
         </div>
 
