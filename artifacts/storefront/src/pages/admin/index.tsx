@@ -51,6 +51,7 @@ import AdminBlogPage from "./blog";
 import BlogEditPage from "./blog-edit";
 import AdminBlogCategoriesPage from "./blog-categories";
 import AdminQuotesPage from "./quotes";
+import AdminSurveysPage from "./surveys";
 
 function AdminPlaceholder({ title }: { title: string }) {
   return (
@@ -116,6 +117,7 @@ export default function AdminRoot() {
           <Route path="/admin/flash-sales" component={AdminFlashSalesPage} />
           <Route path="/admin/bundles" component={AdminBundlesPage} />
           <Route path="/admin/quotes" component={AdminQuotesPage} />
+          <Route path="/admin/surveys" component={AdminSurveysPage} />
           <Route path="/admin/support/:ticketNumber" component={AdminSupportDetailPage} />
           <Route path="/admin/support" component={AdminSupportPage} />
           <Route path="/admin/abandoned-carts" component={AdminAbandonedCartsPage} />

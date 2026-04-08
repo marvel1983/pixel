@@ -93,6 +93,7 @@ const sections: NavSection[] = [
     title: "CUSTOMERS",
     items: [
       { label: "Customers", href: "/admin/customers", icon: Users },
+      { label: "Surveys", href: "/admin/surveys", icon: BarChart3 },
       { label: "Support", href: "/admin/support", icon: HelpCircle },
       { label: "Newsletter", href: "/admin/newsletter", icon: Mail },
       { label: "Notifications", href: "/admin/notifications", icon: Bell },

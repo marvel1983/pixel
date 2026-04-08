@@ -4,6 +4,7 @@ import { processEmailQueue } from "./email";
 import { approveHeldCommissions } from "../services/affiliate-service";
 import { processAbandonedCarts } from "../services/abandoned-cart-service";
 import { processPendingInvites } from "../services/trustpilot-service";
+import { processSurveyEmails } from "../services/survey-service";
 import { logger } from "./logger";
 
 let syncTask: ScheduledTask | null = null;
@@ -11,6 +12,7 @@ let emailTask: ScheduledTask | null = null;
 let affiliateTask: ScheduledTask | null = null;
 let abandonedCartTask: ScheduledTask | null = null;
 let trustpilotTask: ScheduledTask | null = null;
+let surveyTask: ScheduledTask | null = null;
 
 export function startCronJobs(): void {
   if (syncTask) return;
@@ -66,7 +68,18 @@ export function startCronJobs(): void {
     }
   });
 
-  logger.info("Cron jobs started (product sync 30m, email 1m, affiliate 6h, abandoned cart 15m, trustpilot 30m)");
+  surveyTask = cron.schedule("0 */4 * * *", async () => {
+    try {
+      const result = await processSurveyEmails();
+      if (result.sent > 0) {
+        logger.info(result, "Cron: survey emails sent");
+      }
+    } catch (error) {
+      logger.error({ error }, "Cron: survey email processing failed");
+    }
+  });
+
+  logger.info("Cron jobs started (product sync 30m, email 1m, affiliate 6h, abandoned cart 15m, trustpilot 30m, survey 4h)");
 }
 
 export function stopCronJobs(): void {
@@ -89,6 +102,10 @@ export function stopCronJobs(): void {
   if (trustpilotTask) {
     trustpilotTask.stop();
     trustpilotTask = null;
+  }
+  if (surveyTask) {
+    surveyTask.stop();
+    surveyTask = null;
   }
   logger.info("Cron jobs stopped");
 }

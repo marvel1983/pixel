@@ -71,6 +71,7 @@ import adminBlogRouter from "./admin-blog";
 import consentRouter from "./consent";
 import quotesRouter from "./quotes";
 import adminQuotesRouter from "./admin-quotes";
+import surveysRouter from "./surveys";
 
 const router: IRouter = Router();
 
@@ -146,5 +147,6 @@ router.use(adminBlogRouter);
 router.use(consentRouter);
 router.use(quotesRouter);
 router.use(adminQuotesRouter);
+router.use(surveysRouter);
 
 export default router;

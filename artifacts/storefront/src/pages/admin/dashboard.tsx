@@ -1,6 +1,7 @@
 import { DashboardStatsSection } from "@/components/admin/dashboard-stats";
 import { RecentOrdersSection } from "@/components/admin/dashboard-orders";
 import { LowStockSection, PendingReviewsSection } from "@/components/admin/dashboard-alerts";
+import { NpsWidget } from "@/components/admin/dashboard-nps";
 
 export default function AdminDashboard() {
   return (
@@ -20,6 +21,8 @@ export default function AdminDashboard() {
         <LowStockSection />
         <PendingReviewsSection />
       </div>
+
+      <NpsWidget />
     </div>
   );
 }
