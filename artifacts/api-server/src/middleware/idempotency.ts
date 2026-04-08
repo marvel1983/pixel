@@ -28,8 +28,7 @@ export function requireIdempotencyKey() {
     const requestHash = hashRequest(req.body);
     const route = `${req.method} ${req.path}`;
     const lockId = advisoryLockId(idempotencyKey);
-    let userId: number | undefined;
-    try { userId = (req as any).user?.userId; } catch {}
+    const userId: number | undefined = req.user?.userId;
 
     try {
       const result = await db.transaction(async (tx) => {
@@ -53,7 +52,7 @@ export function requireIdempotencyKey() {
             };
           }
           if (existing.status === "PROCESSING") {
-            const ageMs = Date.now() - existing.createdAt.getTime();
+            const ageMs = Date.now() - existing.updatedAt.getTime();
             if (ageMs < 120_000) {
               return { action: "in_flight" as const };
             }
