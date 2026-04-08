@@ -108,7 +108,21 @@ export async function checkPaymentGateway(): Promise<DependencyCheck> {
     return { name: "payment", status: "down", latencyMs: 0, lastChecked: now, error: "Circuit breaker OPEN" };
   }
 
-  return { name: "payment", status: "up", latencyMs: 0, lastChecked: now };
+  const result = await timedCheck(async () => {
+    const res = await fetch("https://api.sandbox.checkout.com/", {
+      method: "GET",
+      signal: AbortSignal.timeout(5000),
+    });
+    if (res.status >= 500) throw new Error(`Checkout.com HTTP ${res.status}`);
+  });
+
+  return {
+    name: "payment",
+    status: result.ok ? "up" : "down",
+    latencyMs: result.ms,
+    lastChecked: now,
+    ...(result.error ? { error: result.error } : {}),
+  };
 }
 
 export async function runAllChecks(): Promise<DependencyCheck[]> {

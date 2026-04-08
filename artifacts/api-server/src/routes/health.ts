@@ -18,7 +18,8 @@ router.get("/health", async (_req, res) => {
     const checks = await runAllChecks();
     const overall = deriveOverallStatus(checks);
     const responseTimeMs = Date.now() - start;
-    res.json({
+    const statusCode = overall === "healthy" ? 200 : 503;
+    res.status(statusCode).json({
       status: overall,
       responseTimeMs,
       timestamp: new Date().toISOString(),
@@ -28,7 +29,7 @@ router.get("/health", async (_req, res) => {
       }, {} as Record<string, { status: string; latencyMs: number }>),
     });
   } catch {
-    res.status(500).json({ status: "unhealthy", responseTimeMs: Date.now() - start, timestamp: new Date().toISOString(), services: {} });
+    res.status(503).json({ status: "unhealthy", responseTimeMs: Date.now() - start, timestamp: new Date().toISOString(), services: {} });
   }
 });
 
@@ -48,7 +49,8 @@ router.get("/health/detailed", ...guard, async (_req, res) => {
     const detailed = await Promise.all(uptimePromises);
     const incidents = await getStatusChangeIncidents(20);
 
-    res.json({
+    const statusCode = overall === "healthy" ? 200 : 503;
+    res.status(statusCode).json({
       status: overall,
       responseTimeMs,
       timestamp: new Date().toISOString(),
@@ -61,7 +63,7 @@ router.get("/health/detailed", ...guard, async (_req, res) => {
       })),
     });
   } catch {
-    res.status(500).json({ status: "unhealthy", responseTimeMs: Date.now() - start, timestamp: new Date().toISOString(), services: [], incidents: [] });
+    res.status(503).json({ status: "unhealthy", responseTimeMs: Date.now() - start, timestamp: new Date().toISOString(), services: [], incidents: [] });
   }
 });
 
