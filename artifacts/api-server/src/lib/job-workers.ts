@@ -1,4 +1,4 @@
-import { registerQueueWorker, registerWorker, enqueueRecurring, type QueueName } from "./job-queue";
+import { registerQueueWorker, registerWorker, enqueueRecurringIfDue, type QueueName } from "./job-queue";
 import { syncProducts } from "./product-sync";
 import { processEmailQueue } from "./email";
 import { approveHeldCommissions } from "../services/affiliate-service";
@@ -43,13 +43,13 @@ export function registerAllWorkers() {
   logger.info("All job workers registered");
 }
 
-interface RecurringJobDef {
+interface RecurringDef {
   queue: QueueName;
   name: string;
   intervalMs: number;
 }
 
-const RECURRING_JOBS: RecurringJobDef[] = [
+const RECURRING: RecurringDef[] = [
   { queue: "email", name: "process-queue", intervalMs: 60_000 },
   { queue: "product-sync", name: "sync-all", intervalMs: 30 * 60_000 },
   { queue: "abandoned-cart", name: "process-carts", intervalMs: 15 * 60_000 },
@@ -60,31 +60,19 @@ const RECURRING_JOBS: RecurringJobDef[] = [
 
 let schedulerTimer: ReturnType<typeof setInterval> | null = null;
 
-export async function scheduleRecurringJobs() {
-  for (const def of RECURRING_JOBS) {
-    await enqueueRecurring({
-      queue: def.queue,
-      name: def.name,
-      priority: 1,
-      intervalMs: def.intervalMs,
-    });
-  }
-
-  schedulerTimer = setInterval(async () => {
-    for (const def of RECURRING_JOBS) {
-      try {
-        await enqueueRecurring({
-          queue: def.queue,
-          name: def.name,
-          priority: 1,
-          intervalMs: def.intervalMs,
-        });
-      } catch (err) {
-        logger.error({ err, queue: def.queue, name: def.name }, "Failed to schedule recurring job");
-      }
+async function enqueueAllDue() {
+  for (const def of RECURRING) {
+    try {
+      await enqueueRecurringIfDue(def.queue, def.name, def.intervalMs);
+    } catch (err) {
+      logger.error({ err, queue: def.queue, name: def.name }, "Failed to schedule recurring job");
     }
-  }, 60_000);
+  }
+}
 
+export async function scheduleRecurringJobs() {
+  await enqueueAllDue();
+  schedulerTimer = setInterval(enqueueAllDue, 30_000);
   logger.info("Recurring jobs scheduled");
 }
 

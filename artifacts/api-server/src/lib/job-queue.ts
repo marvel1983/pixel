@@ -1,12 +1,10 @@
 import { db } from "@workspace/db";
-import { jobQueue, jobFailures } from "@workspace/db/schema";
-import { eq, and, lte, sql, desc, count } from "drizzle-orm";
+import { jobQueue, jobFailures, type Job } from "@workspace/db/schema";
+import { eq, and, sql, desc, count } from "drizzle-orm";
 import { logger } from "./logger";
 
 export type QueueName = "email" | "product-sync" | "order-processing" | "abandoned-cart" | "alerts" | "reports";
 export type Priority = 0 | 1 | 2 | 3;
-
-const PRIORITY_LABELS: Record<number, string> = { 0: "low", 1: "normal", 2: "high", 3: "critical" };
 
 export interface EnqueueOptions {
   queue: QueueName;
@@ -17,7 +15,7 @@ export interface EnqueueOptions {
   scheduledAt?: Date;
 }
 
-export async function enqueueJob(opts: EnqueueOptions) {
+export async function enqueueJob(opts: EnqueueOptions): Promise<Job> {
   const [job] = await db.insert(jobQueue).values({
     queue: opts.queue,
     name: opts.name,
@@ -29,15 +27,17 @@ export async function enqueueJob(opts: EnqueueOptions) {
   return job;
 }
 
-export async function enqueueRecurring(opts: EnqueueOptions & { intervalMs: number }) {
-  const existing = await db.select({ id: jobQueue.id }).from(jobQueue)
-    .where(and(
-      eq(jobQueue.queue, opts.queue),
-      eq(jobQueue.name, opts.name),
-      eq(jobQueue.status, "waiting"),
-    )).limit(1);
-  if (existing.length > 0) return null;
-  return enqueueJob(opts);
+export async function enqueueRecurringIfDue(queue: QueueName, name: string, intervalMs: number): Promise<Job | null> {
+  const existing = await db.select({ id: jobQueue.id, status: jobQueue.status, completedAt: jobQueue.completedAt })
+    .from(jobQueue).where(and(eq(jobQueue.queue, queue), eq(jobQueue.name, name)))
+    .orderBy(desc(jobQueue.createdAt)).limit(1);
+
+  if (existing.length > 0) {
+    const last = existing[0];
+    if (last.status === "waiting" || last.status === "active") return null;
+    if (last.completedAt && Date.now() - last.completedAt.getTime() < intervalMs) return null;
+  }
+  return enqueueJob({ queue, name, priority: 1, maxAttempts: 3 });
 }
 
 type JobHandler = (payload: Record<string, unknown>) => Promise<void>;
@@ -55,9 +55,11 @@ function getHandler(queue: string, name: string): JobHandler | undefined {
   return handlers.get(`${queue}:${name}`) ?? handlers.get(`${queue}:*`);
 }
 
-async function claimJob() {
+interface ClaimedRow { id: number; queue: string; name: string; payload: Record<string, unknown>; attempts: number; max_attempts: number; }
+
+async function claimJob(): Promise<ClaimedRow | null> {
   const now = new Date();
-  const rows = await db.execute(sql`
+  const result = await db.execute<ClaimedRow>(sql`
     UPDATE job_queue SET status = 'active', started_at = NOW(), attempts = attempts + 1
     WHERE id = (
       SELECT id FROM job_queue
@@ -66,16 +68,17 @@ async function claimJob() {
       LIMIT 1
       FOR UPDATE SKIP LOCKED
     )
-    RETURNING *
+    RETURNING id, queue, name, payload, attempts, max_attempts
   `);
-  return (rows as any).rows?.[0] ?? (rows as any)[0] ?? null;
+  const rows = Array.isArray(result) ? result : [];
+  return rows.length > 0 ? rows[0] : null;
 }
 
 function backoffMs(attempt: number): number {
   return Math.min(1000 * Math.pow(2, attempt), 300_000);
 }
 
-async function processJob(row: any) {
+async function processJob(row: ClaimedRow) {
   const handler = getHandler(row.queue, row.name);
   if (!handler) {
     logger.warn({ queue: row.queue, name: row.name }, "No handler registered for job");
@@ -88,60 +91,58 @@ async function processJob(row: any) {
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : String(err);
     await db.insert(jobFailures).values({
-      jobId: row.id,
-      queue: row.queue,
-      name: row.name,
-      payload: row.payload ?? {},
-      error: errorMsg,
-      attempt: row.attempts,
+      jobId: row.id, queue: row.queue, name: row.name,
+      payload: row.payload ?? {}, error: errorMsg, attempt: row.attempts,
     });
-    if (row.attempts >= (row.max_attempts ?? 3)) {
+    if (row.attempts >= row.max_attempts) {
       await db.update(jobQueue).set({ status: "failed", lastError: errorMsg, completedAt: new Date() }).where(eq(jobQueue.id, row.id));
       logger.error({ jobId: row.id, error: errorMsg }, "Job permanently failed");
     } else {
       const retryAt = new Date(Date.now() + backoffMs(row.attempts));
       await db.update(jobQueue).set({ status: "waiting", lastError: errorMsg, scheduledAt: retryAt }).where(eq(jobQueue.id, row.id));
-      logger.warn({ jobId: row.id, retryAt, attempt: row.attempts }, "Job failed, scheduling retry");
     }
   }
 }
 
-let polling = false;
-let pollTimer: ReturnType<typeof setTimeout> | null = null;
+const CONCURRENCY: Record<string, number> = {
+  email: 3, "product-sync": 1, "order-processing": 2,
+  "abandoned-cart": 1, alerts: 2, reports: 1,
+};
+
+let running = false;
+const timers: ReturnType<typeof setTimeout>[] = [];
 
 export function startJobProcessor(intervalMs = 2000) {
-  if (polling) return;
-  polling = true;
-  logger.info("Job queue processor started");
-  async function tick() {
-    if (!polling) return;
-    try {
-      const job = await claimJob();
-      if (job) {
-        await processJob(job);
-        if (polling) { pollTimer = setTimeout(tick, 100); return; }
-      }
-    } catch (err) {
-      logger.error({ err }, "Job processor error");
-    }
-    if (polling) pollTimer = setTimeout(tick, intervalMs);
+  if (running) return;
+  running = true;
+  const totalWorkers = Object.values(CONCURRENCY).reduce((a, b) => a + b, 0);
+  for (let i = 0; i < totalWorkers; i++) {
+    const offset = Math.floor(Math.random() * 500);
+    const worker = async () => {
+      if (!running) return;
+      try {
+        const job = await claimJob();
+        if (job) { await processJob(job); if (running) { const t = setTimeout(worker, 50); timers.push(t); } return; }
+      } catch (err) { logger.error({ err }, "Job processor error"); }
+      if (running) { const t = setTimeout(worker, intervalMs); timers.push(t); }
+    };
+    const t = setTimeout(worker, offset);
+    timers.push(t);
   }
-  tick();
+  logger.info({ workers: totalWorkers }, "Job queue processor started");
 }
 
 export function stopJobProcessor() {
-  polling = false;
-  if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
+  running = false;
+  for (const t of timers) clearTimeout(t);
+  timers.length = 0;
   logger.info("Job queue processor stopped");
 }
 
 export async function getQueueStats() {
   const rows = await db.select({
-    queue: jobQueue.queue,
-    status: jobQueue.status,
-    cnt: count(),
+    queue: jobQueue.queue, status: jobQueue.status, cnt: count(),
   }).from(jobQueue).groupBy(jobQueue.queue, jobQueue.status);
-
   const queues: Record<string, Record<string, number>> = {};
   for (const r of rows) {
     if (!queues[r.queue]) queues[r.queue] = { waiting: 0, active: 0, completed: 0, failed: 0 };
@@ -150,14 +151,19 @@ export async function getQueueStats() {
   return queues;
 }
 
-export async function getFailedJobs(queue?: string, limit = 50) {
-  const q = db.select().from(jobFailures).orderBy(desc(jobFailures.failedAt)).limit(limit);
-  if (queue) return q.where(eq(jobFailures.queue, queue));
-  return q;
+export async function getFailedJobsList(queue?: string, limit = 50) {
+  const baseWhere = eq(jobQueue.status, "failed");
+  const where = queue ? and(baseWhere, eq(jobQueue.queue, queue)) : baseWhere;
+  return db.select().from(jobQueue).where(where).orderBy(desc(jobQueue.completedAt)).limit(limit);
+}
+
+export async function getFailureHistory(queue?: string, limit = 50) {
+  const where = queue ? eq(jobFailures.queue, queue) : undefined;
+  return db.select().from(jobFailures).where(where).orderBy(desc(jobFailures.failedAt)).limit(limit);
 }
 
 export async function retryJob(jobId: number) {
+  const [job] = await db.select({ status: jobQueue.status }).from(jobQueue).where(eq(jobQueue.id, jobId)).limit(1);
+  if (!job || job.status !== "failed") throw new Error("Only failed jobs can be retried");
   await db.update(jobQueue).set({ status: "waiting", scheduledAt: new Date(), lastError: null }).where(eq(jobQueue.id, jobId));
 }
-
-export { PRIORITY_LABELS };

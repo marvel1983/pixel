@@ -19,7 +19,7 @@ function useApi<T>(path: string) {
 
 type QueueStats = Record<string, Record<string, number>>;
 interface Metric { queue: string; throughput: number; failed: number; total: number; failureRate: string; avgDurationMs: number | null; }
-interface Failure { id: number; jobId: number; queue: string; name: string; error: string; attempt: number; failedAt: string; payload: Record<string, unknown>; }
+interface Failure { id: number; queue: string; name: string; lastError: string | null; attempts: number; payload: Record<string, unknown>; completedAt: string; }
 
 const STATUS_COLORS: Record<string, string> = {
   waiting: "bg-yellow-100 text-yellow-800",
@@ -34,7 +34,7 @@ export default function AdminJobsPage() {
   const [selectedQueue, setSelectedQueue] = useState<string | null>(null);
   const { data: stats } = useApi<QueueStats>("/admin/jobs/stats");
   const { data: metrics } = useApi<Metric[]>("/admin/jobs/metrics");
-  const { data: failures } = useApi<Failure[]>(`/admin/jobs/failures${selectedQueue ? `?queue=${selectedQueue}` : ""}`);
+  const { data: failures } = useApi<Failure[]>(`/admin/jobs/failed${selectedQueue ? `?queue=${selectedQueue}` : ""}`);
 
   const retryMut = useMutation({
     mutationFn: (jobId: number) => fetch(`${API}/admin/jobs/${jobId}/retry`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }),
@@ -136,18 +136,18 @@ export default function AdminJobsPage() {
                     <div>
                       <span className="font-medium">{f.name}</span>
                       <Badge variant="secondary" className="ml-2 text-xs">{f.queue}</Badge>
-                      <span className="text-xs text-muted-foreground ml-2">Attempt {f.attempt} | Job #{f.jobId}</span>
+                      <span className="text-xs text-muted-foreground ml-2">Attempts: {f.attempts} | Job #{f.id}</span>
                     </div>
-                    <Button size="sm" variant="outline" onClick={() => retryMut.mutate(f.jobId)} disabled={retryMut.isPending}>
+                    <Button size="sm" variant="outline" onClick={() => retryMut.mutate(f.id)} disabled={retryMut.isPending}>
                       {retryMut.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3 mr-1" />} Retry
                     </Button>
                   </div>
-                  <pre className="text-xs bg-red-50 text-red-800 p-2 rounded overflow-x-auto">{f.error}</pre>
+                  {f.lastError && <pre className="text-xs bg-red-50 text-red-800 p-2 rounded overflow-x-auto">{f.lastError}</pre>}
                   <details className="mt-1">
                     <summary className="text-xs text-muted-foreground cursor-pointer">Payload</summary>
                     <pre className="text-xs bg-gray-50 p-2 rounded mt-1 overflow-x-auto">{JSON.stringify(f.payload, null, 2)}</pre>
                   </details>
-                  <div className="text-xs text-muted-foreground mt-1">{new Date(f.failedAt).toLocaleString()}</div>
+                  <div className="text-xs text-muted-foreground mt-1">{f.completedAt ? new Date(f.completedAt).toLocaleString() : ""}</div>
                 </div>
               ))}
             </div>

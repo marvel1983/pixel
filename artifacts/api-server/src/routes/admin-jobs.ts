@@ -1,10 +1,17 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { jobQueue, jobFailures } from "@workspace/db/schema";
-import { eq, desc, sql, count, and, gte } from "drizzle-orm";
+import { jobQueue } from "@workspace/db/schema";
+import { eq, gte, sql, count, desc } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
-import { getQueueStats, getFailedJobs, retryJob, enqueueJob, type QueueName } from "../lib/job-queue";
+import {
+  getQueueStats,
+  getFailedJobsList,
+  getFailureHistory,
+  retryJob,
+  enqueueJob,
+  type QueueName,
+} from "../lib/job-queue";
 
 const router = Router();
 const auth = [requireAuth, requireAdmin, requirePermission("manageSettings")] as const;
@@ -37,21 +44,29 @@ router.get("/admin/jobs/metrics", ...auth, async (_req, res) => {
   res.json(metrics);
 });
 
+router.get("/admin/jobs/failed", ...auth, async (req, res) => {
+  const queue = req.query.queue as string | undefined;
+  const limit = Math.min(Number(req.query.limit) || 50, 200);
+  const jobs = await getFailedJobsList(queue, limit);
+  res.json(jobs);
+});
+
 router.get("/admin/jobs/failures", ...auth, async (req, res) => {
   const queue = req.query.queue as string | undefined;
   const limit = Math.min(Number(req.query.limit) || 50, 200);
-  const failures = await getFailedJobs(queue, limit);
+  const failures = await getFailureHistory(queue, limit);
   res.json(failures);
 });
 
 router.post("/admin/jobs/:jobId/retry", ...auth, async (req, res) => {
   const jobId = Number(req.params.jobId);
   if (isNaN(jobId)) { res.status(400).json({ error: "Invalid job ID" }); return; }
-  const [job] = await db.select().from(jobQueue).where(eq(jobQueue.id, jobId)).limit(1);
-  if (!job) { res.status(404).json({ error: "Job not found" }); return; }
-  if (job.status !== "failed") { res.status(400).json({ error: "Only failed jobs can be retried" }); return; }
-  await retryJob(jobId);
-  res.json({ ok: true });
+  try {
+    await retryJob(jobId);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(400).json({ error: err instanceof Error ? err.message : "Retry failed" });
+  }
 });
 
 router.post("/admin/jobs/enqueue", ...auth, async (req, res) => {
@@ -64,16 +79,15 @@ router.post("/admin/jobs/enqueue", ...auth, async (req, res) => {
 });
 
 router.delete("/admin/jobs/completed", ...auth, async (_req, res) => {
-  const result = await db.delete(jobQueue).where(eq(jobQueue.status, "completed"));
-  res.json({ ok: true, deleted: (result as any).rowCount ?? 0 });
+  await db.delete(jobQueue).where(eq(jobQueue.status, "completed"));
+  res.json({ ok: true });
 });
 
 router.get("/admin/jobs/recent", ...auth, async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 20, 100);
   const queue = req.query.queue as string | undefined;
-  let q = db.select().from(jobQueue).orderBy(desc(jobQueue.createdAt)).limit(limit);
-  if (queue) q = q.where(eq(jobQueue.queue, queue)) as any;
-  const jobs = await q;
+  const where = queue ? eq(jobQueue.queue, queue) : undefined;
+  const jobs = await db.select().from(jobQueue).where(where).orderBy(desc(jobQueue.createdAt)).limit(limit);
   res.json(jobs);
 });
 
