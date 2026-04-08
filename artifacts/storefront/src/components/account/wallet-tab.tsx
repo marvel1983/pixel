@@ -76,14 +76,18 @@ export function WalletTab() {
         body: JSON.stringify({ amountUsd: amt, cardToken }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) {
+        if (res.status >= 400 && res.status < 500 && res.status !== 409) {
+          idempotencyKeyRef.current = crypto.randomUUID();
+        }
+        throw new Error(data.error);
+      }
       idempotencyKeyRef.current = crypto.randomUUID();
       toast({ title: t("wallet.topUpSuccess", { amount: amt.toFixed(2) }) });
       setTopUpAmount(""); setCardNumber(""); setCardExpiry(""); setCardCvc("");
       setShowTopUp(false);
       loadData();
     } catch (err) {
-      idempotencyKeyRef.current = crypto.randomUUID();
       toast({ title: err instanceof Error ? err.message : t("wallet.topUpFailed"), variant: "destructive" });
     } finally { setTopping(false); }
   }

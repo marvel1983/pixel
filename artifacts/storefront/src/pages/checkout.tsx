@@ -189,7 +189,12 @@ export default function CheckoutPage() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Order failed");
+      if (!res.ok) {
+        if (res.status >= 400 && res.status < 500 && res.status !== 409) {
+          setIdempotencyKey(crypto.randomUUID());
+        }
+        throw new Error(data.error ?? "Order failed");
+      }
 
       if (newsletterOptIn && billing.email) {
         fetch(`${API}/newsletter/subscribe`, {
@@ -204,7 +209,6 @@ export default function CheckoutPage() {
       clearCart();
       setLocation(`/order-complete/${data.orderNumber}`);
     } catch (err) {
-      setIdempotencyKey(crypto.randomUUID());
       toast({
         title: t("checkout.orderFailed"),
         description: err instanceof Error ? err.message : t("checkout.tryAgain"),
@@ -279,11 +283,7 @@ export default function CheckoutPage() {
             {t("checkout.newsletterOptIn")}
           </label>
           <Button size="lg" className="w-full" disabled={submitting} onClick={handleSubmit}>
-            {submitting ? (
-              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t("checkout.processing")}</>
-            ) : (
-              t("checkout.placeOrder")
-            )}
+            {submitting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t("checkout.processing")}</> : t("checkout.placeOrder")}
           </Button>
         </div>
 
