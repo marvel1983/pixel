@@ -72,7 +72,7 @@ router.post("/admin/trustpilot/test-invite", requireAuth, requireAdmin, requireP
   try {
     const apiKey = decrypt(rows[0].trustpilotApiKeyEncrypted);
     const buid = rows[0].trustpilotBusinessUnitId;
-    await trustpilotCircuit.exec(async () => {
+    const result = await trustpilotCircuit.exec(async () => {
       const response = await fetch(`https://invitations-api.trustpilot.com/v1/private/business-units/${buid}/email-invitations`, {
         method: "POST",
         headers: {
@@ -93,9 +93,13 @@ router.post("/admin/trustpilot/test-invite", requireAuth, requireAdmin, requireP
       if (response.status >= 500) throw new Error(`Trustpilot server error: ${response.status}`);
       if (!response.ok) {
         const errTxt = await response.text();
-        throw new Error(`Trustpilot API error: ${errTxt}`);
+        return { ok: false, status: response.status, error: errTxt };
       }
+      return { ok: true, status: 200, error: "" };
     });
+    if (!result.ok) {
+      res.status(result.status).json({ error: `Trustpilot API error: ${result.error}` }); return;
+    }
     res.json({ ok: true, message: "Test invite sent successfully" });
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : "Failed to send invite" });
