@@ -5,6 +5,7 @@ import { CartProgress } from "@/components/cart/cart-progress";
 import { CartItemsTable } from "@/components/cart/cart-items-table";
 import { CartTotals } from "@/components/cart/cart-totals";
 import { EmptyCart } from "@/components/cart/empty-cart";
+import { CartRegionNotice } from "@/components/cart/cart-region-notice";
 import { Breadcrumbs } from "@/components/shop/breadcrumbs";
 import { setSeoMeta, clearSeoMeta } from "@/lib/seo";
 
@@ -27,7 +28,10 @@ export default function CartPage() {
         <EmptyCart />
       ) : (
         <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-          <CartItemsTable />
+          <div className="space-y-4">
+            <CartRegionNotice items={items} />
+            <CartItemsTable />
+          </div>
           <CartTotals />
         </div>
       )}
