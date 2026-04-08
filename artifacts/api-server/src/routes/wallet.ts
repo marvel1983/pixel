@@ -7,6 +7,7 @@ import { requireAuth } from "../middleware/auth";
 import { getOrCreateWallet, creditWallet } from "../services/wallet-service";
 import { processPayment } from "../services/payment";
 import { logger } from "../lib/logger";
+import { requireIdempotencyKey } from "../middleware/idempotency";
 
 const router = Router();
 
@@ -37,7 +38,7 @@ const topUpSchema = z.object({
   cardToken: z.string().min(1),
 });
 
-router.post("/wallet/topup", requireAuth, async (req, res) => {
+router.post("/wallet/topup", requireAuth, requireIdempotencyKey(), async (req, res) => {
   const parsed = topUpSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid top-up data" }); return; }
   const { amountUsd, cardToken } = parsed.data;

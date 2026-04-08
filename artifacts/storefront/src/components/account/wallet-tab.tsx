@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,7 @@ export function WalletTab() {
   const [cardCvc, setCardCvc] = useState("");
   const [topping, setTopping] = useState(false);
   const [showTopUp, setShowTopUp] = useState(false);
+  const idempotencyKeyRef = useRef(crypto.randomUUID());
 
   const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 
@@ -69,11 +70,14 @@ export function WalletTab() {
     setTopping(true);
     try {
       const res = await fetch(`${API}/wallet/topup`, {
-        method: "POST", headers, credentials: "include",
+        method: "POST",
+        headers: { ...headers, "X-Idempotency-Key": idempotencyKeyRef.current },
+        credentials: "include",
         body: JSON.stringify({ amountUsd: amt, cardToken }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
+      idempotencyKeyRef.current = crypto.randomUUID();
       toast({ title: t("wallet.topUpSuccess", { amount: amt.toFixed(2) }) });
       setTopUpAmount(""); setCardNumber(""); setCardExpiry(""); setCardCvc("");
       setShowTopUp(false);

@@ -55,6 +55,15 @@ export function registerAllWorkers() {
     logger.info({ payload }, "Order processing placeholder");
   });
 
+  registerWorker("reports", "idempotency-cleanup", async () => {
+    const { db } = await import("@workspace/db");
+    const { idempotencyKeys } = await import("@workspace/db/schema");
+    const { lt, sql } = await import("drizzle-orm");
+    const result = await db.execute(sql`DELETE FROM idempotency_keys WHERE expires_at < NOW()`);
+    const count = result.rowCount ?? 0;
+    if (count > 0) logger.info({ count }, "Cleaned expired idempotency keys");
+  });
+
   registerWorker("email", "circuit-breaker-alert", async (payload) => {
     const { service, from, to, failures, lastError } = payload as Record<string, unknown>;
     logger.warn({ service, from, to, failures }, "Circuit breaker OPEN alert");
@@ -89,6 +98,7 @@ const RECURRING: RecurringDef[] = [
   { queue: "alerts", name: "trustpilot-invites", intervalMs: 30 * 60_000, priority: PRIORITY.LOW },
   { queue: "alerts", name: "survey-emails", intervalMs: 4 * 60 * 60_000, priority: PRIORITY.LOW },
   { queue: "alerts", name: "affiliate-commissions", intervalMs: 6 * 60 * 60_000, priority: PRIORITY.LOW },
+  { queue: "reports", name: "idempotency-cleanup", intervalMs: 60 * 60_000, priority: PRIORITY.LOW },
 ];
 
 let schedulerTimer: ReturnType<typeof setInterval> | null = null;

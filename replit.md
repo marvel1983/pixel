@@ -151,6 +151,18 @@ Located in `artifacts/api-server/src/lib/`:
 - `product-sync.ts` — Syncs Metenzi products into local DB (upsert products + variants)
 - `cron.ts` — Background cron: product sync every 30 minutes
 
+## Idempotency Service
+
+- Schema: `idempotency_keys` table (key, request_hash, status, response_code, response_body, route, userId, expiresAt)
+- Middleware: `requireIdempotencyKey()` in `artifacts/api-server/src/middleware/idempotency.ts`
+- Client sends UUID v4 in `X-Idempotency-Key` header on payment endpoints
+- Server logic: new key → PROCESSING → execute → COMPLETED (cache response); duplicate key+same body → return cached; duplicate key+different body → 422; in-flight → 409
+- Race condition protection via PostgreSQL `pg_advisory_xact_lock`
+- Applied to: `POST /orders` (checkout), `POST /wallet/topup` (wallet top-up)
+- Frontend: checkout.tsx generates UUID per attempt, regenerates on success; wallet-tab.tsx uses ref-based key
+- Cleanup: recurring job (`idempotency-cleanup`) runs hourly, deletes keys with `expires_at < NOW()`
+- Keys expire after 24 hours
+
 ## Key Commands
 
 - `pnpm run typecheck` — full typecheck across all packages

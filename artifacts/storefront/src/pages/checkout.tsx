@@ -103,13 +103,7 @@ export default function CheckoutPage() {
     return () => clearTimeout(timer);
   }, [billing.email, items, coupon]);
 
-  if (items.length === 0) return (
-    <div className="container mx-auto px-4 py-6">
-      <Breadcrumbs crumbs={[{ label: t("cart.title"), href: "/cart" }, { label: t("checkout.title") }]} />
-      <CartProgress step={2} />
-      <EmptyCart />
-    </div>
-  );
+  if (items.length === 0) return (<div className="container mx-auto px-4 py-6"><Breadcrumbs crumbs={[{ label: t("cart.title"), href: "/cart" }, { label: t("checkout.title") }]} /><CartProgress step={2} /><EmptyCart /></div>);
 
   function handleBillingChange(field: keyof BillingData, value: string) {
     setBilling((prev) => ({ ...prev, [field]: value }));
@@ -131,6 +125,8 @@ export default function CheckoutPage() {
     setPayment((prev) => ({ ...prev, [field]: value }));
     if (paymentErrors[field]) setPaymentErrors((prev) => ({ ...prev, [field]: undefined }));
   }
+
+  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
 
   async function handleSubmit() {
     const bResult = validateBilling(billing);
@@ -175,7 +171,7 @@ export default function CheckoutPage() {
 
       const res = await fetch(`${API}/orders`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Idempotency-Key": idempotencyKey },
         credentials: "include",
         body: JSON.stringify({
           billing, items, coupon, cppSelected,
@@ -203,6 +199,7 @@ export default function CheckoutPage() {
         }).catch(() => {});
       }
 
+      setIdempotencyKey(crypto.randomUUID());
       sessionStorage.setItem("checkout_email", billing.email);
       clearCart();
       setLocation(`/order-complete/${data.orderNumber}`);

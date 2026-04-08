@@ -13,6 +13,7 @@ import { verifyToken } from "../middleware/auth";
 import { logger } from "../lib/logger";
 import { getLoyaltyConfig, getOrCreateAccount, pointsToDiscount } from "../services/loyalty-service";
 import { getWalletBalance } from "../services/wallet-service";
+import { requireIdempotencyKey } from "../middleware/idempotency";
 
 const router = Router();
 
@@ -118,7 +119,7 @@ async function validateAndPriceItems(items: z.infer<typeof orderSchema>["items"]
   return { prices: effectivePrices, flashVariantMap, error: null };
 }
 
-router.post("/orders", async (req, res) => {
+router.post("/orders", requireIdempotencyKey(), async (req, res) => {
   const parsed = orderSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid order data", details: parsed.error.flatten() }); return;
