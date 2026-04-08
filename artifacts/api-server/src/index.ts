@@ -1,6 +1,7 @@
 import app from "./app";
 import { logger } from "./lib/logger";
-import { startCronJobs } from "./lib/cron";
+import { startJobProcessor, stopJobProcessor } from "./lib/job-queue";
+import { registerAllWorkers, scheduleRecurringJobs, stopScheduler } from "./lib/job-workers";
 import { seedDefaultLocales } from "./lib/seed-locales";
 
 const rawPort = process.env["PORT"];
@@ -24,15 +25,24 @@ async function bootstrap() {
     logger.warn({ err: e }, "Failed to auto-seed locales");
   }
 
-  app.listen(port, (err) => {
+  registerAllWorkers();
+
+  app.listen(port, async (err) => {
     if (err) {
       logger.error({ err }, "Error listening on port");
       process.exit(1);
     }
 
     logger.info({ port }, "Server listening");
-    startCronJobs();
+    await scheduleRecurringJobs();
+    startJobProcessor();
   });
 }
+
+process.on("SIGTERM", () => {
+  stopJobProcessor();
+  stopScheduler();
+  process.exit(0);
+});
 
 bootstrap();

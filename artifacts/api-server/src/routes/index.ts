@@ -72,6 +72,7 @@ import consentRouter from "./consent";
 import quotesRouter from "./quotes";
 import adminQuotesRouter from "./admin-quotes";
 import surveysRouter from "./surveys";
+import adminJobsRouter from "./admin-jobs";
 
 const router: IRouter = Router();
 
@@ -148,5 +149,6 @@ router.use(consentRouter);
 router.use(quotesRouter);
 router.use(adminQuotesRouter);
 router.use(surveysRouter);
+router.use(adminJobsRouter);
 
 export default router;

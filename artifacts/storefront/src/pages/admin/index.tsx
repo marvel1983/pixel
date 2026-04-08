@@ -52,6 +52,7 @@ import BlogEditPage from "./blog-edit";
 import AdminBlogCategoriesPage from "./blog-categories";
 import AdminQuotesPage from "./quotes";
 import AdminSurveysPage from "./surveys";
+import AdminJobsPage from "./jobs";
 
 function AdminPlaceholder({ title }: { title: string }) {
   return (
@@ -140,6 +141,7 @@ export default function AdminRoot() {
           <Route path="/admin/settings" component={AdminSettingsPage} />
           <Route path="/admin/audit-log" component={AuditLogPage} />
           <Route path="/admin/metenzi-balance" component={MetenziBalancePage} />
+          <Route path="/admin/jobs" component={AdminJobsPage} />
           <Route path="/admin/security">
             <AdminPlaceholder title="Security" />
           </Route>

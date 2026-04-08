@@ -43,3 +43,4 @@ export * from "./consent-log";
 export * from "./consent-config";
 export * from "./quotes";
 export * from "./surveys";
+export * from "./job-queue";
