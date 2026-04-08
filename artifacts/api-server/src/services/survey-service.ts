@@ -31,11 +31,11 @@ export async function processSurveyEmails(): Promise<{ sent: number }> {
   let sent = 0;
   const subject = settings?.emailSubject || "How was your experience?";
   const customBody = settings?.emailBody;
-  const baseUrl = process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "http://localhost:3000";
+  const domain = process.env["REPLIT_DEV_DOMAIN"] || process.env["REPLIT_DOMAINS"]?.split(",")[0] || "localhost:3000";
+  const baseUrl = domain.startsWith("http") ? domain : `https://${domain}`;
 
   for (const order of eligibleOrders) {
     const token = generateToken();
-    await db.insert(surveyResponses).values({ orderId: order.id, userId: order.userId, token });
     const surveyUrl = `${baseUrl}/survey/${token}`;
     const stars = [1, 2, 3, 4, 5].map((n) =>
       `<a href="${surveyUrl}?r=${n}" style="text-decoration:none;font-size:32px;margin:0 4px;color:${n <= 3 ? "#f59e0b" : "#22c55e"}">${"★"}</a>`
@@ -54,8 +54,11 @@ export async function processSurveyEmails(): Promise<{ sent: number }> {
       </div>`;
     }
 
-    await enqueueEmail(order.email, subject, html, { type: "survey", orderId: order.id });
-    sent++;
+    try {
+      await enqueueEmail(order.email, subject, html, { type: "survey", orderId: order.id });
+      await db.insert(surveyResponses).values({ orderId: order.id, userId: order.userId, token });
+      sent++;
+    } catch { /* skip failed sends — order remains eligible for retry */ }
   }
   return { sent };
 }
@@ -152,6 +155,6 @@ export async function updateSurveySettings(data: { enabled?: boolean; delayDays?
   if (existing) {
     await db.update(surveySettings).set({ ...data, updatedAt: new Date() }).where(eq(surveySettings.id, existing.id));
   } else {
-    await db.insert(surveySettings).values({ enabled: data.enabled ?? true, delayDays: data.delayDays ?? 3, emailSubject: data.emailSubject ?? "How was your experience?" });
+    await db.insert(surveySettings).values({ enabled: data.enabled ?? true, delayDays: data.delayDays ?? 3, emailSubject: data.emailSubject ?? "How was your experience?", emailBody: data.emailBody });
   }
 }
