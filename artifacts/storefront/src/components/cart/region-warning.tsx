@@ -1,12 +1,6 @@
 import { AlertTriangle, X } from "lucide-react";
 import { useState } from "react";
 import type { CartItem } from "@/stores/cart-store";
-import { REGION_CONFIG } from "@/components/product/region-badge";
-
-interface RegionWarningProps {
-  items: CartItem[];
-  customerCountry: string;
-}
 
 const COUNTRY_REGION_MAP: Record<string, string[]> = {
   US: ["NA", "GLOBAL"], CA: ["NA", "GLOBAL"], MX: ["NA", "LATAM", "GLOBAL"],
