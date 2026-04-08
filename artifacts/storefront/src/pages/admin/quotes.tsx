@@ -48,12 +48,12 @@ export default function AdminQuotesPage() {
     finally { setLoading(false); }
   };
 
-  const updateStatus = async (id: number, status: string, adminNotes?: string) => {
+  const updateStatus = async (id: number, status: string, adminNotes?: string, customPricing?: Record<number, string>) => {
     try {
       await fetch(`${API}/admin/quotes/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ status, ...(adminNotes !== undefined && { adminNotes }) }),
+        body: JSON.stringify({ status, ...(adminNotes !== undefined && { adminNotes }), ...(customPricing && Object.keys(customPricing).length > 0 && { customPricing }) }),
       });
       toast({ title: `Quote #${id} updated to ${status}` });
       fetchQuotes();
@@ -101,11 +101,18 @@ interface QuoteCardProps {
   quote: Quote;
   expanded: boolean;
   onToggle: () => void;
-  onUpdateStatus: (id: number, status: string, notes?: string) => void;
+  onUpdateStatus: (id: number, status: string, notes?: string, customPricing?: Record<number, string>) => void;
 }
 
 function QuoteCard({ quote, expanded, onToggle, onUpdateStatus }: QuoteCardProps) {
   const [notes, setNotes] = useState(quote.adminNotes ?? "");
+  const [pricing, setPricing] = useState<Record<number, string>>(() => {
+    const cp = quote.customPricing as Record<string, string> | null;
+    if (!cp) return {};
+    const m: Record<number, string> = {};
+    for (const [k, v] of Object.entries(cp)) m[Number(k)] = String(v);
+    return m;
+  });
   const sc = STATUS_CONFIG[quote.status];
   const StatusIcon = sc.icon;
 
@@ -131,12 +138,14 @@ function QuoteCard({ quote, expanded, onToggle, onUpdateStatus }: QuoteCardProps
             <div><p className="text-xs text-muted-foreground">Company</p><p className="text-sm font-medium">{quote.companyName}</p></div>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground mb-1">Requested Products</p>
+            <p className="text-xs text-muted-foreground mb-1">Requested Products & Custom Pricing</p>
             <div className="space-y-1">
               {(quote.products as QuoteProduct[]).map((p, i) => (
-                <div key={i} className="flex justify-between text-sm border rounded px-3 py-1.5">
-                  <span>{p.productName}</span>
+                <div key={i} className="flex items-center gap-2 text-sm border rounded px-3 py-1.5">
+                  <span className="flex-1">{p.productName}</span>
                   <span className="font-medium">×{p.quantity}</span>
+                  <span className="text-xs text-muted-foreground">$</span>
+                  <input type="number" step="0.01" min="0" placeholder="Unit price" className="w-24 border rounded px-2 py-1 text-sm bg-background" value={pricing[p.productId] ?? ""} onChange={(e) => setPricing((prev) => ({ ...prev, [p.productId]: e.target.value }))} />
                 </div>
               ))}
             </div>
@@ -147,7 +156,7 @@ function QuoteCard({ quote, expanded, onToggle, onUpdateStatus }: QuoteCardProps
             <textarea className="w-full border rounded-md px-3 py-2 text-sm bg-background min-h-[60px] resize-y" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Internal notes..." />
           </div>
           <div className="flex gap-2 pt-2 border-t">
-            <Button size="sm" variant="outline" onClick={() => onUpdateStatus(quote.id, "QUOTED", notes)}>Mark as Quoted</Button>
+            <Button size="sm" variant="outline" onClick={() => onUpdateStatus(quote.id, "QUOTED", notes, pricing)}>Send Quote</Button>
             <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => onUpdateStatus(quote.id, "ACCEPTED", notes)}>Accept</Button>
             <Button size="sm" variant="destructive" onClick={() => onUpdateStatus(quote.id, "DECLINED", notes)}>Decline</Button>
           </div>

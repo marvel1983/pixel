@@ -44,6 +44,7 @@ interface OrderInput {
   affiliateRefCode?: string; flashVariantMap?: Map<number, number>;
   loyaltyPointsUsed?: number; loyaltyDiscount?: number;
   walletAmountUsd?: number; userId?: number;
+  paymentMethod?: "card" | "net30";
   services?: Array<{ id: number; name: string; priceUsd: string }>;
   locale?: string;
 }
@@ -54,7 +55,7 @@ export async function executeOrderPipeline(input: OrderInput) {
   const cppAmount = input.cppSelected ? Math.round(input.subtotal * 0.05 * 100) / 100 : 0;
   const walletUsed = input.walletAmountUsd && input.walletAmountUsd > 0;
   const cardNeeded = walletUsed ? total - input.walletAmountUsd! > 0.01 : true;
-  const payMethod = walletUsed ? (cardNeeded ? "MIXED" : "WALLET") : "CARD";
+  const payMethod = input.paymentMethod === "net30" ? "NET30" : walletUsed ? (cardNeeded ? "MIXED" : "WALLET") : "CARD";
 
   const [order] = await db
     .insert(orders)

@@ -28,6 +28,7 @@ export const paymentMethodEnum = pgEnum("payment_method", [
   "CARD",
   "WALLET",
   "MIXED",
+  "NET30",
 ]);
 
 export const orders = pgTable("orders", {

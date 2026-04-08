@@ -114,6 +114,43 @@ export default function BusinessPage() {
         </div>
       </section>
 
+      <section className="py-16 bg-card">
+        <div className="container mx-auto px-4">
+          <h2 className="text-2xl font-bold text-center mb-10">How It Works</h2>
+          <div className="grid md:grid-cols-3 gap-8 max-w-3xl mx-auto">
+            {[
+              { step: "1", title: "Submit a Quote Request", desc: "Tell us what software your team needs and the quantity." },
+              { step: "2", title: "Receive Custom Pricing", desc: "Our team reviews your request and sends a tailored quote within 24 hours." },
+              { step: "3", title: "Purchase & Deploy", desc: "Approve the quote, pay via card or invoice, and receive keys instantly." },
+            ].map((s) => (
+              <div key={s.step} className="text-center">
+                <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center mx-auto mb-3 font-bold">{s.step}</div>
+                <h3 className="font-semibold mb-1">{s.title}</h3>
+                <p className="text-sm text-muted-foreground">{s.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="py-12">
+        <div className="container mx-auto px-4 max-w-3xl">
+          <h2 className="text-2xl font-bold text-center mb-8">What Our Clients Say</h2>
+          <div className="grid md:grid-cols-2 gap-6">
+            {[
+              { name: "Sarah M.", company: "TechFlow Inc.", text: "PixelCodes saved us over 30% on our Microsoft licenses. The dedicated account manager made the entire process seamless." },
+              { name: "James R.", company: "DataScale Solutions", text: "Net 30 payment terms and instant delivery — exactly what we needed. Great experience all around." },
+            ].map((t) => (
+              <div key={t.name} className="border rounded-xl p-5 bg-card">
+                <p className="text-sm italic text-muted-foreground mb-3">"{t.text}"</p>
+                <p className="text-sm font-semibold">{t.name}</p>
+                <p className="text-xs text-muted-foreground">{t.company}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <QuoteFormSection
         form={form}
         setForm={setForm}
