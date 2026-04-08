@@ -73,8 +73,43 @@ export function rateLimit(options: RateLimitOptions) {
   };
 }
 
-export const authLoginLimit = rateLimit({ name: "auth-login", windowMs: 60_000, max: 5 });
-export const authRegisterLimit = rateLimit({ name: "auth-register", windowMs: 60_000, max: 3 });
-export const authPasswordResetLimit = rateLimit({ name: "auth-reset", windowMs: 60_000, max: 3 });
-export const publicLimit = rateLimit({ name: "public", windowMs: 60_000, max: 60 });
-export const adminLimit = rateLimit({ name: "admin", windowMs: 60_000, max: 120 });
+interface RateLimitConfig {
+  authLogin: number;
+  authRegister: number;
+  authReset: number;
+  public: number;
+  admin: number;
+}
+
+const config: RateLimitConfig = {
+  authLogin: 5,
+  authRegister: 3,
+  authReset: 3,
+  public: 200,
+  admin: 300,
+};
+
+export function getRateLimitConfig(): RateLimitConfig {
+  return { ...config };
+}
+
+export function updateRateLimitConfig(updates: Partial<RateLimitConfig>) {
+  if (updates.authLogin !== undefined) config.authLogin = updates.authLogin;
+  if (updates.authRegister !== undefined) config.authRegister = updates.authRegister;
+  if (updates.authReset !== undefined) config.authReset = updates.authReset;
+  if (updates.public !== undefined) config.public = updates.public;
+  if (updates.admin !== undefined) config.admin = updates.admin;
+}
+
+function dynamicLimit(configKey: keyof RateLimitConfig, name: string) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const limiter = rateLimit({ name, windowMs: 60_000, max: config[configKey] });
+    return limiter(req, res, next);
+  };
+}
+
+export const authLoginLimit = dynamicLimit("authLogin", "auth-login");
+export const authRegisterLimit = dynamicLimit("authRegister", "auth-register");
+export const authPasswordResetLimit = dynamicLimit("authReset", "auth-reset");
+export const publicLimit = dynamicLimit("public", "public");
+export const adminLimit = dynamicLimit("admin", "admin");

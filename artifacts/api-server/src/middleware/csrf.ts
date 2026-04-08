@@ -9,7 +9,7 @@ const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
 const EXEMPT_PATHS = [
   "/api/webhooks/",
-  "/api/auth/google",
+  "/api/auth/google/callback",
   "/api/survey/",
 ];
 

@@ -34,12 +34,12 @@ window.fetch = async function patchedFetch(input: RequestInfo | URL, init?: Requ
   const url = typeof input === "string" ? input : input instanceof URL ? input.href : (input as Request).url;
 
   if (MUTATION_METHODS.has(method) && url.includes("/api/")) {
-    const token = getCsrfFromCookie();
-    if (token) {
-      const headers = new Headers(init?.headers);
-      if (!headers.has("x-csrf-token")) headers.set("x-csrf-token", token);
-      return originalFetch(input, { ...init, headers, credentials: "include" });
+    const headers = new Headers(init?.headers);
+    if (!headers.has("x-csrf-token")) {
+      const token = await ensureCsrfToken();
+      headers.set("x-csrf-token", token);
     }
+    return originalFetch(input, { ...init, headers, credentials: "include" });
   }
   return originalFetch(input, init);
 };

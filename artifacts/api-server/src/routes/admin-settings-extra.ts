@@ -220,4 +220,16 @@ router.post("/admin/settings/google-oauth/test", requireAuth, requireAdmin, requ
   }
 });
 
+import { getRateLimitConfig, updateRateLimitConfig } from "../middleware/rate-limit";
+
+router.get("/admin/settings/rate-limits", requireAuth, requireAdmin, requirePermission("manageSettings"), (_req, res) => {
+  res.json(getRateLimitConfig());
+});
+
+router.put("/admin/settings/rate-limits", requireAuth, requireAdmin, requirePermission("manageSettings"), (req, res) => {
+  const { authLogin, authRegister, authReset, public: pub, admin } = req.body;
+  updateRateLimitConfig({ authLogin, authRegister, authReset, public: pub, admin });
+  res.json({ ok: true, config: getRateLimitConfig() });
+});
+
 export default router;

@@ -8,7 +8,7 @@ import { maintenanceMiddleware } from "./middleware/maintenance";
 import { referralTracking } from "./middleware/referral";
 import { securityHeaders } from "./middleware/security-headers";
 import { csrfProtection, csrfTokenEndpoint } from "./middleware/csrf";
-import { publicLimit } from "./middleware/rate-limit";
+import { publicLimit, adminLimit } from "./middleware/rate-limit";
 
 declare global {
   namespace Express {
@@ -53,7 +53,8 @@ app.use(
 app.use(express.urlencoded({ extended: true }));
 
 app.use(securityHeaders);
-app.get("/api/csrf-token", csrfTokenEndpoint);
+app.get("/api/csrf-token", publicLimit, csrfTokenEndpoint);
+app.use("/api/admin", adminLimit);
 app.use("/api", publicLimit, csrfProtection, referralTracking, maintenanceMiddleware, router);
 
 export default app;
