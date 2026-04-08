@@ -110,10 +110,10 @@ interface QuoteCardProps {
 function QuoteCard({ quote, expanded, onToggle, onUpdateStatus }: QuoteCardProps) {
   const [notes, setNotes] = useState(quote.adminNotes ?? "");
   const [pricing, setPricing] = useState<Record<number, string>>(() => {
-    const cp = quote.customPricing as Record<string, string> | null;
-    if (!cp) return {};
+    const cp = quote.customPricing as Array<{ productId: number; unitPrice: string }> | null;
+    if (!cp || !Array.isArray(cp)) return {};
     const m: Record<number, string> = {};
-    for (const [k, v] of Object.entries(cp)) m[Number(k)] = String(v);
+    for (const item of cp) m[item.productId] = String(item.unitPrice);
     return m;
   });
   const sc = STATUS_CONFIG[quote.status];

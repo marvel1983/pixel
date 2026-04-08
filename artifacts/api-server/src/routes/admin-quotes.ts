@@ -40,7 +40,7 @@ const updateQuoteSchema = z.object({
     productId: z.number(),
     productName: z.string(),
     quantity: z.number(),
-    unitPrice: z.string(),
+    unitPrice: z.coerce.string(),
   })).optional(),
 });
 
