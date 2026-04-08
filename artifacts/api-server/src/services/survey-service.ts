@@ -55,10 +55,10 @@ export async function processSurveyEmails(): Promise<{ sent: number }> {
     }
 
     try {
+      await db.insert(surveyResponses).values({ orderId: order.id, userId: order.userId, token }).onConflictDoNothing();
       await enqueueEmail(order.email, subject, html, { type: "survey", orderId: order.id });
-      await db.insert(surveyResponses).values({ orderId: order.id, userId: order.userId, token });
       sent++;
-    } catch { /* skip failed sends — order remains eligible for retry */ }
+    } catch { /* skip failed sends */ }
   }
   return { sent };
 }

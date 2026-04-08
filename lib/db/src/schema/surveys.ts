@@ -6,7 +6,7 @@ import { users } from "./users";
 
 export const surveyResponses = pgTable("survey_responses", {
   id: serial("id").primaryKey(),
-  orderId: integer("order_id").references(() => orders.id).notNull(),
+  orderId: integer("order_id").references(() => orders.id).notNull().unique(),
   userId: integer("user_id").references(() => users.id),
   token: varchar("token", { length: 64 }).notNull().unique(),
   rating: integer("rating"),
