@@ -56,6 +56,10 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   toggle: () => {
     const next = get().theme === "light" ? "dark" : "light";
     get().setTheme(next);
+    const { token, user } = useAuthStore.getState();
+    if (token && user) {
+      useAuthStore.setState({ user: { ...user, preferredTheme: next } });
+    }
     syncToServer(next);
   },
 
@@ -69,12 +73,9 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   applyUserTheme: () => {
     const user = useAuthStore.getState().user;
     if (user?.preferredTheme === "light" || user?.preferredTheme === "dark") {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (!stored) {
-        localStorage.setItem(STORAGE_KEY, user.preferredTheme);
-        applyTheme(user.preferredTheme);
-        set({ theme: user.preferredTheme });
-      }
+      localStorage.setItem(STORAGE_KEY, user.preferredTheme);
+      applyTheme(user.preferredTheme);
+      set({ theme: user.preferredTheme });
     }
   },
 }));

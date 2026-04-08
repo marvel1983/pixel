@@ -137,13 +137,15 @@ function AppInitEffect() {
   useEffect(() => {
     if (token) {
       useWishlistStore.getState().syncWithServer(token);
-      useThemeStore.getState().applyUserTheme();
     }
   }, [token]);
   useEffect(() => {
     return useAuthStore.subscribe((state, prev) => {
       if (prev.token && !state.token) {
         useWishlistStore.getState().clearLocal();
+      }
+      if (state.user?.preferredTheme && state.user !== prev.user) {
+        useThemeStore.getState().applyUserTheme();
       }
     });
   }, []);
