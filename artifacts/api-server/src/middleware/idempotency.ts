@@ -48,6 +48,12 @@ export function requireIdempotencyKey() {
           .limit(1);
 
         if (existing) {
+          if (existing.route !== route) {
+            return { action: "hash_mismatch" as const };
+          }
+          if (existing.userId && userId && existing.userId !== userId) {
+            return { action: "hash_mismatch" as const };
+          }
           if (existing.requestHash !== requestHash) {
             return { action: "hash_mismatch" as const };
           }
