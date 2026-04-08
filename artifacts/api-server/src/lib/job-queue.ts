@@ -57,13 +57,13 @@ function getHandler(queue: string, name: string): JobHandler | undefined {
 
 interface ClaimedRow { id: number; queue: string; name: string; payload: Record<string, unknown>; attempts: number; max_attempts: number; }
 
-async function claimJob(): Promise<ClaimedRow | null> {
+async function claimJob(queueName: string): Promise<ClaimedRow | null> {
   const now = new Date();
   const result = await db.execute<ClaimedRow>(sql`
     UPDATE job_queue SET status = 'active', started_at = NOW(), attempts = attempts + 1
     WHERE id = (
       SELECT id FROM job_queue
-      WHERE status = 'waiting' AND scheduled_at <= ${now}
+      WHERE status = 'waiting' AND queue = ${queueName} AND scheduled_at <= ${now}
       ORDER BY priority DESC, scheduled_at ASC
       LIMIT 1
       FOR UPDATE SKIP LOCKED
@@ -115,21 +115,24 @@ const timers: ReturnType<typeof setTimeout>[] = [];
 export function startJobProcessor(intervalMs = 2000) {
   if (running) return;
   running = true;
-  const totalWorkers = Object.values(CONCURRENCY).reduce((a, b) => a + b, 0);
-  for (let i = 0; i < totalWorkers; i++) {
-    const offset = Math.floor(Math.random() * 500);
-    const worker = async () => {
-      if (!running) return;
-      try {
-        const job = await claimJob();
-        if (job) { await processJob(job); if (running) { const t = setTimeout(worker, 50); timers.push(t); } return; }
-      } catch (err) { logger.error({ err }, "Job processor error"); }
-      if (running) { const t = setTimeout(worker, intervalMs); timers.push(t); }
-    };
-    const t = setTimeout(worker, offset);
-    timers.push(t);
+  let totalWorkers = 0;
+  for (const [queue, concurrency] of Object.entries(CONCURRENCY)) {
+    for (let i = 0; i < concurrency; i++) {
+      totalWorkers++;
+      const offset = Math.floor(Math.random() * 500);
+      const worker = async () => {
+        if (!running) return;
+        try {
+          const job = await claimJob(queue);
+          if (job) { await processJob(job); if (running) { const t = setTimeout(worker, 50); timers.push(t); } return; }
+        } catch (err) { logger.error({ err, queue }, "Job processor error"); }
+        if (running) { const t = setTimeout(worker, intervalMs); timers.push(t); }
+      };
+      const t = setTimeout(worker, offset);
+      timers.push(t);
+    }
   }
-  logger.info({ workers: totalWorkers }, "Job queue processor started");
+  logger.info({ totalWorkers, concurrency: CONCURRENCY }, "Job queue processor started");
 }
 
 export function stopJobProcessor() {
