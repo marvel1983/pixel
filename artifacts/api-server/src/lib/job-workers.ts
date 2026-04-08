@@ -1,4 +1,4 @@
-import { registerQueueWorker, registerWorker, enqueueRecurringIfDue, type QueueName } from "./job-queue";
+import { registerQueueWorker, registerWorker, enqueueRecurringIfDue, type QueueName, PRIORITY, type Priority } from "./job-queue";
 import { syncProducts } from "./product-sync";
 import { processEmailQueue } from "./email";
 import { approveHeldCommissions } from "../services/affiliate-service";
@@ -47,15 +47,16 @@ interface RecurringDef {
   queue: QueueName;
   name: string;
   intervalMs: number;
+  priority: Priority;
 }
 
 const RECURRING: RecurringDef[] = [
-  { queue: "email", name: "process-queue", intervalMs: 60_000 },
-  { queue: "product-sync", name: "sync-all", intervalMs: 30 * 60_000 },
-  { queue: "abandoned-cart", name: "process-carts", intervalMs: 15 * 60_000 },
-  { queue: "alerts", name: "trustpilot-invites", intervalMs: 30 * 60_000 },
-  { queue: "alerts", name: "survey-emails", intervalMs: 4 * 60 * 60_000 },
-  { queue: "alerts", name: "affiliate-commissions", intervalMs: 6 * 60 * 60_000 },
+  { queue: "email", name: "process-queue", intervalMs: 60_000, priority: PRIORITY.HIGH },
+  { queue: "product-sync", name: "sync-all", intervalMs: 30 * 60_000, priority: PRIORITY.NORMAL },
+  { queue: "abandoned-cart", name: "process-carts", intervalMs: 15 * 60_000, priority: PRIORITY.NORMAL },
+  { queue: "alerts", name: "trustpilot-invites", intervalMs: 30 * 60_000, priority: PRIORITY.LOW },
+  { queue: "alerts", name: "survey-emails", intervalMs: 4 * 60 * 60_000, priority: PRIORITY.LOW },
+  { queue: "alerts", name: "affiliate-commissions", intervalMs: 6 * 60 * 60_000, priority: PRIORITY.LOW },
 ];
 
 let schedulerTimer: ReturnType<typeof setInterval> | null = null;
@@ -63,7 +64,7 @@ let schedulerTimer: ReturnType<typeof setInterval> | null = null;
 async function enqueueAllDue() {
   for (const def of RECURRING) {
     try {
-      await enqueueRecurringIfDue(def.queue, def.name, def.intervalMs);
+      await enqueueRecurringIfDue(def.queue, def.name, def.intervalMs, def.priority);
     } catch (err) {
       logger.error({ err, queue: def.queue, name: def.name }, "Failed to schedule recurring job");
     }

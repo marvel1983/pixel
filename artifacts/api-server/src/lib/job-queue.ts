@@ -5,6 +5,7 @@ import { logger } from "./logger";
 
 export type QueueName = "email" | "product-sync" | "order-processing" | "abandoned-cart" | "alerts" | "reports";
 export type Priority = 0 | 1 | 2 | 3;
+export const PRIORITY = { LOW: 0 as Priority, NORMAL: 1 as Priority, HIGH: 2 as Priority, CRITICAL: 3 as Priority };
 
 export interface EnqueueOptions {
   queue: QueueName;
@@ -27,7 +28,7 @@ export async function enqueueJob(opts: EnqueueOptions): Promise<Job> {
   return job;
 }
 
-export async function enqueueRecurringIfDue(queue: QueueName, name: string, intervalMs: number): Promise<Job | null> {
+export async function enqueueRecurringIfDue(queue: QueueName, name: string, intervalMs: number, priority: Priority = PRIORITY.NORMAL): Promise<Job | null> {
   const existing = await db.select({ id: jobQueue.id, status: jobQueue.status, completedAt: jobQueue.completedAt })
     .from(jobQueue).where(and(eq(jobQueue.queue, queue), eq(jobQueue.name, name)))
     .orderBy(desc(jobQueue.createdAt)).limit(1);
@@ -37,7 +38,7 @@ export async function enqueueRecurringIfDue(queue: QueueName, name: string, inte
     if (last.status === "waiting" || last.status === "active") return null;
     if (last.completedAt && Date.now() - last.completedAt.getTime() < intervalMs) return null;
   }
-  return enqueueJob({ queue, name, priority: 1, maxAttempts: 3 });
+  return enqueueJob({ queue, name, priority, maxAttempts: 3 });
 }
 
 type JobHandler = (payload: Record<string, unknown>) => Promise<void>;
@@ -110,26 +111,36 @@ const CONCURRENCY: Record<string, number> = {
 };
 
 let running = false;
-const timers: ReturnType<typeof setTimeout>[] = [];
+const abortController = { current: null as AbortController | null };
+
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    const t = setTimeout(resolve, ms);
+    signal?.addEventListener("abort", () => { clearTimeout(t); resolve(); }, { once: true });
+  });
+}
+
+async function workerLoop(queue: string, intervalMs: number) {
+  const signal = abortController.current?.signal;
+  while (running && !signal?.aborted) {
+    try {
+      const job = await claimJob(queue);
+      if (job) { await processJob(job); await sleep(50, signal); continue; }
+    } catch (err) { logger.error({ err, queue }, "Job processor error"); }
+    await sleep(intervalMs, signal);
+  }
+}
 
 export function startJobProcessor(intervalMs = 2000) {
   if (running) return;
   running = true;
+  abortController.current = new AbortController();
   let totalWorkers = 0;
   for (const [queue, concurrency] of Object.entries(CONCURRENCY)) {
     for (let i = 0; i < concurrency; i++) {
       totalWorkers++;
       const offset = Math.floor(Math.random() * 500);
-      const worker = async () => {
-        if (!running) return;
-        try {
-          const job = await claimJob(queue);
-          if (job) { await processJob(job); if (running) { const t = setTimeout(worker, 50); timers.push(t); } return; }
-        } catch (err) { logger.error({ err, queue }, "Job processor error"); }
-        if (running) { const t = setTimeout(worker, intervalMs); timers.push(t); }
-      };
-      const t = setTimeout(worker, offset);
-      timers.push(t);
+      sleep(offset).then(() => workerLoop(queue, intervalMs));
     }
   }
   logger.info({ totalWorkers, concurrency: CONCURRENCY }, "Job queue processor started");
@@ -137,8 +148,7 @@ export function startJobProcessor(intervalMs = 2000) {
 
 export function stopJobProcessor() {
   running = false;
-  for (const t of timers) clearTimeout(t);
-  timers.length = 0;
+  abortController.current?.abort();
   logger.info("Job queue processor stopped");
 }
 
