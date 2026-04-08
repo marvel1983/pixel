@@ -55,6 +55,17 @@ export function registerAllWorkers() {
     logger.info({ payload }, "Order processing placeholder");
   });
 
+  registerWorker("reports", "health-monitor", async () => {
+    const { runHealthMonitorCycle } = await import("./health-monitor");
+    await runHealthMonitorCycle();
+  });
+
+  registerWorker("reports", "health-cleanup", async () => {
+    const { cleanupOldIncidents } = await import("./health-monitor");
+    const count = await cleanupOldIncidents();
+    if (count > 0) logger.info({ count }, "Cleaned old health incidents");
+  });
+
   registerWorker("reports", "idempotency-cleanup", async () => {
     const { db } = await import("@workspace/db");
     const { sql } = await import("drizzle-orm");
@@ -98,6 +109,8 @@ const RECURRING: RecurringDef[] = [
   { queue: "alerts", name: "survey-emails", intervalMs: 4 * 60 * 60_000, priority: PRIORITY.LOW },
   { queue: "alerts", name: "affiliate-commissions", intervalMs: 6 * 60 * 60_000, priority: PRIORITY.LOW },
   { queue: "reports", name: "idempotency-cleanup", intervalMs: 60 * 60_000, priority: PRIORITY.LOW },
+  { queue: "reports", name: "health-monitor", intervalMs: 60_000, priority: PRIORITY.NORMAL },
+  { queue: "reports", name: "health-cleanup", intervalMs: 24 * 60 * 60_000, priority: PRIORITY.LOW },
 ];
 
 let schedulerTimer: ReturnType<typeof setInterval> | null = null;

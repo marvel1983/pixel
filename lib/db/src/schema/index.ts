@@ -45,3 +45,4 @@ export * from "./quotes";
 export * from "./surveys";
 export * from "./job-queue";
 export * from "./idempotency";
+export * from "./health-incidents";

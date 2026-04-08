@@ -163,6 +163,17 @@ Located in `artifacts/api-server/src/lib/`:
 - Cleanup: recurring job (`idempotency-cleanup`) runs hourly, deletes keys with `expires_at < NOW()`
 - Keys expire after 24 hours
 
+## Health Check & Monitoring
+
+- Schema: `health_incidents` table (service, status, latencyMs, error, createdAt)
+- Public: `GET /healthz` (simple ok), `GET /health` (per-service status + latency)
+- Admin: `GET /health/detailed` (per-service with 24h/7d/30d uptime %, incident log)
+- Dependency checks: database (SELECT 1), SMTP (TCP connect), Metenzi (circuit + API), Payment (circuit state)
+- Health monitor runs every 60s via job queue, records check results, sends email alerts on status transitions
+- Cleanup: old incidents deleted after 31 days via daily job
+- Admin UI: System Status page with 3 tabs (Dependencies, Circuit Breakers, Incident Log)
+- Files: `health-checks.ts` (check functions), `health-monitor.ts` (periodic runner + uptime stats), `routes/health.ts`, `system-status.tsx`
+
 ## Key Commands
 
 - `pnpm run typecheck` — full typecheck across all packages

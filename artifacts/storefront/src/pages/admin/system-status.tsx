@@ -3,7 +3,7 @@ import { useAuthStore } from "@/stores/auth-store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { RefreshCw, RotateCcw, Activity, AlertTriangle, CheckCircle2, Clock } from "lucide-react";
+import { RefreshCw, RotateCcw, Activity, AlertTriangle, CheckCircle2, Clock, Server, Database, Mail, CreditCard, ShoppingBag } from "lucide-react";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -15,192 +15,220 @@ interface CircuitInfo {
   lastSuccessAt: number | null;
   lastError: string | null;
 }
+interface ServiceHealth {
+  name: string; status: "up" | "down"; latencyMs: number; lastChecked: string;
+  error?: string; uptime: { h24: number; d7: number; d30: number };
+}
+interface Incident { service: string; status: string; error: string | null; at: string }
+interface DetailedHealth {
+  status: string; responseTimeMs: number; timestamp: string;
+  services: ServiceHealth[]; incidents: Incident[];
+}
 
-const SERVICE_LABELS: Record<string, { label: string; description: string }> = {
-  metenzi: { label: "Metenzi (Supplier)", description: "Product catalog and license key fulfillment" },
-  checkout: { label: "Checkout.com (Payments)", description: "Payment processing and refunds" },
-  trustpilot: { label: "Trustpilot (Reviews)", description: "Review invitation delivery" },
-  mailchimp: { label: "Mailchimp (Newsletter)", description: "Newsletter subscriber sync" },
+const SVC_META: Record<string, { icon: typeof Database; label: string }> = {
+  database: { icon: Database, label: "PostgreSQL Database" },
+  smtp: { icon: Mail, label: "SMTP Mail Server" },
+  metenzi: { icon: ShoppingBag, label: "Metenzi Supplier API" },
+  payment: { icon: CreditCard, label: "Payment Gateway" },
+};
+const CIRCUIT_LABELS: Record<string, { label: string; desc: string }> = {
+  metenzi: { label: "Metenzi (Supplier)", desc: "Product catalog and fulfillment" },
+  checkout: { label: "Checkout.com (Payments)", desc: "Payment processing and refunds" },
+  trustpilot: { label: "Trustpilot (Reviews)", desc: "Review invitation delivery" },
+  mailchimp: { label: "Mailchimp (Newsletter)", desc: "Newsletter subscriber sync" },
 };
 
-function stateColor(state: string) {
-  if (state === "CLOSED") return "bg-green-100 text-green-800";
-  if (state === "OPEN") return "bg-red-100 text-red-800";
+function stateColor(s: string) {
+  if (s === "CLOSED" || s === "up") return "bg-green-100 text-green-800";
+  if (s === "OPEN" || s === "down") return "bg-red-100 text-red-800";
   return "bg-yellow-100 text-yellow-800";
 }
-
-function StateIcon({ state }: { state: string }) {
-  if (state === "CLOSED") return <CheckCircle2 className="h-5 w-5 text-green-600" />;
-  if (state === "OPEN") return <AlertTriangle className="h-5 w-5 text-red-600" />;
-  return <Clock className="h-5 w-5 text-yellow-600" />;
+function StatusDot({ ok }: { ok: boolean }) {
+  return <span className={`inline-block h-2.5 w-2.5 rounded-full ${ok ? "bg-green-500" : "bg-red-500"}`} />;
 }
-
-function formatTime(ts: number | null) {
+function formatTime(ts: number | string | null) {
   if (!ts) return "Never";
   return new Date(ts).toLocaleString();
+}
+function uptimeBar(pct: number) {
+  const color = pct >= 99.5 ? "bg-green-500" : pct >= 95 ? "bg-yellow-500" : "bg-red-500";
+  return <div className="h-1.5 rounded bg-gray-200 w-full"><div className={`h-1.5 rounded ${color}`} style={{ width: `${Math.min(pct, 100)}%` }} /></div>;
 }
 
 export default function SystemStatusPage() {
   const token = useAuthStore((s) => s.token);
   const [circuits, setCircuits] = useState<Record<string, CircuitInfo>>({});
   const [alerts, setAlerts] = useState<string[]>([]);
+  const [health, setHealth] = useState<DetailedHealth | null>(null);
   const [loading, setLoading] = useState(true);
   const [resetting, setResetting] = useState<string | null>(null);
+  const [tab, setTab] = useState<"health" | "circuits" | "incidents">("health");
 
-  const fetchCircuits = useCallback(async () => {
+  const fetchAll = useCallback(async () => {
     if (!token) return;
+    setLoading(true);
     try {
-      const res = await fetch(`${API}/admin/system-status/circuits`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setCircuits(data.circuits);
-        setAlerts(data.alerts ?? []);
-      }
-    } catch {
-    } finally {
-      setLoading(false);
-    }
+      const [cRes, hRes] = await Promise.all([
+        fetch(`${API}/admin/system-status/circuits`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API}/health/detailed`, { headers: { Authorization: `Bearer ${token}` } }),
+      ]);
+      if (cRes.ok) { const d = await cRes.json(); setCircuits(d.circuits); setAlerts(d.alerts ?? []); }
+      const hBody = await hRes.json().catch(() => null);
+      if (hBody) { setHealth(hBody); }
+    } catch {} finally { setLoading(false); }
   }, [token]);
 
-  useEffect(() => { fetchCircuits(); }, [fetchCircuits]);
-
-  useEffect(() => {
-    const interval = setInterval(fetchCircuits, 10_000);
-    return () => clearInterval(interval);
-  }, [fetchCircuits]);
+  useEffect(() => { fetchAll(); }, [fetchAll]);
+  useEffect(() => { const i = setInterval(fetchAll, 30_000); return () => clearInterval(i); }, [fetchAll]);
 
   const resetCircuit = async (name: string) => {
     if (!token) return;
     setResetting(name);
     try {
       await fetch(`${API}/admin/system-status/circuits/${name}/reset`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       });
-      await fetchCircuits();
-    } catch {
-    } finally {
-      setResetting(null);
-    }
+      await fetchAll();
+    } catch {} finally { setResetting(null); }
   };
 
   const openCount = Object.values(circuits).filter((c) => c.state === "OPEN").length;
   const halfOpenCount = Object.values(circuits).filter((c) => c.state === "HALF_OPEN").length;
-  const allHealthy = openCount === 0 && halfOpenCount === 0;
+  const allCircuitsOk = openCount === 0 && halfOpenCount === 0;
+  const healthDown = health?.services.some((s) => s.status === "down") ?? false;
+  const overallOk = allCircuitsOk && !healthDown;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">System Status</h1>
-          <p className="text-muted-foreground">External service circuit breaker status</p>
+          <p className="text-muted-foreground">Infrastructure and external service monitoring</p>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchCircuits} disabled={loading}>
-          <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-          Refresh
+        <Button variant="outline" size="sm" onClick={fetchAll} disabled={loading}>
+          <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />Refresh
         </Button>
       </div>
 
-      {!allHealthy && (
+      {!overallOk && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4 space-y-1">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-red-600" />
+          <div className="flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-red-600" />
             <span className="font-medium text-red-800">
-              {openCount > 0 && `${openCount} service(s) unavailable`}
-              {openCount > 0 && halfOpenCount > 0 && " · "}
-              {halfOpenCount > 0 && `${halfOpenCount} service(s) recovering`}
+              {health?.status === "unhealthy" ? "System unhealthy" : health?.status === "degraded" ? "System degraded" : ""}
+              {openCount > 0 && ` · ${openCount} circuit(s) open`}
             </span>
           </div>
-          {alerts.map((alert, i) => (
-            <p key={i} className="text-sm text-red-700 ml-7">{alert}</p>
-          ))}
+          {alerts.map((a, i) => <p key={i} className="text-sm text-red-700 ml-7">{a}</p>)}
         </div>
       )}
-
-      {allHealthy && !loading && (
+      {overallOk && !loading && (
         <div className="rounded-lg border border-green-200 bg-green-50 p-4">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-5 w-5 text-green-600" />
-            <span className="font-medium text-green-800">All external services are operational</span>
+          <div className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-600" />
+            <span className="font-medium text-green-800">All systems operational</span>
+            {health && <span className="text-xs text-green-600 ml-auto">{health.responseTimeMs}ms</span>}
           </div>
         </div>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2">
-        {Object.entries(circuits).map(([name, info]) => {
-          const meta = SERVICE_LABELS[name] ?? { label: name, description: "" };
-          return (
-            <Card key={name} className={info.state === "OPEN" ? "border-red-300" : ""}>
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <StateIcon state={info.state} />
-                    <div>
-                      <CardTitle className="text-base">{meta.label}</CardTitle>
-                      <p className="text-xs text-muted-foreground">{meta.description}</p>
-                    </div>
-                  </div>
-                  <Badge className={stateColor(info.state)}>{info.state.replace("_", " ")}</Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Failures:</span>{" "}
-                    <span className="font-medium">{info.failures}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Last success:</span>{" "}
-                    <span className="font-medium text-xs">{formatTime(info.lastSuccessAt)}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Last failure:</span>{" "}
-                    <span className="font-medium text-xs">{formatTime(info.lastFailureAt)}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">State since:</span>{" "}
-                    <span className="font-medium text-xs">{formatTime(info.lastStateChangeAt)}</span>
-                  </div>
-                </div>
-                {info.lastError && (
-                  <div className="rounded bg-gray-50 p-2">
-                    <p className="text-xs text-muted-foreground">Last error:</p>
-                    <p className="text-xs font-mono text-red-600 truncate">{info.lastError}</p>
-                  </div>
-                )}
-                {info.state !== "CLOSED" && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full"
-                    onClick={() => resetCircuit(name)}
-                    disabled={resetting === name}
-                  >
-                    <RotateCcw className={`mr-2 h-3 w-3 ${resetting === name ? "animate-spin" : ""}`} />
-                    Reset Circuit
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
+      <div className="flex gap-1 border-b">
+        {(["health", "circuits", "incidents"] as const).map((t) => (
+          <button key={t} onClick={() => setTab(t)} className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${tab === t ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
+            {t === "health" ? "Dependencies" : t === "circuits" ? "Circuit Breakers" : "Incident Log"}
+          </button>
+        ))}
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Activity className="h-4 w-4" />
-            How Circuit Breakers Work
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground space-y-2">
-          <p><strong>CLOSED</strong> — Normal operation. Requests pass through to the external service.</p>
-          <p><strong>OPEN</strong> — Service is failing. Requests are rejected immediately with a fallback response to prevent cascade failures.</p>
-          <p><strong>HALF OPEN</strong> — Testing recovery. A single request is allowed through to test if the service has recovered.</p>
-        </CardContent>
-      </Card>
+      {tab === "health" && health && (
+        <div className="grid gap-4 md:grid-cols-2">
+          {health.services.map((svc) => {
+            const meta = SVC_META[svc.name] ?? { icon: Server, label: svc.name };
+            const Icon = meta.icon;
+            return (
+              <Card key={svc.name} className={svc.status === "down" ? "border-red-300" : ""}>
+                <CardContent className="pt-5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Icon className={`h-5 w-5 ${svc.status === "up" ? "text-green-600" : "text-red-600"}`} />
+                      <div><p className="font-medium text-sm">{meta.label}</p><p className="text-xs text-muted-foreground">{svc.latencyMs}ms latency</p></div>
+                    </div>
+                    <Badge className={stateColor(svc.status)}>{svc.status.toUpperCase()}</Badge>
+                  </div>
+                  {svc.error && <p className="text-xs text-red-600 font-mono bg-red-50 rounded p-2 truncate">{svc.error}</p>}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs"><span className="text-muted-foreground">24h uptime</span><span className="font-medium">{svc.uptime.h24}%</span></div>
+                    {uptimeBar(svc.uptime.h24)}
+                    <div className="flex justify-between text-xs"><span className="text-muted-foreground">7d uptime</span><span className="font-medium">{svc.uptime.d7}%</span></div>
+                    {uptimeBar(svc.uptime.d7)}
+                    <div className="flex justify-between text-xs"><span className="text-muted-foreground">30d uptime</span><span className="font-medium">{svc.uptime.d30}%</span></div>
+                    {uptimeBar(svc.uptime.d30)}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {tab === "circuits" && (
+        <div className="grid gap-4 md:grid-cols-2">
+          {Object.entries(circuits).map(([name, info]) => {
+            const meta = CIRCUIT_LABELS[name] ?? { label: name, desc: "" };
+            return (
+              <Card key={name} className={info.state === "OPEN" ? "border-red-300" : ""}>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <StatusDot ok={info.state === "CLOSED"} />
+                      <div><CardTitle className="text-base">{meta.label}</CardTitle><p className="text-xs text-muted-foreground">{meta.desc}</p></div>
+                    </div>
+                    <Badge className={stateColor(info.state)}>{info.state.replace("_", " ")}</Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div><span className="text-muted-foreground">Failures:</span> <span className="font-medium">{info.failures}</span></div>
+                    <div><span className="text-muted-foreground">Last success:</span> <span className="font-medium text-xs">{formatTime(info.lastSuccessAt)}</span></div>
+                    <div><span className="text-muted-foreground">Last failure:</span> <span className="font-medium text-xs">{formatTime(info.lastFailureAt)}</span></div>
+                    <div><span className="text-muted-foreground">State since:</span> <span className="font-medium text-xs">{formatTime(info.lastStateChangeAt)}</span></div>
+                  </div>
+                  {info.lastError && <div className="rounded bg-gray-50 p-2"><p className="text-xs font-mono text-red-600 truncate">{info.lastError}</p></div>}
+                  {info.state !== "CLOSED" && (
+                    <Button variant="outline" size="sm" className="w-full" onClick={() => resetCircuit(name)} disabled={resetting === name}>
+                      <RotateCcw className={`mr-2 h-3 w-3 ${resetting === name ? "animate-spin" : ""}`} />Reset Circuit
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {tab === "incidents" && health && (
+        <Card>
+          <CardHeader><CardTitle className="text-base flex items-center gap-2"><Activity className="h-4 w-4" />Recent Status Changes</CardTitle></CardHeader>
+          <CardContent className="p-0">
+            {health.incidents.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">No recent incidents</p>
+            ) : (
+              <div className="divide-y">
+                {health.incidents.map((inc, i) => (
+                  <div key={i} className="flex items-center justify-between p-3">
+                    <div className="flex items-center gap-3">
+                      <StatusDot ok={inc.status === "up"} />
+                      <div>
+                        <p className="text-sm font-medium">{SVC_META[inc.service]?.label ?? inc.service} went {inc.status.toUpperCase()}</p>
+                        {inc.error && <p className="text-xs text-muted-foreground truncate max-w-xs">{inc.error}</p>}
+                      </div>
+                    </div>
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">{formatTime(inc.at)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
