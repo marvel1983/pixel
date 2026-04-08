@@ -18,7 +18,9 @@ async function getOrCreateConfig() {
 }
 
 function hashIp(ip: string): string {
-  return createHash("sha256").update(ip + (process.env.ENCRYPTION_KEY || "salt")).digest("hex").slice(0, 64);
+  const secret = process.env.ENCRYPTION_KEY;
+  if (!secret) return createHash("sha256").update(ip).digest("hex").slice(0, 16);
+  return createHash("sha256").update(ip + secret).digest("hex").slice(0, 64);
 }
 
 router.post("/consent/log", optionalAuth, async (req, res) => {

@@ -70,9 +70,13 @@ export const useCookieConsentStore = create<CookieConsentState>((set) => ({
 
   setConsent: (consent, action) => {
     const safe = { ...consent, necessary: true };
+    const prev = useCookieConsentStore.getState().consent;
     setCookie(COOKIE_NAME, JSON.stringify(safe), 365);
     logConsent(safe, action);
     set({ consent: safe, showBanner: false, showModal: false });
+    if (prev && (prev.analytics && !safe.analytics || prev.marketing && !safe.marketing)) {
+      setTimeout(() => window.location.reload(), 300);
+    }
   },
 
   openModal: () => set({ showModal: true }),
@@ -85,8 +89,12 @@ export const useCookieConsentStore = create<CookieConsentState>((set) => ({
   },
 
   rejectAll: () => {
+    const prev = useCookieConsentStore.getState().consent;
     setCookie(COOKIE_NAME, JSON.stringify(ALL_OFF), 365);
     logConsent(ALL_OFF, "reject_all");
     set({ consent: ALL_OFF, showBanner: false, showModal: false });
+    if (prev && (prev.analytics || prev.marketing)) {
+      setTimeout(() => window.location.reload(), 300);
+    }
   },
 }));
