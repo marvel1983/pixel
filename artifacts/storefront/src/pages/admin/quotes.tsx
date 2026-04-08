@@ -48,12 +48,15 @@ export default function AdminQuotesPage() {
     finally { setLoading(false); }
   };
 
-  const updateStatus = async (id: number, status: string, adminNotes?: string, customPricing?: Record<number, string>) => {
+  const updateStatus = async (id: number, status: string, adminNotes?: string, pricingMap?: Record<number, string>, products?: QuoteProduct[]) => {
+    const customPricing = pricingMap && products ? products
+      .filter((p) => pricingMap[p.productId] && Number(pricingMap[p.productId]) > 0)
+      .map((p) => ({ productId: p.productId, productName: p.productName, quantity: p.quantity, unitPrice: Number(pricingMap[p.productId]) })) : undefined;
     try {
       await fetch(`${API}/admin/quotes/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ status, ...(adminNotes !== undefined && { adminNotes }), ...(customPricing && Object.keys(customPricing).length > 0 && { customPricing }) }),
+        body: JSON.stringify({ status, ...(adminNotes !== undefined && { adminNotes }), ...(customPricing && customPricing.length > 0 && { customPricing }) }),
       });
       toast({ title: `Quote #${id} updated to ${status}` });
       fetchQuotes();
@@ -101,7 +104,7 @@ interface QuoteCardProps {
   quote: Quote;
   expanded: boolean;
   onToggle: () => void;
-  onUpdateStatus: (id: number, status: string, notes?: string, customPricing?: Record<number, string>) => void;
+  onUpdateStatus: (id: number, status: string, notes?: string, pricingMap?: Record<number, string>, products?: QuoteProduct[]) => void;
 }
 
 function QuoteCard({ quote, expanded, onToggle, onUpdateStatus }: QuoteCardProps) {
@@ -156,7 +159,7 @@ function QuoteCard({ quote, expanded, onToggle, onUpdateStatus }: QuoteCardProps
             <textarea className="w-full border rounded-md px-3 py-2 text-sm bg-background min-h-[60px] resize-y" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Internal notes..." />
           </div>
           <div className="flex gap-2 pt-2 border-t">
-            <Button size="sm" variant="outline" onClick={() => onUpdateStatus(quote.id, "QUOTED", notes, pricing)}>Send Quote</Button>
+            <Button size="sm" variant="outline" onClick={() => onUpdateStatus(quote.id, "QUOTED", notes, pricing, quote.products)}>Send Quote</Button>
             <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => onUpdateStatus(quote.id, "ACCEPTED", notes)}>Accept</Button>
             <Button size="sm" variant="destructive" onClick={() => onUpdateStatus(quote.id, "DECLINED", notes)}>Decline</Button>
           </div>
