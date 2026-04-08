@@ -64,8 +64,11 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
   },
 
   init: () => {
+    const user = useAuthStore.getState().user;
+    const userTheme = (user?.preferredTheme === "light" || user?.preferredTheme === "dark") ? user.preferredTheme : null;
     const stored = localStorage.getItem(STORAGE_KEY) as Theme | null;
-    const theme = stored || getSystemTheme();
+    const theme = userTheme || stored || getSystemTheme();
+    localStorage.setItem(STORAGE_KEY, theme);
     applyTheme(theme);
     set({ theme });
   },
