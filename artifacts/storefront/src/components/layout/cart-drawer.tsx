@@ -1,5 +1,7 @@
 import { Link } from "wouter";
+import { useMemo } from "react";
 import { X, Plus, Minus, Trash2, ShoppingBag, AlertTriangle } from "lucide-react";
+import { hasRegionMismatch, detectCountryFromLocale } from "@/components/cart/region-warning";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -86,23 +88,24 @@ export function CartDrawer({ open, onClose }: CartDrawerProps) {
 }
 
 function CartDrawerRegionWarning({ items }: { items: CartItem[] }) {
-  const restricted = items.filter(
-    (i) => i.regionRestrictions && i.regionRestrictions.length > 0 && !i.regionRestrictions.includes("GLOBAL")
+  const country = useMemo(() => detectCountryFromLocale(), []);
+  const mismatched = items.filter(
+    (i) => i.regionRestrictions && i.regionRestrictions.length > 0 && hasRegionMismatch(i.regionRestrictions, country)
   );
-  if (restricted.length === 0) return null;
+  if (mismatched.length === 0) return null;
   return (
     <div className="border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950 rounded-lg p-2.5 flex items-start gap-2">
       <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
       <div className="text-xs text-amber-700 dark:text-amber-300">
-        <p className="font-medium">Region-restricted items in cart:</p>
+        <p className="font-medium">Region mismatch detected:</p>
         <ul className="mt-1 space-y-0.5">
-          {restricted.map((i) => (
+          {mismatched.map((i) => (
             <li key={`${i.bundleId ?? "s"}-${i.variantId}`}>
               {i.productName} — <span className="text-amber-500">{i.regionRestrictions?.join(", ")} only</span>
             </li>
           ))}
         </ul>
-        <p className="mt-1 text-amber-600 dark:text-amber-400">Region compatibility is verified at checkout.</p>
+        <p className="mt-1 text-amber-600 dark:text-amber-400">These keys may not activate in your region.</p>
       </div>
     </div>
   );

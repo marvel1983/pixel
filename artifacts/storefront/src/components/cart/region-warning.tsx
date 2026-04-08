@@ -27,6 +27,16 @@ export function getCountryRegions(countryCode: string): string[] {
   return COUNTRY_REGION_MAP[countryCode] ?? ["GLOBAL"];
 }
 
+export function detectCountryFromLocale(): string {
+  try {
+    const locale = navigator.language || "en-US";
+    const parts = locale.split("-");
+    const country = parts.length > 1 ? parts[parts.length - 1].toUpperCase() : "";
+    if (country && country.length === 2 && COUNTRY_REGION_MAP[country]) return country;
+  } catch { /* ignore */ }
+  return "US";
+}
+
 export function hasRegionMismatch(itemRegions: string[], customerCountry: string): boolean {
   if (!itemRegions || itemRegions.length === 0) return false;
   const allowed = getCountryRegions(customerCountry);
