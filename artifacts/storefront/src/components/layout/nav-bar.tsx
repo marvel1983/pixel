@@ -52,7 +52,7 @@ export function NavBar() {
 
   return (
     <>
-      <nav className="sticky top-0 z-40 w-full bg-primary text-primary-foreground shadow-md">
+      <nav className="sticky top-0 z-40 w-full bg-primary text-primary-foreground shadow-[0_4px_16px_rgba(0,69,127,0.2)]">
         <div className="container mx-auto px-4 flex items-center h-12">
           <Button
             variant="ghost"

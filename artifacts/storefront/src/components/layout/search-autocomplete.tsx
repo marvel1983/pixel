@@ -149,13 +149,13 @@ export function SearchAutocomplete() {
   }
 
   return (
-    <div ref={containerRef} className="flex-1 max-w-xl mx-auto relative">
+    <div ref={containerRef} className="flex-1 max-w-2xl mx-auto relative">
       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
       <Input
         ref={inputRef}
         type="search"
         placeholder="Search for software, games, keys..."
-        className="pl-9 h-10 bg-muted/50 border-border"
+        className="pl-9 h-11 bg-card text-card-foreground border-white/20 shadow-sm placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-accent"
         value={query}
         onChange={(e) => {
           setQuery(e.target.value);

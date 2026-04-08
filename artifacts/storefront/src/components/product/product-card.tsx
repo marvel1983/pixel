@@ -170,7 +170,7 @@ export function ProductCard({ product, flashSalePrice: flashSalePriceProp }: Pro
                 </>
               )}
             </div>
-            <Button size="sm" className="h-7 px-2 text-xs" onClick={handleAddToCart} disabled={!inStock}>
+            <Button size="sm" className="h-7 px-2 text-xs bg-accent text-accent-foreground font-semibold hover:bg-cta-hover hover:text-white" onClick={handleAddToCart} disabled={!inStock}>
               <ShoppingCart className="h-3 w-3 mr-1" /> Add
             </Button>
           </div>
