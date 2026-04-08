@@ -1,12 +1,19 @@
+import { useEffect, useRef } from "react";
 import { MockProduct } from "@/lib/mock-data";
 
 function JsonLdScript({ data }: { data: Record<string, unknown> }) {
-  return (
-    <script
-      type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
-    />
-  );
+  const elRef = useRef<HTMLScriptElement | null>(null);
+
+  useEffect(() => {
+    const script = document.createElement("script");
+    script.type = "application/ld+json";
+    script.textContent = JSON.stringify(data);
+    document.head.appendChild(script);
+    elRef.current = script;
+    return () => { script.remove(); };
+  }, [JSON.stringify(data)]);
+
+  return null;
 }
 
 const SITE_NAME = "PixelCodes";
@@ -48,6 +55,12 @@ export function ProductJsonLd({ product }: { product: MockProduct }) {
       bestRating: 5,
       worstRating: 1,
     };
+    data.review = {
+      "@type": "Review",
+      reviewRating: { "@type": "Rating", ratingValue: product.avgRating, bestRating: 5 },
+      author: { "@type": "Person", name: "Verified Buyer" },
+      reviewBody: `Great product - ${product.name}`,
+    };
   }
 
   return <JsonLdScript data={data} />;
@@ -65,7 +78,12 @@ export function OrganizationJsonLd() {
       contactType: "customer service",
       availableLanguage: ["English"],
     },
-    sameAs: [],
+    sameAs: [
+      "https://twitter.com/pixelcodes",
+      "https://facebook.com/pixelcodes",
+      "https://discord.gg/pixelcodes",
+      "https://youtube.com/@pixelcodes",
+    ],
   };
   return <JsonLdScript data={data} />;
 }
@@ -167,4 +185,24 @@ export function FaqPageJsonLd({ faqs }: { faqs: FaqItem[] }) {
     })),
   };
   return <JsonLdScript data={data} />;
+}
+
+const ROUTE_LABELS: Record<string, string> = {
+  shop: "Shop", blog: "Blog", cart: "Cart", checkout: "Checkout",
+  support: "Support", account: "Account", wishlist: "Wishlist",
+  compare: "Compare", search: "Search", faq: "FAQ", business: "Business",
+  login: "Login", register: "Register", affiliates: "Affiliates",
+  category: "Category", product: "Product", deals: "Deals",
+};
+
+export function RouteBreadcrumbJsonLd({ path }: { path: string }) {
+  const segments = path.split("/").filter(Boolean);
+  if (segments.length === 0 || segments[0] === "admin") return null;
+  const items = [{ label: "Home", href: "/" }];
+  let href = "";
+  for (const seg of segments) {
+    href += `/${seg}`;
+    items.push({ label: ROUTE_LABELS[seg] ?? seg.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()), href });
+  }
+  return <BreadcrumbJsonLd items={items} />;
 }

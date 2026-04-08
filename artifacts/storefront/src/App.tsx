@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Switch, Route, Router as WouterRouter } from "wouter";
+import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -58,8 +58,14 @@ import StaticPageView from "@/pages/static-page";
 import AdminRoot from "@/pages/admin/index";
 import AcceptInvitePage from "@/pages/admin/accept-invite";
 import NotFound from "@/pages/not-found";
+import { RouteBreadcrumbJsonLd } from "@/components/seo/json-ld";
 
 const queryClient = new QueryClient();
+
+function GlobalBreadcrumbs() {
+  const [location] = useLocation();
+  return <RouteBreadcrumbJsonLd path={location} />;
+}
 
 function StorefrontWithMaintenance() {
   useReferralTracking();
@@ -70,6 +76,7 @@ function StorefrontWithMaintenance() {
   }
   return (
     <SiteLayout>
+      <GlobalBreadcrumbs />
       <Switch>
         <Route path="/" component={HomePage} />
         <Route path="/search" component={SearchPage} />
