@@ -36,21 +36,14 @@ const updateProfileSchema = z.object({
 
 const forgotPasswordSchema = z.object({ email: z.string().email() });
 const resetPasswordSchema = z.object({ token: z.string().min(1), password: z.string().min(8) });
-
-const COOKIE_OPTS = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "lax" as const,
-  maxAge: 30 * 24 * 60 * 60 * 1000,
-};
+const COOKIE_OPTS = { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax" as const, maxAge: 30 * 24 * 60 * 60 * 1000 };
 
 function sanitizeUser(u: User) {
   return { id: u.id, email: u.email, firstName: u.firstName, lastName: u.lastName, role: u.role, avatarUrl: u.avatarUrl, emailVerified: u.emailVerified, googleId: u.googleId, createdAt: u.createdAt, preferredLocale: u.preferredLocale, preferredTheme: u.preferredTheme };
 }
 
 function makeToken(u: User) {
-  const payload: JwtPayload = { userId: u.id, email: u.email, role: u.role };
-  return signToken(payload);
+  return signToken({ userId: u.id, email: u.email, role: u.role } as JwtPayload);
 }
 
 router.post("/auth/register", async (req, res) => {
