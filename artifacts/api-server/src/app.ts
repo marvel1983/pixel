@@ -19,6 +19,7 @@ declare global {
 }
 
 const app: Express = express();
+app.set("trust proxy", 1);
 
 app.use(
   pinoHttp({
@@ -54,7 +55,14 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use(securityHeaders);
 app.get("/api/csrf-token", publicLimit, csrfTokenEndpoint);
-app.use("/api/admin", adminLimit);
-app.use("/api", publicLimit, csrfProtection, referralTracking, maintenanceMiddleware, router);
+
+function categoryRateLimit(req: express.Request, res: express.Response, next: express.NextFunction) {
+  if (req.path.startsWith("/admin")) {
+    return adminLimit(req, res, next);
+  }
+  return publicLimit(req, res, next);
+}
+
+app.use("/api", categoryRateLimit, csrfProtection, referralTracking, maintenanceMiddleware, router);
 
 export default app;

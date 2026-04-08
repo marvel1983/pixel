@@ -26,8 +26,6 @@ setInterval(() => {
 }, 60_000);
 
 function getClientKey(req: Request): string {
-  const forwarded = req.headers["x-forwarded-for"];
-  if (typeof forwarded === "string") return forwarded.split(",")[0].trim();
   return req.ip ?? "unknown";
 }
 
@@ -85,8 +83,8 @@ const config: RateLimitConfig = {
   authLogin: 5,
   authRegister: 3,
   authReset: 3,
-  public: 200,
-  admin: 300,
+  public: 60,
+  admin: 120,
 };
 
 export function getRateLimitConfig(): RateLimitConfig {

@@ -259,7 +259,7 @@ router.post("/auth/forgot-password", authPasswordResetLimit, async (req, res) =>
   res.json({ ok: true });
 });
 
-router.post("/auth/reset-password", async (req, res) => {
+router.post("/auth/reset-password", authPasswordResetLimit, async (req, res) => {
   const parsed = resetPasswordSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Token and new password are required" });
