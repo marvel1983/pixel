@@ -18,9 +18,14 @@ interface ReviewRow {
 }
 interface Stats { pending: number; approved: number; rejected: number; avgRating: number }
 
-const STATUS_COLORS: Record<string, string> = {
-  PENDING: "bg-yellow-100 text-yellow-800", APPROVED: "bg-green-100 text-green-800", REJECTED: "bg-red-100 text-red-800",
+const STATUS_BADGE: Record<string, string> = {
+  PENDING: "border-amber-500 bg-amber-500/20 text-amber-200",
+  APPROVED: "border-emerald-500 bg-emerald-500/20 text-emerald-200",
+  REJECTED: "border-red-500 bg-red-500/20 text-red-200",
 };
+
+const tableCell = "border-b border-r border-[#1f2840] px-2.5 py-[6px] align-middle text-[12.5px] leading-none text-[#dde4f0]";
+const thBase = "border-b border-r border-[#2a2e3a] bg-[#1e2128] px-2.5 py-[8px] text-[10.5px] font-bold uppercase tracking-widest select-none whitespace-nowrap card-title";
 
 export default function AdminReviewsPage() {
   const [rows, setRows] = useState<ReviewRow[]>([]);
@@ -87,127 +92,156 @@ export default function AdminReviewsPage() {
   const reviewer = (r: ReviewRow) => [r.userFirstName, r.userLastName].filter(Boolean).join(" ") || r.userEmail;
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-bold tracking-tight">Review Moderation</h1>
+    <div className="space-y-3 text-[#e8edf5]">
+      <h1 className="text-2xl font-bold tracking-tight text-white">Review Moderation</h1>
 
-      <div className="grid grid-cols-4 gap-4">
-        <StatCard label="Pending" value={stats.pending} color="text-yellow-600" bg="bg-yellow-50" icon={<Clock className="h-5 w-5" />} />
-        <StatCard label="Approved" value={stats.approved} color="text-green-600" bg="bg-green-50" icon={<Check className="h-5 w-5" />} />
-        <StatCard label="Rejected" value={stats.rejected} color="text-red-600" bg="bg-red-50" icon={<X className="h-5 w-5" />} />
-        <StatCard label="Avg Rating" value={stats.avgRating.toFixed(1)} color="text-blue-600" bg="bg-blue-50" icon={<Star className="h-5 w-5" />} />
+      <div className="grid grid-cols-4 gap-3">
+        <StatCard label="Pending" value={stats.pending} accent="border-l-amber-500" icon={<Clock className="h-5 w-5 text-amber-400" />} />
+        <StatCard label="Approved" value={stats.approved} accent="border-l-emerald-500" icon={<Check className="h-5 w-5 text-emerald-400" />} />
+        <StatCard label="Rejected" value={stats.rejected} accent="border-l-red-500" icon={<X className="h-5 w-5 text-red-400" />} />
+        <StatCard label="Avg Rating" value={stats.avgRating.toFixed(1)} accent="border-l-sky-500" icon={<Star className="h-5 w-5 text-sky-400" />} />
       </div>
 
-      <div className="flex flex-wrap items-end gap-3 rounded-lg border bg-white p-3">
-        <div className="flex-1 min-w-[200px]"><div className="relative"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><input className="w-full rounded-md border pl-9 pr-3 py-2 text-sm" placeholder="Search product or review..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} /></div></div>
-        <select className="rounded-md border px-3 py-2 text-sm" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
+      <div className="flex flex-wrap items-end gap-2.5 rounded-md border border-[#2d3344] bg-[#161a24] p-2.5">
+        <div className="flex-1 min-w-[200px]">
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8b95ab]" />
+            <input className="h-8 w-full rounded border border-[#3d4558] bg-[#0f1117] pl-8 pr-2 text-[13px] text-[#e8edf5] placeholder:text-[#6b7280] focus:border-sky-500/60 focus:outline-none"
+              placeholder="Search product or review..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
+          </div>
+        </div>
+        <select className="h-8 rounded border border-[#3d4558] bg-[#0f1117] px-2 text-[13px] text-[#e8edf5]" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
           <option value="ALL">All Statuses</option><option value="PENDING">Pending</option><option value="APPROVED">Approved</option><option value="REJECTED">Rejected</option>
         </select>
-        <select className="rounded-md border px-3 py-2 text-sm" value={rating} onChange={(e) => { setRating(e.target.value); setPage(1); }}>
+        <select className="h-8 rounded border border-[#3d4558] bg-[#0f1117] px-2 text-[13px] text-[#e8edf5]" value={rating} onChange={(e) => { setRating(e.target.value); setPage(1); }}>
           <option value="ALL">All Ratings</option>{[5,4,3,2,1].map((r) => <option key={r} value={r}>{r} Stars</option>)}
         </select>
-        <input type="date" className="rounded-md border px-3 py-2 text-sm" value={from} onChange={(e) => { setFrom(e.target.value); setPage(1); }} />
-        <input type="date" className="rounded-md border px-3 py-2 text-sm" value={to} onChange={(e) => { setTo(e.target.value); setPage(1); }} />
+        <input type="date" className="h-8 rounded border border-[#3d4558] bg-[#0f1117] px-2 text-[13px] text-[#e8edf5]" value={from} onChange={(e) => { setFrom(e.target.value); setPage(1); }} />
+        <input type="date" className="h-8 rounded border border-[#3d4558] bg-[#0f1117] px-2 text-[13px] text-[#e8edf5]" value={to} onChange={(e) => { setTo(e.target.value); setPage(1); }} />
       </div>
 
       {selected.size > 0 && (
-        <div className="flex items-center gap-2 text-sm">
-          <span className="text-muted-foreground">{selected.size} selected</span>
-          <Button size="sm" variant="outline" onClick={() => handleBulk("approve")}><Check className="h-3.5 w-3.5 mr-1" /> Approve All</Button>
-          <Button size="sm" variant="outline" onClick={() => handleBulk("reject")}><X className="h-3.5 w-3.5 mr-1" /> Reject All</Button>
-          <Button size="sm" variant="destructive" onClick={() => handleBulk("delete")}><Trash2 className="h-3.5 w-3.5 mr-1" /> Delete All</Button>
+        <div className="flex items-center gap-2 text-[13px]">
+          <span className="text-[#8fa0bb]">{selected.size} selected</span>
+          <Button size="sm" variant="outline" className="h-7 border-[#3d4558] bg-[#1a1f2e] text-[#e8edf5] text-[13px]" onClick={() => handleBulk("approve")}><Check className="h-3.5 w-3.5 mr-1" /> Approve All</Button>
+          <Button size="sm" variant="outline" className="h-7 border-[#3d4558] bg-[#1a1f2e] text-[#e8edf5] text-[13px]" onClick={() => handleBulk("reject")}><X className="h-3.5 w-3.5 mr-1" /> Reject All</Button>
+          <Button size="sm" variant="destructive" className="h-7 text-[13px]" onClick={() => handleBulk("delete")}><Trash2 className="h-3.5 w-3.5 mr-1" /> Delete All</Button>
         </div>
       )}
 
-      {loading ? <div className="space-y-2">{Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-12" />)}</div> : (
-        <div className="rounded-lg border bg-white shadow-sm overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead><tr className="border-b bg-gray-50 text-left">
-              <th className="px-3 py-3 w-8"><input type="checkbox" checked={selected.size === rows.length && rows.length > 0} onChange={toggleAll} /></th>
-              <th className="px-3 py-3 font-medium text-muted-foreground">Product</th>
-              <th className="px-3 py-3 font-medium text-muted-foreground">Reviewer</th>
-              <th className="px-3 py-3 font-medium text-muted-foreground">Rating</th>
-              <th className="px-3 py-3 font-medium text-muted-foreground">Sub-Ratings</th>
-              <th className="px-3 py-3 font-medium text-muted-foreground">Review</th>
-              <th className="px-3 py-3 font-medium text-muted-foreground">Status</th>
-              <th className="px-3 py-3 font-medium text-muted-foreground">Date</th>
-              <th className="px-3 py-3 font-medium text-muted-foreground">Actions</th>
-            </tr></thead>
+      {loading ? (
+        <div className="space-y-px rounded-md overflow-hidden border border-[#1e2638]">
+          {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-[29px] rounded-none bg-[#181e2c]" />)}
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-md border border-[#1e2a40] bg-[#0c1018]" style={{ boxShadow: "0 4px 20px rgba(0,0,0,0.5)" }}>
+          <table className="w-full border-collapse text-left" style={{ borderSpacing: 0 }}>
+            <thead>
+              <tr className="border-b-2 border-[#2a2e3a]" style={{ backgroundColor: "#1e2128" }}>
+                <th className={`${thBase} w-8`} style={{ color: "#ffffff" }}>
+                  <input type="checkbox" checked={selected.size === rows.length && rows.length > 0} onChange={toggleAll} className="rounded border-[#4a5570] accent-sky-500" />
+                </th>
+                <th className={`${thBase} min-w-[160px]`}>Product</th>
+                <th className={`${thBase} min-w-[140px]`}>Reviewer</th>
+                <th className={`${thBase} w-[90px]`}>Rating</th>
+                <th className={`${thBase} w-[110px]`}>Sub-Ratings</th>
+                <th className={`${thBase} min-w-[200px]`}>Review</th>
+                <th className={`${thBase} w-[100px]`}>Status</th>
+                <th className={`${thBase} w-[95px]`}>Date</th>
+                <th className={`${thBase} w-[100px] border-r-0`}>Actions</th>
+              </tr>
+            </thead>
             <tbody>
-              {rows.map((r) => (
-                <tr key={r.id} className="border-b last:border-0 hover:bg-gray-50">
-                  <td className="px-3 py-3"><input type="checkbox" checked={selected.has(r.id)} onChange={() => toggleSelect(r.id)} /></td>
-                  <td className="px-3 py-3 text-xs font-medium max-w-[160px] truncate">{r.productName}</td>
-                  <td className="px-3 py-3 text-xs text-muted-foreground max-w-[140px] truncate">{reviewer(r)}{r.isVerifiedPurchase && <Badge variant="secondary" className="ml-1 text-[10px]">Verified</Badge>}</td>
-                  <td className="px-3 py-3"><Stars n={r.rating} /></td>
-                  <td className="px-3 py-3 text-[10px] text-muted-foreground leading-tight">
+              {rows.map((r, idx) => (
+                <tr key={r.id} className={`transition-colors duration-75 ${idx % 2 === 0 ? "bg-[#0c1018] hover:bg-[#111825]" : "bg-[#0f1520] hover:bg-[#141e2e]"}`}>
+                  <td className={`${tableCell} text-center`}>
+                    <input type="checkbox" checked={selected.has(r.id)} onChange={() => toggleSelect(r.id)} className="rounded border-[#4a5570] accent-sky-500" />
+                  </td>
+                  <td className={`${tableCell} max-w-[160px] truncate font-medium`} title={r.productName}>{r.productName}</td>
+                  <td className={`${tableCell} max-w-[140px] truncate text-[#8fa0bb]`}>
+                    {reviewer(r)}
+                    {r.isVerifiedPurchase && <span className="ml-1 inline-flex items-center rounded border border-emerald-600 bg-emerald-500/20 px-1 text-[9px] font-bold text-emerald-300">Verified</span>}
+                  </td>
+                  <td className={tableCell}><Stars n={r.rating} /></td>
+                  <td className={`${tableCell} text-[10px] text-[#8fa0bb] leading-tight`}>
                     {r.ratingGameplay != null && <span>GP:{r.ratingGameplay} </span>}
                     {r.ratingGraphics != null && <span>GX:{r.ratingGraphics} </span>}
                     {r.ratingValue != null && <span>VL:{r.ratingValue} </span>}
                     {r.ratingSupport != null && <span>SP:{r.ratingSupport}</span>}
                     {r.ratingGameplay == null && r.ratingGraphics == null && r.ratingValue == null && r.ratingSupport == null && "—"}
                   </td>
-                  <td className="px-3 py-3 text-xs max-w-[220px]">
-                    {r.title && <span className="font-semibold">{r.title} </span>}
-                    <span className="text-muted-foreground line-clamp-1">{r.body ?? ""}</span>
-                    {r.adminReply && <MessageSquare className="inline h-3 w-3 ml-1 text-blue-500" />}
+                  <td className={`${tableCell} max-w-[220px]`}>
+                    {r.title && <span className="font-semibold text-[#dde4f0]">{r.title} </span>}
+                    <span className="text-[#8fa0bb] line-clamp-1">{r.body ?? ""}</span>
+                    {r.adminReply && <MessageSquare className="inline h-3 w-3 ml-1 text-sky-400" />}
                   </td>
-                  <td className="px-3 py-3"><span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[r.status]}`}>{r.status}</span></td>
-                  <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">{new Date(r.createdAt).toLocaleDateString()}</td>
-                  <td className="px-3 py-3">
+                  <td className={tableCell}>
+                    <span className={`inline-flex items-center rounded border px-2 py-0.5 text-[10px] font-medium ${STATUS_BADGE[r.status] ?? "border-[#3d4558] bg-[#1a1f2e] text-[#c8d0e0]"}`}>{r.status}</span>
+                  </td>
+                  <td className={`${tableCell} text-[#8fa0bb] whitespace-nowrap`}>{new Date(r.createdAt).toLocaleDateString()}</td>
+                  <td className={`${tableCell} border-r-0`}>
                     <div className="flex items-center gap-1">
-                      <button title="View" className="p-1 hover:bg-gray-100 rounded" onClick={() => openDetail(r)}><Eye className="h-3.5 w-3.5" /></button>
-                      {r.status !== "APPROVED" && <button title="Approve" className="p-1 hover:bg-green-50 rounded text-green-600" onClick={() => setStatus_(r.id, "APPROVED")}><Check className="h-3.5 w-3.5" /></button>}
-                      {r.status !== "REJECTED" && <button title="Reject" className="p-1 hover:bg-red-50 rounded text-red-600" onClick={() => setStatus_(r.id, "REJECTED")}><X className="h-3.5 w-3.5" /></button>}
-                      <button title="Delete" className="p-1 hover:bg-red-50 rounded text-red-500" onClick={() => deleteReview(r.id)}><Trash2 className="h-3.5 w-3.5" /></button>
+                      <button title="View" className="p-1 hover:bg-[#1e2a40] rounded text-[#8fa0bb] hover:text-white" onClick={() => openDetail(r)}><Eye className="h-3.5 w-3.5" /></button>
+                      {r.status !== "APPROVED" && <button title="Approve" className="p-1 hover:bg-emerald-500/20 rounded text-emerald-400" onClick={() => setStatus_(r.id, "APPROVED")}><Check className="h-3.5 w-3.5" /></button>}
+                      {r.status !== "REJECTED" && <button title="Reject" className="p-1 hover:bg-red-500/20 rounded text-red-400" onClick={() => setStatus_(r.id, "REJECTED")}><X className="h-3.5 w-3.5" /></button>}
+                      <button title="Delete" className="p-1 hover:bg-red-500/20 rounded text-red-400" onClick={() => deleteReview(r.id)}><Trash2 className="h-3.5 w-3.5" /></button>
                     </div>
                   </td>
                 </tr>
               ))}
-              {rows.length === 0 && <tr><td colSpan={9} className="px-3 py-12 text-center text-muted-foreground">No reviews found</td></tr>}
+              {rows.length === 0 && <tr><td colSpan={9} className="px-3 py-12 text-center text-[13px] text-[#4a5570]">No reviews found</td></tr>}
             </tbody>
           </table>
         </div>
       )}
 
       {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage(page - 1)}><ChevronLeft className="h-4 w-4 mr-1" /> Previous</Button>
-          <span className="text-sm text-muted-foreground">Page {page} of {totalPages}</span>
-          <Button size="sm" variant="outline" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>Next <ChevronRight className="h-4 w-4 ml-1" /></Button>
+        <div className="flex items-center justify-between text-[13px] text-[#9ca8bc]">
+          <Button size="sm" variant="outline" className="h-8 border-[#3d4558] bg-[#1a1f2e] text-[#e8edf5] disabled:opacity-40"
+            disabled={page <= 1} onClick={() => setPage(page - 1)}><ChevronLeft className="h-4 w-4 mr-1" /> Previous</Button>
+          <span>Page <span className="tabular-nums text-[#e8edf5]">{page}</span> of <span className="tabular-nums text-[#e8edf5]">{totalPages}</span></span>
+          <Button size="sm" variant="outline" className="h-8 border-[#3d4558] bg-[#1a1f2e] text-[#e8edf5] disabled:opacity-40"
+            disabled={page >= totalPages} onClick={() => setPage(page + 1)}>Next <ChevronRight className="h-4 w-4 ml-1" /></Button>
         </div>
       )}
 
       {detail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setDetail(null)}>
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-lg max-h-[80vh] overflow-y-auto p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setDetail(null)}>
+          <div className="rounded-lg border border-[#2e3340] bg-[#181c24] shadow-xl w-full max-w-lg max-h-[80vh] overflow-y-auto p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start justify-between">
               <div>
-                <h2 className="text-lg font-bold">{detail.productName}</h2>
-                <p className="text-sm text-muted-foreground">by {reviewer(detail)} {detail.isVerifiedPurchase && <Badge variant="secondary" className="text-[10px]">Verified Purchase</Badge>}</p>
+                <h2 className="text-lg font-bold text-white">{detail.productName}</h2>
+                <p className="text-sm text-[#8fa0bb]">by {reviewer(detail)} {detail.isVerifiedPurchase && <span className="ml-1 inline-flex items-center rounded border border-emerald-600 bg-emerald-500/20 px-1.5 text-[10px] font-bold text-emerald-300">Verified</span>}</p>
               </div>
-              <button onClick={() => setDetail(null)}><X className="h-5 w-5" /></button>
+              <button onClick={() => setDetail(null)} className="text-[#8fa0bb] hover:text-white"><X className="h-5 w-5" /></button>
             </div>
-            <div className="flex items-center gap-2"><Stars n={detail.rating} /><span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[detail.status]}`}>{detail.status}</span></div>
+            <div className="flex items-center gap-2">
+              <Stars n={detail.rating} />
+              <span className={`inline-flex items-center rounded border px-2 py-0.5 text-[10px] font-medium ${STATUS_BADGE[detail.status] ?? "border-[#3d4558] bg-[#1a1f2e] text-[#c8d0e0]"}`}>{detail.status}</span>
+            </div>
             {(detail.ratingGameplay != null || detail.ratingGraphics != null || detail.ratingValue != null || detail.ratingSupport != null) && (
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                {detail.ratingGameplay != null && <span>Gameplay: <strong>{detail.ratingGameplay}/5</strong></span>}
-                {detail.ratingGraphics != null && <span>Graphics: <strong>{detail.ratingGraphics}/5</strong></span>}
-                {detail.ratingValue != null && <span>Value: <strong>{detail.ratingValue}/5</strong></span>}
-                {detail.ratingSupport != null && <span>Support: <strong>{detail.ratingSupport}/5</strong></span>}
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-[#8fa0bb]">
+                {detail.ratingGameplay != null && <span>Gameplay: <strong className="text-[#dde4f0]">{detail.ratingGameplay}/5</strong></span>}
+                {detail.ratingGraphics != null && <span>Graphics: <strong className="text-[#dde4f0]">{detail.ratingGraphics}/5</strong></span>}
+                {detail.ratingValue != null && <span>Value: <strong className="text-[#dde4f0]">{detail.ratingValue}/5</strong></span>}
+                {detail.ratingSupport != null && <span>Support: <strong className="text-[#dde4f0]">{detail.ratingSupport}/5</strong></span>}
               </div>
             )}
-            {detail.title && <h3 className="font-semibold">{detail.title}</h3>}
-            <p className="text-sm whitespace-pre-wrap">{detail.body ?? "No review text"}</p>
-            <p className="text-xs text-muted-foreground">Helpful: {detail.helpfulCount} &middot; {new Date(detail.createdAt).toLocaleString()}</p>
-            <div className="flex gap-2 pt-2 border-t">
-              <Button size="sm" variant="outline" onClick={() => { setStatus_(detail.id, "APPROVED"); setDetail({ ...detail, status: "APPROVED" }); }}><Check className="h-3.5 w-3.5 mr-1" /> Approve</Button>
-              <Button size="sm" variant="outline" onClick={() => { setStatus_(detail.id, "REJECTED"); setDetail({ ...detail, status: "REJECTED" }); }}><X className="h-3.5 w-3.5 mr-1" /> Reject</Button>
+            {detail.title && <h3 className="font-semibold text-[#dde4f0]">{detail.title}</h3>}
+            <p className="text-sm whitespace-pre-wrap text-[#dde4f0]">{detail.body ?? "No review text"}</p>
+            <p className="text-xs text-[#8fa0bb]">Helpful: {detail.helpfulCount} &middot; {new Date(detail.createdAt).toLocaleString()}</p>
+            <div className="flex gap-2 pt-2 border-t border-[#2a2e3a]">
+              <Button size="sm" variant="outline" className="border-[#3d4558] bg-[#1a1f2e] text-[#e8edf5]" onClick={() => { setStatus_(detail.id, "APPROVED"); setDetail({ ...detail, status: "APPROVED" }); }}><Check className="h-3.5 w-3.5 mr-1" /> Approve</Button>
+              <Button size="sm" variant="outline" className="border-[#3d4558] bg-[#1a1f2e] text-[#e8edf5]" onClick={() => { setStatus_(detail.id, "REJECTED"); setDetail({ ...detail, status: "REJECTED" }); }}><X className="h-3.5 w-3.5 mr-1" /> Reject</Button>
               <Button size="sm" variant="destructive" onClick={() => deleteReview(detail.id)} className="ml-auto"><Trash2 className="h-3.5 w-3.5 mr-1" /> Delete</Button>
             </div>
-            <div className="space-y-2 pt-2 border-t">
-              <label className="text-sm font-medium">Admin Reply</label>
-              <textarea className="w-full rounded-md border p-2 text-sm min-h-[80px]" value={reply} onChange={(e) => setReply(e.target.value)} placeholder="Write a reply to this review..." />
-              {detail.adminReplyAt && <p className="text-xs text-muted-foreground">Last replied: {new Date(detail.adminReplyAt).toLocaleString()}</p>}
+            <div className="space-y-2 pt-2 border-t border-[#2a2e3a]">
+              <label className="text-sm font-medium text-[#dde4f0]">Admin Reply</label>
+              <textarea
+                className="w-full rounded border border-[#3d4558] bg-[#0f1117] p-2 text-sm text-[#e8edf5] placeholder:text-[#6b7280] focus:border-sky-500/60 focus:outline-none min-h-[80px]"
+                value={reply} onChange={(e) => setReply(e.target.value)} placeholder="Write a reply to this review..."
+              />
+              {detail.adminReplyAt && <p className="text-xs text-[#8fa0bb]">Last replied: {new Date(detail.adminReplyAt).toLocaleString()}</p>}
               <Button size="sm" onClick={saveReply} disabled={savingReply}>{savingReply ? "Saving..." : "Save Reply"}</Button>
             </div>
           </div>
@@ -218,14 +252,17 @@ export default function AdminReviewsPage() {
 }
 
 function Stars({ n }: { n: number }) {
-  return <div className="flex gap-0.5">{Array.from({ length: 5 }).map((_, i) => <Star key={i} className={`h-3.5 w-3.5 ${i < n ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`} />)}</div>;
+  return <div className="flex gap-0.5">{Array.from({ length: 5 }).map((_, i) => <Star key={i} className={`h-3.5 w-3.5 ${i < n ? "fill-yellow-400 text-yellow-400" : "text-[#2e3850]"}`} />)}</div>;
 }
 
-function StatCard({ label, value, color, bg, icon }: { label: string; value: string | number; color: string; bg: string; icon: React.ReactNode }) {
+function StatCard({ label, value, accent, icon }: { label: string; value: string | number; accent: string; icon: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-3 rounded-lg border bg-white p-4 shadow-sm">
-      <div className={`flex h-10 w-10 items-center justify-center rounded-full ${bg} ${color}`}>{icon}</div>
-      <div><p className="text-sm text-muted-foreground">{label}</p><p className="text-xl font-bold">{value}</p></div>
+    <div className={`flex items-center gap-3 rounded-lg border border-[#2e3340] bg-[#181c24] p-4 border-l-2 ${accent}`}>
+      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#1e2128]">{icon}</div>
+      <div>
+        <p className="text-[11px] text-[#8fa0bb] uppercase tracking-wider">{label}</p>
+        <p className="text-xl font-bold text-white">{value}</p>
+      </div>
     </div>
   );
 }

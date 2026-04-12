@@ -30,6 +30,8 @@ import RegisterPage from "@/pages/register";
 import ForgotPasswordPage from "@/pages/forgot-password";
 import ResetPasswordPage from "@/pages/reset-password";
 import AccountPage from "@/pages/account";
+import AccountBalancePage from "@/pages/account-balance";
+import AccountLoyaltyPage from "@/pages/account-loyalty";
 import WishlistPage from "@/pages/wishlist";
 import ComparePage from "@/pages/compare";
 import GiftCardsPage from "@/pages/gift-cards";
@@ -98,6 +100,8 @@ function StorefrontWithMaintenance() {
         <Route path="/order-complete/:orderNumber" component={OrderCompletePage} />
         <Route path="/order-lookup" component={OrderLookupPage} />
         <Route path="/account/orders" component={AccountOrdersPage} />
+        <Route path="/account/balance" component={AccountBalancePage} />
+        <Route path="/account/loyalty" component={AccountLoyaltyPage} />
         <Route path="/login" component={LoginPage} />
         <Route path="/register" component={RegisterPage} />
         <Route path="/auth/google/success" component={AuthGoogleSuccessPage} />
@@ -127,15 +131,17 @@ function StorefrontWithMaintenance() {
 }
 
 function AppRouter() {
-  return (
-    <Switch>
-      <Route path="/admin/accept-invite" component={AcceptInvitePage} />
-      <Route path="/admin" component={AdminRoot} />
-      <Route path="/admin/:rest*" component={AdminRoot} />
-      <Route>
-        <StorefrontWithMaintenance />
-      </Route>
-    </Switch>
+  const [location] = useLocation();
+  const isAdmin = location === "/admin/accept-invite"
+    ? false
+    : location.startsWith("/admin");
+
+  return isAdmin ? (
+    <AdminRoot />
+  ) : location === "/admin/accept-invite" ? (
+    <AcceptInvitePage />
+  ) : (
+    <StorefrontWithMaintenance />
   );
 }
 

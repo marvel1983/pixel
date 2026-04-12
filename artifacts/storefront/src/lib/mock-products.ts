@@ -215,4 +215,154 @@ export const MOCK_PRODUCTS: MockProduct[] = [
     variants: [{ id: 30, name: "License Key", sku: "VMWARE-WS-PRO", platform: "WINDOWS", priceUsd: "99.99", compareAtPriceUsd: "199.99", stockCount: 40 }],
     isFeatured: false, isNew: false,
   },
+
+  /* ── Operating Systems — extra 4 (total 10) ─────────────── */
+  {
+    id: 31, name: "Windows 11 Education", slug: "windows-11-education",
+    imageUrl: "/products/windows-11-pro.png", categorySlug: "operating-systems",
+    avgRating: 4.6, reviewCount: 134,
+    variants: [{ id: 31, name: "Digital Key", sku: "WIN11EDU-KEY", platform: "WINDOWS", priceUsd: "18.99", compareAtPriceUsd: "149.99", stockCount: 300 }],
+    isFeatured: false, isNew: false,
+  },
+  {
+    id: 32, name: "Windows 10 LTSC 2021", slug: "windows-10-ltsc",
+    imageUrl: "/products/windows-10-pro.png", categorySlug: "operating-systems",
+    avgRating: 4.8, reviewCount: 412,
+    variants: [{ id: 32, name: "Digital Key", sku: "WIN10LTSC-KEY", platform: "WINDOWS", priceUsd: "16.99", compareAtPriceUsd: "189.99", stockCount: 600 }],
+    isFeatured: false, isNew: false,
+  },
+  {
+    id: 33, name: "Windows 11 Home N", slug: "windows-11-home-n",
+    imageUrl: "/products/windows-11-home.png", categorySlug: "operating-systems",
+    avgRating: 4.5, reviewCount: 89,
+    variants: [{ id: 33, name: "Digital Key", sku: "WIN11HOMEN-KEY", platform: "WINDOWS", priceUsd: "17.99", compareAtPriceUsd: "139.99", stockCount: 450 }],
+    isFeatured: false, isNew: true,
+  },
+  {
+    id: 34, name: "Windows Server 2022 Datacenter", slug: "windows-server-2022-dc",
+    imageUrl: "/products/windows-server-2022.png", categorySlug: "operating-systems",
+    avgRating: 4.7, reviewCount: 56,
+    variants: [{ id: 34, name: "Datacenter License", sku: "WINSRV2022-DC", platform: "WINDOWS", priceUsd: "249.99", compareAtPriceUsd: "6155.00", stockCount: 10 }],
+    isFeatured: false, isNew: false,
+  },
+
+  /* ── Office & Productivity — extra 4 (total 10) ─────────── */
+  {
+    id: 35, name: "Office 2019 Professional Plus", slug: "office-2019-pro-plus",
+    imageUrl: "/products/office-2021-pro-plus.png", categorySlug: "office-productivity",
+    avgRating: 4.6, reviewCount: 823,
+    variants: [{ id: 35, name: "Lifetime License", sku: "OFF2019PP-KEY", platform: "WINDOWS", priceUsd: "24.99", compareAtPriceUsd: "299.99", stockCount: 600 }],
+    isFeatured: false, isNew: false,
+  },
+  {
+    id: 36, name: "Microsoft 365 Personal", slug: "microsoft-365-personal",
+    imageUrl: "/products/microsoft-365.png", categorySlug: "office-productivity",
+    avgRating: 4.5, reviewCount: 534,
+    variants: [{ id: 36, name: "12-Month Key", sku: "M365PER-1Y", platform: "WINDOWS", priceUsd: "34.99", compareAtPriceUsd: "69.99", stockCount: 500 }],
+    isFeatured: false, isNew: false,
+  },
+  {
+    id: 37, name: "Office Home & Student 2021", slug: "office-2021-home-student",
+    imageUrl: "/products/office-2024-home.png", categorySlug: "office-productivity",
+    avgRating: 4.4, reviewCount: 276,
+    variants: [{ id: 37, name: "Lifetime License", sku: "OFF2021HS-KEY", platform: "WINDOWS", priceUsd: "29.99", compareAtPriceUsd: "149.99", stockCount: 350 }],
+    isFeatured: false, isNew: false,
+  },
+  {
+    id: 38, name: "Microsoft Access 2021", slug: "microsoft-access-2021",
+    imageUrl: "/products/project-2021.png", categorySlug: "office-productivity",
+    avgRating: 4.3, reviewCount: 112,
+    variants: [{ id: 38, name: "License Key", sku: "ACCESS2021-KEY", platform: "WINDOWS", priceUsd: "34.99", compareAtPriceUsd: "129.99", stockCount: 120 }],
+    isFeatured: false, isNew: false,
+  },
+
+  /* ── Antivirus & Security — extra 4 (total 10) ──────────── */
+  {
+    id: 39, name: "Avast Premium Security", slug: "avast-premium",
+    imageUrl: "/products/norton-360.png", categorySlug: "antivirus-security",
+    avgRating: 4.3, reviewCount: 389,
+    variants: [{ id: 39, name: "1 Year / 1 Device", sku: "AVAST-PREM-1D", platform: "WINDOWS", priceUsd: "12.99", compareAtPriceUsd: "49.99", stockCount: 300 }],
+    isFeatured: false, isNew: false,
+  },
+  {
+    id: 40, name: "AVG Internet Security", slug: "avg-internet-security",
+    imageUrl: "/products/kaspersky-total.png", categorySlug: "antivirus-security",
+    avgRating: 4.2, reviewCount: 245,
+    variants: [{ id: 40, name: "1 Year / 3 Devices", sku: "AVG-IS-3D", platform: "WINDOWS", priceUsd: "11.99", compareAtPriceUsd: "44.99", stockCount: 220 }],
+    isFeatured: false, isNew: false,
+  },
+  {
+    id: 41, name: "Trend Micro Internet Security", slug: "trend-micro",
+    imageUrl: "/products/bitdefender-total.png", categorySlug: "antivirus-security",
+    avgRating: 4.4, reviewCount: 167,
+    variants: [{ id: 41, name: "1 Year / 3 Devices", sku: "TREND-IS-3D", platform: "WINDOWS", priceUsd: "16.99", compareAtPriceUsd: "59.99", stockCount: 180 }],
+    isFeatured: false, isNew: true,
+  },
+  {
+    id: 42, name: "Sophos Home Premium", slug: "sophos-home-premium",
+    imageUrl: "/products/mcafee-total.png", categorySlug: "antivirus-security",
+    avgRating: 4.5, reviewCount: 198,
+    variants: [{ id: 42, name: "1 Year / 10 Devices", sku: "SOPHOS-HOME-10D", platform: "WINDOWS", priceUsd: "27.99", compareAtPriceUsd: "99.99", stockCount: 140 }],
+    isFeatured: false, isNew: false,
+  },
+
+  /* ── PC Games — extra 4 (total 10) ──────────────────────── */
+  {
+    id: 43, name: "Starfield", slug: "starfield",
+    imageUrl: "/products/starfield.png", categorySlug: "games",
+    avgRating: 4.2, reviewCount: 3800,
+    variants: [{ id: 43, name: "Steam Key", sku: "STARFIELD-STEAM", platform: "STEAM", priceUsd: "34.99", compareAtPriceUsd: "69.99", stockCount: 90 }],
+    isFeatured: false, isNew: true,
+  },
+  {
+    id: 44, name: "The Witcher 3: Wild Hunt", slug: "witcher-3-wild-hunt",
+    imageUrl: "/products/witcher-3.png", categorySlug: "games",
+    avgRating: 5.0, reviewCount: 9200,
+    variants: [{ id: 44, name: "Steam Key", sku: "WITCHER3-STEAM", platform: "STEAM", priceUsd: "9.99", compareAtPriceUsd: "39.99", stockCount: 200 }],
+    isFeatured: true, isNew: false,
+  },
+  {
+    id: 45, name: "Counter-Strike 2 Prime", slug: "cs2-prime",
+    imageUrl: "/products/gta-v.png", categorySlug: "games",
+    avgRating: 4.6, reviewCount: 12400,
+    variants: [{ id: 45, name: "Steam Key", sku: "CS2-PRIME-STEAM", platform: "STEAM", priceUsd: "14.99", compareAtPriceUsd: "29.99", stockCount: 150 }],
+    isFeatured: false, isNew: false,
+  },
+  {
+    id: 46, name: "Cyberpunk 2077: Phantom Liberty", slug: "cp2077-phantom-liberty",
+    imageUrl: "/products/cyberpunk-2077.png", categorySlug: "games",
+    avgRating: 4.7, reviewCount: 4100,
+    variants: [{ id: 46, name: "Steam Key (DLC)", sku: "CP2077-PL-STEAM", platform: "STEAM", priceUsd: "24.99", compareAtPriceUsd: "29.99", stockCount: 55 }],
+    isFeatured: false, isNew: true,
+  },
+
+  /* ── Servers & Development — extra 4 (total 10) ─────────── */
+  {
+    id: 47, name: "SQL Server 2019 Standard", slug: "sql-server-2019",
+    imageUrl: "/products/sql-server-2022.png", categorySlug: "servers-development",
+    avgRating: 4.4, reviewCount: 88,
+    variants: [{ id: 47, name: "License Key", sku: "SQLSRV2019-STD", platform: "WINDOWS", priceUsd: "249.99", compareAtPriceUsd: "899.99", stockCount: 20 }],
+    isFeatured: false, isNew: false,
+  },
+  {
+    id: 48, name: "JetBrains WebStorm", slug: "jetbrains-webstorm",
+    imageUrl: "/products/intellij-idea.png", categorySlug: "servers-development",
+    avgRating: 4.7, reviewCount: 156,
+    variants: [{ id: 48, name: "1 Year License", sku: "WEBSTORM-1Y", platform: "WINDOWS", priceUsd: "79.99", compareAtPriceUsd: "229.00", stockCount: 35 }],
+    isFeatured: false, isNew: false,
+  },
+  {
+    id: 49, name: "Adobe Photoshop 2024", slug: "adobe-photoshop-2024",
+    imageUrl: "/products/adobe-cc.png", categorySlug: "servers-development",
+    avgRating: 4.6, reviewCount: 445,
+    variants: [{ id: 49, name: "1 Year License", sku: "PHOTO2024-1Y", platform: "WINDOWS", priceUsd: "149.99", compareAtPriceUsd: "263.88", stockCount: 25 }],
+    isFeatured: false, isNew: true,
+  },
+  {
+    id: 50, name: "Windows Server 2019 Datacenter", slug: "windows-server-2019-dc",
+    imageUrl: "/products/windows-server-2019.png", categorySlug: "servers-development",
+    avgRating: 4.5, reviewCount: 72,
+    variants: [{ id: 50, name: "Datacenter License", sku: "WINSRV2019-DC", platform: "WINDOWS", priceUsd: "199.99", compareAtPriceUsd: "4809.00", stockCount: 12 }],
+    isFeatured: false, isNew: false,
+  },
 ];

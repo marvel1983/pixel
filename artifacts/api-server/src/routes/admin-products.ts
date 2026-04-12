@@ -6,6 +6,7 @@ import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import { syncProducts } from "../lib/product-sync";
 import { getMetenziConfig } from "../lib/metenzi-config";
+import { paramString } from "../lib/route-params";
 
 const router = Router();
 
@@ -179,7 +180,7 @@ router.get("/admin/products/export", requireAuth, requireAdmin, requirePermissio
 });
 
 router.get("/admin/products/:id", requireAuth, requireAdmin, requirePermission("manageProducts"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) {
     res.status(400).json({ error: "Invalid product ID" });
     return;
@@ -216,8 +217,53 @@ router.get("/admin/products/:id", requireAuth, requireAdmin, requirePermission("
   res.json({ product, variants, categories: cats, allProducts });
 });
 
+router.post("/admin/products", requireAuth, requireAdmin, requirePermission("manageProducts"), async (req, res) => {
+  const body = req.body;
+  if (!body.name?.trim()) {
+    res.status(400).json({ error: "Product name is required" });
+    return;
+  }
+
+  // Generate slug from name if not provided
+  const slug = body.slug?.trim() ||
+    body.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+
+  // Check slug uniqueness
+  const [existing] = await db.select({ id: products.id }).from(products).where(eq(products.slug, slug));
+  if (existing) {
+    res.status(409).json({ error: "A product with this slug already exists" });
+    return;
+  }
+
+  const [created] = await db
+    .insert(products)
+    .values({
+      name: body.name.trim(),
+      slug,
+      shortDescription: body.shortDescription || null,
+      description: body.description || null,
+      type: body.type || "SOFTWARE",
+      categoryId: body.categoryId || null,
+      imageUrl: body.imageUrl || null,
+      metaTitle: body.metaTitle || null,
+      metaDescription: body.metaDescription || null,
+      isFeatured: body.isFeatured ?? false,
+      isActive: body.isActive ?? false,
+      keyFeatures: body.keyFeatures ?? [],
+      systemRequirements: body.systemRequirements ?? {},
+      relatedProductIds: body.relatedProductIds ?? [],
+      crossSellProductIds: body.crossSellProductIds ?? [],
+      regionRestrictions: body.regionRestrictions ?? [],
+      platformType: body.platformType || null,
+      sortOrder: body.sortOrder ?? 0,
+    })
+    .returning({ id: products.id });
+
+  res.status(201).json({ id: created.id });
+});
+
 router.put("/admin/products/:id", requireAuth, requireAdmin, requirePermission("manageProducts"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) {
     res.status(400).json({ error: "Invalid product ID" });
     return;
@@ -253,7 +299,7 @@ router.put("/admin/products/:id", requireAuth, requireAdmin, requirePermission("
 });
 
 router.patch("/admin/products/:id/toggle", requireAuth, requireAdmin, requirePermission("manageProducts"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) {
     res.status(400).json({ error: "Invalid product ID" });
     return;
@@ -273,8 +319,60 @@ router.patch("/admin/products/:id/toggle", requireAuth, requireAdmin, requirePer
   res.json({ isActive: !product.isActive });
 });
 
+router.post("/admin/products/:id/variants", requireAuth, requireAdmin, requirePermission("manageProducts"), async (req, res) => {
+  const productId = Number(paramString(req.params, "id"));
+  if (!Number.isInteger(productId) || productId <= 0) {
+    res.status(400).json({ error: "Invalid product ID" }); return;
+  }
+  const { name, sku, priceUsd, compareAtPriceUsd, costPriceUsd, b2bPriceUsd, stockCount, platform } = req.body;
+  if (!name?.trim() || !sku?.trim() || !priceUsd) {
+    res.status(400).json({ error: "name, sku, and priceUsd are required" }); return;
+  }
+  const [existing] = await db.select({ id: productVariants.id }).from(productVariants).where(eq(productVariants.sku, sku.trim()));
+  if (existing) { res.status(409).json({ error: "SKU already exists" }); return; }
+  const [created] = await db.insert(productVariants).values({
+    productId,
+    name: name.trim(),
+    sku: sku.trim().toUpperCase(),
+    priceUsd: String(priceUsd),
+    compareAtPriceUsd: compareAtPriceUsd ? String(compareAtPriceUsd) : null,
+    costPriceUsd: costPriceUsd ? String(costPriceUsd) : null,
+    b2bPriceUsd: b2bPriceUsd ? String(b2bPriceUsd) : null,
+    stockCount: stockCount ?? 0,
+    platform: platform || null,
+    isActive: true,
+  }).returning();
+  res.status(201).json({ variant: created });
+});
+
+router.patch("/admin/variants/:id", requireAuth, requireAdmin, requirePermission("manageProducts"), async (req, res) => {
+  const id = Number(paramString(req.params, "id"));
+  if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid variant ID" }); return; }
+  const { name, sku, priceUsd, compareAtPriceUsd, priceOverrideUsd, costPriceUsd, b2bPriceUsd, stockCount, isActive } = req.body;
+  await db.update(productVariants).set({
+    ...(name !== undefined && { name }),
+    ...(sku !== undefined && { sku: sku.toUpperCase() }),
+    ...(priceUsd !== undefined && { priceUsd: String(priceUsd) }),
+    ...(compareAtPriceUsd !== undefined && { compareAtPriceUsd: compareAtPriceUsd ? String(compareAtPriceUsd) : null }),
+    ...(priceOverrideUsd !== undefined && { priceOverrideUsd: priceOverrideUsd ? String(priceOverrideUsd) : null }),
+    ...(costPriceUsd !== undefined && { costPriceUsd: costPriceUsd ? String(costPriceUsd) : null }),
+    ...(b2bPriceUsd !== undefined && { b2bPriceUsd: b2bPriceUsd ? String(b2bPriceUsd) : null }),
+    ...(stockCount !== undefined && { stockCount }),
+    ...(isActive !== undefined && { isActive }),
+    updatedAt: new Date(),
+  }).where(eq(productVariants.id, id));
+  res.json({ success: true });
+});
+
+router.delete("/admin/variants/:id", requireAuth, requireAdmin, requirePermission("manageProducts"), async (req, res) => {
+  const id = Number(paramString(req.params, "id"));
+  if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid variant ID" }); return; }
+  await db.delete(productVariants).where(eq(productVariants.id, id));
+  res.json({ success: true });
+});
+
 router.patch("/admin/variants/:id/price-override", requireAuth, requireAdmin, requirePermission("manageProducts"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) {
     res.status(400).json({ error: "Invalid variant ID" });
     return;

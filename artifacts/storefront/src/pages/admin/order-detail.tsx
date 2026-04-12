@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "wouter";
 import { ArrowLeft, Send, CheckCircle, XCircle, Copy, Save, Clock, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthStore } from "@/stores/auth-store";
 import { RefundModal } from "@/components/admin/refund-modal";
@@ -26,9 +25,12 @@ interface OrderDetail {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  PENDING: "bg-yellow-100 text-yellow-800", PROCESSING: "bg-blue-100 text-blue-800",
-  COMPLETED: "bg-green-100 text-green-800", FAILED: "bg-red-100 text-red-800",
-  REFUNDED: "bg-purple-100 text-purple-800", PARTIALLY_REFUNDED: "bg-orange-100 text-orange-800",
+  PENDING:            "border-amber-400   bg-amber-500/40   text-amber-100   font-bold",
+  PROCESSING:         "border-sky-400     bg-sky-500/40     text-sky-100     font-bold",
+  COMPLETED:          "border-emerald-400 bg-emerald-500/40 text-emerald-100 font-bold",
+  FAILED:             "border-red-400     bg-red-500/40     text-red-100     font-bold",
+  REFUNDED:           "border-violet-400  bg-violet-500/40  text-violet-100  font-bold",
+  PARTIALLY_REFUNDED: "border-orange-400  bg-orange-500/40  text-orange-100  font-bold",
 };
 
 export default function OrderDetailPage() {
@@ -79,84 +81,114 @@ export default function OrderDetailPage() {
     setSaving(false);
   };
 
-  if (loading) return <div className="space-y-4"><Skeleton className="h-8 w-48" /><Skeleton className="h-64" /><Skeleton className="h-64" /></div>;
-  if (!data) return <div className="p-12 text-center text-muted-foreground">Order not found</div>;
+  if (loading) return (
+    <div className="space-y-4">
+      <Skeleton className="h-8 w-48 bg-[#1a2235]" />
+      <Skeleton className="h-64 bg-[#1a2235]" />
+      <Skeleton className="h-64 bg-[#1a2235]" />
+    </div>
+  );
+  if (!data) return <div className="p-12 text-center text-[#5a6a84]">Order not found</div>;
 
   const { order, items, licenseKeys, customer, coupon, timeline } = data;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 text-[#dde4f0]">
+      {/* Header */}
       <div className="flex items-center gap-3">
-        <Link to="/admin/orders"><Button variant="ghost" size="sm"><ArrowLeft className="h-4 w-4 mr-1" /> Orders</Button></Link>
-        <h1 className="text-xl font-bold">{order.orderNumber}</h1>
-        <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_COLORS[order.status] ?? "bg-gray-100"}`}>{order.status}</span>
+        <Link to="/admin/orders">
+          <button className="flex items-center gap-1.5 rounded border border-[#1e3a5f] bg-[#0d2040] px-3 py-1.5 text-[12px] font-medium text-[#a8d4f5] hover:bg-[#112550] transition-colors">
+            <ArrowLeft className="h-3.5 w-3.5" /> Orders
+          </button>
+        </Link>
+        <h1 className="font-mono text-xl font-bold text-white tracking-tight">{order.orderNumber}</h1>
+        <span className={`inline-flex items-center rounded border px-2.5 py-0.5 text-[11px] uppercase tracking-wider ${STATUS_COLORS[order.status] ?? "border-[#4b5568] bg-[#2a3040] text-[#cbd5e1]"}`}>
+          {order.status.replace("_", " ")}
+        </span>
       </div>
 
+      {/* Action buttons */}
       <div className="flex gap-2 flex-wrap">
-        <Button size="sm" variant="outline" onClick={() => updateStatus("COMPLETED")} disabled={order.status === "COMPLETED"}>
-          <CheckCircle className="mr-1 h-4 w-4" /> Mark Completed
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => updateStatus("FAILED")} disabled={order.status === "FAILED"}>
-          <XCircle className="mr-1 h-4 w-4" /> Mark Failed
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => setRefundOpen(true)} disabled={order.status === "REFUNDED"}>
-          <RotateCcw className="mr-1 h-4 w-4" /> Issue Refund
-        </Button>
-        <Button size="sm" variant="outline" onClick={resendEmail}><Send className="mr-1 h-4 w-4" /> Resend Email</Button>
+        <ActionBtn onClick={() => updateStatus("COMPLETED")} disabled={order.status === "COMPLETED"} icon={<CheckCircle className="h-3.5 w-3.5" />} color="emerald">
+          Mark Completed
+        </ActionBtn>
+        <ActionBtn onClick={() => updateStatus("FAILED")} disabled={order.status === "FAILED"} icon={<XCircle className="h-3.5 w-3.5" />} color="red">
+          Mark Failed
+        </ActionBtn>
+        <ActionBtn onClick={() => setRefundOpen(true)} disabled={order.status === "REFUNDED"} icon={<RotateCcw className="h-3.5 w-3.5" />} color="violet">
+          Issue Refund
+        </ActionBtn>
+        <ActionBtn onClick={resendEmail} icon={<Send className="h-3.5 w-3.5" />} color="sky">
+          Resend Email
+        </ActionBtn>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-4">
-          <Section title="Order Items">
-            <table className="w-full text-sm">
-              <thead><tr className="border-b text-left text-muted-foreground">
-                <th className="pb-2">Product</th><th className="pb-2">Variant</th><th className="pb-2 text-right">Price</th><th className="pb-2 text-center">Qty</th><th className="pb-2 text-right">Line Total</th>
-              </tr></thead>
-              <tbody>
-                {items.map((item) => (
-                  <tr key={item.id} className="border-b last:border-0">
-                    <td className="py-2">{item.productName}</td>
-                    <td className="py-2 text-muted-foreground">{item.variantName}</td>
-                    <td className="py-2 text-right font-mono">${item.priceUsd}</td>
-                    <td className="py-2 text-center">{item.quantity}</td>
-                    <td className="py-2 text-right font-mono font-semibold">${(parseFloat(item.priceUsd) * item.quantity).toFixed(2)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </Section>
 
-          <Section title="Payment Info">
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <InfoRow label="Method" value={order.paymentMethod ?? "—"} />
-              <InfoRow label="Payment ID" value={order.paymentIntentId ?? "—"} />
+          {/* Order Items */}
+          <Card title="Order Items">
+            <div className="overflow-x-auto rounded border border-[#2e3340]">
+              <table className="w-full border-collapse text-[12.5px]">
+                <thead>
+                  <tr className="bg-[#1e2128]">
+                    <th className="border-b border-[#2a2e3a] px-3 py-[8px] text-left text-[10.5px] font-bold uppercase tracking-widest" style={{color:"#ffffff"}}>Product</th>
+                    <th className="border-b border-[#2a2e3a] px-3 py-[8px] text-left text-[10.5px] font-bold uppercase tracking-widest" style={{color:"#ffffff"}}>Variant</th>
+                    <th className="border-b border-[#2a2e3a] px-3 py-[8px] text-right text-[10.5px] font-bold uppercase tracking-widest" style={{color:"#ffffff"}}>Price</th>
+                    <th className="border-b border-[#2a2e3a] px-3 py-[8px] text-center text-[10.5px] font-bold uppercase tracking-widest" style={{color:"#ffffff"}}>Qty</th>
+                    <th className="border-b border-[#2a2e3a] px-3 py-[8px] text-right text-[10.5px] font-bold uppercase tracking-widest" style={{color:"#ffffff"}}>Line Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((item, idx) => (
+                    <tr key={item.id} className={idx % 2 === 0 ? "bg-[#0c1018]" : "bg-[#0f1520]"}>
+                      <td className="border-b border-[#1f2840] px-3 py-2 text-[#dde4f0] font-medium">{item.productName}</td>
+                      <td className="border-b border-[#1f2840] px-3 py-2 text-[#8fa0bb]">{item.variantName}</td>
+                      <td className="border-b border-[#1f2840] px-3 py-2 text-right font-mono tabular-nums text-[#dde4f0]">${item.priceUsd}</td>
+                      <td className="border-b border-[#1f2840] px-3 py-2 text-center text-[#dde4f0]">{item.quantity}</td>
+                      <td className="border-b border-[#1f2840] px-3 py-2 text-right font-mono tabular-nums font-bold text-white">${(parseFloat(item.priceUsd) * item.quantity).toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          {/* Payment Info */}
+          <Card title="Payment Info">
+            <div className="grid grid-cols-2 gap-x-8 gap-y-2">
+              <InfoRow label="Method" value={(order.paymentMethod ?? "—").toUpperCase()} highlight />
+              <InfoRow label="Payment ID" value={order.paymentIntentId ?? "—"} mono />
               <InfoRow label="Currency" value={`${order.currencyCode} (×${order.currencyRate})`} />
               {parseFloat(order.walletAmountUsed ?? "0") > 0 && <InfoRow label="Wallet Used" value={`$${order.walletAmountUsed}`} />}
             </div>
-          </Section>
+          </Card>
 
           {order.externalOrderId && (
-            <Section title="Metenzi Order">
-              <div className="text-sm"><InfoRow label="External Order ID" value={order.externalOrderId} /></div>
-            </Section>
+            <Card title="Metenzi Order">
+              <InfoRow label="External Order ID" value={order.externalOrderId} mono />
+            </Card>
           )}
 
-          <Section title="License Keys">
+          {/* License Keys */}
+          <Card title="License Keys">
             {licenseKeys.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No license keys assigned.</p>
+              <p className="text-[12.5px] text-[#4a5a74]">No license keys assigned.</p>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {items.map((item) => {
                   const itemKeys = licenseKeys.filter((k) => k.orderItemId === item.id);
                   if (itemKeys.length === 0) return null;
                   return (
                     <div key={item.id}>
-                      <p className="text-xs font-medium text-muted-foreground mb-1">{item.productName} — {item.variantName}</p>
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-[#5b9fd4] mb-1.5">{item.productName} — {item.variantName}</p>
                       {itemKeys.map((k) => (
-                        <div key={k.id} className="flex items-center gap-2 bg-gray-50 rounded px-3 py-1.5 mb-1">
-                          <code className="flex-1 text-xs font-mono">{k.keyValue}</code>
-                          <Badge variant="secondary" className="text-xs">{k.status}</Badge>
-                          <button onClick={() => navigator.clipboard.writeText(k.keyValue)} className="p-1 hover:bg-gray-200 rounded"><Copy className="h-3 w-3" /></button>
+                        <div key={k.id} className="flex items-center gap-2 rounded border border-[#2e3340] bg-[#212530] px-3 py-2 mb-1.5">
+                          <code className="flex-1 text-[12px] font-mono text-[#dde4f0] tracking-wide">{k.keyValue}</code>
+                          <span className="rounded border border-emerald-400/50 bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-bold text-emerald-200 uppercase">{k.status}</span>
+                          <button onClick={() => navigator.clipboard.writeText(k.keyValue)} className="rounded p-1 text-[#5b9fd4] hover:bg-[#1e3a5f] hover:text-white transition-colors">
+                            <Copy className="h-3.5 w-3.5" />
+                          </button>
                         </div>
                       ))}
                     </div>
@@ -164,70 +196,98 @@ export default function OrderDetailPage() {
                 })}
               </div>
             )}
-          </Section>
+          </Card>
 
-          <Section title="Admin Notes">
-            <textarea className="w-full rounded-md border px-3 py-2 text-sm" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Internal notes..." />
-            <Button size="sm" onClick={saveNotes} disabled={saving} className="mt-2"><Save className="mr-1 h-4 w-4" /> {saving ? "Saving..." : "Save Notes"}</Button>
-          </Section>
+          {/* Admin Notes */}
+          <Card title="Admin Notes">
+            <textarea
+              className="w-full rounded border border-[#1e3a5f] bg-[#0a1828] px-3 py-2 text-[12.5px] text-[#dde4f0] placeholder:text-[#3d5070] focus:border-sky-500/60 focus:outline-none focus:ring-1 focus:ring-sky-500/30 resize-none"
+              rows={3}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Internal notes..."
+            />
+            <button
+              onClick={saveNotes}
+              disabled={saving}
+              className="mt-2 flex items-center gap-1.5 rounded border border-sky-500/50 bg-sky-600/20 px-3 py-1.5 text-[12px] font-medium text-sky-200 hover:bg-sky-600/30 disabled:opacity-50 transition-colors"
+            >
+              <Save className="h-3.5 w-3.5" /> {saving ? "Saving..." : "Save Notes"}
+            </button>
+          </Card>
 
-          <Section title="Timeline">
+          {/* Timeline */}
+          <Card title="Timeline">
             <div className="space-y-3">
               {timeline.map((t, i) => (
                 <div key={i} className="flex items-start gap-3">
-                  <Clock className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <div className="mt-0.5 h-5 w-5 shrink-0 rounded-full border border-sky-500/40 bg-sky-500/10 flex items-center justify-center">
+                    <Clock className="h-3 w-3 text-sky-400" />
+                  </div>
                   <div>
-                    <p className="text-sm font-medium">{t.event}</p>
-                    <p className="text-xs text-muted-foreground">{new Date(t.date).toLocaleString()}</p>
+                    <p className="text-[12.5px] font-medium text-[#dde4f0]">{t.event}</p>
+                    <p className="text-[11px] text-[#5a6a84]">{new Date(t.date).toLocaleString()}</p>
                   </div>
                 </div>
               ))}
             </div>
-          </Section>
+          </Card>
         </div>
 
+        {/* Sidebar */}
         <div className="space-y-4">
-          <Section title="Order Summary">
-            <div className="space-y-1.5 text-sm">
-              <InfoRow label="Subtotal" value={`$${order.subtotalUsd}`} />
-              {parseFloat(order.discountUsd) > 0 && <InfoRow label="Discount" value={`-$${order.discountUsd}`} className="text-red-600" />}
-              {coupon && <InfoRow label="Coupon" value={`${coupon.code} (${coupon.discountPercent}%)`} />}
-              {order.cppSelected && <InfoRow label="CPP" value={`$${order.cppAmountUsd}`} />}
-              <div className="border-t pt-1.5"><InfoRow label="Total" value={`$${order.totalUsd}`} className="font-bold" /></div>
-            </div>
-          </Section>
 
-          <Section title="Customer">
+          {/* Order Summary */}
+          <Card title="Order Summary">
+            <div className="space-y-2 text-[12.5px]">
+              <SummaryRow label="Subtotal" value={`$${order.subtotalUsd}`} />
+              {parseFloat(order.discountUsd) > 0 && <SummaryRow label="Discount" value={`-$${order.discountUsd}`} valueClass="text-rose-300 font-semibold" />}
+              {coupon && <SummaryRow label="Coupon" value={`${coupon.code} (${coupon.discountPercent}%)`} valueClass="text-amber-300" />}
+              {order.cppSelected && <SummaryRow label="CPP" value={`$${order.cppAmountUsd}`} valueClass="text-purple-300" />}
+              <div className="mt-2 border-t border-[#2e3340] pt-2">
+                <SummaryRow label="Total" value={`$${order.totalUsd}`} labelClass="font-bold text-white" valueClass="font-bold text-white text-[14px]" />
+              </div>
+            </div>
+          </Card>
+
+          {/* Customer */}
+          <Card title="Customer">
             {customer ? (
-              <div className="space-y-1.5 text-sm">
-                <InfoRow label="Name" value={`${customer.firstName ?? ""} ${customer.lastName ?? ""}`.trim() || "—"} />
-                <InfoRow label="Email" value={customer.email} />
-                <InfoRow label="Since" value={new Date(customer.createdAt).toLocaleDateString()} />
+              <div className="space-y-2 text-[12.5px]">
+                <SummaryRow label="Name" value={`${customer.firstName ?? ""} ${customer.lastName ?? ""}`.trim() || "—"} />
+                <SummaryRow label="Email" value={customer.email} valueClass="text-sky-300" />
+                <SummaryRow label="Since" value={new Date(customer.createdAt).toLocaleDateString()} />
               </div>
             ) : (
-              <div className="space-y-1.5 text-sm">
-                <InfoRow label="Email" value={order.guestEmail ?? "—"} />
-                <p className="text-xs text-muted-foreground">Guest checkout</p>
+              <div className="space-y-2 text-[12.5px]">
+                <SummaryRow label="Email" value={order.guestEmail ?? "—"} valueClass="text-sky-300" />
+                <p className="text-[11px] text-[#4a5a74]">Guest checkout</p>
               </div>
             )}
-          </Section>
+          </Card>
 
-          <Section title="CPP Status">
-            <div className="space-y-1.5 text-sm">
-              <InfoRow label="Selected" value={order.cppSelected ? "Yes" : "No"} />
-              {order.cppSelected && <InfoRow label="Amount" value={`$${order.cppAmountUsd}`} />}
-              <p className="text-xs text-muted-foreground">{order.cppSelected ? "Customer Protection Program active" : "Not enrolled"}</p>
+          {/* CPP Status */}
+          <Card title="CPP Status">
+            <div className="space-y-2 text-[12.5px]">
+              <SummaryRow
+                label="Selected"
+                value={order.cppSelected ? "Yes" : "No"}
+                valueClass={order.cppSelected ? "text-purple-300 font-semibold" : "text-[#4a5a74]"}
+              />
+              {order.cppSelected && <SummaryRow label="Amount" value={`$${order.cppAmountUsd}`} />}
+              <p className="text-[11px] text-[#4a5a74]">{order.cppSelected ? "Customer Protection Program active" : "Not enrolled"}</p>
             </div>
-          </Section>
+          </Card>
 
-          <Section title="Order Info">
-            <div className="space-y-1.5 text-sm">
-              <InfoRow label="Order ID" value={String(order.id)} />
-              <InfoRow label="Created" value={new Date(order.createdAt).toLocaleString()} />
-              <InfoRow label="Updated" value={new Date(order.updatedAt).toLocaleString()} />
-              {order.ipAddress && <InfoRow label="IP" value={order.ipAddress} />}
+          {/* Order Info */}
+          <Card title="Order Info">
+            <div className="space-y-2 text-[12.5px]">
+              <SummaryRow label="Order ID" value={String(order.id)} valueClass="font-mono" />
+              <SummaryRow label="Created" value={new Date(order.createdAt).toLocaleString()} />
+              <SummaryRow label="Updated" value={new Date(order.updatedAt).toLocaleString()} />
+              {order.ipAddress && <SummaryRow label="IP" value={order.ipAddress} valueClass="font-mono text-[11px]" />}
             </div>
-          </Section>
+          </Card>
         </div>
       </div>
 
@@ -245,10 +305,52 @@ export default function OrderDetailPage() {
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return <div className="rounded-lg border bg-white p-4"><h3 className="font-semibold text-sm mb-3">{title}</h3>{children}</div>;
+function Card({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-lg border border-[#2e3340] bg-[#181c24]" style={{boxShadow:"0 2px 8px rgba(0,0,0,0.35)"}}>
+      <div className="border-b border-[#2a2e3a] px-4 py-3 bg-[#1e2128]">
+        <p className="card-title text-[13px] font-bold uppercase tracking-widest">{title}</p>
+      </div>
+      <div className="px-4 py-3">{children}</div>
+    </div>
+  );
 }
 
-function InfoRow({ label, value, className }: { label: string; value: string; className?: string }) {
-  return <div className="flex justify-between"><span className="text-muted-foreground">{label}</span><span className={className}>{value}</span></div>;
+function InfoRow({ label, value, mono, highlight }: { label: string; value: string; mono?: boolean; highlight?: boolean }) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-[10.5px] uppercase tracking-wider text-[#4a5a74]">{label}</span>
+      <span className={`text-[12.5px] ${mono ? "font-mono text-[11.5px]" : ""} ${highlight ? "font-bold text-[#a8d4f5]" : "text-[#dde4f0]"}`}>{value}</span>
+    </div>
+  );
+}
+
+function SummaryRow({ label, value, labelClass, valueClass }: { label: string; value: string; labelClass?: string; valueClass?: string }) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <span className={`text-[#8fa0bb] ${labelClass ?? ""}`}>{label}</span>
+      <span className={`tabular-nums ${valueClass ?? "text-[#dde4f0]"}`}>{value}</span>
+    </div>
+  );
+}
+
+function ActionBtn({ onClick, disabled, icon, color, children }: {
+  onClick: () => void; disabled?: boolean; icon: React.ReactNode; color: string; children: React.ReactNode;
+}) {
+  const colors: Record<string, string> = {
+    emerald: "border-emerald-300 bg-emerald-500  hover:bg-emerald-400",
+    red:     "border-red-300     bg-[#e53e3e]    hover:bg-[#fc5c5c]",
+    violet:  "border-violet-300  bg-[#7c3aed]   hover:bg-[#8b5cf6]",
+    sky:     "border-sky-300     bg-[#0284c7]   hover:bg-[#0ea5e9]",
+  };
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`flex items-center gap-1.5 rounded border px-3 py-1.5 text-[12px] font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${colors[color]}`}
+      style={{color: "#ffffff"}}
+    >
+      {icon}{children}
+    </button>
+  );
 }

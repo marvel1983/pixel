@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthStore } from "@/stores/auth-store";
@@ -13,6 +12,9 @@ const API = import.meta.env.VITE_API_URL ?? "/api";
 interface FlashSaleRow { id: number; name: string; slug: string; status: string; isActive: boolean; startsAt: string; endsAt: string; bannerText: string; bannerColor: string; productCount: number; totalSold: number; createdAt: string }
 interface AnalyticsProduct { variantId: number; productName: string; variantName: string; salePriceUsd: string; originalPriceUsd: string; maxQuantity: number; soldCount: number; revenue: string }
 type View = { type: "list" } | { type: "edit"; id: number } | { type: "analytics"; id: number; name: string };
+
+const thBase = "border-b border-r border-[#2a2e3a] bg-[#1e2128] px-2.5 py-[8px] text-[10.5px] font-bold uppercase tracking-widest select-none whitespace-nowrap card-title";
+const tableCell = "border-b border-r border-[#1f2840] px-2.5 py-[6px] align-middle text-[12.5px] leading-none text-[#dde4f0]";
 
 export default function AdminFlashSalesPage() {
   const token = useAuthStore((s) => s.token);
@@ -49,42 +51,43 @@ export default function AdminFlashSalesPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 text-[#e8edf5]">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Zap className="h-6 w-6 text-red-500" /> Flash Sales
+        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+          <Zap className="h-6 w-6 text-amber-400" /> Flash Sales
         </h1>
-        <Button onClick={() => setView({ type: "edit", id: 0 })}><Plus className="h-4 w-4 mr-1" /> New Flash Sale</Button>
+        <Button className="bg-sky-600 hover:bg-sky-700 text-white" onClick={() => setView({ type: "edit", id: 0 })}><Plus className="h-4 w-4 mr-1" /> New Flash Sale</Button>
       </div>
-      {loading ? <Loader2 className="h-6 w-6 animate-spin mx-auto" /> : (
-        <div className="space-y-3">
-          {sales.length === 0 && <p className="text-center text-muted-foreground py-8">No flash sales yet.</p>}
+
+      {loading ? (
+        <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-[#8fa0bb]" /></div>
+      ) : (
+        <div className="space-y-2">
+          {sales.length === 0 && <p className="text-center text-[#8fa0bb] py-8 text-[13px]">No flash sales yet.</p>}
           {sales.map((s) => {
             const isLive = s.status === "ACTIVE" && s.isActive && new Date(s.endsAt) > new Date();
             return (
-              <Card key={s.id}>
-                <CardContent className="p-4 flex items-center justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-semibold truncate">{s.name}</span>
-                      <Badge variant={isLive ? "default" : "secondary"} className={isLive ? "bg-green-500" : ""}>
-                        {isLive ? "LIVE" : s.status}
-                      </Badge>
-                    </div>
-                    <div className="text-xs text-muted-foreground space-x-3">
-                      <span>{new Date(s.startsAt).toLocaleDateString()} — {new Date(s.endsAt).toLocaleDateString()}</span>
-                      <span>{s.productCount} products</span>
-                      <span>{s.totalSold} sold</span>
-                    </div>
+              <div key={s.id} className="rounded-lg border border-[#2e3340] bg-[#181c24] p-4 flex items-center justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-semibold text-[#dde4f0] truncate">{s.name}</span>
+                    <span className={`inline-flex items-center rounded border px-2 py-0.5 text-[10px] font-bold ${isLive ? "border-emerald-500 bg-emerald-500/20 text-emerald-200" : "border-[#3d4558] bg-[#1a1f2e] text-[#8fa0bb]"}`}>
+                      {isLive ? "LIVE" : s.status}
+                    </span>
                   </div>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" title="Analytics" onClick={() => setView({ type: "analytics", id: s.id, name: s.name })}><BarChart3 className="h-4 w-4" /></Button>
-                    <Button variant="ghost" size="icon" onClick={() => setView({ type: "edit", id: s.id })}><Pencil className="h-4 w-4" /></Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDuplicate(s.id)}><Copy className="h-4 w-4" /></Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDelete(s.id)}><Trash2 className="h-4 w-4 text-red-500" /></Button>
+                  <div className="text-[11px] text-[#8fa0bb] space-x-3">
+                    <span>{new Date(s.startsAt).toLocaleDateString()} — {new Date(s.endsAt).toLocaleDateString()}</span>
+                    <span>{s.productCount} products</span>
+                    <span>{s.totalSold} sold</span>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+                <div className="flex gap-1">
+                  <Button variant="ghost" size="icon" title="Analytics" className="h-8 w-8 text-[#8fa0bb] hover:text-sky-400 hover:bg-[#1e2a40]" onClick={() => setView({ type: "analytics", id: s.id, name: s.name })}><BarChart3 className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-[#8fa0bb] hover:text-white hover:bg-[#1e2a40]" onClick={() => setView({ type: "edit", id: s.id })}><Pencil className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-[#8fa0bb] hover:text-white hover:bg-[#1e2a40]" onClick={() => handleDuplicate(s.id)}><Copy className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-200 hover:bg-red-500/10" onClick={() => handleDelete(s.id)}><Trash2 className="h-4 w-4" /></Button>
+                </div>
+              </div>
             );
           })}
         </div>
@@ -111,44 +114,58 @@ function FlashSaleAnalytics({ id, name, token, onBack }: AnalyticsProps) {
   const totalSold = products.reduce((s, p) => s + p.soldCount, 0);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 text-[#e8edf5]">
       <div className="flex items-center gap-2">
-        <Button variant="ghost" onClick={onBack}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
-        <h1 className="text-xl font-bold flex items-center gap-2"><BarChart3 className="h-5 w-5" /> {name} — Analytics</h1>
+        <Button variant="ghost" className="text-[#8fa0bb] hover:text-white" onClick={onBack}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
+        <h1 className="text-xl font-bold text-white flex items-center gap-2"><BarChart3 className="h-5 w-5" /> {name} — Analytics</h1>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <Card><CardContent className="pt-4 text-center"><p className="text-sm text-muted-foreground">Total Sold</p><p className="text-2xl font-bold">{totalSold}</p></CardContent></Card>
-        <Card><CardContent className="pt-4 text-center"><p className="text-sm text-muted-foreground">Total Revenue</p><p className="text-2xl font-bold">${totalRevenue.toFixed(2)}</p></CardContent></Card>
+        <div className="rounded-lg border border-[#2e3340] bg-[#181c24] p-4 text-center">
+          <p className="text-[11px] text-[#8fa0bb] uppercase tracking-wider mb-1">Total Sold</p>
+          <p className="text-2xl font-bold text-white">{totalSold}</p>
+        </div>
+        <div className="rounded-lg border border-[#2e3340] bg-[#181c24] p-4 text-center">
+          <p className="text-[11px] text-[#8fa0bb] uppercase tracking-wider mb-1">Total Revenue</p>
+          <p className="text-2xl font-bold text-white">${totalRevenue.toFixed(2)}</p>
+        </div>
       </div>
-      {loading ? <Loader2 className="h-6 w-6 animate-spin mx-auto" /> : products.length === 0 ? (
-        <p className="text-center text-muted-foreground py-8">No products in this flash sale.</p>
+      {loading ? <Loader2 className="h-6 w-6 animate-spin mx-auto text-[#8fa0bb]" /> : products.length === 0 ? (
+        <p className="text-center text-[#8fa0bb] py-8 text-[13px]">No products in this flash sale.</p>
       ) : (
-        <Card>
-          <CardHeader><CardTitle>Product Performance</CardTitle></CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead><tr className="border-b text-left">
-                  <th className="pb-2">Product</th><th className="pb-2">Sale Price</th>
-                  <th className="pb-2">Original</th><th className="pb-2">Sold</th>
-                  <th className="pb-2">Stock</th><th className="pb-2">Revenue</th>
-                </tr></thead>
-                <tbody>
-                  {products.map((p) => (
-                    <tr key={p.variantId} className="border-b">
-                      <td className="py-2">{p.productName}<br /><span className="text-xs text-muted-foreground">{p.variantName}</span></td>
-                      <td className="py-2 text-red-600 font-medium">${p.salePriceUsd}</td>
-                      <td className="py-2 text-muted-foreground line-through">${p.originalPriceUsd}</td>
-                      <td className="py-2 font-medium">{p.soldCount}</td>
-                      <td className="py-2">{p.soldCount}/{p.maxQuantity}</td>
-                      <td className="py-2 font-medium">${parseFloat(p.revenue || "0").toFixed(2)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="rounded-lg border border-[#2e3340] bg-[#181c24]">
+          <div className="border-b border-[#2a2e3a] px-4 py-3 bg-[#1e2128]">
+            <p className="card-title text-[13px] font-bold uppercase tracking-widest">Product Performance</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left" style={{ borderSpacing: 0 }}>
+              <thead>
+                <tr className="border-b-2 border-[#2a2e3a]" style={{ backgroundColor: "#1e2128" }}>
+                  <th className={thBase}>Product</th>
+                  <th className={thBase}>Sale Price</th>
+                  <th className={thBase}>Original</th>
+                  <th className={thBase}>Sold</th>
+                  <th className={thBase}>Stock</th>
+                  <th className={`${thBase} border-r-0`}>Revenue</th>
+                </tr>
+              </thead>
+              <tbody>
+                {products.map((p, idx) => (
+                  <tr key={p.variantId} className={`transition-colors duration-75 ${idx % 2 === 0 ? "bg-[#0c1018] hover:bg-[#111825]" : "bg-[#0f1520] hover:bg-[#141e2e]"}`}>
+                    <td className={tableCell}>
+                      {p.productName}
+                      <br /><span className="text-[11px] text-[#8fa0bb]">{p.variantName}</span>
+                    </td>
+                    <td className={`${tableCell} text-red-300 font-medium`}>${p.salePriceUsd}</td>
+                    <td className={`${tableCell} text-[#8fa0bb] line-through`}>${p.originalPriceUsd}</td>
+                    <td className={`${tableCell} font-medium text-white`}>{p.soldCount}</td>
+                    <td className={`${tableCell} text-[#8fa0bb]`}>{p.soldCount}/{p.maxQuantity}</td>
+                    <td className={`${tableCell} font-medium text-white border-r-0`}>${parseFloat(p.revenue || "0").toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -225,39 +242,46 @@ function FlashSaleForm({ id, token, onDone }: FormProps) {
     } finally { setSaving(false); }
   };
 
+  const inputCls = "border-[#3d4558] bg-[#0f1117] text-[#e8edf5] placeholder:text-[#6b7280] focus-visible:ring-sky-500/40 focus-visible:border-sky-500/60";
+  const labelCls = "text-[11px] font-semibold uppercase tracking-wider text-[#8fa0bb]";
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 text-[#e8edf5]">
       <div className="flex items-center gap-2">
-        <Button variant="ghost" onClick={onDone}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
-        <h1 className="text-xl font-bold">{isNew ? "New Flash Sale" : "Edit Flash Sale"}</h1>
+        <Button variant="ghost" className="text-[#8fa0bb] hover:text-white" onClick={onDone}><ArrowLeft className="h-4 w-4 mr-1" /> Back</Button>
+        <h1 className="text-xl font-bold text-white">{isNew ? "New Flash Sale" : "Edit Flash Sale"}</h1>
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader><CardTitle>Details</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            <div><Label>Name *</Label><Input value={form.name} onChange={(e) => update("name", e.target.value)} /></div>
-            <div><Label>Slug *</Label><Input value={form.slug} onChange={(e) => update("slug", e.target.value)} /></div>
-            <div><Label>Description</Label><Input value={form.description} onChange={(e) => update("description", e.target.value)} /></div>
+        <div className="rounded-lg border border-[#2e3340] bg-[#181c24]">
+          <div className="border-b border-[#2a2e3a] px-4 py-3 bg-[#1e2128]">
+            <p className="card-title text-[13px] font-bold uppercase tracking-widest">Details</p>
+          </div>
+          <div className="p-4 space-y-3">
+            <div><Label className={labelCls}>Name *</Label><Input className={inputCls} value={form.name} onChange={(e) => update("name", e.target.value)} /></div>
+            <div><Label className={labelCls}>Slug *</Label><Input className={inputCls} value={form.slug} onChange={(e) => update("slug", e.target.value)} /></div>
+            <div><Label className={labelCls}>Description</Label><Input className={inputCls} value={form.description} onChange={(e) => update("description", e.target.value)} /></div>
             <div className="grid grid-cols-2 gap-3">
-              <div><Label>Starts At *</Label><Input type="datetime-local" value={form.startsAt} onChange={(e) => update("startsAt", e.target.value)} /></div>
-              <div><Label>Ends At *</Label><Input type="datetime-local" value={form.endsAt} onChange={(e) => update("endsAt", e.target.value)} /></div>
+              <div><Label className={labelCls}>Starts At *</Label><Input type="datetime-local" className={inputCls} value={form.startsAt} onChange={(e) => update("startsAt", e.target.value)} /></div>
+              <div><Label className={labelCls}>Ends At *</Label><Input type="datetime-local" className={inputCls} value={form.endsAt} onChange={(e) => update("endsAt", e.target.value)} /></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Status</Label>
-                <select className="w-full border rounded px-2 py-1.5 text-sm" value={form.status} onChange={(e) => update("status", e.target.value)}>
+                <Label className={labelCls}>Status</Label>
+                <select className="w-full h-9 rounded border border-[#3d4558] bg-[#0f1117] px-2 text-sm text-[#e8edf5]" value={form.status} onChange={(e) => update("status", e.target.value)}>
                   <option value="DRAFT">Draft</option><option value="ACTIVE">Active</option><option value="ENDED">Ended</option>
                 </select>
               </div>
-              <div><Label>Banner Color</Label><Input type="color" value={form.bannerColor} onChange={(e) => update("bannerColor", e.target.value)} /></div>
+              <div><Label className={labelCls}>Banner Color</Label><Input type="color" className={inputCls} value={form.bannerColor} onChange={(e) => update("bannerColor", e.target.value)} /></div>
             </div>
-            <div><Label>Banner Text</Label><Input value={form.bannerText} onChange={(e) => update("bannerText", e.target.value)} placeholder="Custom banner text" /></div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle>Products ({saleProducts.length})</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            <select className="w-full border rounded px-2 py-1.5 text-sm" onChange={(e) => { addProduct(parseInt(e.target.value)); e.target.value = ""; }}>
+            <div><Label className={labelCls}>Banner Text</Label><Input className={inputCls} value={form.bannerText} onChange={(e) => update("bannerText", e.target.value)} placeholder="Custom banner text" /></div>
+          </div>
+        </div>
+        <div className="rounded-lg border border-[#2e3340] bg-[#181c24]">
+          <div className="border-b border-[#2a2e3a] px-4 py-3 bg-[#1e2128]">
+            <p className="card-title text-[13px] font-bold uppercase tracking-widest">Products ({saleProducts.length})</p>
+          </div>
+          <div className="p-4 space-y-3">
+            <select className="w-full h-9 rounded border border-[#3d4558] bg-[#0f1117] px-2 text-sm text-[#e8edf5]" onChange={(e) => { addProduct(parseInt(e.target.value)); e.target.value = ""; }}>
               <option value="">Add product variant...</option>
               {variants.filter((v) => !saleProducts.some((sp) => sp.variantId === v.variantId)).map((v) => (
                 <option key={v.variantId} value={v.variantId}>{v.productName} — {v.variantName} (${v.priceUsd})</option>
@@ -267,27 +291,27 @@ function FlashSaleForm({ id, token, onDone }: FormProps) {
               {saleProducts.map((sp, i) => {
                 const v = variants.find((x) => x.variantId === sp.variantId);
                 return (
-                  <div key={sp.variantId} className="flex items-center gap-2 p-2 border rounded text-sm">
-                    <span className="flex-1 truncate text-xs">{v?.productName} — {v?.variantName}</span>
-                    <Input className="w-24 h-7 text-xs" type="number" step="0.01" value={sp.salePriceUsd}
+                  <div key={sp.variantId} className="flex items-center gap-2 p-2 rounded border border-[#2e3340] bg-[#0f1520] text-sm">
+                    <span className="flex-1 truncate text-[11px] text-[#dde4f0]">{v?.productName} — {v?.variantName}</span>
+                    <Input className={`w-24 h-7 text-xs ${inputCls}`} type="number" step="0.01" value={sp.salePriceUsd}
                       onChange={(e) => { const u = [...saleProducts]; u[i] = { ...u[i], salePriceUsd: e.target.value }; setSaleProducts(u); }} />
-                    <Input className="w-16 h-7 text-xs" type="number" value={sp.maxQuantity}
+                    <Input className={`w-16 h-7 text-xs ${inputCls}`} type="number" value={sp.maxQuantity}
                       onChange={(e) => { const u = [...saleProducts]; u[i] = { ...u[i], maxQuantity: parseInt(e.target.value) || 1 }; setSaleProducts(u); }} />
-                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setSaleProducts((p) => p.filter((_, j) => j !== i))}>
-                      <Trash2 className="h-3 w-3 text-red-500" />
+                    <Button size="icon" variant="ghost" className="h-7 w-7 text-red-400 hover:text-red-200 hover:bg-red-500/10" onClick={() => setSaleProducts((p) => p.filter((_, j) => j !== i))}>
+                      <Trash2 className="h-3 w-3" />
                     </Button>
                   </div>
                 );
               })}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
       <div className="flex gap-2">
-        <Button onClick={handleSave} disabled={saving}>
+        <Button className="bg-sky-600 hover:bg-sky-700 text-white" onClick={handleSave} disabled={saving}>
           {saving ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" />Saving...</> : "Save Flash Sale"}
         </Button>
-        <Button variant="outline" onClick={onDone}>Cancel</Button>
+        <Button variant="outline" className="border-[#3d4558] bg-[#1a1f2e] text-[#e8edf5]" onClick={onDone}>Cancel</Button>
       </div>
     </div>
   );

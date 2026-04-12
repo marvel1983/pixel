@@ -1,4 +1,5 @@
-import { Router } from "express";
+import { Router, type RequestHandler } from "express";
+import { z } from "zod";
 import { db } from "@workspace/db";
 import { productQuestions, productAnswers, products } from "@workspace/db/schema";
 import { eq, and, desc, count, ilike, or, inArray, type SQL } from "drizzle-orm";
@@ -6,6 +7,17 @@ import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import { enqueueEmail } from "../lib/email/queue";
 import { qaAnsweredEmail } from "../services/qa-emails";
+import { paramString } from "../lib/route-params";
+import { logger } from "../lib/logger";
+
+const createQaSchema = z.object({
+  productId: z.coerce.number().int().positive(),
+  questionText: z.string().min(5).max(2000),
+  askerName: z.string().min(1).max(100).optional(),
+  askerEmail: z.string().email().optional(),
+  status: z.enum(["PENDING", "APPROVED", "REJECTED"]).optional().default("APPROVED"),
+  answer: z.string().max(5000).optional(),
+});
 
 const router = Router();
 const guard = [requireAuth, requireAdmin, requirePermission("manageProducts")];
@@ -90,13 +102,75 @@ router.get("/admin/qa", ...guard, async (req, res) => {
   res.json({ questions: result, total: totalRow?.c ?? 0, page, limit });
 });
 
+/** Admin: create Q&A (curated or internal); optional answer auto-publishes as APPROVED. */
+const postAdminQaCreate: RequestHandler = async (req, res) => {
+  try {
+    const parsed = createQaSchema.safeParse(req.body);
+    if (!parsed.success) {
+      logger.warn({ issues: parsed.error.flatten() }, "create qa validation failed");
+      res.status(400).json({ error: "Invalid request" });
+      return;
+    }
+    let { productId, questionText, status } = parsed.data;
+    const askerName = parsed.data.askerName?.trim() || "Store customer";
+    const askerEmail = parsed.data.askerEmail?.trim() || "noreply@example.com";
+    const answerTrim = parsed.data.answer?.trim() ?? "";
+
+    const [product] = await db.select({ id: products.id }).from(products).where(eq(products.id, productId)).limit(1);
+    if (!product) {
+      res.status(400).json({ error: "Product not found" });
+      return;
+    }
+
+    if (answerTrim.length > 0) {
+      status = "APPROVED";
+    }
+
+    const [inserted] = await db
+      .insert(productQuestions)
+      .values({
+        productId,
+        userId: null,
+        askerName,
+        askerEmail,
+        questionText: questionText.trim(),
+        status,
+      })
+      .returning({ id: productQuestions.id });
+
+    if (!inserted) {
+      res.status(500).json({ error: "Failed to create question" });
+      return;
+    }
+
+    if (answerTrim.length > 0) {
+      await db.insert(productAnswers).values({
+        questionId: inserted.id,
+        answerText: answerTrim,
+        isAdmin: true,
+        authorName: "Store Admin",
+      });
+    }
+
+    res.status(201).json({ success: true, id: inserted.id });
+  } catch (err) {
+    logger.error({ err }, "POST admin qa create failed");
+    const message = err instanceof Error ? err.message : "Server error";
+    res.status(500).json({ error: message });
+  }
+};
+
+// `/create` — storefront koristi ovaj path (nekad POST na `/admin/qa` na produkciji nije deployan / proxy)
+router.post("/admin/qa/create", ...guard, postAdminQaCreate);
+router.post("/admin/qa", ...guard, postAdminQaCreate);
+
 function parseId(raw: string): number | null {
   const id = parseInt(raw);
   return isNaN(id) || id <= 0 ? null : id;
 }
 
 router.patch("/admin/qa/:id/status", ...guard, async (req, res) => {
-  const id = parseId(req.params.id);
+  const id = parseId(paramString(req.params, "id"));
   if (!id) { res.status(400).json({ error: "Invalid question ID" }); return; }
   const { status } = req.body;
   if (!["APPROVED", "REJECTED"].includes(status)) {
@@ -121,7 +195,7 @@ router.post("/admin/qa/bulk-status", ...guard, async (req, res) => {
 });
 
 router.post("/admin/qa/:id/answer", ...guard, async (req, res) => {
-  const id = parseId(req.params.id);
+  const id = parseId(paramString(req.params, "id"));
   if (!id) { res.status(400).json({ error: "Invalid question ID" }); return; }
   const { answer } = req.body;
   if (!answer || typeof answer !== "string" || answer.length < 1) {
@@ -168,7 +242,7 @@ router.post("/admin/qa/:id/answer", ...guard, async (req, res) => {
 });
 
 router.delete("/admin/qa/:id", ...guard, async (req, res) => {
-  const id = parseId(req.params.id);
+  const id = parseId(paramString(req.params, "id"));
   if (!id) { res.status(400).json({ error: "Invalid question ID" }); return; }
   const [deleted] = await db.delete(productQuestions).where(eq(productQuestions.id, id))
     .returning({ id: productQuestions.id });

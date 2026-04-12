@@ -1,10 +1,21 @@
-import { useEffect, useState, useCallback } from "react";
-import { Search, ChevronLeft, ChevronRight, Clock, Check, X, Trash2, MessageSquare, Eye } from "lucide-react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { Search, ChevronLeft, ChevronRight, Check, X, Trash2, Eye, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useAuthStore } from "@/stores/auth-store";
 import { useToast } from "@/hooks/use-toast";
+import { apiFetch } from "@/lib/api-client";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -34,6 +45,18 @@ export default function AdminQAPage() {
   const [detail, setDetail] = useState<QRow | null>(null);
   const [answer, setAnswer] = useState("");
   const [savingAnswer, setSavingAnswer] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [productQuery, setProductQuery] = useState("");
+  const [productHits, setProductHits] = useState<{ id: number; name: string; slug: string }[]>([]);
+  const [productSearchLoading, setProductSearchLoading] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<{ id: number; name: string; slug: string } | null>(null);
+  const [newQuestionText, setNewQuestionText] = useState("");
+  const [newAnswerText, setNewAnswerText] = useState("");
+  const [newAskerName, setNewAskerName] = useState("");
+  const [newAskerEmail, setNewAskerEmail] = useState("");
+  const [newStatus, setNewStatus] = useState<"APPROVED" | "PENDING" | "REJECTED">("APPROVED");
+  const [creating, setCreating] = useState(false);
+  const productSearchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const token = useAuthStore((s) => s.token);
   const { toast } = useToast();
   const limit = 25;
@@ -57,6 +80,98 @@ export default function AdminQAPage() {
   }, [page, search, status, token]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  const resetCreateForm = useCallback(() => {
+    setProductQuery("");
+    setProductHits([]);
+    setSelectedProduct(null);
+    setNewQuestionText("");
+    setNewAnswerText("");
+    setNewAskerName("");
+    setNewAskerEmail("");
+    setNewStatus("APPROVED");
+  }, []);
+
+  useEffect(() => {
+    if (!createOpen) return;
+    if (productSearchTimer.current) clearTimeout(productSearchTimer.current);
+    if (!productQuery.trim()) {
+      setProductHits([]);
+      setProductSearchLoading(false);
+      return;
+    }
+    setProductSearchLoading(true);
+    productSearchTimer.current = setTimeout(() => {
+      const q = productQuery.trim();
+      fetch(`${API}/admin/products?q=${encodeURIComponent(q)}&page=1`, { headers })
+        .then((r) => r.json())
+        .then((d) => {
+          const list = (d.products || []).slice(0, 12).map((p: { id: number; name: string; slug: string }) => ({
+            id: p.id,
+            name: p.name,
+            slug: p.slug,
+          }));
+          setProductHits(list);
+        })
+        .catch(() => setProductHits([]))
+        .finally(() => setProductSearchLoading(false));
+    }, 350);
+    return () => {
+      if (productSearchTimer.current) clearTimeout(productSearchTimer.current);
+    };
+  }, [createOpen, productQuery, token]);
+
+  const submitCreate = async () => {
+    if (!selectedProduct) {
+      toast({ title: "Pick a product", description: "Search and select a product first.", variant: "destructive" });
+      return;
+    }
+    if (newQuestionText.trim().length < 5) {
+      toast({ title: "Question too short", description: "Use at least 5 characters.", variant: "destructive" });
+      return;
+    }
+    setCreating(true);
+    try {
+      const res = await apiFetch("/admin/qa/create", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          productId: selectedProduct.id,
+          questionText: newQuestionText.trim(),
+          askerName: newAskerName.trim() || undefined,
+          askerEmail: newAskerEmail.trim() || undefined,
+          status: newAnswerText.trim() ? "APPROVED" : newStatus,
+          answer: newAnswerText.trim() || undefined,
+        }),
+      });
+      const raw = await res.text();
+      let data: { error?: string; message?: string } = {};
+      try {
+        data = raw ? JSON.parse(raw) : {};
+      } catch {
+        /* HTML ili plain text */
+      }
+      if (!res.ok) {
+        const hint =
+          data.error ||
+          data.message ||
+          (raw.trim().startsWith("<")
+            ? `Server returned ${res.status} (not JSON — often old deploy or wrong API URL).`
+            : raw.slice(0, 180).trim() || `HTTP ${res.status}`);
+        toast({ title: "Could not create Q&A", description: hint, variant: "destructive" });
+        return;
+      }
+      toast({ title: "Q&A created", description: newAnswerText.trim() ? "Published with admin answer." : "Saved with the status you chose." });
+      setCreateOpen(false);
+      resetCreateForm();
+      fetchData();
+    } finally {
+      setCreating(false);
+    }
+  };
 
   const updateStatus = async (id: number, st: string) => {
     const res = await fetch(`${API}/admin/qa/${id}/status`, { method: "PATCH", headers, body: JSON.stringify({ status: st }) });
@@ -123,6 +238,10 @@ export default function AdminQAPage() {
       </div>
 
       <div className="flex flex-wrap gap-2 items-center">
+        <Button type="button" size="sm" onClick={() => { resetCreateForm(); setCreateOpen(true); }}>
+          <Plus className="h-4 w-4 mr-1" />
+          Add Q&A
+        </Button>
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input className="w-full border rounded-md pl-9 pr-3 py-2 text-sm" placeholder="Search questions..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} />
@@ -196,6 +315,102 @@ export default function AdminQAPage() {
           </div>
         </div>
       )}
+
+      <Dialog open={createOpen} onOpenChange={(o) => { setCreateOpen(o); if (!o) resetCreateForm(); }}>
+        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Add Q&A</DialogTitle>
+            <DialogDescription>
+              Choose a product, enter the question, and optionally an admin answer. If you add an answer, the item is saved as <strong>Approved</strong> so it appears on the storefront.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Product</Label>
+              {selectedProduct ? (
+                <div className="flex items-center justify-between gap-2 rounded-md border bg-muted/30 px-3 py-2 text-sm">
+                  <span className="font-medium truncate">{selectedProduct.name}</span>
+                  <Button type="button" variant="ghost" size="sm" className="shrink-0" onClick={() => { setSelectedProduct(null); setProductQuery(""); }}>
+                    Change
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <Input
+                    placeholder="Search by product name or SKU…"
+                    value={productQuery}
+                    onChange={(e) => setProductQuery(e.target.value)}
+                    autoComplete="off"
+                  />
+                  {productSearchLoading && <p className="text-xs text-muted-foreground">Searching…</p>}
+                  {!productSearchLoading && productHits.length > 0 && (
+                    <ul className="max-h-40 overflow-auto rounded-md border bg-background text-sm">
+                      {productHits.map((p) => (
+                        <li key={p.id}>
+                          <button
+                            type="button"
+                            className="w-full text-left px-3 py-2 hover:bg-muted/60 border-b last:border-0"
+                            onClick={() => {
+                              setSelectedProduct(p);
+                              setProductQuery("");
+                              setProductHits([]);
+                            }}
+                          >
+                            {p.name}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </>
+              )}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="qa-asker-name">Displayed name (optional)</Label>
+                <Input id="qa-asker-name" placeholder="Store customer" value={newAskerName} onChange={(e) => setNewAskerName(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="qa-asker-email">Email (optional, internal)</Label>
+                <Input id="qa-asker-email" type="email" placeholder="noreply@example.com" value={newAskerEmail} onChange={(e) => setNewAskerEmail(e.target.value)} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="qa-question">Question</Label>
+              <Textarea id="qa-question" rows={4} placeholder="What shows on the product page…" value={newQuestionText} onChange={(e) => setNewQuestionText(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="qa-answer">Admin answer (optional)</Label>
+              <Textarea id="qa-answer" rows={3} placeholder="Leave empty to add later from the list." value={newAnswerText} onChange={(e) => setNewAnswerText(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="qa-status">Initial status</Label>
+              <select
+                id="qa-status"
+                className="w-full border rounded-md px-3 py-2 text-sm"
+                value={newStatus}
+                onChange={(e) => setNewStatus(e.target.value as typeof newStatus)}
+                disabled={!!newAnswerText.trim()}
+              >
+                <option value="APPROVED">Approved (visible on site)</option>
+                <option value="PENDING">Pending (moderate later)</option>
+                <option value="REJECTED">Rejected (hidden)</option>
+              </select>
+              {newAnswerText.trim() ? (
+                <p className="text-xs text-muted-foreground">Status is Approved while an answer is present.</p>
+              ) : null}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setCreateOpen(false)} disabled={creating}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={submitCreate} disabled={creating}>
+              {creating ? "Saving…" : "Create"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {detail && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setDetail(null)}>

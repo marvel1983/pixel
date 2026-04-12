@@ -30,6 +30,7 @@ interface CartState {
   removeBundleItems: (bundleId: number) => void;
   removeItem: (variantId: number, bundleId?: number) => void;
   updateQuantity: (variantId: number, quantity: number, bundleId?: number) => void;
+  updateItemPrice: (variantId: number, priceUsd: string) => void;
   clearCart: () => void;
   setCoupon: (coupon: CouponData | null) => void;
   getTotal: () => number;
@@ -101,6 +102,13 @@ export const useCartStore = create<CartState>()(
               : state.items.map((i) => match(i) ? { ...i, quantity } : i),
           };
         }),
+
+      updateItemPrice: (variantId, priceUsd) =>
+        set((state) => ({
+          items: state.items.map((i) =>
+            i.variantId === variantId && !i.bundleId ? { ...i, priceUsd } : i,
+          ),
+        })),
 
       clearCart: () => set({ items: [], coupon: null }),
 

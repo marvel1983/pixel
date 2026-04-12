@@ -9,6 +9,7 @@ import { eq, desc, sql, count, and } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import { processAbandonedCarts, sendCartEmailNow } from "../services/abandoned-cart-service";
+import { paramString } from "../lib/route-params";
 
 const router = Router();
 const guard = [requireAuth, requireAdmin, requirePermission("manageOrders")];
@@ -60,7 +61,7 @@ router.get("/admin/abandoned-carts", ...guard, async (req, res) => {
 });
 
 router.get("/admin/abandoned-carts/:id/emails", ...guard, async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(paramString(req.params, "id"));
   const emails = await db.select().from(abandonedCartEmails)
     .where(eq(abandonedCartEmails.abandonedCartId, id))
     .orderBy(desc(abandonedCartEmails.sentAt));
@@ -78,7 +79,7 @@ router.post("/admin/abandoned-carts/process", ...guard, async (_req, res) => {
 });
 
 router.post("/admin/abandoned-carts/:id/send-now", ...guard, async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(paramString(req.params, "id"));
   try {
     const sent = await sendCartEmailNow(id);
     if (!sent) {

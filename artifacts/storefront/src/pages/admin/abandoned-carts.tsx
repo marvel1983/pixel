@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from "react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -90,9 +89,12 @@ export default function AdminAbandonedCartsPage() {
           <Button size="sm" variant="outline" onClick={() => { loadStats(); loadCarts(); }}>
             <RefreshCcw className="h-3.5 w-3.5 mr-1" /> Refresh
           </Button>
-          <Button size="sm" onClick={processNow}>
-            <Play className="h-3.5 w-3.5 mr-1" /> Process Now
-          </Button>
+          <button
+            onClick={processNow}
+            className="flex items-center gap-2 rounded border border-sky-500 bg-sky-600 px-3 py-1.5 text-[13px] font-semibold text-white hover:bg-sky-500 disabled:opacity-50 transition-colors"
+          >
+            <Play className="h-3.5 w-3.5" /> Process Now
+          </button>
         </div>
       </div>
 
@@ -104,10 +106,12 @@ export default function AdminAbandonedCartsPage() {
             { icon: TrendingUp, label: "Recovered", value: `${stats.recovered} (${stats.recoveryRate}%)` },
             { icon: DollarSign, label: "Revenue Recovered", value: `$${stats.recoveredRevenue}` },
           ].map((s) => (
-            <Card key={s.label}><CardContent className="pt-4 flex items-center gap-3">
-              <s.icon className="h-5 w-5 text-blue-600 shrink-0" />
-              <div><p className="text-xs text-muted-foreground">{s.label}</p><p className="text-lg font-bold">{s.value}</p></div>
-            </CardContent></Card>
+            <div key={s.label} className="rounded-lg border border-[#2e3340] bg-[#181c24]" style={{boxShadow:"0 2px 8px rgba(0,0,0,0.35)"}}>
+              <div className="pt-4 px-4 pb-3 flex items-center gap-3">
+                <s.icon className="h-5 w-5 text-sky-400 shrink-0" />
+                <div><p className="text-xs text-[#5a6a84]">{s.label}</p><p className="text-lg font-bold text-[#dde4f0]">{s.value}</p></div>
+              </div>
+            </div>
           ))}
         </div>
       )}
@@ -123,27 +127,29 @@ export default function AdminAbandonedCartsPage() {
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin" /></div>
       ) : carts.length === 0 ? (
-        <Card><CardContent className="py-12 text-center text-muted-foreground">No abandoned carts found</CardContent></Card>
+        <div className="rounded-lg border border-[#2e3340] bg-[#181c24]" style={{boxShadow:"0 2px 8px rgba(0,0,0,0.35)"}}>
+          <div className="py-12 text-center text-[#5a6a84]">No abandoned carts found</div>
+        </div>
       ) : (
         <div className="space-y-2">
           {carts.map((c) => (
-            <Card key={c.id}>
-              <CardContent className="py-3 space-y-2">
+            <div key={c.id} className="rounded-lg border border-[#2e3340] bg-[#181c24]" style={{boxShadow:"0 2px 8px rgba(0,0,0,0.35)"}}>
+              <div className="py-3 px-4 space-y-2">
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <div className="space-y-1 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium">{c.email}</span>
+                      <span className="font-medium text-[#dde4f0]">{c.email}</span>
                       {statusBadge(c.status)}
                     </div>
-                    <div className="flex gap-3 text-xs text-muted-foreground flex-wrap">
-                      <span>Total: <strong>${c.cartTotal}</strong></span>
+                    <div className="flex gap-3 text-xs text-[#5a6a84] flex-wrap">
+                      <span>Total: <strong className="text-[#dde4f0]">${c.cartTotal}</strong></span>
                       <span>Items: {c.cartData.items.length}</span>
                       <span>Emails: {c.emailsSent}/3</span>
-                      {c.couponCode && <span>Coupon: <strong>{c.couponCode}</strong></span>}
+                      {c.couponCode && <span>Coupon: <strong className="text-[#dde4f0]">{c.couponCode}</strong></span>}
                       <span>{new Date(c.createdAt).toLocaleDateString()}</span>
-                      {c.recoveredAt && <span className="text-green-600">Recovered {new Date(c.recoveredAt).toLocaleDateString()}</span>}
+                      {c.recoveredAt && <span className="text-green-400">Recovered {new Date(c.recoveredAt).toLocaleDateString()}</span>}
                     </div>
-                    <p className="text-xs text-muted-foreground line-clamp-1">
+                    <p className="text-xs text-[#5a6a84] line-clamp-1">
                       {c.cartData.items.map((i) => `${i.productName} ×${i.quantity}`).join(", ")}
                     </p>
                   </div>
@@ -162,26 +168,26 @@ export default function AdminAbandonedCartsPage() {
                   </div>
                 </div>
                 {expandedId === c.id && (
-                  <div className="border-t pt-2 mt-1">
+                  <div className="border-t border-[#2a2e3a] pt-2 mt-1">
                     {logsLoading ? (
                       <div className="flex justify-center py-2"><Loader2 className="h-4 w-4 animate-spin" /></div>
                     ) : emailLogs.length === 0 ? (
-                      <p className="text-xs text-muted-foreground">No emails sent yet</p>
+                      <p className="text-xs text-[#5a6a84]">No emails sent yet</p>
                     ) : (
                       <div className="space-y-1">
                         {emailLogs.map((log) => (
                           <div key={log.id} className="flex items-center gap-3 text-xs">
                             <Badge variant="outline" className="text-[10px]">Email {log.emailNumber}</Badge>
-                            <span className="text-muted-foreground">{log.subject}</span>
-                            <span className="text-muted-foreground ml-auto">{new Date(log.sentAt).toLocaleString()}</span>
+                            <span className="text-[#5a6a84]">{log.subject}</span>
+                            <span className="text-[#5a6a84] ml-auto">{new Date(log.sentAt).toLocaleString()}</span>
                           </div>
                         ))}
                       </div>
                     )}
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ))}
         </div>
       )}

@@ -5,6 +5,7 @@ import { products } from "@workspace/db/schema";
 import { eq, asc, sql, count } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
+import { paramString } from "../lib/route-params";
 
 const router = Router();
 
@@ -38,7 +39,7 @@ router.get("/admin/categories", requireAuth, requireAdmin, requirePermission("ma
 });
 
 router.get("/admin/categories/:id", requireAuth, requireAdmin, requirePermission("manageProducts"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) {
     res.status(400).json({ error: "Invalid category ID" });
     return;
@@ -81,7 +82,7 @@ router.get("/admin/categories/:id", requireAuth, requireAdmin, requirePermission
 });
 
 router.put("/admin/categories/:id", requireAuth, requireAdmin, requirePermission("manageProducts"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) {
     res.status(400).json({ error: "Invalid category ID" });
     return;
@@ -144,7 +145,7 @@ router.put("/admin/categories/:id", requireAuth, requireAdmin, requirePermission
 });
 
 router.patch("/admin/categories/:id/toggle", requireAuth, requireAdmin, requirePermission("manageProducts"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) {
     res.status(400).json({ error: "Invalid category ID" });
     return;
@@ -207,7 +208,7 @@ router.post("/admin/categories", requireAuth, requireAdmin, requirePermission("m
 });
 
 router.delete("/admin/categories/:id", requireAuth, requireAdmin, requirePermission("manageProducts"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) {
     res.status(400).json({ error: "Invalid category ID" });
     return;

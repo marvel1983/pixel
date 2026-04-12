@@ -12,6 +12,7 @@ import {
   LogOut,
   Package,
   Settings,
+  Award,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,7 +29,6 @@ import { useAuthStore } from "@/stores/auth-store";
 import { CurrencySelector } from "./currency-selector";
 import { LanguageSelector } from "../shop/language-selector";
 import { ThemeToggle } from "./theme-toggle";
-import { CartDrawer } from "./cart-drawer";
 import { MobileDrawer } from "./mobile-drawer";
 import { CategoriesDropdown } from "./categories-dropdown";
 
@@ -43,7 +43,6 @@ const NAV_KEYS = [
 
 export function NavBar() {
   const { t } = useTranslation();
-  const [cartOpen, setCartOpen] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [catOpen, setCatOpen] = useState(false);
   const itemCount = useCartStore((s) => s.getItemCount());
@@ -119,22 +118,23 @@ export function NavBar() {
               </Button>
             </Link>
 
-            <Button
-              variant="ghost"
-              size="icon"
-              className="relative text-primary-foreground"
-              onClick={() => setCartOpen(true)}
-            >
-              <ShoppingCart className="h-5 w-5" />
-              {itemCount > 0 && <NavBadge count={itemCount} />}
-            </Button>
+            <Link href="/cart">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="relative text-primary-foreground"
+              >
+                <ShoppingCart className="h-5 w-5" />
+                {itemCount > 0 && <NavBadge count={itemCount} />}
+              </Button>
+            </Link>
 
             <UserMenu />
           </div>
         </div>
       </nav>
 
-      <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
+      {/* CartDrawer removed — cart is now a full page at /cart */}
       <MobileDrawer open={mobileOpen} onClose={() => setMobileOpen(false)} />
     </>
   );
@@ -176,6 +176,11 @@ function UserMenu() {
         <Link href="/account/orders">
           <DropdownMenuItem>
             <Package className="mr-2 h-4 w-4" />{t("nav.myOrders")}
+          </DropdownMenuItem>
+        </Link>
+        <Link href="/account/loyalty">
+          <DropdownMenuItem>
+            <Award className="mr-2 h-4 w-4" />Loyalty Rewards
           </DropdownMenuItem>
         </Link>
         <Link href="/account">

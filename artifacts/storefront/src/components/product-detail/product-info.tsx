@@ -20,12 +20,21 @@ interface ProductInfoProps {
   product: MockProduct;
 }
 
-const FLASH_API = import.meta.env.VITE_API_URL ?? "/api";
+interface EnginePrice {
+  basePriceUsd: string;
+  effectiveUnitPriceUsd: string;
+  appliedStack: Array<{ type: string; label: string; savedUsd: string }>;
+  isFlashSale: boolean;
+  flashSaleId: number | null;
+}
+
+const API = import.meta.env.VITE_API_URL ?? "/api";
 
 export function ProductInfo({ product }: ProductInfoProps) {
   const [selectedVariant, setSelectedVariant] = useState<MockVariant>(product.variants[0]);
   const [quantity, setQuantity] = useState(1);
-  const [flashSale, setFlashSale] = useState<{ salePriceUsd: string; endsAt: string } | null>(null);
+  const [flashSaleEndsAt, setFlashSaleEndsAt] = useState<string | null>(null);
+  const [enginePrice, setEnginePrice] = useState<EnginePrice | null>(null);
   const { format: formatPrice } = useCurrencyStore();
   const addItem = useCartStore((s) => s.addItem);
   const wishlistIds = useWishlistStore((s) => s.productIds);
@@ -37,21 +46,54 @@ export function ProductInfo({ product }: ProductInfoProps) {
   const isWishlisted = wishlistIds.includes(product.id);
   const isComparing = compareIds.includes(product.id);
 
+  // Fetch engine price on variant or quantity change
   useEffect(() => {
-    fetch(`${FLASH_API}/flash-sales/check-variant/${selectedVariant.id}`)
+    let cancelled = false;
+    fetch(`${API}/variants/${selectedVariant.id}/price?qty=${quantity}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { price: EnginePrice } | null) => {
+        if (!cancelled && d?.price) setEnginePrice(d.price);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [selectedVariant.id, quantity]);
+
+  // Fetch flash sale countdown only (engine handles the price itself)
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${API}/flash-sales/check-variant/${selectedVariant.id}`)
       .then((r) => r.json())
-      .then((d) => setFlashSale(d.flashSale))
-      .catch(() => setFlashSale(null));
+      .then((d: { flashSale: { salePriceUsd: string; endsAt: string } | null }) => {
+        if (!cancelled) setFlashSaleEndsAt(d.flashSale?.endsAt ?? null);
+      })
+      .catch(() => setFlashSaleEndsAt(null));
+    return () => { cancelled = true; };
   }, [selectedVariant.id]);
 
-  const price = parseFloat(selectedVariant.priceUsd);
+  const basePrice = parseFloat(selectedVariant.priceUsd);
   const compareAt = selectedVariant.compareAtPriceUsd
     ? parseFloat(selectedVariant.compareAtPriceUsd)
     : null;
-  const discount = compareAt ? Math.round((1 - price / compareAt) * 100) : 0;
+  const discount = compareAt ? Math.round((1 - basePrice / compareAt) * 100) : 0;
   const inStock = selectedVariant.stockCount > 0;
-  const effectivePrice = flashSale ? parseFloat(flashSale.salePriceUsd) : price;
-  const flashDiscount = flashSale ? Math.round((1 - effectivePrice / price) * 100) : 0;
+
+  // Use engine price when available, fallback to variant base price
+  const effectivePrice = enginePrice
+    ? parseFloat(enginePrice.effectiveUnitPriceUsd)
+    : basePrice;
+  const engineSavedUsd = enginePrice
+    ? Math.max(0, parseFloat(enginePrice.basePriceUsd) - effectivePrice)
+    : 0;
+  const engineDiscount = enginePrice && parseFloat(enginePrice.basePriceUsd) > 0
+    ? Math.round((engineSavedUsd / parseFloat(enginePrice.basePriceUsd)) * 100)
+    : 0;
+  const isFlashSale = enginePrice?.isFlashSale ?? false;
+  const hasEngineDiscount = engineDiscount > 0;
+
+  // Get the primary rule label from the stack (skip BASE entries)
+  const activeRuleLabel = enginePrice?.appliedStack
+    .filter((e) => e.type !== "BASE" && parseFloat(e.savedUsd) > 0)
+    .map((e) => e.label)[0] ?? null;
 
   function handleAddToCart() {
     for (let i = 0; i < quantity; i++) {
@@ -61,7 +103,9 @@ export function ProductInfo({ product }: ProductInfoProps) {
         productName: product.name,
         variantName: selectedVariant.name,
         imageUrl: product.imageUrl,
-        priceUsd: flashSale ? flashSale.salePriceUsd : selectedVariant.priceUsd,
+        priceUsd: enginePrice
+          ? enginePrice.effectiveUnitPriceUsd
+          : selectedVariant.priceUsd,
         platform: selectedVariant.platform,
         regionRestrictions: product.regionRestrictions,
       });
@@ -72,13 +116,18 @@ export function ProductInfo({ product }: ProductInfoProps) {
     <div className="space-y-4">
       <div>
         <div className="flex items-center gap-2 mb-1">
-          {flashSale && (
+          {isFlashSale && (
             <Badge className="bg-red-600 text-white flex items-center gap-1">
-              <Zap className="h-3 w-3 fill-current" /> FLASH SALE -{flashDiscount}%
+              <Zap className="h-3 w-3 fill-current" /> FLASH SALE -{engineDiscount}%
             </Badge>
           )}
-          {product.isNew && !flashSale && <Badge className="bg-green-500">NEW</Badge>}
-          {!flashSale && discount > 0 && <Badge variant="destructive">-{discount}%</Badge>}
+          {!isFlashSale && hasEngineDiscount && (
+            <Badge className="bg-orange-500 text-white flex items-center gap-1">
+              -{engineDiscount}% OFF
+            </Badge>
+          )}
+          {product.isNew && !isFlashSale && !hasEngineDiscount && <Badge className="bg-green-500">NEW</Badge>}
+          {!isFlashSale && !hasEngineDiscount && discount > 0 && <Badge variant="destructive">-{discount}%</Badge>}
         </div>
         <h1 className="text-2xl font-bold text-foreground">{product.name}</h1>
       </div>
@@ -101,25 +150,40 @@ export function ProductInfo({ product }: ProductInfoProps) {
       <SoldBadge productId={product.id} />
 
       <div className="flex items-baseline gap-3">
-        {flashSale ? (
+        {hasEngineDiscount ? (
           <>
-            <span className="text-3xl font-bold text-red-600">{formatPrice(effectivePrice)}</span>
-            <span className="text-lg text-muted-foreground line-through">{formatPrice(price)}</span>
+            <span className={`text-3xl font-bold ${isFlashSale ? "text-red-600" : "text-orange-600"}`}>
+              {formatPrice(effectivePrice)}
+            </span>
+            <span className="text-lg text-muted-foreground line-through">
+              {formatPrice(enginePrice ? parseFloat(enginePrice.basePriceUsd) : basePrice)}
+            </span>
           </>
         ) : (
           <>
-            <span className="text-3xl font-bold text-foreground">{formatPrice(price)}</span>
+            <span className="text-3xl font-bold text-foreground">{formatPrice(effectivePrice)}</span>
             {compareAt && (
               <span className="text-lg text-muted-foreground line-through">{formatPrice(compareAt)}</span>
             )}
           </>
         )}
       </div>
-      {flashSale && (
+      {isFlashSale && flashSaleEndsAt && (
         <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
           <Zap className="h-4 w-4 text-red-600 fill-red-600" />
           <span className="text-sm font-medium text-red-700">Sale ends in</span>
-          <CountdownTimer endsAt={flashSale.endsAt} size="sm" onExpired={() => setFlashSale(null)} />
+          <CountdownTimer endsAt={flashSaleEndsAt} size="sm" onExpired={() => { setFlashSaleEndsAt(null); setEnginePrice(null); }} />
+        </div>
+      )}
+      {!isFlashSale && activeRuleLabel && (
+        <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2">
+          <Zap className="h-4 w-4 text-orange-600" />
+          <span className="text-sm font-medium text-orange-700">{activeRuleLabel}</span>
+          {engineSavedUsd > 0 && (
+            <span className="text-xs text-orange-600 font-semibold">
+              Save {formatPrice(engineSavedUsd)}
+            </span>
+          )}
         </div>
       )}
 

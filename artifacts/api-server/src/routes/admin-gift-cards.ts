@@ -5,6 +5,7 @@ import { eq, desc, ilike, or, count, and, type SQL } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import crypto from "crypto";
+import { paramString } from "../lib/route-params";
 
 const router = Router();
 
@@ -70,7 +71,7 @@ router.post("/admin/gift-cards", requireAuth, requireAdmin, requirePermission("m
 });
 
 router.put("/admin/gift-cards/:id/deactivate", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(paramString(req.params, "id"));
   const [card] = await db.select().from(giftCards).where(eq(giftCards.id, id));
   if (!card) { res.status(404).json({ error: "Gift card not found" }); return; }
 
@@ -79,7 +80,7 @@ router.put("/admin/gift-cards/:id/deactivate", requireAuth, requireAdmin, requir
 });
 
 router.put("/admin/gift-cards/:id/activate", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(paramString(req.params, "id"));
   const [card] = await db.select().from(giftCards).where(eq(giftCards.id, id));
   if (!card) { res.status(404).json({ error: "Gift card not found" }); return; }
 
@@ -88,7 +89,7 @@ router.put("/admin/gift-cards/:id/activate", requireAuth, requireAdmin, requireP
 });
 
 router.get("/admin/gift-cards/:id/redemptions", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(paramString(req.params, "id"));
   const redemptions = await db.select({
     id: giftCardRedemptions.id,
     amountUsd: giftCardRedemptions.amountUsd,

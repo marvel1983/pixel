@@ -3,6 +3,8 @@ import { db } from "@workspace/db";
 import { quoteRequests, bulkPricingTiers } from "@workspace/db/schema";
 import { eq, and, lte, or, isNull } from "drizzle-orm";
 import { z } from "zod/v4";
+import { paramString } from "../lib/route-params";
+import { logger } from "../lib/logger";
 
 const router = Router();
 
@@ -36,14 +38,14 @@ router.post("/quotes", async (req, res) => {
       res.status(400).json({ error: "Validation failed", details: err.issues });
       return;
     }
-    console.error("Quote submission error:", err);
+    logger.error({ err }, "Quote submission error:", err);
     res.status(500).json({ error: "Failed to submit quote request" });
   }
 });
 
 router.get("/bulk-pricing/:productId", async (req, res) => {
   try {
-    const productId = parseInt(req.params.productId, 10);
+    const productId = parseInt(paramString(req.params, "productId"), 10);
     if (isNaN(productId)) {
       res.status(400).json({ error: "Invalid product ID" });
       return;
@@ -56,7 +58,7 @@ router.get("/bulk-pricing/:productId", async (req, res) => {
       .orderBy(bulkPricingTiers.minQty);
     res.json({ tiers });
   } catch (err) {
-    console.error("Bulk pricing fetch error:", err);
+    logger.error({ err }, "Bulk pricing fetch error:", err);
     res.status(500).json({ error: "Failed to fetch pricing tiers" });
   }
 });

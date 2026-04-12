@@ -40,7 +40,13 @@ app.use(
     },
   }),
 );
-app.use(cors({ origin: true, credentials: true }));
+const ALLOWED_ORIGINS = process.env.NODE_ENV === "production"
+  ? (process.env.ALLOWED_ORIGINS ?? "").split(",").map((o) => o.trim()).filter(Boolean)
+  : true; // dev: allow all origins
+app.use(cors({
+  origin: ALLOWED_ORIGINS,
+  credentials: true,
+}));
 app.use(cookieParser());
 app.use(
   express.json({

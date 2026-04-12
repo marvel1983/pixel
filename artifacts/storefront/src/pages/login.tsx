@@ -53,7 +53,8 @@ export default function LoginPage() {
 
       setAuth(data.user, data.token);
       toast({ title: t("auth.welcomeBack") });
-      setLocation("/");
+      const isAdmin = data.user.role === "ADMIN" || data.user.role === "SUPER_ADMIN";
+      setLocation(isAdmin ? "/admin" : "/");
     } catch (err) {
       toast({
         title: t("auth.signInFailed"),

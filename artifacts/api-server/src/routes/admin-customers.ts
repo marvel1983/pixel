@@ -6,6 +6,7 @@ import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
+import { paramString } from "../lib/route-params";
 
 const router = Router();
 
@@ -65,7 +66,7 @@ router.get("/admin/customers", requireAuth, requireAdmin, requirePermission("man
 });
 
 router.get("/admin/customers/:id", requireAuth, requireAdmin, requirePermission("manageCustomers"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
 
   const [customer] = await db.select({
@@ -113,7 +114,7 @@ router.get("/admin/customers/:id", requireAuth, requireAdmin, requirePermission(
 });
 
 router.patch("/admin/customers/:id/role", requireAuth, requireAdmin, requirePermission("manageCustomers"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
   const { role } = req.body;
   if (!["CUSTOMER", "ADMIN", "SUPER_ADMIN"].includes(role)) { res.status(400).json({ error: "Invalid role" }); return; }
@@ -131,14 +132,14 @@ router.patch("/admin/customers/:id/role", requireAuth, requireAdmin, requirePerm
 });
 
 router.patch("/admin/customers/:id/notes", requireAuth, requireAdmin, requirePermission("manageCustomers"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
   await db.update(users).set({ adminNotes: req.body.notes ?? null, updatedAt: new Date() }).where(eq(users.id, id));
   res.json({ success: true });
 });
 
 router.post("/admin/customers/:id/reset-password", requireAuth, requireAdmin, requirePermission("manageCustomers"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
   const [target] = await db.select({ role: users.role }).from(users).where(eq(users.id, id));
   if (!target) { res.status(404).json({ error: "Not found" }); return; }
@@ -153,7 +154,7 @@ router.post("/admin/customers/:id/reset-password", requireAuth, requireAdmin, re
 });
 
 router.patch("/admin/customers/:id/toggle-active", requireAuth, requireAdmin, requirePermission("manageCustomers"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
   const [user] = await db.select({ isActive: users.isActive, role: users.role }).from(users).where(eq(users.id, id));
   if (!user) { res.status(404).json({ error: "Not found" }); return; }
@@ -166,7 +167,7 @@ router.patch("/admin/customers/:id/toggle-active", requireAuth, requireAdmin, re
 });
 
 router.delete("/admin/customers/:id", requireAuth, requireAdmin, requirePermission("manageCustomers"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
   const [target] = await db.select({ role: users.role }).from(users).where(eq(users.id, id));
   if (!target) { res.status(404).json({ error: "Not found" }); return; }

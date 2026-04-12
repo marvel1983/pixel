@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { flashSales, flashSaleProducts, products, productVariants } from "@workspace/db/schema";
 import { eq, and, lte, gte, sql, gt } from "drizzle-orm";
+import { paramString } from "../lib/route-params";
 
 const router = Router();
 
@@ -62,7 +63,7 @@ router.get("/flash-sales/active", async (_req, res) => {
 });
 
 router.get("/flash-sales/check-variant/:variantId", async (req, res) => {
-  const variantId = parseInt(req.params.variantId);
+  const variantId = parseInt(paramString(req.params, "variantId"));
   if (isNaN(variantId)) { res.json({ flashSale: null }); return; }
 
   const now = new Date();

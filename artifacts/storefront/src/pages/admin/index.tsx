@@ -54,6 +54,11 @@ import AdminQuotesPage from "./quotes";
 import AdminSurveysPage from "./surveys";
 import AdminJobsPage from "./jobs";
 import SystemStatusPage from "./system-status";
+import AdminPriceRulesPage from "./price-rules";
+import AdminAttributesPage from "./attributes";
+import AdminTagsManagerPage from "./tags-manager";
+import LoyaltyEventsPage from "./loyalty-events";
+import LoyaltyBulkPage from "./loyalty-bulk";
 
 function AdminPlaceholder({ title }: { title: string }) {
   return (
@@ -115,8 +120,11 @@ export default function AdminRoot() {
           <Route path="/admin/affiliates" component={AdminAffiliatesPage} />
           <Route path="/admin/affiliate-settings" component={AffiliateSettingsPage} />
           <Route path="/admin/qa" component={AdminQAPage} />
+          <Route path="/admin/attributes" component={AdminAttributesPage} />
+          <Route path="/admin/tags" component={AdminTagsManagerPage} />
           <Route path="/admin/newsletter" component={AdminNewsletterPage} />
           <Route path="/admin/flash-sales" component={AdminFlashSalesPage} />
+          <Route path="/admin/price-rules" component={AdminPriceRulesPage} />
           <Route path="/admin/bundles" component={AdminBundlesPage} />
           <Route path="/admin/quotes" component={AdminQuotesPage} />
           <Route path="/admin/surveys" component={AdminSurveysPage} />
@@ -144,6 +152,8 @@ export default function AdminRoot() {
           <Route path="/admin/metenzi-balance" component={MetenziBalancePage} />
           <Route path="/admin/jobs" component={AdminJobsPage} />
           <Route path="/admin/system-status" component={SystemStatusPage} />
+          <Route path="/admin/loyalty/events" component={LoyaltyEventsPage} />
+          <Route path="/admin/loyalty/bulk" component={LoyaltyBulkPage} />
           <Route path="/admin/security">
             <AdminPlaceholder title="Security" />
           </Route>

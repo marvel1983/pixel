@@ -5,6 +5,7 @@ import { eq, asc, ilike, sql, and, desc } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import { z } from "zod/v4";
+import { paramString } from "../lib/route-params";
 
 const router = Router();
 const auth = [requireAuth, requireAdmin, requirePermission("manageProducts")];
@@ -60,7 +61,7 @@ router.get("/admin/bundles", ...auth, async (req, res) => {
 });
 
 router.get("/admin/bundles/:id", ...auth, async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(paramString(req.params, "id"));
   const [bundle] = await db.select().from(bundles).where(eq(bundles.id, id)).limit(1);
   if (!bundle) { res.status(404).json({ error: "Not found" }); return; }
 
@@ -97,7 +98,7 @@ router.post("/admin/bundles", ...auth, async (req, res) => {
 });
 
 router.put("/admin/bundles/:id", ...auth, async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(paramString(req.params, "id"));
   const parsed = bundleSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const { productIds, ...data } = parsed.data;
@@ -118,12 +119,12 @@ router.put("/admin/bundles/:id", ...auth, async (req, res) => {
 });
 
 router.delete("/admin/bundles/:id", ...auth, async (req, res) => {
-  await db.delete(bundles).where(eq(bundles.id, parseInt(req.params.id)));
+  await db.delete(bundles).where(eq(bundles.id, parseInt(paramString(req.params, "id"))));
   res.json({ ok: true });
 });
 
 router.post("/admin/bundles/:id/duplicate", ...auth, async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(paramString(req.params, "id"));
   const [original] = await db.select().from(bundles).where(eq(bundles.id, id)).limit(1);
   if (!original) { res.status(404).json({ error: "Not found" }); return; }
 
@@ -153,7 +154,7 @@ router.post("/admin/bundles/:id/duplicate", ...auth, async (req, res) => {
 });
 
 router.get("/admin/bundles/:id/analytics", ...auth, async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(paramString(req.params, "id"));
   const [bundle] = await db.select().from(bundles).where(eq(bundles.id, id)).limit(1);
   if (!bundle) { res.status(404).json({ error: "Not found" }); return; }
 

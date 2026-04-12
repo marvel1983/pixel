@@ -110,6 +110,7 @@ export default function ProductDetailPage() {
       <Separator />
 
       <ReviewsSection
+        productId={product.id}
         avgRating={product.avgRating}
         reviewCount={product.reviewCount}
       />

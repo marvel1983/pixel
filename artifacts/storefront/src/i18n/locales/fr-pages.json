@@ -158,7 +158,7 @@
     "giftCards": "Cartes cadeaux",
     "affiliate": "Affiliation",
     "newsletter": "Newsletter",
-    "wallet": "Portefeuille",
+    "wallet": "Crédit boutique",
     "support": "Support",
     "myOrders": "Mes commandes",
     "viewOrdersDesc": "Consultez vos commandes passées et vos clés de licence.",
@@ -169,7 +169,10 @@
     "failedToLoad": "Impossible de charger les commandes",
     "failedToLoadDetails": "Impossible de charger les détails",
     "ticketNotFound": "Ticket introuvable",
-    "failedToSendReply": "Échec de l'envoi de la réponse"
+    "failedToSendReply": "Échec de l'envoi de la réponse",
+    "storeCreditTitle": "Crédit boutique",
+    "storeCreditHint": "Utilisable à la caisse. Rechargez quand vous voulez.",
+    "storeCreditManage": "Gérer le crédit boutique"
   },
   "orderComplete": {
     "checkout": "Paiement",
@@ -186,7 +189,7 @@
     "subtitle": "Produits sélectionnés pour vous"
   },
   "wallet": {
-    "availableBalance": "Solde disponible",
+    "availableBalance": "Crédit boutique disponible",
     "addFunds": "Ajouter des fonds",
     "totalDeposited": "Total déposé",
     "totalSpent": "Total dépensé",
@@ -196,12 +199,31 @@
     "validCard": "Entrez un numéro de carte valide",
     "validExpiry": "Entrez la date au format MM/AA",
     "validCvc": "Entrez un CVC valide",
-    "topUpSuccess": "{{amount}} $ ajoutés au portefeuille",
+    "topUpSuccess": "{{amount}} $ ajoutés au crédit boutique",
     "topUpFailed": "Rechargement échoué",
     "processing": "Traitement...",
     "topUp": "Recharger {{amount}} $",
     "transactionHistory": "Historique des transactions",
     "noTransactions": "Aucune transaction",
-    "balance": "Solde: {{amount}} $"
+    "balance": "Solde après : {{amount}} $",
+    "balancePageTitle": "Crédit boutique et solde",
+    "balancePageSubtitle": "Recharger, voir l'historique et le montant utilisable à la caisse.",
+    "viewOnFullPage": "Ouvrir la page crédit boutique",
+    "loadMore": "Charger plus",
+    "dataLoadFailed": "Impossible de charger le crédit boutique. Vérifiez la connexion et réessayez.",
+    "retry": "Réessayer"
+  },
+  "adminWallet": {
+    "amountReasonRequired": "Saisissez un montant et une raison",
+    "adjustFailed": "Échec de l'ajustement",
+    "adjustSuccess": "Crédit boutique mis à jour",
+    "amountPlaceholder": "Montant",
+    "reasonPlaceholder": "Raison",
+    "topUp": "Recharger",
+    "creditOnly": "Crédit seul",
+    "debit": "Débit",
+    "deposited": "Déposé : {{amount}} $",
+    "spent": "Dépensé : {{amount}} $",
+    "topUpVsCreditHint": "La recharge compte dans les dépôts ; le crédit seul augmente le solde (promos, corrections)."
   }
 }

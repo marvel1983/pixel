@@ -6,6 +6,8 @@ import { orders, orderItems, licenseKeys, type Order } from "@workspace/db/schem
 import { decrypt } from "../lib/encryption";
 import { logger } from "../lib/logger";
 import { requireAuth } from "../middleware/auth";
+import { paramString } from "../lib/route-params";
+import { orderLookupLimit } from "../middleware/rate-limit";
 
 const router = Router();
 
@@ -68,7 +70,7 @@ function formatOrderResponse(order: Order) {
   };
 }
 
-router.post("/orders/lookup", async (req, res) => {
+router.post("/orders/lookup", orderLookupLimit, async (req, res) => {
   const parsed = lookupSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Order number and email are required" });
@@ -102,8 +104,8 @@ router.post("/orders/lookup", async (req, res) => {
   }
 });
 
-router.get("/orders/:orderNumber", async (req, res) => {
-  const parsed = orderNumberSchema.safeParse(req.params.orderNumber);
+router.get("/orders/:orderNumber", orderLookupLimit, async (req, res) => {
+  const parsed = orderNumberSchema.safeParse(paramString(req.params, "orderNumber"));
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid order number" });
     return;

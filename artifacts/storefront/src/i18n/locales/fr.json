@@ -57,7 +57,10 @@
     "proceedToCheckout": "Passer la commande",
     "continueShopping": "Continuer les achats",
     "cartTotals": "Total du panier",
-    "taxesNote": "Taxes calculées à la caisse"
+    "taxesNote": "Taxes calculées à la caisse",
+    "storeCreditAvailable": "Crédit boutique disponible : {{amount}} $",
+    "storeCreditManage": "Crédit boutique et historique",
+    "storeCreditCheckoutOnly": "Utilisable à la caisse seulement — le panier ne déduit pas le crédit ici."
   },
   "checkout": {
     "title": "Commande",
@@ -97,7 +100,15 @@
     "invalidGiftCard": "Carte cadeau invalide",
     "remaining": "{{amount}} restant",
     "apply": "Appliquer",
-    "tryAgain": "Veuillez réessayer"
+    "tryAgain": "Veuillez réessayer",
+    "walletPayTitle": "Payer avec le crédit boutique",
+    "walletBalanceLabel": "Crédit boutique : {{amount}} $",
+    "walletManageBalanceLink": "Gérer le crédit boutique",
+    "walletUseFull": "Utiliser tout le solde ({{amount}} $)",
+    "walletCustomAmount": "Montant personnalisé",
+    "walletApplied": "-{{amount}} $ de crédit boutique",
+    "walletCoversFull": "(couvre toute la commande)",
+    "walletStaleBalanceWarning": "Impossible d'actualiser le solde. Le montant affiché peut être obsolète — réessayez avant de payer, ou continuez si vous êtes sûr."
   },
   "product": {
     "addToCart": "Ajouter au panier",
@@ -244,7 +255,7 @@
     "title": "Mon compte",
     "profile": "Profil",
     "orders": "Commandes",
-    "wallet": "Portefeuille",
+    "wallet": "Crédit boutique",
     "security": "Sécurité",
     "preferences": "Préférences"
   },

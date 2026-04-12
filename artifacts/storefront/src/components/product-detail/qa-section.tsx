@@ -37,7 +37,7 @@ export function QASection({ productId }: QASectionProps) {
   const user = useAuthStore((s) => s.user);
 
   useEffect(() => {
-    fetch(`${API}/qa/product/${productId}`)
+    fetch(`${API}/qa/product/${productId}`, { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => setQuestions(d.questions || []))
       .catch(() => {})

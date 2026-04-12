@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { bundles, bundleItems, products, productVariants } from "@workspace/db/schema";
 import { eq, and, asc } from "drizzle-orm";
+import { paramString } from "../lib/route-params";
 
 const router = Router();
 
@@ -36,7 +37,7 @@ router.get("/bundles/:slug", async (req, res) => {
   const [bundle] = await db
     .select()
     .from(bundles)
-    .where(and(eq(bundles.slug, req.params.slug), eq(bundles.isActive, true)))
+    .where(and(eq(bundles.slug, paramString(req.params, "slug")), eq(bundles.isActive, true)))
     .limit(1);
 
   if (!bundle) {
@@ -55,7 +56,7 @@ router.get("/bundles/:slug", async (req, res) => {
 });
 
 router.get("/bundles/by-product/:productId", async (req, res) => {
-  const productId = parseInt(req.params.productId);
+  const productId = parseInt(paramString(req.params, "productId"));
   if (isNaN(productId)) { res.json([]); return; }
 
   const rows = await db

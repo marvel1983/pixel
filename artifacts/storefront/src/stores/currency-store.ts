@@ -18,14 +18,35 @@ export type CurrencyCode = (typeof SUPPORTED_CURRENCIES)[number]["code"];
 
 export const BASE_CURRENCY = "USD";
 
+// Build a fresh `format` function that captures current code+rates.
+// Called on every setCode / setRates so components subscribed to `format`
+// get a NEW reference and re-render atomically.
+function buildFormat(
+  code: CurrencyCode,
+  rates: Record<string, number>,
+): (baseAmount: number) => string {
+  return (baseAmount: number) => {
+    const hasRate = code === BASE_CURRENCY || !!rates[code];
+    const displayCode = hasRate ? code : BASE_CURRENCY;
+    const rate = displayCode === BASE_CURRENCY ? 1 : (rates[displayCode] ?? 1);
+    const converted = baseAmount * rate;
+    const currency = SUPPORTED_CURRENCIES.find((c) => c.code === displayCode);
+    if (displayCode === "HUF" || displayCode === "CZK") {
+      return `${Math.round(converted)} ${currency?.symbol ?? displayCode}`;
+    }
+    return `${currency?.symbol ?? "$"}${converted.toFixed(2)}`;
+  };
+}
+
 interface CurrencyState {
   code: CurrencyCode;
   rates: Record<string, number>;
   lastFetched: number | null;
+  /** Reactive: new reference every time code or rates change — triggers re-renders */
+  format: (baseAmount: number) => string;
   setCode: (code: CurrencyCode) => void;
   setRates: (rates: Record<string, number>) => void;
   convert: (baseAmount: number) => number;
-  format: (baseAmount: number) => string;
   fetchRates: () => Promise<void>;
 }
 
@@ -37,10 +58,17 @@ export const useCurrencyStore = create<CurrencyState>()(
       code: BASE_CURRENCY as CurrencyCode,
       rates: {},
       lastFetched: null,
+      format: buildFormat(BASE_CURRENCY as CurrencyCode, {}),
 
-      setCode: (code) => set({ code }),
+      setCode: (code) => {
+        const { rates } = get();
+        set({ code, format: buildFormat(code, rates) });
+      },
 
-      setRates: (rates) => set({ rates, lastFetched: Date.now() }),
+      setRates: (rates) => {
+        const { code } = get();
+        set({ rates, lastFetched: Date.now(), format: buildFormat(code, rates) });
+      },
 
       convert: (baseAmount) => {
         const { code, rates } = get();
@@ -48,18 +76,6 @@ export const useCurrencyStore = create<CurrencyState>()(
         const rate = rates[code];
         if (!rate) return baseAmount;
         return baseAmount * rate;
-      },
-
-      format: (baseAmount) => {
-        const { code, rates } = get();
-        const hasRate = code === BASE_CURRENCY || !!rates[code];
-        const displayCode = hasRate ? code : BASE_CURRENCY;
-        const converted = get().convert(baseAmount);
-        const currency = SUPPORTED_CURRENCIES.find((c) => c.code === displayCode);
-        if (displayCode === "HUF" || displayCode === "CZK") {
-          return `${Math.round(converted)} ${currency?.symbol ?? displayCode}`;
-        }
-        return `${currency?.symbol ?? "$"}${converted.toFixed(2)}`;
       },
 
       fetchRates: async () => {
@@ -70,13 +86,23 @@ export const useCurrencyStore = create<CurrencyState>()(
           const res = await fetch(`${baseUrl}/currencies`);
           if (res.ok) {
             const data = await res.json();
-            set({ rates: data.rates, lastFetched: Date.now() });
+            get().setRates(data.rates);
           }
         } catch {
           // keep cached rates on failure
         }
       },
     }),
-    { name: "pixelcodes-currency" },
+    {
+      name: "pixelcodes-currency",
+      // Don't persist `format` (it's a function — not serialisable).
+      // Rebuild it from persisted code+rates on rehydration.
+      partialize: (s) => ({ code: s.code, rates: s.rates, lastFetched: s.lastFetched }),
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          state.format = buildFormat(state.code, state.rates);
+        }
+      },
+    },
   ),
 );

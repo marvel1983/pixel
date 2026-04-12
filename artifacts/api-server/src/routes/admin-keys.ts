@@ -4,7 +4,10 @@ import { licenseKeys, productVariants, products, orderItems, orders, auditLog } 
 import { eq, desc, and, or, ilike, gte, lte, count, sql, isNull } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
-import { decrypt } from "../lib/encryption";
+import { decrypt, encrypt } from "../lib/encryption";
+import { paramString } from "../lib/route-params";
+import { z } from "zod/v4";
+import { logger } from "../lib/logger";
 
 const router = Router();
 
@@ -124,7 +127,7 @@ router.get("/admin/keys/products", requireAuth, requireAdmin, requirePermission(
 });
 
 router.post("/admin/keys/:id/reveal", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) {
     res.status(400).json({ error: "Invalid key ID" });
     return;
@@ -149,7 +152,7 @@ router.post("/admin/keys/:id/reveal", requireAuth, requireAdmin, requirePermissi
 });
 
 router.post("/admin/keys/:id/copy-audit", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) {
     res.status(400).json({ error: "Invalid key ID" });
     return;
@@ -174,7 +177,7 @@ router.post("/admin/keys/:id/copy-audit", requireAuth, requireAdmin, requirePerm
 });
 
 router.patch("/admin/keys/:id/status", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) {
     res.status(400).json({ error: "Invalid key ID" });
     return;
@@ -198,6 +201,165 @@ router.patch("/admin/keys/:id/status", requireAuth, requireAdmin, requirePermiss
 
   await db.update(licenseKeys).set(updates).where(eq(licenseKeys.id, id));
   res.json({ success: true });
+});
+
+// ── GET /admin/keys/variants — list all variants for the import selector ──
+router.get("/admin/keys/variants", requireAuth, requireAdmin, requirePermission("manageOrders"), async (_req, res) => {
+  try {
+    const rows = await db
+      .select({ id: productVariants.id, sku: productVariants.sku, name: productVariants.name, productName: products.name })
+      .from(productVariants)
+      .innerJoin(products, eq(productVariants.productId, products.id))
+      .orderBy(products.name, productVariants.name);
+    res.json({ variants: rows });
+  } catch (err) {
+    logger.error({ err }, "GET admin/keys/variants failed");
+    res.status(500).json({ error: "Failed to fetch variants" });
+  }
+});
+
+// ── POST /admin/keys — add single key ──
+const addKeySchema = z.object({
+  variantId: z.number().int().positive(),
+  keyValue: z.string().min(1).max(500).transform((v) => v.trim()),
+});
+
+router.post("/admin/keys", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
+  try {
+    const parsed = addKeySchema.safeParse(req.body);
+    if (!parsed.success) { res.status(400).json({ error: "variantId and keyValue are required" }); return; }
+    const { variantId, keyValue } = parsed.data;
+
+    const [variant] = await db.select({ id: productVariants.id }).from(productVariants).where(eq(productVariants.id, variantId)).limit(1);
+    if (!variant) { res.status(400).json({ error: "Variant not found" }); return; }
+
+    const encrypted = encrypt(keyValue);
+    const mask = makeMask(keyValue);
+    const [inserted] = await db.insert(licenseKeys).values({
+      variantId, keyValue: encrypted, keyMask: mask, status: "AVAILABLE", source: "MANUAL",
+    }).returning({ id: licenseKeys.id });
+
+    await db.insert(auditLog).values({
+      userId: req.user!.userId, action: "CREATE", entityType: "license_key",
+      entityId: inserted.id, details: { variantId, mask }, ipAddress: req.ip ?? null,
+    });
+
+    res.status(201).json({ success: true, id: inserted.id, mask });
+  } catch (err) {
+    logger.error({ err }, "POST admin/keys failed");
+    res.status(500).json({ error: "Failed to add key" });
+  }
+});
+
+// ── POST /admin/keys/bulk-import — add many keys at once ──
+const bulkImportSchema = z.object({
+  variantId: z.number().int().positive(),
+  keys: z.string().min(1), // newline-separated
+});
+
+router.post("/admin/keys/bulk-import", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
+  try {
+    const parsed = bulkImportSchema.safeParse(req.body);
+    if (!parsed.success) { res.status(400).json({ error: "variantId and keys are required" }); return; }
+    const { variantId, keys } = parsed.data;
+
+    const [variant] = await db.select({ id: productVariants.id }).from(productVariants).where(eq(productVariants.id, variantId)).limit(1);
+    if (!variant) { res.status(400).json({ error: "Variant not found" }); return; }
+
+    const lines = keys.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0);
+    if (lines.length === 0) { res.status(400).json({ error: "No valid keys found" }); return; }
+    if (lines.length > 1000) { res.status(400).json({ error: "Maximum 1000 keys per import" }); return; }
+
+    const values = lines.map((k) => ({
+      variantId, keyValue: encrypt(k), keyMask: makeMask(k), status: "AVAILABLE" as const, source: "BULK_IMPORT" as const,
+    }));
+
+    await db.insert(licenseKeys).values(values);
+
+    await db.insert(auditLog).values({
+      userId: req.user!.userId, action: "IMPORT", entityType: "license_key",
+      entityId: variantId, details: { variantId, count: lines.length }, ipAddress: req.ip ?? null,
+    });
+
+    res.status(201).json({ success: true, imported: lines.length });
+  } catch (err) {
+    logger.error({ err }, "POST admin/keys/bulk-import failed");
+    res.status(500).json({ error: "Failed to import keys" });
+  }
+});
+
+// ── DELETE /admin/keys/:id ──
+router.delete("/admin/keys/:id", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
+  try {
+    const id = Number(paramString(req.params, "id"));
+    if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid key ID" }); return; }
+
+    const [key] = await db.select({ id: licenseKeys.id, status: licenseKeys.status }).from(licenseKeys).where(eq(licenseKeys.id, id));
+    if (!key) { res.status(404).json({ error: "Key not found" }); return; }
+    if (key.status === "SOLD") { res.status(400).json({ error: "Cannot delete a sold key" }); return; }
+
+    await db.delete(licenseKeys).where(eq(licenseKeys.id, id));
+    await db.insert(auditLog).values({
+      userId: req.user!.userId, action: "DELETE", entityType: "license_key",
+      entityId: id, details: { action: "deleted" }, ipAddress: req.ip ?? null,
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    logger.error({ err }, "DELETE admin/keys/:id failed");
+    res.status(500).json({ error: "Failed to delete key" });
+  }
+});
+
+// ── GET /admin/keys/export — CSV export ──
+router.get("/admin/keys/export", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
+  try {
+    const conditions = buildFilters(req.query);
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const rows = await db
+      .select({
+        id: licenseKeys.id,
+        keyMask: licenseKeys.keyMask,
+        status: licenseKeys.status,
+        source: licenseKeys.source,
+        productName: products.name,
+        variantName: productVariants.name,
+        sku: productVariants.sku,
+        orderNumber: orders.orderNumber,
+        customerEmail: orders.guestEmail,
+        soldAt: licenseKeys.soldAt,
+        createdAt: licenseKeys.createdAt,
+      })
+      .from(licenseKeys)
+      .innerJoin(productVariants, eq(licenseKeys.variantId, productVariants.id))
+      .innerJoin(products, eq(productVariants.productId, products.id))
+      .leftJoin(orderItems, eq(licenseKeys.orderItemId, orderItems.id))
+      .leftJoin(orders, eq(orderItems.orderId, orders.id))
+      .where(whereClause)
+      .orderBy(desc(licenseKeys.createdAt))
+      .limit(10000);
+
+    const esc = (v: unknown) => {
+      const s = String(v ?? "");
+      if (/[,"\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+      return s;
+    };
+    const header = "ID,Key (masked),Product,SKU,Status,Source,Order #,Customer,Sold At,Created At";
+    const csvLines = rows.map((r) => [
+      r.id, esc(r.keyMask), esc(r.productName), esc(r.sku), r.status, r.source,
+      esc(r.orderNumber ?? ""), esc(r.customerEmail ?? ""),
+      r.soldAt ? new Date(r.soldAt).toISOString() : "",
+      new Date(r.createdAt).toISOString(),
+    ].join(","));
+
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", `attachment; filename="license-keys-${Date.now()}.csv"`);
+    res.send([header, ...csvLines].join("\n"));
+  } catch (err) {
+    logger.error({ err }, "GET admin/keys/export failed");
+    res.status(500).json({ error: "Failed to export keys" });
+  }
 });
 
 function buildFilters(query: Record<string, unknown>) {

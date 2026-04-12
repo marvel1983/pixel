@@ -286,7 +286,7 @@ export default function CheckoutPage() {
           </Button>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-4 sticky top-24 self-start">
           <CheckoutSummary cppSelected={cppSelected} taxRate={taxInfo.taxRate} taxLabel={taxInfo.taxLabel} priceDisplay={taxInfo.priceDisplay} gcDeduction={appliedGiftCards.reduce((s, c) => s + c.applied, 0)} loyaltyDiscount={loyaltyDiscount} servicesTotal={servicesTotal} />
           <ProductUpsell />
         </div>

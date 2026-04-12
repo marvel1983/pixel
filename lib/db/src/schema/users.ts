@@ -2,6 +2,8 @@ import {
   pgTable,
   text,
   serial,
+  integer,
+  date,
   timestamp,
   varchar,
   boolean,
@@ -36,6 +38,8 @@ export const users = pgTable("users", {
   businessApproved: boolean("business_approved").notNull().default(false),
   companyName: varchar("company_name", { length: 255 }),
   lastLoginAt: timestamp("last_login_at"),
+  dateOfBirth: date("date_of_birth"),
+  referredByUserId: integer("referred_by_user_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

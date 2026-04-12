@@ -1,8 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -13,6 +10,9 @@ import { CSS } from "@dnd-kit/utilities";
 import { useAuthStore } from "@/stores/auth-store";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
+
+const inputCls = "w-full rounded border border-[#2e3340] bg-[#0f1117] px-3 py-2 text-[13px] text-[#dde4f0] placeholder:text-[#3d5070] focus:border-sky-500/60 focus:outline-none focus:ring-1 focus:ring-sky-500/30";
+const labelCls = "block text-[11.5px] font-medium text-[#8fa0bb] mb-1";
 
 interface Section { id: number; type: string; title: string | null; isEnabled: boolean; sortOrder: number; config: Record<string, unknown> }
 
@@ -33,11 +33,11 @@ function SortableItem({ section, onEdit, onToggle }: { section: Section; onEdit:
   const style = { transform: CSS.Transform.toString(transform), transition };
   const Icon = SECTION_ICONS[section.type] ?? Layout;
   return (
-    <div ref={setNodeRef} style={style} className="flex items-center gap-3 rounded-lg border bg-white p-3">
-      <button {...attributes} {...listeners} className="cursor-grab text-muted-foreground hover:text-foreground"><GripVertical className="h-5 w-5" /></button>
-      <Icon className="h-5 w-5 text-muted-foreground shrink-0" />
+    <div ref={setNodeRef} style={style} className="flex items-center gap-3 rounded-lg border border-[#2e3340] bg-[#181c24] p-3">
+      <button {...attributes} {...listeners} className="cursor-grab text-[#5a6a84] hover:text-[#dde4f0]"><GripVertical className="h-5 w-5" /></button>
+      <Icon className="h-5 w-5 text-[#5a6a84] shrink-0" />
       <div className="flex-1 min-w-0">
-        <p className="font-medium text-sm">{section.title || SECTION_LABELS[section.type]}</p>
+        <p className="font-medium text-sm text-[#dde4f0]">{section.title || SECTION_LABELS[section.type]}</p>
         <Badge variant="secondary" className="text-xs mt-0.5">{section.type}</Badge>
       </div>
       <Switch checked={section.isEnabled} onCheckedChange={() => onToggle(section)} />
@@ -109,34 +109,54 @@ export default function HomepageSectionsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Homepage Sections</h1>
-        <p className="text-sm text-muted-foreground">Drag to reorder sections. Toggle visibility with the switch.</p>
+        <p className="text-sm text-[#5a6a84]">Drag to reorder sections. Toggle visibility with the switch.</p>
       </div>
-      <Card>
-        <CardHeader><CardTitle className="text-base">Section Order</CardTitle></CardHeader>
-        <CardContent className="space-y-2">
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
-              {sections.map((s) => <SortableItem key={s.id} section={s} onEdit={openEdit} onToggle={toggleSection} />)}
-            </SortableContext>
-          </DndContext>
-          {sections.length === 0 && <p className="text-center py-8 text-muted-foreground">Loading sections...</p>}
-        </CardContent>
-      </Card>
+      <DarkCard title="Section Order">
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+            {sections.map((s) => <SortableItem key={s.id} section={s} onEdit={openEdit} onToggle={toggleSection} />)}
+          </SortableContext>
+        </DndContext>
+        {sections.length === 0 && <p className="text-center py-8 text-[#5a6a84]">Loading sections...</p>}
+      </DarkCard>
       <Dialog open={!!editing} onOpenChange={() => setEditing(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>Edit {editing ? SECTION_LABELS[editing.type] : ""}</DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
-            <div><Label>Display Title</Label><Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="mt-1" /></div>
+            <div>
+              <label className={labelCls}>Display Title</label>
+              <input className={inputCls} value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
+            </div>
             {editing && configFields(editing.type).map((field) => (
               <div key={field}>
-                <Label className="capitalize">{field.replace(/([A-Z])/g, " $1")}</Label>
-                <Input value={editConfig[field] ?? ""} onChange={(e) => setEditConfig({ ...editConfig, [field]: e.target.value })} className="mt-1" />
+                <label className={labelCls + " capitalize"}>{field.replace(/([A-Z])/g, " $1")}</label>
+                <input className={inputCls} value={editConfig[field] ?? ""} onChange={(e) => setEditConfig({ ...editConfig, [field]: e.target.value })} />
               </div>
             ))}
           </div>
-          <DialogFooter><Button onClick={saveEdit} disabled={saving}>{saving ? "Saving..." : "Save"}</Button></DialogFooter>
+          <DialogFooter>
+            <button
+              onClick={saveEdit}
+              disabled={saving}
+              className="flex items-center gap-2 rounded border border-sky-500 bg-sky-600 px-4 py-2 text-[13px] font-semibold text-white hover:bg-sky-500 disabled:opacity-50 transition-colors"
+            >
+              {saving ? "Saving..." : "Save"}
+            </button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function DarkCard({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-lg border border-[#2e3340] bg-[#181c24]" style={{boxShadow:"0 2px 8px rgba(0,0,0,0.35)"}}>
+      <div className="border-b border-[#2a2e3a] px-4 py-3 bg-[#1e2128]">
+        <p className="card-title text-[13px] font-bold uppercase tracking-widest">{title}</p>
+        {description && <p className="mt-0.5 text-[11px] text-[#5a6a84]">{description}</p>}
+      </div>
+      <div className="px-4 py-4 space-y-4">{children}</div>
     </div>
   );
 }

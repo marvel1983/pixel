@@ -142,14 +142,14 @@ export async function executeOrderPipeline(input: OrderInput) {
           const card = await createGiftCardForOrder(
             order.id, purchaserUserId, gcItem.priceUsd,
             recipientEmail || billing.email, recipientName || "",
-            senderName || "", personalMessage || "", tx as typeof db,
+            senderName || "", personalMessage || "", tx as unknown as typeof db,
           );
           cards.push(card);
         }
       }
 
       if (input.giftCards?.length) {
-        await redeemGiftCards(order.id, input.giftCards, tx as typeof db);
+        await redeemGiftCards(order.id, input.giftCards, tx as unknown as typeof db);
       }
 
       if (input.services?.length) {

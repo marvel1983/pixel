@@ -5,6 +5,7 @@ import { eq, desc, and, ilike, count, sum, sql, gte, lte } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import crypto from "node:crypto";
+import { paramString } from "../lib/route-params";
 
 const router = Router();
 
@@ -49,7 +50,7 @@ router.get("/admin/discounts/check-code", requireAuth, requireAdmin, requirePerm
 });
 
 router.get("/admin/discounts/:id", requireAuth, requireAdmin, requirePermission("manageDiscounts"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
   const [disc] = await db.select().from(coupons).where(eq(coupons.id, id));
   if (!disc) { res.status(404).json({ error: "Discount not found" }); return; }
@@ -68,7 +69,7 @@ router.post("/admin/discounts", requireAuth, requireAdmin, requirePermission("ma
 });
 
 router.put("/admin/discounts/:id", requireAuth, requireAdmin, requirePermission("manageDiscounts"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
 
   const [existing] = await db.select({ id: coupons.id }).from(coupons).where(eq(coupons.id, id));
@@ -88,7 +89,7 @@ router.put("/admin/discounts/:id", requireAuth, requireAdmin, requirePermission(
 });
 
 router.patch("/admin/discounts/:id/toggle", requireAuth, requireAdmin, requirePermission("manageDiscounts"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
   const [disc] = await db.select({ isActive: coupons.isActive }).from(coupons).where(eq(coupons.id, id));
   if (!disc) { res.status(404).json({ error: "Not found" }); return; }
@@ -97,7 +98,7 @@ router.patch("/admin/discounts/:id/toggle", requireAuth, requireAdmin, requirePe
 });
 
 router.delete("/admin/discounts/:id", requireAuth, requireAdmin, requirePermission("manageDiscounts"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
   await db.delete(coupons).where(eq(coupons.id, id));
   res.json({ success: true });
@@ -149,7 +150,7 @@ router.post("/admin/discounts/bulk", requireAuth, requireAdmin, requirePermissio
 });
 
 router.get("/admin/discounts/:id/usage", requireAuth, requireAdmin, requirePermission("manageDiscounts"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
 
   const [disc] = await db.select().from(coupons).where(eq(coupons.id, id));

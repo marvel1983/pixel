@@ -158,7 +158,7 @@
     "giftCards": "Gift Cards",
     "affiliate": "Affiliate",
     "newsletter": "Newsletter",
-    "wallet": "Wallet",
+    "wallet": "Store credit",
     "support": "Support",
     "myOrders": "My Orders",
     "viewOrdersDesc": "View your past orders and license keys.",
@@ -169,7 +169,10 @@
     "failedToLoad": "Failed to load orders",
     "failedToLoadDetails": "Failed to load order details",
     "ticketNotFound": "Ticket not found",
-    "failedToSendReply": "Failed to send reply"
+    "failedToSendReply": "Failed to send reply",
+    "storeCreditTitle": "Store credit",
+    "storeCreditHint": "Applied at checkout. Top up anytime.",
+    "storeCreditManage": "Manage store credit"
   },
   "orderComplete": {
     "checkout": "Checkout",
@@ -186,7 +189,7 @@
     "subtitle": "Featured products handpicked for you"
   },
   "wallet": {
-    "availableBalance": "Available Balance",
+    "availableBalance": "Available store credit",
     "addFunds": "Add Funds",
     "totalDeposited": "Total Deposited",
     "totalSpent": "Total Spent",
@@ -196,12 +199,31 @@
     "validCard": "Enter a valid card number",
     "validExpiry": "Enter expiry as MM/YY",
     "validCvc": "Enter a valid CVC",
-    "topUpSuccess": "${{amount}} added to wallet",
+    "topUpSuccess": "${{amount}} added to your store credit",
     "topUpFailed": "Top-up failed",
     "processing": "Processing...",
     "topUp": "Top Up ${{amount}}",
     "transactionHistory": "Transaction History",
     "noTransactions": "No transactions yet",
-    "balance": "Bal: ${{amount}}"
+    "balance": "Balance after: ${{amount}}",
+    "balancePageTitle": "Store credit & balance",
+    "balancePageSubtitle": "Top up, view history, and see how much you can spend at checkout.",
+    "viewOnFullPage": "Open full store credit page",
+    "loadMore": "Load more",
+    "dataLoadFailed": "Could not load your store credit. Check your connection and try again.",
+    "retry": "Retry"
+  },
+  "adminWallet": {
+    "amountReasonRequired": "Enter a valid amount and reason",
+    "adjustFailed": "Adjustment failed",
+    "adjustSuccess": "Store credit updated",
+    "amountPlaceholder": "Amount",
+    "reasonPlaceholder": "Reason",
+    "topUp": "Top up",
+    "creditOnly": "Credit only",
+    "debit": "Debit",
+    "deposited": "Deposited: ${{amount}}",
+    "spent": "Spent: ${{amount}}",
+    "topUpVsCreditHint": "Top up counts toward deposited totals; credit only increases balance for promos or corrections."
   }
 }

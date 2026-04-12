@@ -1,12 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
-import { Package, Plus, Search, Copy, Trash2, Pencil, Eye, EyeOff, Star, Tag, BarChart3 } from "lucide-react";
+import { Package, Plus, Search, Copy, Trash2, Pencil, Star, Tag, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
@@ -14,6 +10,9 @@ import { useAuthStore } from "@/stores/auth-store";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
+
+const inputCls = "w-full rounded border border-[#2e3340] bg-[#0f1117] px-3 py-2 text-[13px] text-[#dde4f0] placeholder:text-[#3d5070] focus:border-sky-500/60 focus:outline-none focus:ring-1 focus:ring-sky-500/30";
+const labelCls = "block text-[11.5px] font-medium text-[#8fa0bb] mb-1";
 
 interface BundleProduct { productId: number; productName: string; productImage: string | null; sortOrder: number; }
 interface AdminBundle {
@@ -130,78 +129,94 @@ export default function AdminBundlesPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Bundles</h1>
-        <Button onClick={openNew}><Plus className="h-4 w-4 mr-2" /> Create Bundle</Button>
+        <button
+          onClick={openNew}
+          className="flex items-center gap-2 rounded border border-sky-500 bg-sky-600 px-4 py-2 text-[13px] font-semibold text-white hover:bg-sky-500 disabled:opacity-50 transition-colors"
+        >
+          <Plus className="h-4 w-4" /> Create Bundle
+        </button>
       </div>
 
       <div className="flex gap-2">
         <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search bundles..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#5a6a84]" />
+          <input
+            className="w-full rounded border border-[#2e3340] bg-[#0f1117] pl-9 pr-3 py-2 text-[13px] text-[#dde4f0] placeholder:text-[#3d5070] focus:border-sky-500/60 focus:outline-none focus:ring-1 focus:ring-sky-500/30"
+            placeholder="Search bundles..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
       </div>
 
-      <Card>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Bundle</TableHead>
-              <TableHead>Products</TableHead>
-              <TableHead>Price</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+      <div className="rounded-lg border border-[#2e3340] bg-[#181c24] overflow-hidden" style={{boxShadow:"0 2px 8px rgba(0,0,0,0.35)"}}>
+        <table className="w-full">
+          <thead>
+            <tr className="bg-[#1e2128]">
+              <th className="px-3 py-[8px] text-[10.5px] font-bold uppercase tracking-widest border-b border-[#2a2e3a] text-left">Bundle</th>
+              <th className="px-3 py-[8px] text-[10.5px] font-bold uppercase tracking-widest border-b border-[#2a2e3a] text-left">Products</th>
+              <th className="px-3 py-[8px] text-[10.5px] font-bold uppercase tracking-widest border-b border-[#2a2e3a] text-left">Price</th>
+              <th className="px-3 py-[8px] text-[10.5px] font-bold uppercase tracking-widest border-b border-[#2a2e3a] text-left">Status</th>
+              <th className="px-3 py-[8px] text-[10.5px] font-bold uppercase tracking-widest border-b border-[#2a2e3a] text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
             {loading ? Array.from({ length: 3 }).map((_, i) => (
-              <TableRow key={i}><TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
+              <tr key={i} className="bg-[#0c1018]"><td colSpan={5} className="px-3 py-[6px] border-b border-[#1f2840]"><Skeleton className="h-8 w-full" /></td></tr>
             )) : bundles.length === 0 ? (
-              <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No bundles found</TableCell></TableRow>
-            ) : bundles.map((b) => (
-              <TableRow key={b.id}>
-                <TableCell>
+              <tr><td colSpan={5} className="px-3 py-[6px] text-[12.5px] text-[#5a6a84] text-center py-8">No bundles found</td></tr>
+            ) : bundles.map((b, i) => (
+              <tr key={b.id} className={`${i % 2 === 0 ? "bg-[#0c1018]" : "bg-[#0f1520]"} hover:bg-[#111825]`}>
+                <td className="px-3 py-[6px] text-[12.5px] text-[#dde4f0] border-b border-[#1f2840]">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded bg-muted flex items-center justify-center">
-                      {b.imageUrl ? <img src={b.imageUrl} className="w-full h-full object-cover rounded" /> : <Package className="h-5 w-5 text-muted-foreground" />}
+                    <div className="w-10 h-10 rounded bg-[#1e2128] flex items-center justify-center">
+                      {b.imageUrl ? <img src={b.imageUrl} className="w-full h-full object-cover rounded" /> : <Package className="h-5 w-5 text-[#5a6a84]" />}
                     </div>
                     <div>
-                      <p className="font-medium">{b.name}</p>
-                      <p className="text-xs text-muted-foreground">/{b.slug}</p>
+                      <p className="font-medium text-[#dde4f0]">{b.name}</p>
+                      <p className="text-xs text-[#5a6a84]">/{b.slug}</p>
                     </div>
                   </div>
-                </TableCell>
-                <TableCell><Badge variant="secondary">{b.items.length} products</Badge></TableCell>
-                <TableCell className="font-medium">${b.bundlePriceUsd}</TableCell>
-                <TableCell>
+                </td>
+                <td className="px-3 py-[6px] text-[12.5px] text-[#dde4f0] border-b border-[#1f2840]"><Badge variant="secondary">{b.items.length} products</Badge></td>
+                <td className="px-3 py-[6px] text-[12.5px] text-[#dde4f0] border-b border-[#1f2840] font-medium">${b.bundlePriceUsd}</td>
+                <td className="px-3 py-[6px] text-[12.5px] text-[#dde4f0] border-b border-[#1f2840]">
                   <div className="flex gap-1">
                     {b.isActive ? <Badge className="bg-green-100 text-green-800">Active</Badge> : <Badge variant="secondary">Draft</Badge>}
                     {b.isFeatured && <Badge className="bg-amber-100 text-amber-800">Featured</Badge>}
                   </div>
-                </TableCell>
-                <TableCell className="text-right">
+                </td>
+                <td className="px-3 py-[6px] text-[12.5px] text-[#dde4f0] border-b border-[#1f2840] text-right">
                   <div className="flex gap-1 justify-end">
                     <Button variant="ghost" size="icon" onClick={() => viewAnalytics(b.id)} title="Analytics"><BarChart3 className="h-4 w-4" /></Button>
                     <Button variant="ghost" size="icon" onClick={() => openEdit(b)}><Pencil className="h-4 w-4" /></Button>
                     <Button variant="ghost" size="icon" onClick={() => duplicate(b.id)}><Copy className="h-4 w-4" /></Button>
                     <Button variant="ghost" size="icon" onClick={() => remove(b.id)}><Trash2 className="h-4 w-4 text-red-500" /></Button>
                   </div>
-                </TableCell>
-              </TableRow>
+                </td>
+              </tr>
             ))}
-          </TableBody>
-        </Table>
-      </Card>
+          </tbody>
+        </table>
+      </div>
 
       {analytics && (
         <Dialog open={!!analytics} onOpenChange={() => setAnalytics(null)}>
           <DialogContent className="max-w-sm">
             <DialogHeader><DialogTitle>Bundle Analytics</DialogTitle></DialogHeader>
             <div className="space-y-3 py-2">
-              <p className="font-medium">{analytics.name}</p>
+              <p className="font-medium text-[#dde4f0]">{analytics.name}</p>
               <div className="grid grid-cols-2 gap-3">
-                <Card><CardContent className="p-3 text-center"><p className="text-2xl font-bold">{analytics.purchases}</p><p className="text-xs text-muted-foreground">Orders</p></CardContent></Card>
-                <Card><CardContent className="p-3 text-center"><p className="text-2xl font-bold">${analytics.revenue}</p><p className="text-xs text-muted-foreground">Revenue</p></CardContent></Card>
+                <div className="rounded-lg border border-[#2e3340] bg-[#0f1117] p-3 text-center">
+                  <p className="text-2xl font-bold text-[#dde4f0]">{analytics.purchases}</p>
+                  <p className="text-xs text-[#5a6a84]">Orders</p>
+                </div>
+                <div className="rounded-lg border border-[#2e3340] bg-[#0f1117] p-3 text-center">
+                  <p className="text-2xl font-bold text-[#dde4f0]">${analytics.revenue}</p>
+                  <p className="text-xs text-[#5a6a84]">Revenue</p>
+                </div>
               </div>
-              <p className="text-xs text-muted-foreground">{analytics.itemCount} products in bundle</p>
+              <p className="text-xs text-[#5a6a84]">{analytics.itemCount} products in bundle</p>
             </div>
           </DialogContent>
         </Dialog>
@@ -228,7 +243,6 @@ function BundleDialog({ open, onOpenChange, editing, setEditing, saving, onSave,
   if (!editing) return null;
   const upd = (field: keyof AdminBundle, val: string | number | boolean | null) => setEditing({ ...editing, [field]: val });
 
-  const selectedProducts = selectedIds.map((id) => products.find((p) => p.id === id)).filter(Boolean);
   const bundlePrice = parseFloat(editing.bundlePriceUsd) || 0;
 
   return (
@@ -237,39 +251,39 @@ function BundleDialog({ open, onOpenChange, editing, setEditing, saving, onSave,
         <DialogHeader><DialogTitle>{editing.id ? "Edit" : "Create"} Bundle</DialogTitle></DialogHeader>
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <div><Label>Name</Label><Input value={editing.name} onChange={(e) => upd("name", e.target.value)} /></div>
-            <div><Label>Slug</Label><Input value={editing.slug} onChange={(e) => upd("slug", e.target.value)} /></div>
+            <div><label className={labelCls}>Name</label><input className={inputCls} value={editing.name} onChange={(e) => upd("name", e.target.value)} /></div>
+            <div><label className={labelCls}>Slug</label><input className={inputCls} value={editing.slug} onChange={(e) => upd("slug", e.target.value)} /></div>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div><Label>Bundle Price (USD)</Label><Input type="number" step="0.01" value={editing.bundlePriceUsd} onChange={(e) => upd("bundlePriceUsd", e.target.value)} /></div>
-            <div><Label>Sort Order</Label><Input type="number" value={editing.sortOrder} onChange={(e) => upd("sortOrder", parseInt(e.target.value) || 0)} /></div>
+            <div><label className={labelCls}>Bundle Price (USD)</label><input className={inputCls} type="number" step="0.01" value={editing.bundlePriceUsd} onChange={(e) => upd("bundlePriceUsd", e.target.value)} /></div>
+            <div><label className={labelCls}>Sort Order</label><input className={inputCls} type="number" value={editing.sortOrder} onChange={(e) => upd("sortOrder", parseInt(e.target.value) || 0)} /></div>
           </div>
           {selectedIds.length >= 2 && bundlePrice > 0 && (
-            <div className="p-3 bg-green-50 border border-green-200 rounded text-sm flex items-center gap-2">
-              <Tag className="h-4 w-4 text-green-600" />
-              <span className="text-green-800">Bundle: <strong>{selectedIds.length} products</strong> at <strong>${bundlePrice.toFixed(2)}</strong>. Savings auto-calculated from individual product prices on storefront.</span>
+            <div className="p-3 bg-green-950/30 border border-green-800 rounded text-sm flex items-center gap-2">
+              <Tag className="h-4 w-4 text-green-400" />
+              <span className="text-green-300">Bundle: <strong>{selectedIds.length} products</strong> at <strong>${bundlePrice.toFixed(2)}</strong>. Savings auto-calculated from individual product prices on storefront.</span>
             </div>
           )}
-          <div><Label>Short Description</Label><Input value={editing.shortDescription ?? ""} onChange={(e) => upd("shortDescription", e.target.value)} /></div>
-          <div><Label>Description</Label><Textarea rows={3} value={editing.description ?? ""} onChange={(e) => upd("description", e.target.value)} /></div>
-          <div><Label>Image URL</Label><Input value={editing.imageUrl ?? ""} onChange={(e) => upd("imageUrl", e.target.value)} /></div>
+          <div><label className={labelCls}>Short Description</label><input className={inputCls} value={editing.shortDescription ?? ""} onChange={(e) => upd("shortDescription", e.target.value)} /></div>
+          <div><label className={labelCls}>Description</label><Textarea rows={3} value={editing.description ?? ""} onChange={(e) => upd("description", e.target.value)} /></div>
+          <div><label className={labelCls}>Image URL</label><input className={inputCls} value={editing.imageUrl ?? ""} onChange={(e) => upd("imageUrl", e.target.value)} /></div>
           <div className="grid grid-cols-2 gap-4">
-            <div><Label>SEO Title</Label><Input value={editing.metaTitle ?? ""} onChange={(e) => upd("metaTitle", e.target.value)} /></div>
-            <div><Label>SEO Description</Label><Input value={editing.metaDescription ?? ""} onChange={(e) => upd("metaDescription", e.target.value)} /></div>
+            <div><label className={labelCls}>SEO Title</label><input className={inputCls} value={editing.metaTitle ?? ""} onChange={(e) => upd("metaTitle", e.target.value)} /></div>
+            <div><label className={labelCls}>SEO Description</label><input className={inputCls} value={editing.metaDescription ?? ""} onChange={(e) => upd("metaDescription", e.target.value)} /></div>
           </div>
           <div className="flex gap-6">
-            <div className="flex items-center gap-2"><Switch checked={editing.isActive} onCheckedChange={(v) => upd("isActive", v)} /><Label>Active</Label></div>
-            <div className="flex items-center gap-2"><Switch checked={editing.isFeatured} onCheckedChange={(v) => upd("isFeatured", v)} /><Label>Featured</Label></div>
+            <div className="flex items-center gap-2"><Switch checked={editing.isActive} onCheckedChange={(v) => upd("isActive", v)} /><label className={labelCls + " mb-0"}>Active</label></div>
+            <div className="flex items-center gap-2"><Switch checked={editing.isFeatured} onCheckedChange={(v) => upd("isFeatured", v)} /><label className={labelCls + " mb-0"}>Featured</label></div>
           </div>
-          <div className="border-t pt-4">
-            <Label className="mb-2 block">Products in Bundle ({selectedIds.length} selected)</Label>
+          <div className="border-t border-[#2a2e3a] pt-4">
+            <label className={labelCls + " mb-2"}>Products in Bundle ({selectedIds.length} selected)</label>
             {selectedIds.length > 0 && (
-              <div className="space-y-1 mb-3 p-2 bg-muted rounded">
+              <div className="space-y-1 mb-3 p-2 bg-[#0f1117] rounded border border-[#2e3340]">
                 {selectedIds.map((id, i) => {
                   const p = products.find((x) => x.id === id);
                   return (
                     <div key={id} className="flex items-center justify-between text-sm py-1">
-                      <span>{i + 1}. {p?.name || `Product #${id}`}</span>
+                      <span className="text-[#dde4f0]">{i + 1}. {p?.name || `Product #${id}`}</span>
                       <div className="flex gap-1">
                         <Button variant="ghost" size="sm" onClick={() => moveProduct(i, -1)} disabled={i === 0}>↑</Button>
                         <Button variant="ghost" size="sm" onClick={() => moveProduct(i, 1)} disabled={i === selectedIds.length - 1}>↓</Button>
@@ -280,11 +294,11 @@ function BundleDialog({ open, onOpenChange, editing, setEditing, saving, onSave,
                 })}
               </div>
             )}
-            <Input placeholder="Search products..." value={productSearch} onChange={(e) => setProductSearch(e.target.value)} className="mb-2" />
-            <div className="max-h-40 overflow-y-auto border rounded p-1 space-y-0.5">
+            <input className={inputCls + " mb-2"} placeholder="Search products..." value={productSearch} onChange={(e) => setProductSearch(e.target.value)} />
+            <div className="max-h-40 overflow-y-auto border border-[#2e3340] rounded p-1 space-y-0.5 bg-[#0f1117]">
               {products.filter((p) => !selectedIds.includes(p.id)).map((p) => (
-                <div key={p.id} onClick={() => toggleProduct(p.id)} className="flex items-center gap-2 p-1.5 rounded cursor-pointer hover:bg-muted text-sm">
-                  <Package className="h-4 w-4 text-muted-foreground" /> {p.name}
+                <div key={p.id} onClick={() => toggleProduct(p.id)} className="flex items-center gap-2 p-1.5 rounded cursor-pointer hover:bg-[#1e2128] text-sm text-[#dde4f0]">
+                  <Package className="h-4 w-4 text-[#5a6a84]" /> {p.name}
                 </div>
               ))}
             </div>
@@ -296,5 +310,17 @@ function BundleDialog({ open, onOpenChange, editing, setEditing, saving, onSave,
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function DarkCard({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-lg border border-[#2e3340] bg-[#181c24]" style={{boxShadow:"0 2px 8px rgba(0,0,0,0.35)"}}>
+      <div className="border-b border-[#2a2e3a] px-4 py-3 bg-[#1e2128]">
+        <p className="card-title text-[13px] font-bold uppercase tracking-widest">{title}</p>
+        {description && <p className="mt-0.5 text-[11px] text-[#5a6a84]">{description}</p>}
+      </div>
+      <div className="px-4 py-4 space-y-4">{children}</div>
+    </div>
   );
 }

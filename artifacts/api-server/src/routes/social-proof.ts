@@ -5,6 +5,7 @@ import {
   siteSettings,
 } from "@workspace/db/schema";
 import { eq, and, gte, sql, desc } from "drizzle-orm";
+import { paramString } from "../lib/route-params";
 
 const router = Router();
 
@@ -43,7 +44,7 @@ router.post("/social-proof/view", async (req, res) => {
 });
 
 router.get("/social-proof/viewers/:productId", async (req, res) => {
-  const productId = Number(req.params.productId);
+  const productId = Number(paramString(req.params, "productId"));
   if (!productId || productId <= 0 || !Number.isInteger(productId)) return res.json({ viewers: 0 });
   const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
   const result = await db
@@ -60,7 +61,7 @@ router.get("/social-proof/viewers/:productId", async (req, res) => {
 });
 
 router.get("/social-proof/sold/:productId", async (req, res) => {
-  const productId = Number(req.params.productId);
+  const productId = Number(paramString(req.params, "productId"));
   if (!productId || productId <= 0 || !Number.isInteger(productId)) return res.json({ sold: 0 });
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const result = await db

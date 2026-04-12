@@ -7,6 +7,7 @@ import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import { enqueueEmail } from "../lib/email/queue";
 import { logger } from "../lib/logger";
+import { paramString } from "../lib/route-params";
 
 const router = Router();
 const auth = [requireAuth, requireAdmin, requirePermission("manageCustomers")];
@@ -69,7 +70,7 @@ router.get("/admin/support/tickets/:ticketNumber", ...auth, async (req, res) => 
     customerName: sql<string>`COALESCE(${users.firstName} || ' ' || ${users.lastName}, ${users.email})`,
   }).from(supportTickets)
     .leftJoin(users, eq(supportTickets.userId, users.id))
-    .where(eq(supportTickets.ticketNumber, req.params.ticketNumber)).limit(1);
+    .where(eq(supportTickets.ticketNumber, paramString(req.params, "ticketNumber"))).limit(1);
   if (!ticket) { res.status(404).json({ error: "Not found" }); return; }
 
   const messages = await db.select({
@@ -118,7 +119,7 @@ router.post("/admin/support/tickets/:ticketNumber/reply", ...auth, async (req, r
   const adminId = req.user!.userId;
 
   const [ticket] = await db.select().from(supportTickets)
-    .where(eq(supportTickets.ticketNumber, req.params.ticketNumber)).limit(1);
+    .where(eq(supportTickets.ticketNumber, paramString(req.params, "ticketNumber"))).limit(1);
   if (!ticket) { res.status(404).json({ error: "Not found" }); return; }
 
   const [msg] = await db.insert(ticketMessages).values({
@@ -162,7 +163,7 @@ router.patch("/admin/support/tickets/:ticketNumber", ...auth, async (req, res) =
   const adminId = req.user!.userId;
 
   const [ticket] = await db.select().from(supportTickets)
-    .where(eq(supportTickets.ticketNumber, req.params.ticketNumber)).limit(1);
+    .where(eq(supportTickets.ticketNumber, paramString(req.params, "ticketNumber"))).limit(1);
   if (!ticket) { res.status(404).json({ error: "Not found" }); return; }
 
   const updates: Record<string, unknown> = { updatedAt: new Date() };

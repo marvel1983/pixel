@@ -12,6 +12,7 @@ import {
   enqueueJob,
   type QueueName,
 } from "../lib/job-queue";
+import { paramString } from "../lib/route-params";
 
 const router = Router();
 const auth = [requireAuth, requireAdmin, requirePermission("manageSettings")] as const;
@@ -59,7 +60,7 @@ router.get("/admin/jobs/failures", ...auth, async (req, res) => {
 });
 
 router.post("/admin/jobs/:jobId/retry", ...auth, async (req, res) => {
-  const jobId = Number(req.params.jobId);
+  const jobId = Number(paramString(req.params, "jobId"));
   if (isNaN(jobId)) { res.status(400).json({ error: "Invalid job ID" }); return; }
   try {
     await retryJob(jobId);

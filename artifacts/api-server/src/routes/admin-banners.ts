@@ -4,6 +4,7 @@ import { banners } from "@workspace/db/schema";
 import { eq, asc, count } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
+import { paramString } from "../lib/route-params";
 
 const router = Router();
 
@@ -15,7 +16,7 @@ router.get("/admin/banners", requireAuth, requireAdmin, requirePermission("manag
 });
 
 router.get("/admin/banners/:id", requireAuth, requireAdmin, requirePermission("manageContent"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
   const [banner] = await db.select().from(banners).where(eq(banners.id, id));
   if (!banner) { res.status(404).json({ error: "Banner not found" }); return; }
@@ -30,7 +31,7 @@ router.post("/admin/banners", requireAuth, requireAdmin, requirePermission("mana
 });
 
 router.put("/admin/banners/:id", requireAuth, requireAdmin, requirePermission("manageContent"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
   const data = parseBannerBody(req.body);
   if (!data) { res.status(400).json({ error: "Title is required" }); return; }
@@ -41,7 +42,7 @@ router.put("/admin/banners/:id", requireAuth, requireAdmin, requirePermission("m
 });
 
 router.patch("/admin/banners/:id/toggle", requireAuth, requireAdmin, requirePermission("manageContent"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
   const [b] = await db.select({ isActive: banners.isActive }).from(banners).where(eq(banners.id, id));
   if (!b) { res.status(404).json({ error: "Not found" }); return; }
@@ -50,7 +51,7 @@ router.patch("/admin/banners/:id/toggle", requireAuth, requireAdmin, requirePerm
 });
 
 router.delete("/admin/banners/:id", requireAuth, requireAdmin, requirePermission("manageContent"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
   await db.delete(banners).where(eq(banners.id, id));
   res.json({ success: true });

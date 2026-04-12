@@ -4,6 +4,7 @@ import { emailTemplates } from "@workspace/db/schema";
 import { eq, asc } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
+import { paramString } from "../lib/route-params";
 
 const router = Router();
 
@@ -27,7 +28,7 @@ router.get("/admin/email-templates", requireAuth, requireAdmin, requirePermissio
 });
 
 router.get("/admin/email-templates/:id", requireAuth, requireAdmin, requirePermission("manageContent"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const [tmpl] = await db.select().from(emailTemplates).where(eq(emailTemplates.id, id));
   if (!tmpl) { res.status(404).json({ error: "Template not found" }); return; }
@@ -35,7 +36,7 @@ router.get("/admin/email-templates/:id", requireAuth, requireAdmin, requirePermi
 });
 
 router.put("/admin/email-templates/:id", requireAuth, requireAdmin, requirePermission("manageContent"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const { subject, bodyHtml, isEnabled, name, variables, sampleData } = req.body;
   const updates: Record<string, unknown> = { updatedAt: new Date() };
@@ -53,7 +54,7 @@ router.put("/admin/email-templates/:id", requireAuth, requireAdmin, requirePermi
 });
 
 router.post("/admin/email-templates/:id/test", requireAuth, requireAdmin, requirePermission("manageContent"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const { email } = req.body;
   if (!email || typeof email !== "string" || !email.includes("@")) { res.status(400).json({ error: "Valid email is required" }); return; }

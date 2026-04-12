@@ -1,9 +1,11 @@
-import { eq, and, sql, gte } from "drizzle-orm";
+import { eq, and, sql, gte, lte, isNull, not, inArray } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   loyaltyAccounts,
   loyaltyTransactions,
   loyaltySettings,
+  loyaltyEvents,
+  users,
 } from "@workspace/db/schema";
 import { logger } from "../lib/logger";
 
@@ -34,7 +36,7 @@ export async function addPoints(
   points: number,
   type: string,
   description: string,
-  extra?: { orderId?: number; reviewId?: number; adminNote?: string },
+  extra?: { orderId?: number; reviewId?: number; adminNote?: string; expiresAt?: Date },
 ) {
   const [account] = await db
     .select()
@@ -66,6 +68,7 @@ export async function addPoints(
       orderId: extra?.orderId,
       reviewId: extra?.reviewId,
       adminNote: extra?.adminNote,
+      expiresAt: extra?.expiresAt ?? null,
     })
     .returning();
 
@@ -159,19 +162,96 @@ function getConfigMultiplier(tier: string, config: NonNullable<Awaited<ReturnTyp
   return parseFloat(map[tier] ?? config.bronzeMultiplier);
 }
 
+/** Returns the highest active event multiplier (or 1.0 if none). */
+export async function getActiveEventMultiplier(): Promise<number> {
+  const now = new Date();
+  const events = await db
+    .select({ multiplier: loyaltyEvents.multiplier })
+    .from(loyaltyEvents)
+    .where(
+      and(
+        eq(loyaltyEvents.active, true),
+        lte(loyaltyEvents.startsAt, now),
+        gte(loyaltyEvents.endsAt, now),
+      ),
+    );
+  if (events.length === 0) return 1.0;
+  return Math.max(...events.map((e) => parseFloat(e.multiplier)));
+}
+
 export async function awardOrderPoints(userId: number, orderId: number, totalUsd: number) {
   const config = await getLoyaltyConfig();
   if (!config?.enabled) return;
 
   const account = await getOrCreateAccount(userId);
-  const multiplier = getConfigMultiplier(account.tier, config);
+
+  // Idempotency guard: skip if points already awarded for this order
+  const [existing] = await db
+    .select({ id: loyaltyTransactions.id })
+    .from(loyaltyTransactions)
+    .where(
+      and(
+        eq(loyaltyTransactions.accountId, account.id),
+        eq(loyaltyTransactions.type, "ORDER"),
+        eq(loyaltyTransactions.orderId, orderId),
+      ),
+    )
+    .limit(1);
+  if (existing) return;
+
+  // Check if this is the user's first order (before awarding)
+  const [{ orderCount }] = await db
+    .select({ orderCount: sql<number>`count(*)::int` })
+    .from(loyaltyTransactions)
+    .where(
+      and(
+        eq(loyaltyTransactions.accountId, account.id),
+        eq(loyaltyTransactions.type, "ORDER"),
+      ),
+    );
+  const isFirstOrder = orderCount === 0;
+
+  const tierMultiplier = getConfigMultiplier(account.tier, config);
+  const eventMultiplier = await getActiveEventMultiplier();
   const rawPoints = Math.floor(totalUsd * config.pointsPerDollar);
-  const points = Math.floor(rawPoints * multiplier);
+  const points = Math.floor(rawPoints * tierMultiplier * eventMultiplier);
   if (points <= 0) return;
+
+  // Compute expiry if configured
+  let expiresAt: Date | undefined;
+  if (config.pointsExpiryDays && config.pointsExpiryDays > 0) {
+    expiresAt = new Date(Date.now() + config.pointsExpiryDays * 86_400_000);
+  }
 
   await addPoints(account.id, points, "ORDER", `Earned ${points} pts from order`, {
     orderId,
+    expiresAt,
   });
+
+  // Referral bonus: if this is the buyer's first order and they were referred
+  if (isFirstOrder) {
+    const [userRow] = await db
+      .select({ referredByUserId: users.referredByUserId })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (userRow?.referredByUserId) {
+      try {
+        const referralBonus = config.referralBonus ?? 500;
+        const referrerAccount = await getOrCreateAccount(userRow.referredByUserId);
+        await addPoints(
+          referrerAccount.id,
+          referralBonus,
+          "REFERRAL",
+          "Referral bonus — friend made first purchase",
+        );
+        logger.info({ referrerId: userRow.referredByUserId, referredUserId: userId }, "Referral bonus awarded");
+      } catch (err) {
+        logger.error({ err, referredByUserId: userRow.referredByUserId }, "Failed to award referral bonus (non-fatal)");
+      }
+    }
+  }
 }
 
 export async function awardWelcomeBonus(userId: number) {
@@ -217,4 +297,280 @@ export async function awardReviewBonus(userId: number, reviewId: number) {
 
 export function pointsToDiscount(points: number, config: { redemptionRate: string }) {
   return Math.round(points * parseFloat(config.redemptionRate) * 100) / 100;
+}
+
+export async function reverseOrderLoyaltyPoints(
+  orderId: number,
+  refundAmountUsd: number,
+  orderTotalUsd: number,
+): Promise<void> {
+  // Find the original ORDER transaction for this orderId
+  const [originalTx] = await db
+    .select()
+    .from(loyaltyTransactions)
+    .where(
+      and(
+        eq(loyaltyTransactions.type, "ORDER"),
+        eq(loyaltyTransactions.orderId, orderId),
+      ),
+    )
+    .limit(1);
+
+  if (!originalTx) return; // No points were awarded, nothing to reverse
+
+  const originalPoints = originalTx.points;
+
+  // Calculate points to reverse
+  let pointsToReverse: number;
+  if (refundAmountUsd >= orderTotalUsd) {
+    // Full refund: reverse all original points
+    pointsToReverse = originalPoints;
+  } else {
+    // Partial refund: reverse proportionally
+    pointsToReverse = Math.floor(originalPoints * (refundAmountUsd / orderTotalUsd));
+  }
+
+  if (pointsToReverse <= 0) return;
+
+  // Load the account to cap deduction at current balance (cannot go negative)
+  const [account] = await db
+    .select()
+    .from(loyaltyAccounts)
+    .where(eq(loyaltyAccounts.id, originalTx.accountId))
+    .limit(1);
+
+  if (!account) return;
+
+  const actualDeduction = Math.min(pointsToReverse, account.pointsBalance);
+  if (actualDeduction <= 0) return;
+
+  const newBalance = account.pointsBalance - actualDeduction;
+
+  // Update the account balance (do NOT change lifetimePoints — tier only goes up)
+  await db
+    .update(loyaltyAccounts)
+    .set({ pointsBalance: newBalance, updatedAt: new Date() })
+    .where(eq(loyaltyAccounts.id, account.id));
+
+  // Insert REFUND transaction with negative points
+  await db.insert(loyaltyTransactions).values({
+    accountId: account.id,
+    type: "REFUND",
+    points: -actualDeduction,
+    balance: newBalance,
+    description: `Reversed ${actualDeduction} pts due to refund on order #${orderId}`,
+    orderId,
+  });
+
+  logger.info({ orderId, pointsReversed: actualDeduction, accountId: account.id }, "Loyalty points reversed for refund");
+}
+
+export async function processExpiredPoints(): Promise<void> {
+  const config = await getLoyaltyConfig();
+  if (!config) return;
+
+  const BATCH_SIZE = 50;
+  let offset = 0;
+
+  while (true) {
+    const expiredTxs = await db
+      .select()
+      .from(loyaltyTransactions)
+      .where(
+        and(
+          lte(loyaltyTransactions.expiresAt, new Date()),
+          gte(loyaltyTransactions.points, 1),
+          not(inArray(loyaltyTransactions.type, ["EXPIRED", "REFUND", "REVERSAL"])),
+          // Only expire after warning was sent, or if expiryWarningDays is 0
+          config.expiryWarningDays === 0
+            ? sql`1=1`
+            : sql`${loyaltyTransactions.warningEmailSentAt} IS NOT NULL`,
+        ),
+      )
+      .limit(BATCH_SIZE)
+      .offset(offset);
+
+    if (expiredTxs.length === 0) break;
+
+    for (const tx of expiredTxs) {
+      try {
+        const [account] = await db
+          .select()
+          .from(loyaltyAccounts)
+          .where(eq(loyaltyAccounts.id, tx.accountId))
+          .limit(1);
+
+        if (!account) continue;
+
+        const deduction = Math.min(tx.points, account.pointsBalance);
+        if (deduction <= 0) continue;
+
+        const newBalance = account.pointsBalance - deduction;
+
+        await db
+          .update(loyaltyAccounts)
+          .set({ pointsBalance: newBalance, updatedAt: new Date() })
+          .where(eq(loyaltyAccounts.id, account.id));
+
+        await db.insert(loyaltyTransactions).values({
+          accountId: account.id,
+          type: "EXPIRED",
+          points: -deduction,
+          balance: newBalance,
+          description: `Expired ${deduction} pts (original transaction #${tx.id})`,
+          orderId: tx.orderId,
+        });
+
+        logger.info({ txId: tx.id, accountId: account.id, deduction }, "Loyalty points expired");
+      } catch (err) {
+        logger.error({ err, txId: tx.id }, "Failed to process expired loyalty transaction");
+      }
+    }
+
+    if (expiredTxs.length < BATCH_SIZE) break;
+    offset += BATCH_SIZE;
+  }
+}
+
+export async function processBirthdayBonuses(): Promise<void> {
+  const config = await getLoyaltyConfig();
+  const birthdayBonus = config?.birthdayBonus ?? 200;
+  if (!birthdayBonus || birthdayBonus <= 0) return;
+
+  // Find users whose birthday is today and who have a loyalty account
+  const todayUsers = await db
+    .select({
+      userId: users.id,
+      email: users.email,
+      firstName: users.firstName,
+    })
+    .from(users)
+    .innerJoin(loyaltyAccounts, eq(loyaltyAccounts.userId, users.id))
+    .where(
+      and(
+        sql`EXTRACT(MONTH FROM ${users.dateOfBirth}) = EXTRACT(MONTH FROM NOW())`,
+        sql`EXTRACT(DAY FROM ${users.dateOfBirth}) = EXTRACT(DAY FROM NOW())`,
+      ),
+    );
+
+  if (todayUsers.length === 0) return;
+
+  const { enqueueEmail } = await import("../lib/email/queue");
+
+  for (const user of todayUsers) {
+    try {
+      const account = await getOrCreateAccount(user.userId);
+
+      // Check if already awarded this year
+      const [alreadyAwarded] = await db
+        .select({ id: loyaltyTransactions.id })
+        .from(loyaltyTransactions)
+        .where(
+          and(
+            eq(loyaltyTransactions.accountId, account.id),
+            eq(loyaltyTransactions.type, "BIRTHDAY"),
+            sql`EXTRACT(YEAR FROM ${loyaltyTransactions.createdAt}) = EXTRACT(YEAR FROM NOW())`,
+          ),
+        )
+        .limit(1);
+
+      if (alreadyAwarded) continue;
+
+      await addPoints(account.id, birthdayBonus, "BIRTHDAY", `Birthday bonus 🎂`);
+
+      if (user.email) {
+        const subject = `Happy Birthday! You've received ${birthdayBonus} loyalty points 🎂`;
+        const html = `<h2>Happy Birthday, ${user.firstName ?? "there"}! 🎂</h2>
+          <p>To celebrate your special day, we've added <strong>${birthdayBonus} bonus points</strong> to your loyalty account!</p>
+          <p><a href="/account/loyalty">View your points balance</a></p>`;
+        await enqueueEmail(user.email, subject, html, { type: "birthday-bonus", userId: user.userId });
+      }
+
+      logger.info({ userId: user.userId, points: birthdayBonus }, "Birthday bonus awarded");
+    } catch (err) {
+      logger.error({ err, userId: user.userId }, "Failed to award birthday bonus");
+    }
+  }
+}
+
+export async function sendExpiryWarningEmails(): Promise<void> {
+  const config = await getLoyaltyConfig();
+  if (!config) return;
+  if (!config.pointsExpiryDays || config.pointsExpiryDays === 0) return; // Expiry disabled
+
+  const warningDays = config.expiryWarningDays ?? 30;
+  const warningCutoff = new Date(Date.now() + warningDays * 86_400_000);
+
+  // Find transactions expiring within the warning window that haven't been warned yet
+  const expiringTxs = await db
+    .select()
+    .from(loyaltyTransactions)
+    .where(
+      and(
+        gte(loyaltyTransactions.expiresAt, new Date()),
+        lte(loyaltyTransactions.expiresAt, warningCutoff),
+        gte(loyaltyTransactions.points, 1),
+        isNull(loyaltyTransactions.warningEmailSentAt),
+        not(inArray(loyaltyTransactions.type, ["EXPIRED", "REFUND", "REVERSAL"])),
+      ),
+    );
+
+  if (expiringTxs.length === 0) return;
+
+  // Group by accountId: aggregate total expiring points and earliest expiry date
+  const byAccount = new Map<number, { totalPoints: number; earliestExpiry: Date; txIds: number[] }>();
+  for (const tx of expiringTxs) {
+    if (!tx.expiresAt) continue;
+    const entry = byAccount.get(tx.accountId);
+    if (!entry) {
+      byAccount.set(tx.accountId, { totalPoints: tx.points, earliestExpiry: tx.expiresAt, txIds: [tx.id] });
+    } else {
+      entry.totalPoints += tx.points;
+      if (tx.expiresAt < entry.earliestExpiry) entry.earliestExpiry = tx.expiresAt;
+      entry.txIds.push(tx.id);
+    }
+  }
+
+  const { enqueueEmail } = await import("../lib/email/queue");
+
+  for (const [accountId, { totalPoints, earliestExpiry, txIds }] of byAccount) {
+    try {
+      // Get user email via account
+      const [account] = await db
+        .select({ userId: loyaltyAccounts.userId })
+        .from(loyaltyAccounts)
+        .where(eq(loyaltyAccounts.id, accountId))
+        .limit(1);
+      if (!account) continue;
+
+      const [user] = await db
+        .select({ email: users.email, firstName: users.firstName })
+        .from(users)
+        .where(eq(users.id, account.userId))
+        .limit(1);
+      if (!user?.email) continue;
+
+      const expiryDateStr = earliestExpiry.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+      const subject = `Your ${totalPoints} loyalty points expire on ${expiryDateStr}`;
+      const html = `<h2>Your loyalty points are expiring soon!</h2>
+        <p>Hi ${user.firstName ?? "there"},</p>
+        <p>You have <strong>${totalPoints} points</strong> expiring on <strong>${expiryDateStr}</strong>.</p>
+        <p>Use your points before they expire to save on your next purchase.</p>
+        <p><a href="/account/loyalty">View your points balance</a></p>`;
+
+      await enqueueEmail(user.email, subject, html, { type: "loyalty-expiry-warning", accountId });
+
+      // Mark all those transactions as warned
+      for (const txId of txIds) {
+        await db
+          .update(loyaltyTransactions)
+          .set({ warningEmailSentAt: new Date() })
+          .where(eq(loyaltyTransactions.id, txId));
+      }
+
+      logger.info({ accountId, totalPoints, earliestExpiry }, "Sent loyalty expiry warning email");
+    } catch (err) {
+      logger.error({ err, accountId }, "Failed to send loyalty expiry warning email");
+    }
+  }
 }

@@ -6,11 +6,12 @@ import {
   submitSurvey, getSurveyByToken, getSurveyStats,
   getRecentSurveys, getSurveySettings, updateSurveySettings,
 } from "../services/survey-service";
+import { paramString } from "../lib/route-params";
 
 const router = Router();
 
 router.get("/survey/:token", async (req, res) => {
-  const survey = await getSurveyByToken(req.params.token);
+  const survey = await getSurveyByToken(paramString(req.params, "token"));
   if (!survey) { res.status(404).json({ error: "Survey not found" }); return; }
   res.json({
     orderId: survey.orderId,
@@ -28,7 +29,7 @@ const submitSchema = z.object({
 router.post("/survey/:token", async (req, res) => {
   const parsed = submitSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.issues[0].message }); return; }
-  const result = await submitSurvey(req.params.token, parsed.data.rating, parsed.data.comment);
+  const result = await submitSurvey(paramString(req.params, "token"), parsed.data.rating, parsed.data.comment);
   if ("error" in result) { res.status(400).json(result); return; }
   res.json(result);
 });

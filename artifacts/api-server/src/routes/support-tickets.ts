@@ -6,6 +6,8 @@ import { supportTickets, ticketMessages, ticketStatusHistory, users, orders } fr
 import { requireAuth } from "../middleware/auth";
 import { enqueueEmail } from "../lib/email/queue";
 import { logger } from "../lib/logger";
+import { he } from "../lib/html-escape";
+import { paramString } from "../lib/route-params";
 
 const router = Router();
 
@@ -75,7 +77,7 @@ router.post("/support/tickets", requireAuth, async (req, res) => {
       const admins = await db.select({ email: users.email }).from(users).where(eq(users.role, "ADMIN"));
       for (const admin of admins) {
         await enqueueEmail(admin.email, `New Support Ticket: ${ticketNumber}`,
-          `<h2>New Support Ticket</h2><p><strong>${ticketNumber}</strong> - ${subject}</p><p>Category: ${category}</p><p>${message.substring(0, 500)}</p>`);
+          `<h2>New Support Ticket</h2><p><strong>${he(ticketNumber)}</strong> - ${he(subject)}</p><p>Category: ${he(category)}</p><p>${he(message.substring(0, 500))}</p>`);
       }
     } catch (emailErr) { logger.error(emailErr, "Failed to enqueue ticket notification"); }
 
@@ -111,7 +113,7 @@ router.get("/support/tickets", requireAuth, async (req, res) => {
 router.get("/support/tickets/:ticketNumber", requireAuth, async (req, res) => {
   const userId = req.user!.userId;
   const [ticket] = await db.select().from(supportTickets)
-    .where(and(eq(supportTickets.ticketNumber, req.params.ticketNumber), eq(supportTickets.userId, userId)))
+    .where(and(eq(supportTickets.ticketNumber, paramString(req.params, "ticketNumber")), eq(supportTickets.userId, userId)))
     .limit(1);
   if (!ticket) { res.status(404).json({ error: "Ticket not found" }); return; }
 
@@ -139,7 +141,7 @@ router.post("/support/tickets/:ticketNumber/reply", requireAuth, async (req, res
   const userId = req.user!.userId;
 
   const [ticket] = await db.select().from(supportTickets)
-    .where(and(eq(supportTickets.ticketNumber, req.params.ticketNumber), eq(supportTickets.userId, userId)))
+    .where(and(eq(supportTickets.ticketNumber, paramString(req.params, "ticketNumber")), eq(supportTickets.userId, userId)))
     .limit(1);
   if (!ticket) { res.status(404).json({ error: "Ticket not found" }); return; }
 
@@ -161,13 +163,13 @@ router.post("/support/tickets/:ticketNumber/reply", requireAuth, async (req, res
       const [assignee] = await db.select({ email: users.email }).from(users).where(eq(users.id, ticket.assigneeId));
       if (assignee) {
         await enqueueEmail(assignee.email, `Customer Reply: ${ticket.ticketNumber}`,
-          `<h2>Customer Reply</h2><p>Ticket <strong>${ticket.ticketNumber}</strong> has a new customer reply.</p><p>${parsed.data.message.substring(0, 500)}</p>`);
+          `<h2>Customer Reply</h2><p>Ticket <strong>${he(ticket.ticketNumber)}</strong> has a new customer reply.</p><p>${he(parsed.data.message.substring(0, 500))}</p>`);
       }
     } else {
       const admins = await db.select({ email: users.email }).from(users).where(eq(users.role, "ADMIN"));
       for (const admin of admins) {
         await enqueueEmail(admin.email, `Customer Reply: ${ticket.ticketNumber}`,
-          `<h2>Customer Reply (Unassigned)</h2><p>Ticket <strong>${ticket.ticketNumber}</strong> has a new customer reply.</p><p>${parsed.data.message.substring(0, 500)}</p>`);
+          `<h2>Customer Reply (Unassigned)</h2><p>Ticket <strong>${he(ticket.ticketNumber)}</strong> has a new customer reply.</p><p>${he(parsed.data.message.substring(0, 500))}</p>`);
       }
     }
   } catch (emailErr) { logger.error(emailErr, "Failed to enqueue reply notification"); }
@@ -178,7 +180,7 @@ router.post("/support/tickets/:ticketNumber/reply", requireAuth, async (req, res
 router.post("/support/tickets/:ticketNumber/resolve", requireAuth, async (req, res) => {
   const userId = req.user!.userId;
   const [ticket] = await db.select().from(supportTickets)
-    .where(and(eq(supportTickets.ticketNumber, req.params.ticketNumber), eq(supportTickets.userId, userId)))
+    .where(and(eq(supportTickets.ticketNumber, paramString(req.params, "ticketNumber")), eq(supportTickets.userId, userId)))
     .limit(1);
   if (!ticket) { res.status(404).json({ error: "Ticket not found" }); return; }
 
@@ -193,7 +195,7 @@ router.post("/support/tickets/:ticketNumber/resolve", requireAuth, async (req, r
 router.post("/support/tickets/:ticketNumber/reopen", requireAuth, async (req, res) => {
   const userId = req.user!.userId;
   const [ticket] = await db.select().from(supportTickets)
-    .where(and(eq(supportTickets.ticketNumber, req.params.ticketNumber), eq(supportTickets.userId, userId)))
+    .where(and(eq(supportTickets.ticketNumber, paramString(req.params, "ticketNumber")), eq(supportTickets.userId, userId)))
     .limit(1);
   if (!ticket) { res.status(404).json({ error: "Ticket not found" }); return; }
 

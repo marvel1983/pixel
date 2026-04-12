@@ -46,3 +46,6 @@ export * from "./surveys";
 export * from "./job-queue";
 export * from "./idempotency";
 export * from "./health-incidents";
+export * from "./price-rules";
+export * from "./product-attributes";
+export * from "./product-tags";

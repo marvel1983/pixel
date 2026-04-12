@@ -4,6 +4,7 @@ import { productQuestions, productAnswers, products } from "@workspace/db/schema
 import { eq, and, desc, inArray } from "drizzle-orm";
 import { optionalAuth } from "../middleware/auth";
 import { z } from "zod";
+import { paramString } from "../lib/route-params";
 
 const router = Router();
 
@@ -42,7 +43,7 @@ router.post("/qa/ask", optionalAuth, async (req, res) => {
 });
 
 router.get("/qa/product/:productId", async (req, res) => {
-  const productId = parseInt(req.params.productId);
+  const productId = parseInt(paramString(req.params, "productId"));
   if (isNaN(productId)) { res.status(400).json({ error: "Invalid product ID" }); return; }
 
   const questions = await db.select({

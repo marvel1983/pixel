@@ -5,6 +5,7 @@ import { processProviderRefund } from "../services/refund";
 import { renderAndSendTemplate } from "./email/render-template";
 import { reverseCommissionsForOrder } from "../services/affiliate-service";
 import { creditWallet } from "../services/wallet-service";
+import { reverseOrderLoyaltyPoints } from "../services/loyalty-service";
 import { logger } from "./logger";
 
 export async function processRefund(refundId: number): Promise<{ success: boolean; error?: string }> {
@@ -42,6 +43,10 @@ export async function processRefund(refundId: number): Promise<{ success: boolea
 
     reverseCommissionsForOrder(refund.orderId).catch((err) => {
       logger.error({ err, orderId: refund.orderId }, "Failed to reverse affiliate commissions (non-fatal)");
+    });
+
+    reverseOrderLoyaltyPoints(refund.orderId, parseFloat(refund.amountUsd), parseFloat(order.totalUsd)).catch((err) => {
+      logger.error({ err, orderId: refund.orderId }, "Failed to reverse loyalty points on refund (non-fatal)");
     });
 
     if (refund.notifyCustomer && order.guestEmail) {
@@ -90,6 +95,10 @@ export async function processWalletRefund(refundId: number, userId: number): Pro
 
     reverseCommissionsForOrder(refund.orderId).catch((err) => {
       logger.error({ err, orderId: refund.orderId }, "Failed to reverse commissions on wallet refund");
+    });
+
+    reverseOrderLoyaltyPoints(refund.orderId, parseFloat(refund.amountUsd), parseFloat(order.totalUsd)).catch((err) => {
+      logger.error({ err, orderId: refund.orderId }, "Failed to reverse loyalty points on wallet refund (non-fatal)");
     });
 
     if (refund.notifyCustomer && order.guestEmail) {

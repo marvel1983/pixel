@@ -158,7 +158,7 @@
     "giftCards": "Dárkové karty",
     "affiliate": "Partnerský program",
     "newsletter": "Newsletter",
-    "wallet": "Peněženka",
+    "wallet": "Obchodní kredit",
     "support": "Podpora",
     "myOrders": "Moje objednávky",
     "viewOrdersDesc": "Prohlédněte si své objednávky a licenční klíče.",
@@ -169,7 +169,10 @@
     "failedToLoad": "Nepodařilo se načíst objednávky",
     "failedToLoadDetails": "Nepodařilo se načíst detaily",
     "ticketNotFound": "Tiket nenalezen",
-    "failedToSendReply": "Nepodařilo se odeslat odpověď"
+    "failedToSendReply": "Nepodařilo se odeslat odpověď",
+    "storeCreditTitle": "Obchodní kredit",
+    "storeCreditHint": "Uplatní se u pokladny. Dobijte kdykoli.",
+    "storeCreditManage": "Spravovat obchodní kredit"
   },
   "orderComplete": {
     "checkout": "Pokladna",
@@ -186,7 +189,7 @@
     "subtitle": "Produkty vybrané přímo pro vás"
   },
   "wallet": {
-    "availableBalance": "Dostupný zůstatek",
+    "availableBalance": "Dostupný obchodní kredit",
     "addFunds": "Přidat prostředky",
     "totalDeposited": "Celkem vloženo",
     "totalSpent": "Celkem utraceno",
@@ -196,12 +199,31 @@
     "validCard": "Zadejte platné číslo karty",
     "validExpiry": "Zadejte datum jako MM/RR",
     "validCvc": "Zadejte platný CVC",
-    "topUpSuccess": "{{amount}} $ přidáno do peněženky",
+    "topUpSuccess": "{{amount}} $ přidáno k obchodnímu kreditu",
     "topUpFailed": "Dobíjení selhalo",
     "processing": "Zpracování...",
     "topUp": "Dobít {{amount}} $",
     "transactionHistory": "Historie transakcí",
     "noTransactions": "Zatím žádné transakce",
-    "balance": "Zůst: {{amount}} $"
+    "balance": "Zůstatek po: {{amount}} $",
+    "balancePageTitle": "Obchodní kredit a zůstatek",
+    "balancePageSubtitle": "Dobít, zobrazit historii a kolik můžete utratit u pokladny.",
+    "viewOnFullPage": "Otevřít celou stránku obchodního kreditu",
+    "loadMore": "Načíst další",
+    "dataLoadFailed": "Nepodařilo se načíst obchodní kredit. Zkontrolujte připojení a zkuste to znovu.",
+    "retry": "Zkusit znovu"
+  },
+  "adminWallet": {
+    "amountReasonRequired": "Zadejte částku a důvod",
+    "adjustFailed": "Úprava se nezdařila",
+    "adjustSuccess": "Obchodní kredit aktualizován",
+    "amountPlaceholder": "Částka",
+    "reasonPlaceholder": "Důvod",
+    "topUp": "Dobít",
+    "creditOnly": "Pouze kredit",
+    "debit": "Debet",
+    "deposited": "Vloženo: {{amount}} $",
+    "spent": "Utraceno: {{amount}} $",
+    "topUpVsCreditHint": "Dobití se počítá do vkladů; pouze kredit zvyšuje zůstatek (promo, opravy)."
   }
 }

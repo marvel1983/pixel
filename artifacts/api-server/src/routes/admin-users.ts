@@ -6,6 +6,7 @@ import { eq, inArray, desc, and } from "drizzle-orm";
 import { requireAuth, requireAdmin, signToken } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import bcrypt from "bcryptjs";
+import { paramString } from "../lib/route-params";
 
 const router = Router();
 
@@ -109,7 +110,7 @@ router.post("/admin/accept-invite", async (req, res) => {
 });
 
 router.put("/admin/admin-users/:id/permissions", requireAuth, requireAdmin, requireSuperAdmin, async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(paramString(req.params, "id"));
   const { permissions } = req.body;
   if (!permissions) { res.status(400).json({ error: "Permissions required" }); return; }
   const [target] = await db.select().from(users).where(eq(users.id, id));
@@ -123,7 +124,7 @@ router.put("/admin/admin-users/:id/permissions", requireAuth, requireAdmin, requ
 });
 
 router.delete("/admin/admin-users/:id", requireAuth, requireAdmin, requireSuperAdmin, async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(paramString(req.params, "id"));
   if (id === req.user!.userId) {
     res.status(400).json({ error: "Cannot revoke your own admin access" }); return;
   }

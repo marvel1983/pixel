@@ -74,6 +74,12 @@ import adminQuotesRouter from "./admin-quotes";
 import surveysRouter from "./surveys";
 import adminJobsRouter from "./admin-jobs";
 import adminCircuitBreakerRouter from "./admin-circuit-breaker";
+import productReviewsRouter from "./product-reviews";
+import pricingRouter from "./pricing";
+import adminPriceRulesRouter from "./admin-price-rules";
+import adminAttributesRouter from "./admin-attributes";
+import adminTagsRouter from "./admin-tags";
+import productsRouter from "./products";
 
 const router: IRouter = Router();
 
@@ -152,5 +158,11 @@ router.use(adminQuotesRouter);
 router.use(surveysRouter);
 router.use(adminJobsRouter);
 router.use(adminCircuitBreakerRouter);
+router.use(productReviewsRouter);
+router.use(pricingRouter);
+router.use(adminPriceRulesRouter);
+router.use(adminAttributesRouter);
+router.use(adminTagsRouter);
+router.use(productsRouter);
 
 export default router;

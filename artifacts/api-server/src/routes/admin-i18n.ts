@@ -4,6 +4,7 @@ import { localeOverrides, enabledLocales } from "@workspace/db/schema";
 import { eq, and, asc } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
+import { paramString } from "../lib/route-params";
 
 const router = Router();
 const auth = [requireAuth, requireAdmin, requirePermission("manageSettings")];
@@ -75,7 +76,7 @@ router.post("/admin/locales/overrides", ...auth, async (req, res) => {
 });
 
 router.delete("/admin/locales/overrides/:id", ...auth, async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(paramString(req.params, "id"));
   if (!Number.isInteger(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   await db.delete(localeOverrides).where(eq(localeOverrides.id, id));
   res.json({ success: true });

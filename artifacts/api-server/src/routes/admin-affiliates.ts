@@ -10,6 +10,7 @@ import { eq, desc, ilike, or, and, sql, count, type SQL } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import { approveHeldCommissions } from "../services/affiliate-service";
+import { paramString } from "../lib/route-params";
 
 const router = Router();
 const guard = [requireAuth, requireAdmin, requirePermission("manageOrders")];
@@ -53,7 +54,7 @@ router.get("/admin/affiliates", ...guard, async (req, res) => {
 });
 
 router.patch("/admin/affiliates/:id/status", ...guard, async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(paramString(req.params, "id"));
   const { status, adminNote } = req.body;
   if (!["APPROVED", "REJECTED", "SUSPENDED"].includes(status)) {
     res.status(400).json({ error: "Invalid status" }); return;
@@ -69,7 +70,7 @@ router.patch("/admin/affiliates/:id/status", ...guard, async (req, res) => {
 });
 
 router.patch("/admin/affiliates/:id/rate", ...guard, async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(paramString(req.params, "id"));
   const { commissionRate } = req.body;
   const rate = parseFloat(commissionRate);
   if (isNaN(rate) || rate < 0 || rate > 100) {
@@ -83,7 +84,7 @@ router.patch("/admin/affiliates/:id/rate", ...guard, async (req, res) => {
 });
 
 router.get("/admin/affiliates/:id/commissions", ...guard, async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(paramString(req.params, "id"));
   const commissions = await db.select().from(affiliateCommissions)
     .where(eq(affiliateCommissions.affiliateId, id))
     .orderBy(desc(affiliateCommissions.createdAt))
@@ -92,7 +93,7 @@ router.get("/admin/affiliates/:id/commissions", ...guard, async (req, res) => {
 });
 
 router.post("/admin/affiliates/:id/mark-paid", ...guard, async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(paramString(req.params, "id"));
   const { amount } = req.body;
   const payAmount = parseFloat(amount);
   if (isNaN(payAmount) || payAmount <= 0) {

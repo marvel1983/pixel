@@ -5,6 +5,7 @@ import {
   getAllCircuitStatus,
   getCircuitBreaker,
 } from "../lib/circuit-breaker";
+import { paramString } from "../lib/route-params";
 
 const router = Router();
 const guard = [requireAuth, requireAdmin, requirePermission("manageSettings")];
@@ -23,7 +24,7 @@ router.get("/admin/system-status/circuits", ...guard, async (_req, res) => {
 });
 
 router.post("/admin/system-status/circuits/:name/reset", ...guard, async (req, res) => {
-  const cb = getCircuitBreaker(req.params.name);
+  const cb = getCircuitBreaker(paramString(req.params, "name"));
   if (!cb) {
     res.status(404).json({ error: "Circuit breaker not found" });
     return;

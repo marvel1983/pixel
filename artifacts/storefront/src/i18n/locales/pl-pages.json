@@ -158,7 +158,7 @@
     "giftCards": "Karty podarunkowe",
     "affiliate": "Program partnerski",
     "newsletter": "Newsletter",
-    "wallet": "Portfel",
+    "wallet": "Kredyt sklepu",
     "support": "Wsparcie",
     "myOrders": "Moje zamówienia",
     "viewOrdersDesc": "Przeglądaj swoje zamówienia i klucze licencyjne.",
@@ -169,7 +169,10 @@
     "failedToLoad": "Nie udało się załadować zamówień",
     "failedToLoadDetails": "Nie udało się załadować szczegółów",
     "ticketNotFound": "Nie znaleziono zgłoszenia",
-    "failedToSendReply": "Nie udało się wysłać odpowiedzi"
+    "failedToSendReply": "Nie udało się wysłać odpowiedzi",
+    "storeCreditTitle": "Kredyt sklepu",
+    "storeCreditHint": "Stosowany przy kasie. Doładuj w dowolnym momencie.",
+    "storeCreditManage": "Zarządzaj kredytem sklepu"
   },
   "orderComplete": {
     "checkout": "Kasa",
@@ -186,7 +189,7 @@
     "subtitle": "Produkty wybrane specjalnie dla Ciebie"
   },
   "wallet": {
-    "availableBalance": "Dostępne saldo",
+    "availableBalance": "Dostępny kredyt sklepu",
     "addFunds": "Doładuj",
     "totalDeposited": "Łącznie wpłacono",
     "totalSpent": "Łącznie wydano",
@@ -196,12 +199,31 @@
     "validCard": "Wpisz prawidłowy numer karty",
     "validExpiry": "Wpisz datę w formacie MM/RR",
     "validCvc": "Wpisz prawidłowy CVC",
-    "topUpSuccess": "Dodano {{amount}} $ do portfela",
+    "topUpSuccess": "Dodano {{amount}} $ do kredytu sklepu",
     "topUpFailed": "Doładowanie nie powiodło się",
     "processing": "Przetwarzanie...",
     "topUp": "Doładuj {{amount}} $",
     "transactionHistory": "Historia transakcji",
     "noTransactions": "Brak transakcji",
-    "balance": "Saldo: {{amount}} $"
+    "balance": "Saldo po: {{amount}} $",
+    "balancePageTitle": "Kredyt sklepu i saldo",
+    "balancePageSubtitle": "Doładuj, zobacz historię i ile możesz wydać przy kasie.",
+    "viewOnFullPage": "Otwórz pełną stronę kredytu sklepu",
+    "loadMore": "Załaduj więcej",
+    "dataLoadFailed": "Nie udało się załadować kredytu sklepu. Sprawdź połączenie i spróbuj ponownie.",
+    "retry": "Spróbuj ponownie"
+  },
+  "adminWallet": {
+    "amountReasonRequired": "Podaj kwotę i powód",
+    "adjustFailed": "Operacja nie powiodła się",
+    "adjustSuccess": "Kredyt sklepu zaktualizowany",
+    "amountPlaceholder": "Kwota",
+    "reasonPlaceholder": "Powód",
+    "topUp": "Doładuj",
+    "creditOnly": "Tylko kredyt",
+    "debit": "Obciążenie",
+    "deposited": "Wpłacono: {{amount}} $",
+    "spent": "Wydano: {{amount}} $",
+    "topUpVsCreditHint": "Doładowanie zwiększa sumę wpłat; sam kredyt tylko saldo (promocje, korekty)."
   }
 }

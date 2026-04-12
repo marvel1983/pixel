@@ -6,6 +6,7 @@ import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import { awardReviewBonus } from "../services/loyalty-service";
 import { logger } from "../lib/logger";
+import { paramString } from "../lib/route-params";
 
 const router = Router();
 
@@ -51,7 +52,7 @@ router.get("/admin/reviews", requireAuth, requireAdmin, requirePermission("manag
 });
 
 router.get("/admin/reviews/:id", requireAuth, requireAdmin, requirePermission("manageProducts"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
 
   const [review] = await db.select({
@@ -75,7 +76,7 @@ router.get("/admin/reviews/:id", requireAuth, requireAdmin, requirePermission("m
 });
 
 router.patch("/admin/reviews/:id/status", requireAuth, requireAdmin, requirePermission("manageProducts"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
   const { status } = req.body;
   if (!["PENDING", "APPROVED", "REJECTED"].includes(status)) { res.status(400).json({ error: "Invalid status" }); return; }
@@ -93,7 +94,7 @@ router.patch("/admin/reviews/:id/status", requireAuth, requireAdmin, requirePerm
 });
 
 router.patch("/admin/reviews/:id/reply", requireAuth, requireAdmin, requirePermission("manageProducts"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
   const { reply } = req.body;
   if (typeof reply !== "string") { res.status(400).json({ error: "Reply text required" }); return; }
@@ -104,7 +105,7 @@ router.patch("/admin/reviews/:id/reply", requireAuth, requireAdmin, requirePermi
 });
 
 router.delete("/admin/reviews/:id", requireAuth, requireAdmin, requirePermission("manageProducts"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
   await db.delete(reviews).where(eq(reviews.id, id));
   res.json({ success: true });

@@ -5,44 +5,44 @@ interface CartProgressProps {
 }
 
 const STEPS = [
-  { label: "Shopping Cart", icon: ShoppingCart },
+  { label: "Cart", icon: ShoppingCart },
   { label: "Checkout", icon: CreditCard },
-  { label: "Order Complete", icon: CheckCircle },
+  { label: "Confirmation", icon: CheckCircle },
 ];
 
 export function CartProgress({ step }: CartProgressProps) {
   return (
-    <div className="flex items-center justify-center gap-0 mb-8">
+    <div className="flex items-center justify-center mb-8">
       {STEPS.map((s, i) => {
-        const stepNum = i + 1;
-        const isActive = stepNum === step;
-        const isComplete = stepNum < step;
+        const num = i + 1;
+        const isActive = num === step;
+        const isDone = num < step;
         const Icon = s.icon;
 
         return (
           <div key={s.label} className="flex items-center">
             {i > 0 && (
-              <div
-                className={`w-16 sm:w-24 h-0.5 ${
-                  isComplete || isActive ? "bg-primary" : "bg-border"
-                }`}
-              />
+              <div className="relative mx-2 h-px w-16 sm:w-28 bg-border overflow-hidden">
+                <div
+                  className="absolute inset-0 bg-primary transition-transform duration-500 origin-left"
+                  style={{ transform: isDone ? "scaleX(1)" : "scaleX(0)" }}
+                />
+              </div>
             )}
-            <div className="flex flex-col items-center gap-1">
+            <div className="flex flex-col items-center gap-1.5">
               <div
-                className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold ${
-                  isActive
-                    ? "bg-primary text-white"
-                    : isComplete
-                      ? "bg-primary/10 text-primary"
-                      : "bg-muted text-muted-foreground"
-                }`}
+                className={`
+                  flex h-9 w-9 items-center justify-center rounded-full border-2 transition-colors duration-300
+                  ${isActive ? "border-primary bg-primary text-white shadow-md shadow-primary/30" : ""}
+                  ${isDone ? "border-primary bg-primary/10 text-primary" : ""}
+                  ${!isActive && !isDone ? "border-border bg-background text-muted-foreground" : ""}
+                `}
               >
                 <Icon className="h-4 w-4" />
               </div>
               <span
-                className={`text-xs font-medium whitespace-nowrap ${
-                  isActive ? "text-primary" : isComplete ? "text-foreground" : "text-muted-foreground"
+                className={`text-[11px] font-semibold whitespace-nowrap tracking-wide ${
+                  isActive ? "text-primary" : isDone ? "text-foreground" : "text-muted-foreground"
                 }`}
               >
                 {s.label}

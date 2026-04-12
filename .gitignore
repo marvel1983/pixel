@@ -31,6 +31,10 @@ node_modules
 /.sass-cache
 /connect.lock
 /coverage
+
+# Playwright (storefront e2e)
+artifacts/storefront/test-results/
+artifacts/storefront/playwright-report/
 /libpeerconnection.log
 npm-debug.log
 yarn-error.log
@@ -47,3 +51,13 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Secrets & local env (never commit)
+.env
+.env.*
+!.env.example
+**/.env
+
+# Local agent / tool caches
+.claude/
+.config/

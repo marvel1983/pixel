@@ -46,7 +46,7 @@ export function CustomerWallet({ userId }: { userId: number }) {
     }
     setAdjusting(true);
     try {
-      // POST with query string: Express always populates req.query (works when req.body is empty behind proxies).
+      // Query + JSON body: server merges both; helps proxies and Express 5 mounted routes.
       const qs = new URLSearchParams();
       qs.set("type", type);
       qs.set("amountUsd", String(amt));
@@ -71,7 +71,7 @@ export function CustomerWallet({ userId }: { userId: number }) {
           [
             hint || detailBits.filter(Boolean).join(" • "),
             code && `[${code}]`,
-            staleApi && "Stale API (no code field): in artifacts/api-server run pnpm run build, then restart the API process.",
+            staleApi && "API response looks outdated — rebuild and restart the API process, then try again.",
           ]
             .filter(Boolean)
             .join(" ") || undefined;

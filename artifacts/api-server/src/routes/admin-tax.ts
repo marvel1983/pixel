@@ -4,6 +4,7 @@ import { taxSettings, taxRates } from "@workspace/db/schema";
 import { eq, asc } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
+import { paramString } from "../lib/route-params";
 
 const router = Router();
 
@@ -77,7 +78,7 @@ router.post("/admin/tax-rates", requireAuth, requireAdmin, requirePermission("ma
 });
 
 router.put("/admin/tax-rates/:id", requireAuth, requireAdmin, requirePermission("manageSettings"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const { rate, isEnabled, countryName } = req.body;
   const updates: Record<string, unknown> = { updatedAt: new Date() };
@@ -89,7 +90,7 @@ router.put("/admin/tax-rates/:id", requireAuth, requireAdmin, requirePermission(
 });
 
 router.delete("/admin/tax-rates/:id", requireAuth, requireAdmin, requirePermission("manageSettings"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   await db.delete(taxRates).where(eq(taxRates.id, id));
   res.json({ success: true });

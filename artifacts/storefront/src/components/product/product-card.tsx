@@ -125,12 +125,12 @@ export function ProductCard({ product, flashSalePrice: flashSalePriceProp }: Pro
           </div>
         </div>
 
-        <div className="p-3 flex flex-col flex-1">
+        <div className="p-3 flex flex-col flex-1 items-center text-center">
           <h3 className="text-sm font-medium text-foreground line-clamp-2 mb-1 group-hover:text-primary transition-colors">
             {product.name}
           </h3>
 
-          <div className="flex items-center gap-1 mb-2">
+          <div className="flex items-center justify-center gap-1 mb-2">
             <div className="flex">
               {[1, 2, 3, 4, 5].map((s) => (
                 <Star
@@ -142,36 +142,50 @@ export function ProductCard({ product, flashSalePrice: flashSalePriceProp }: Pro
             <span className="text-[10px] text-muted-foreground">({product.reviewCount})</span>
           </div>
 
-          <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+          <div className="flex items-center justify-center gap-1.5 mb-1 flex-wrap">
             <span className={`text-xs ${inStock ? "text-green-600" : "text-destructive"}`}>
               {inStock ? t("product.inStock") : t("product.outOfStock")}
             </span>
+            <RegionBadge regions={product.regionRestrictions ?? []} compact />
             <StockUrgencyBadge stockCount={variant.stockCount} compact />
             <SoldBadge productId={product.id} compact />
           </div>
-          <div className="flex items-center gap-1 mb-1 flex-wrap">
-            <RegionBadge regions={product.regionRestrictions ?? []} compact />
+          <div className="flex items-center justify-center gap-1 mb-1 flex-wrap">
             <PlatformBadge platformType={product.platformType} compact />
           </div>
 
-          <div className="mt-auto pt-2 flex items-end justify-between">
-            <div>
+          <div className="mt-auto flex flex-col gap-3 pt-3 w-full">
+            <div className="flex items-baseline justify-center gap-2">
               {flashSalePrice ? (
                 <>
-                  <span className="text-base font-bold text-red-600">{format(parseFloat(flashSalePrice))}</span>
-                  <span className="text-xs text-muted-foreground line-through ml-1.5">{format(price)}</span>
+                  <span className="text-lg font-bold leading-tight text-red-600">
+                    {format(parseFloat(flashSalePrice))}
+                  </span>
+                  <span className="text-xs leading-tight text-muted-foreground line-through">
+                    {format(price)}
+                  </span>
                 </>
               ) : (
                 <>
-                  <span className="text-base font-bold text-foreground">{format(price)}</span>
-                  {comparePrice && (
-                    <span className="text-xs text-muted-foreground line-through ml-1.5">{format(comparePrice)}</span>
+                  <span className="text-lg font-bold leading-tight text-foreground">{format(price)}</span>
+                  {comparePrice != null && (
+                    <span className="text-xs leading-tight text-muted-foreground line-through">
+                      {format(comparePrice)}
+                    </span>
                   )}
                 </>
               )}
             </div>
-            <Button size="sm" className="h-7 px-2 text-xs bg-accent text-accent-foreground font-semibold hover:bg-cta-hover hover:text-white" onClick={handleAddToCart} disabled={!inStock}>
-              <ShoppingCart className="h-3 w-3 mr-1" /> Add
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              className="no-default-hover-elevate no-default-active-elevate h-9 min-h-9 w-full gap-2 rounded-lg border-0 bg-primary px-3 text-xs font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:bg-primary/85 disabled:opacity-50"
+              onClick={handleAddToCart}
+              disabled={!inStock}
+            >
+              <ShoppingCart className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              {t("product.addToCart")}
             </Button>
           </div>
           {loyaltyConfig && (

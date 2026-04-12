@@ -8,6 +8,8 @@ import { validateCouponServerSide } from "../services/coupon-service";
 import { validateGiftCards, loadGiftCardBalances } from "../services/gift-card-service";
 import { loadBundlePriceMap } from "../services/bundle-pricing";
 import { getFlashSaleInfo } from "../services/flash-sale-pricing";
+import { getBulkDiscount } from "../services/bulk-pricing-service";
+import { resolvePrice } from "../services/resolve-price";
 import { getRefCookie } from "../middleware/referral";
 import { verifyToken } from "../middleware/auth";
 import { logger } from "../lib/logger";
@@ -48,75 +50,234 @@ const orderSchema = z.object({
 
 const CPP_RATE = 0.05;
 const generateOrderNumber = () => `PC-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-async function validateAndPriceItems(items: z.infer<typeof orderSchema>["items"]) {
-  const variantIds = items.filter((i) => i.variantId > 0).map((i) => i.variantId);
-  const dbVariants = await db
-    .select({ id: productVariants.id, priceUsd: productVariants.priceUsd })
-    .from(productVariants).where(inArray(productVariants.id, variantIds));
 
-  const noResult = (e: string | null) => ({ prices: null, flashVariantMap: new Map<number, number>(), error: e });
-  if (dbVariants.length === 0) return noResult(null);
-  const priceMap = new Map(dbVariants.map((v) => [v.id, v.priceUsd]));
-  if (dbVariants.length !== variantIds.length) return noResult(`Variant(s) not found: ${variantIds.filter((id) => !priceMap.has(id)).join(", ")}`);
-  const flashInfo = await getFlashSaleInfo(variantIds);
-  const flashVariantMap = new Map<number, number>();
-  const flashQtyAgg = new Map<number, number>();
+// ── Shared return type ────────────────────────────────────────────────────────
+type PriceResult = {
+  prices: Map<string, string> | null;
+  flashVariantMap: Map<number, number>;
+  error: string | null;
+};
+
+// ── Bundle composition validator (shared by both paths) ───────────────────────
+async function validateBundles(
+  items: z.infer<typeof orderSchema>["items"],
+): Promise<{
+  bundlePriceMap: Map<string, string>;
+  error: string | null;
+}> {
   const { priceMap: bundlePriceMap, expectedProducts } = await loadBundlePriceMap(items);
   const bProductSets = new Map<number, Set<number>>();
   const bQtys = new Map<number, number | null>();
+
   for (const it of items) {
     if (!it.bundleId) continue;
     if (!bProductSets.has(it.bundleId)) bProductSets.set(it.bundleId, new Set());
     const pSet = bProductSets.get(it.bundleId)!;
-    if (pSet.has(it.productId)) return { prices: null, flashVariantMap, error: "Duplicate product in bundle" };
+    if (pSet.has(it.productId)) return { bundlePriceMap, error: "Duplicate product in bundle" };
     pSet.add(it.productId);
     const prev = bQtys.get(it.bundleId);
     if (prev === undefined) bQtys.set(it.bundleId, it.quantity);
     else if (prev !== it.quantity) bQtys.set(it.bundleId, null);
   }
+
   for (const [bid, reqProducts] of expectedProducts) {
     const submitted = bProductSets.get(bid);
     if (!submitted || submitted.size !== reqProducts.size || [...reqProducts].some((p) => !submitted.has(p))) {
-      return { prices: null, flashVariantMap, error: "Bundle composition does not match required products" };
+      return { bundlePriceMap, error: "Bundle composition does not match required products" };
     }
-    if (bQtys.get(bid) === null) return { prices: null, flashVariantMap, error: "All items in a bundle must have the same quantity" };
+    if (bQtys.get(bid) === null) {
+      return { bundlePriceMap, error: "All items in a bundle must have the same quantity" };
+    }
   }
 
+  return { bundlePriceMap, error: null };
+}
+
+// ── ENGINE PATH (PRICING_ENGINE_V2=true) ──────────────────────────────────────
+// Delegates non-bundle price resolution to resolve-price.ts.
+// Bundle pricing is unchanged (not routed through the engine by design).
+// Flash sale quantity validation is kept here because the engine only checks
+// whether at least one unit is available, not aggregate cart quantities.
+async function validateAndPriceItemsEngine(
+  items: z.infer<typeof orderSchema>["items"],
+): Promise<PriceResult> {
+  const noResult = (e: string | null): PriceResult => ({
+    prices: null,
+    flashVariantMap: new Map(),
+    error: e,
+  });
+
+  // ── Bundles ────────────────────────────────────────────────────────────────
+  const { bundlePriceMap, error: bundleError } = await validateBundles(items);
+  if (bundleError) return noResult(bundleError);
+
   const effectivePrices = new Map<string, string>();
+  const flashVariantMap = new Map<number, number>();
+
+  // Populate bundle prices
+  for (const item of items.filter((i) => i.bundleId)) {
+    const bundleKey = `${item.bundleId}-${item.variantId}`;
+    const serverBundlePrice = bundlePriceMap.get(bundleKey);
+    if (!serverBundlePrice) return noResult(`Bundle pricing not found for ${item.productName}`);
+    if (Math.abs(parseFloat(serverBundlePrice) - parseFloat(item.priceUsd)) > 0.02) {
+      return noResult(`Bundle price changed for ${item.productName}`);
+    }
+    effectivePrices.set(bundleKey, serverBundlePrice);
+  }
+
+  // ── Non-bundle items ───────────────────────────────────────────────────────
+  const nonBundleItems = items.filter((i) => !i.bundleId && i.variantId > 0);
+  if (nonBundleItems.length === 0) return { prices: effectivePrices, flashVariantMap, error: null };
+
+  const nonBundleVarIds = nonBundleItems.map((i) => i.variantId);
+
+  // Flash sale quantity validation (engine doesn't aggregate across cart lines)
+  const flashInfo = await getFlashSaleInfo(nonBundleVarIds);
+  const flashQtyAgg = new Map<number, number>();
+  for (const item of nonBundleItems) {
+    const fi = flashInfo.get(item.variantId);
+    if (!fi) continue;
+    const totalQty = (flashQtyAgg.get(item.variantId) ?? 0) + item.quantity;
+    flashQtyAgg.set(item.variantId, totalQty);
+    const remaining = fi.maxQuantity - fi.soldCount;
+    if (totalQty > remaining) {
+      return noResult(`Only ${remaining} left in flash sale for ${item.productName}`);
+    }
+    flashVariantMap.set(item.variantId, fi.flashSaleId);
+  }
+
+  // Resolve price for each non-bundle item via the canonical engine
+  for (const item of nonBundleItems) {
+    let resolved: Awaited<ReturnType<typeof resolvePrice>>;
+    try {
+      resolved = await resolvePrice(item.variantId, item.quantity);
+    } catch {
+      return noResult(`Variant not found: ${item.variantId}`);
+    }
+
+    const serverPrice = parseFloat(resolved.effectiveUnitPriceUsd);
+
+    // Tolerance: allow ±$0.02 between client-submitted price and server-computed price
+    if (Math.abs(serverPrice - parseFloat(item.priceUsd)) > 0.02) {
+      logger.warn(
+        {
+          variantId: item.variantId,
+          clientPrice: item.priceUsd,
+          serverPrice: resolved.effectiveUnitPriceUsd,
+          appliedStack: resolved.appliedStack,
+        },
+        "orders: engine price mismatch",
+      );
+      return noResult(`Price changed for ${item.productName}`);
+    }
+
+    effectivePrices.set(`s-${item.variantId}`, resolved.effectiveUnitPriceUsd);
+  }
+
+  return { prices: effectivePrices, flashVariantMap, error: null };
+}
+
+// ── LEGACY PATH (PRICING_ENGINE_V2 not set) ───────────────────────────────────
+// Preserves original behaviour exactly. Safe to keep until flag is enabled.
+async function validateAndPriceItemsLegacy(
+  items: z.infer<typeof orderSchema>["items"],
+): Promise<PriceResult> {
+  const variantIds = items.filter((i) => i.variantId > 0).map((i) => i.variantId);
+  const dbVariants = await db
+    .select({
+      id: productVariants.id,
+      priceUsd: productVariants.priceUsd,
+      priceOverrideUsd: productVariants.priceOverrideUsd,
+      productId: productVariants.productId,
+    })
+    .from(productVariants)
+    .where(inArray(productVariants.id, variantIds));
+
+  const noResult = (e: string | null): PriceResult => ({
+    prices: null,
+    flashVariantMap: new Map(),
+    error: e,
+  });
+
+  if (dbVariants.length === 0) return noResult(null);
+  const variantMap = new Map(dbVariants.map((v) => [v.id, v]));
+  const priceMap   = new Map(dbVariants.map((v) => [v.id, v.priceUsd]));
+  if (dbVariants.length !== variantIds.length) {
+    return noResult(`Variant(s) not found: ${variantIds.filter((id) => !priceMap.has(id)).join(", ")}`);
+  }
+
+  const flashInfo    = await getFlashSaleInfo(variantIds);
+  const flashVariantMap = new Map<number, number>();
+  const flashQtyAgg  = new Map<number, number>();
+
+  const { bundlePriceMap, error: bundleError } = await validateBundles(items);
+  if (bundleError) return noResult(bundleError);
+
+  const effectivePrices = new Map<string, string>();
+
   for (const item of items) {
-    const lineKey = `${item.bundleId ?? "s"}-${item.variantId}`;
-    const dbPrice = priceMap.get(item.variantId);
+    const lineKey  = `${item.bundleId ?? "s"}-${item.variantId}`;
+    const dbVariant = variantMap.get(item.variantId);
+    const dbPrice  = priceMap.get(item.variantId);
     if (!dbPrice) continue;
+
+    // Bundle items
     if (item.bundleId) {
       const bundleKey = `${item.bundleId}-${item.variantId}`;
       const serverBundlePrice = bundlePriceMap.get(bundleKey);
-      if (!serverBundlePrice) {
-        return { prices: null, flashVariantMap, error: `Bundle pricing not found for ${item.productName}` };
-      }
+      if (!serverBundlePrice) return noResult(`Bundle pricing not found for ${item.productName}`);
       if (Math.abs(parseFloat(serverBundlePrice) - parseFloat(item.priceUsd)) > 0.02) {
-        return { prices: null, flashVariantMap, error: `Bundle price changed for ${item.productName}` };
+        return noResult(`Bundle price changed for ${item.productName}`);
       }
       effectivePrices.set(lineKey, serverBundlePrice);
       continue;
     }
+
+    // Apply priceOverrideUsd if set
+    const basePrice = dbVariant?.priceOverrideUsd
+      ? parseFloat(dbVariant.priceOverrideUsd)
+      : parseFloat(dbPrice);
+
     const fi = flashInfo.get(item.variantId);
     if (fi) {
-      const totalQty = (flashQtyAgg.get(item.variantId) || 0) + item.quantity;
+      const totalQty = (flashQtyAgg.get(item.variantId) ?? 0) + item.quantity;
       flashQtyAgg.set(item.variantId, totalQty);
       const remaining = fi.maxQuantity - fi.soldCount;
       if (totalQty > remaining) {
-        return { prices: null, flashVariantMap, error: `Only ${remaining} left in flash sale for ${item.productName}` };
+        return noResult(`Only ${remaining} left in flash sale for ${item.productName}`);
       }
       flashVariantMap.set(item.variantId, fi.flashSaleId);
       effectivePrices.set(lineKey, fi.salePriceUsd);
     } else {
-      if (dbPrice !== item.priceUsd) {
-        return { prices: null, flashVariantMap, error: `Price changed for ${item.productName}` };
+      let effectivePrice = basePrice;
+      const productIdForBulk = dbVariant?.productId ?? item.productId;
+      const bulkDiscountPct = await getBulkDiscount(productIdForBulk, item.quantity);
+      if (bulkDiscountPct > 0) {
+        effectivePrice = Math.round(effectivePrice * (1 - bulkDiscountPct / 100) * 100) / 100;
+        logger.info(
+          { variantId: item.variantId, productId: productIdForBulk, quantity: item.quantity, bulkDiscountPct, effectivePrice },
+          "orders/legacy: bulk discount applied",
+        );
       }
-      effectivePrices.set(lineKey, dbPrice);
+      const effectivePriceStr = effectivePrice.toFixed(2);
+      if (Math.abs(effectivePrice - parseFloat(item.priceUsd)) > 0.02) {
+        return noResult(`Price changed for ${item.productName}`);
+      }
+      effectivePrices.set(lineKey, effectivePriceStr);
     }
   }
+
   return { prices: effectivePrices, flashVariantMap, error: null };
+}
+
+// ── Dispatcher ────────────────────────────────────────────────────────────────
+async function validateAndPriceItems(
+  items: z.infer<typeof orderSchema>["items"],
+): Promise<PriceResult> {
+  if (process.env["PRICING_ENGINE_V2"] === "true") {
+    return validateAndPriceItemsEngine(items);
+  }
+  return validateAndPriceItemsLegacy(items);
 }
 
 router.post("/orders", requireIdempotencyKey(), async (req, res) => {
@@ -147,7 +308,7 @@ router.post("/orders", requireIdempotencyKey(), async (req, res) => {
   const { error: priceError, flashVariantMap, prices: serverPrices } = await validateAndPriceItems(items);
   if (priceError) { res.status(400).json({ error: priceError }); return; }
 
-  let serverCoupon: { code: string; pct: number; label: string } | null = null;
+  let serverCoupon: Awaited<ReturnType<typeof validateCouponServerSide>> = null;
   if (coupon?.code) {
     serverCoupon = await validateCouponServerSide(coupon.code);
     if (!serverCoupon) {
@@ -172,7 +333,30 @@ router.post("/orders", requireIdempotencyKey(), async (req, res) => {
     const price = (serverPrices && it.variantId > 0) ? serverPrices.get(lk) ?? it.priceUsd : it.priceUsd;
     return sum + parseFloat(price) * it.quantity;
   }, 0);
-  const couponDiscount = subtotal * ((serverCoupon?.pct ?? 0) / 100);
+
+  // Fix 1 (minOrderUsd): enforce minimum order amount for coupon
+  if (serverCoupon?.minOrderUsd && subtotal < serverCoupon.minOrderUsd) {
+    res.status(400).json({
+      error: `Coupon requires a minimum order of $${serverCoupon.minOrderUsd.toFixed(2)}`,
+    });
+    return;
+  }
+
+  // Fix 1 (FIXED/maxDiscountUsd): compute coupon discount correctly for both types
+  let couponDiscount = 0;
+  if (serverCoupon) {
+    if (serverCoupon.type === "FIXED") {
+      // Fixed dollar discount — cap at subtotal
+      couponDiscount = Math.min(serverCoupon.amount, subtotal);
+    } else {
+      // Percentage discount
+      couponDiscount = subtotal * (serverCoupon.pct / 100);
+      // Fix 1 (maxDiscountUsd): cap percentage discount
+      if (serverCoupon.maxDiscountUsd && couponDiscount > serverCoupon.maxDiscountUsd) {
+        couponDiscount = serverCoupon.maxDiscountUsd;
+      }
+    }
+  }
   let loyaltyDisc = 0, loyaltyPtsUsed = 0;
   const reqPts = parsed.data.loyaltyPointsUsed ?? 0;
   if (reqPts > 0 && userId) {

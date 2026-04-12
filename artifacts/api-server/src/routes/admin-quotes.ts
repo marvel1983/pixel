@@ -2,11 +2,13 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { quoteRequests, bulkPricingTiers, users } from "@workspace/db/schema";
 import { eq, desc, and, isNull, or, sql } from "drizzle-orm";
-import { requireAuth } from "../middleware/auth";
-import { requireAdmin } from "../middleware/auth";
+import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import { enqueueEmail } from "../lib/email/queue";
 import { z } from "zod/v4";
+import { paramString } from "../lib/route-params";
+import { logger } from "../lib/logger";
+import { he } from "../lib/html-escape";
 
 const router = Router();
 const adminMiddleware = [requireAuth, requireAdmin, requirePermission("manageOrders")];
@@ -16,19 +18,19 @@ router.get("/admin/quotes", ...adminMiddleware, async (_req, res) => {
     const quotes = await db.select().from(quoteRequests).orderBy(desc(quoteRequests.createdAt));
     res.json({ quotes });
   } catch (err) {
-    console.error("Admin quotes list error:", err);
+    logger.error({ err }, "Admin quotes list error");
     res.status(500).json({ error: "Failed to fetch quotes" });
   }
 });
 
 router.get("/admin/quotes/:id", ...adminMiddleware, async (req, res) => {
   try {
-    const id = parseInt(req.params.id, 10);
+    const id = parseInt(paramString(req.params, "id"), 10);
     const [quote] = await db.select().from(quoteRequests).where(eq(quoteRequests.id, id));
     if (!quote) { res.status(404).json({ error: "Quote not found" }); return; }
     res.json({ quote });
   } catch (err) {
-    console.error("Admin quote detail error:", err);
+    logger.error({ err }, "Admin quote detail error");
     res.status(500).json({ error: "Failed to fetch quote" });
   }
 });
@@ -46,7 +48,7 @@ const updateQuoteSchema = z.object({
 
 router.put("/admin/quotes/:id", ...adminMiddleware, async (req, res) => {
   try {
-    const id = parseInt(req.params.id, 10);
+    const id = parseInt(paramString(req.params, "id"), 10);
     const data = updateQuoteSchema.parse(req.body);
     const [existing] = await db.select().from(quoteRequests).where(eq(quoteRequests.id, id));
     if (!existing) { res.status(404).json({ error: "Quote not found" }); return; }
@@ -63,12 +65,12 @@ router.put("/admin/quotes/:id", ...adminMiddleware, async (req, res) => {
 
     if (data.status === "QUOTED" && data.customPricing) {
       const pricingRows = data.customPricing.map((p) =>
-        `<tr><td style="padding:8px;border:1px solid #ddd">${p.productName}</td><td style="padding:8px;border:1px solid #ddd;text-align:center">${p.quantity}</td><td style="padding:8px;border:1px solid #ddd;text-align:right">$${p.unitPrice}</td></tr>`
+        `<tr><td style="padding:8px;border:1px solid #ddd">${he(p.productName)}</td><td style="padding:8px;border:1px solid #ddd;text-align:center">${he(p.quantity)}</td><td style="padding:8px;border:1px solid #ddd;text-align:right">$${he(p.unitPrice)}</td></tr>`
       ).join("");
       await enqueueEmail(
         updated.contactEmail,
         `Your Custom Quote #${updated.id} from PixelCodes`,
-        `<div style="font-family:sans-serif;max-width:600px;margin:0 auto"><h2>Your Custom Quote</h2><p>Dear ${updated.contactName},</p><p>Thank you for your interest in our business program. Here is your custom quote:</p><table style="width:100%;border-collapse:collapse;margin:16px 0"><thead><tr style="background:#f5f5f5"><th style="padding:8px;border:1px solid #ddd;text-align:left">Product</th><th style="padding:8px;border:1px solid #ddd">Qty</th><th style="padding:8px;border:1px solid #ddd;text-align:right">Unit Price</th></tr></thead><tbody>${pricingRows}</tbody></table>${updated.adminNotes ? `<p><strong>Notes:</strong> ${updated.adminNotes}</p>` : ""}<p>This quote is valid for 30 days. Reply to this email to accept or discuss.</p><p>Best regards,<br>PixelCodes Business Team</p></div>`,
+        `<div style="font-family:sans-serif;max-width:600px;margin:0 auto"><h2>Your Custom Quote</h2><p>Dear ${he(updated.contactName)},</p><p>Thank you for your interest in our business program. Here is your custom quote:</p><table style="width:100%;border-collapse:collapse;margin:16px 0"><thead><tr style="background:#f5f5f5"><th style="padding:8px;border:1px solid #ddd;text-align:left">Product</th><th style="padding:8px;border:1px solid #ddd">Qty</th><th style="padding:8px;border:1px solid #ddd;text-align:right">Unit Price</th></tr></thead><tbody>${pricingRows}</tbody></table>${updated.adminNotes ? `<p><strong>Notes:</strong> ${he(updated.adminNotes)}</p>` : ""}<p>This quote is valid for 30 days. Reply to this email to accept or discuss.</p><p>Best regards,<br>PixelCodes Business Team</p></div>`,
         { quoteId: updated.id, type: "quote_response" },
       );
     }
@@ -79,7 +81,7 @@ router.put("/admin/quotes/:id", ...adminMiddleware, async (req, res) => {
       res.status(400).json({ error: "Validation failed", details: err.issues });
       return;
     }
-    console.error("Admin quote update error:", err);
+    logger.error({ err }, "Admin quote update error");
     res.status(500).json({ error: "Failed to update quote" });
   }
 });
@@ -89,7 +91,7 @@ router.get("/admin/bulk-pricing", ...adminMiddleware, async (_req, res) => {
     const tiers = await db.select().from(bulkPricingTiers).orderBy(bulkPricingTiers.minQty);
     res.json({ tiers });
   } catch (err) {
-    console.error("Bulk pricing list error:", err);
+    logger.error({ err }, "Bulk pricing list error");
     res.status(500).json({ error: "Failed to fetch tiers" });
   }
 });
@@ -118,14 +120,14 @@ router.post("/admin/bulk-pricing", ...adminMiddleware, async (req, res) => {
       res.status(400).json({ error: "Validation failed", details: err.issues });
       return;
     }
-    console.error("Bulk pricing create error:", err);
+    logger.error({ err }, "Bulk pricing create error");
     res.status(500).json({ error: "Failed to create tier" });
   }
 });
 
 router.put("/admin/bulk-pricing/:id", ...adminMiddleware, async (req, res) => {
   try {
-    const id = parseInt(req.params.id, 10);
+    const id = parseInt(paramString(req.params, "id"), 10);
     const data = tierSchema.parse(req.body);
     const [updated] = await db.update(bulkPricingTiers)
       .set({
@@ -144,25 +146,25 @@ router.put("/admin/bulk-pricing/:id", ...adminMiddleware, async (req, res) => {
       res.status(400).json({ error: "Validation failed", details: err.issues });
       return;
     }
-    console.error("Bulk pricing update error:", err);
+    logger.error({ err }, "Bulk pricing update error");
     res.status(500).json({ error: "Failed to update tier" });
   }
 });
 
 router.delete("/admin/bulk-pricing/:id", ...adminMiddleware, async (req, res) => {
   try {
-    const id = parseInt(req.params.id, 10);
+    const id = parseInt(paramString(req.params, "id"), 10);
     await db.delete(bulkPricingTiers).where(eq(bulkPricingTiers.id, id));
     res.json({ success: true });
   } catch (err) {
-    console.error("Bulk pricing delete error:", err);
+    logger.error({ err }, "Bulk pricing delete error");
     res.status(500).json({ error: "Failed to delete tier" });
   }
 });
 
 router.patch("/admin/users/:id/business", ...adminMiddleware, async (req, res) => {
   try {
-    const id = parseInt(req.params.id, 10);
+    const id = parseInt(paramString(req.params, "id"), 10);
     const { approved, companyName } = req.body;
     const [updated] = await db.update(users)
       .set({
@@ -176,7 +178,7 @@ router.patch("/admin/users/:id/business", ...adminMiddleware, async (req, res) =
     if (!updated) { res.status(404).json({ error: "User not found" }); return; }
     res.json({ user: { id: updated.id, email: updated.email, businessApproved: updated.businessApproved, companyName: updated.companyName } });
   } catch (err) {
-    console.error("Business account update error:", err);
+    logger.error({ err }, "Business account update error");
     res.status(500).json({ error: "Failed to update business status" });
   }
 });

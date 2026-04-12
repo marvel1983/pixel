@@ -5,6 +5,8 @@ import { approveHeldCommissions } from "../services/affiliate-service";
 import { processAbandonedCarts } from "../services/abandoned-cart-service";
 import { processPendingInvites } from "../services/trustpilot-service";
 import { processSurveyEmails } from "../services/survey-service";
+import { syncCurrencyRates } from "./currency-sync";
+import { processExpiredPoints, sendExpiryWarningEmails } from "../services/loyalty-service";
 import { logger } from "./logger";
 
 export function registerAllWorkers() {
@@ -30,6 +32,23 @@ export function registerAllWorkers() {
 
   registerWorker("alerts", "affiliate-commissions", async () => {
     await approveHeldCommissions();
+  });
+
+  registerWorker("reports", "sync-currency-rates", async () => {
+    await syncCurrencyRates();
+  });
+
+  registerWorker("reports", "loyalty-expiry-process", async () => {
+    await processExpiredPoints();
+  });
+
+  registerWorker("reports", "loyalty-expiry-warnings", async () => {
+    await sendExpiryWarningEmails();
+  });
+
+  registerWorker("alerts", "birthday-bonuses", async () => {
+    const { processBirthdayBonuses } = await import("../services/loyalty-service");
+    await processBirthdayBonuses();
   });
 
   registerWorker("reports", "generate", async (payload) => {
@@ -111,6 +130,10 @@ const RECURRING: RecurringDef[] = [
   { queue: "reports", name: "idempotency-cleanup", intervalMs: 60 * 60_000, priority: PRIORITY.LOW },
   { queue: "reports", name: "health-monitor", intervalMs: 60_000, priority: PRIORITY.NORMAL },
   { queue: "reports", name: "health-cleanup", intervalMs: 24 * 60 * 60_000, priority: PRIORITY.LOW },
+  { queue: "reports", name: "sync-currency-rates", intervalMs: 60 * 60_000, priority: PRIORITY.LOW },
+  { queue: "reports", name: "loyalty-expiry-process", intervalMs: 24 * 60 * 60_000, priority: PRIORITY.LOW },
+  { queue: "reports", name: "loyalty-expiry-warnings", intervalMs: 24 * 60 * 60_000, priority: PRIORITY.LOW },
+  { queue: "alerts", name: "birthday-bonuses", intervalMs: 24 * 60 * 60_000, priority: PRIORITY.LOW },
 ];
 
 let schedulerTimer: ReturnType<typeof setInterval> | null = null;

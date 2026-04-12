@@ -10,6 +10,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { users } from "./users";
 
+
 export const loyaltyAccounts = pgTable("loyalty_accounts", {
   id: serial("id").primaryKey(),
   userId: integer("user_id")
@@ -38,6 +39,8 @@ export const loyaltyTransactions = pgTable("loyalty_transactions", {
   orderId: integer("order_id"),
   reviewId: integer("review_id"),
   adminNote: text("admin_note"),
+  expiresAt: timestamp("expires_at"),
+  warningEmailSentAt: timestamp("warning_email_sent_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -69,9 +72,23 @@ export const loyaltySettings = pgTable("loyalty_settings", {
     .notNull()
     .default("2.00"),
   pointsExpiryDays: integer("points_expiry_days").default(0),
+  expiryWarningDays: integer("expiry_warning_days").notNull().default(30),
+  birthdayBonus: integer("birthday_bonus").notNull().default(200),
+  referralBonus: integer("referral_bonus").notNull().default(500),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const loyaltyEvents = pgTable("loyalty_events", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  multiplier: numeric("multiplier", { precision: 4, scale: 2 }).notNull().default("2"),
+  startsAt: timestamp("starts_at").notNull(),
+  endsAt: timestamp("ends_at").notNull(),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 export type LoyaltyAccount = typeof loyaltyAccounts.$inferSelect;
 export type LoyaltyTransaction = typeof loyaltyTransactions.$inferSelect;
 export type LoyaltySettingsRow = typeof loyaltySettings.$inferSelect;
+export type LoyaltyEvent = typeof loyaltyEvents.$inferSelect;

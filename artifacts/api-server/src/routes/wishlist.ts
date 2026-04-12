@@ -5,6 +5,7 @@ import { db } from "@workspace/db";
 import { wishlists, products, productVariants } from "@workspace/db/schema";
 import { requireAuth } from "../middleware/auth";
 import { logger } from "../lib/logger";
+import { paramString } from "../lib/route-params";
 
 const router = Router();
 
@@ -45,7 +46,7 @@ router.post("/wishlist", requireAuth, async (req, res) => {
 });
 
 router.delete("/wishlist/:productId", requireAuth, async (req, res) => {
-  const productId = Number(req.params.productId);
+  const productId = Number(paramString(req.params, "productId"));
   if (!Number.isInteger(productId) || productId <= 0) {
     res.status(400).json({ error: "Invalid product ID" });
     return;

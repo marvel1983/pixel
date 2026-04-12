@@ -2,9 +2,7 @@ import { useState, useEffect } from "react";
 import { useRoute } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuthStore } from "@/stores/auth-store";
@@ -96,37 +94,37 @@ export default function AdminSupportDetailPage() {
   }
 
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin" /></div>;
-  if (!data) return <div className="text-center py-12 text-muted-foreground">Ticket not found.</div>;
+  if (!data) return <div className="text-center py-12 text-[#5a6a84]">Ticket not found.</div>;
 
   const { ticket, messages, order, assignee } = data;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-2 space-y-4">
-        <h1 className="text-xl font-bold">{ticket.ticketNumber}: {ticket.subject}</h1>
+        <h1 className="text-xl font-bold text-[#dde4f0]">{ticket.ticketNumber}: {ticket.subject}</h1>
         <div className="space-y-3">
           {messages.map((msg) => (
-            <div key={msg.id} className={`p-4 rounded-lg ${msg.isInternal ? "bg-yellow-50 border-l-4 border-yellow-400" : msg.isStaff ? "bg-blue-50 border-l-4 border-blue-400" : "bg-gray-50"}`}>
+            <div key={msg.id} className={`p-4 rounded-lg ${msg.isInternal ? "bg-yellow-950/30 border-l-4 border-yellow-500" : msg.isStaff ? "bg-sky-950/30 border-l-4 border-sky-500" : "bg-[#181c24] border border-[#2e3340]"}`}>
               <div className="flex items-center gap-2 mb-2">
-                {msg.isInternal ? <StickyNote className="h-4 w-4 text-yellow-600" /> : msg.isStaff ? <Headphones className="h-4 w-4 text-blue-600" /> : <User className="h-4 w-4 text-gray-600" />}
-                <span className="font-medium text-sm">
+                {msg.isInternal ? <StickyNote className="h-4 w-4 text-yellow-400" /> : msg.isStaff ? <Headphones className="h-4 w-4 text-sky-400" /> : <User className="h-4 w-4 text-[#5a6a84]" />}
+                <span className="font-medium text-sm text-[#dde4f0]">
                   {msg.isInternal ? "Internal Note" : msg.isStaff ? "Staff" : "Customer"} — {msg.senderName}
                 </span>
-                <span className="text-xs text-muted-foreground ml-auto flex items-center gap-1">
+                <span className="text-xs text-[#5a6a84] ml-auto flex items-center gap-1">
                   <Clock className="h-3 w-3" /> {new Date(msg.createdAt).toLocaleString()}
                 </span>
               </div>
-              <p className="text-sm whitespace-pre-wrap">{msg.body}</p>
+              <p className="text-sm text-[#dde4f0] whitespace-pre-wrap">{msg.body}</p>
             </div>
           ))}
         </div>
-        <form onSubmit={handleReply} className="space-y-3 border-t pt-4">
-          <Textarea value={reply} onChange={(e) => setReply(e.target.value)} placeholder={isInternal ? "Add internal note..." : "Reply to customer..."} rows={4} required className={isInternal ? "border-yellow-400 bg-yellow-50" : ""} />
+        <form onSubmit={handleReply} className="space-y-3 border-t border-[#2a2e3a] pt-4">
+          <Textarea value={reply} onChange={(e) => setReply(e.target.value)} placeholder={isInternal ? "Add internal note..." : "Reply to customer..."} rows={4} required className={isInternal ? "border-yellow-500 bg-yellow-950/20" : ""} />
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <Switch checked={isInternal} onCheckedChange={setIsInternal} id="internal" />
-                <Label htmlFor="internal" className="text-sm">Internal Note</Label>
+                <label htmlFor="internal" className="text-sm text-[#8fa0bb]">Internal Note</label>
               </div>
               {!isInternal && (
                 <Select value={replyStatus} onValueChange={setReplyStatus}>
@@ -150,74 +148,62 @@ export default function AdminSupportDetailPage() {
       </div>
 
       <div className="space-y-4">
-        <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Ticket Info</CardTitle></CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            <Row label="Status">
-              <Select value={ticket.status} onValueChange={(v) => updateTicket({ status: v })}>
-                <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {["OPEN", "IN_PROGRESS", "AWAITING_CUSTOMER", "RESOLVED", "CLOSED"].map((s) => (
-                    <SelectItem key={s} value={s}>{s.replace(/_/g, " ")}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Row>
-            <Row label="Priority">
-              <Select value={ticket.priority} onValueChange={(v) => updateTicket({ priority: v })}>
-                <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {["LOW", "MEDIUM", "HIGH", "URGENT"].map((p) => (
-                    <SelectItem key={p} value={p}>{p}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Row>
-            <Row label="Assignee">
-              <Select value={String(ticket.assigneeId ?? "UNASSIGNED")} onValueChange={(v) => updateTicket({ assigneeId: v !== "UNASSIGNED" ? parseInt(v) : null })}>
-                <SelectTrigger className="h-8"><SelectValue placeholder="Unassigned" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="UNASSIGNED">Unassigned</SelectItem>
-                  {assignees.map((a) => (
-                    <SelectItem key={a.id} value={String(a.id)}>{a.firstName ?? a.email}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Row>
-            <Row label="Category"><Badge variant="secondary">{ticket.category.replace(/_/g, " ")}</Badge></Row>
-            <Row label="Created">{new Date(ticket.createdAt).toLocaleString()}</Row>
-            <Row label="Updated">{new Date(ticket.updatedAt).toLocaleString()}</Row>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Customer</CardTitle></CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <p className="font-medium">{ticket.customerName}</p>
-            <p className="text-muted-foreground">{ticket.customerEmail}</p>
-          </CardContent>
-        </Card>
+        <DarkCard title="Ticket Info">
+          <Row label="Status">
+            <Select value={ticket.status} onValueChange={(v) => updateTicket({ status: v })}>
+              <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {["OPEN", "IN_PROGRESS", "AWAITING_CUSTOMER", "RESOLVED", "CLOSED"].map((s) => (
+                  <SelectItem key={s} value={s}>{s.replace(/_/g, " ")}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Row>
+          <Row label="Priority">
+            <Select value={ticket.priority} onValueChange={(v) => updateTicket({ priority: v })}>
+              <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {["LOW", "MEDIUM", "HIGH", "URGENT"].map((p) => (
+                  <SelectItem key={p} value={p}>{p}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Row>
+          <Row label="Assignee">
+            <Select value={String(ticket.assigneeId ?? "UNASSIGNED")} onValueChange={(v) => updateTicket({ assigneeId: v !== "UNASSIGNED" ? parseInt(v) : null })}>
+              <SelectTrigger className="h-8"><SelectValue placeholder="Unassigned" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="UNASSIGNED">Unassigned</SelectItem>
+                {assignees.map((a) => (
+                  <SelectItem key={a.id} value={String(a.id)}>{a.firstName ?? a.email}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Row>
+          <Row label="Category"><Badge variant="secondary">{ticket.category.replace(/_/g, " ")}</Badge></Row>
+          <Row label="Created"><span className="text-[12px] text-[#dde4f0]">{new Date(ticket.createdAt).toLocaleString()}</span></Row>
+          <Row label="Updated"><span className="text-[12px] text-[#dde4f0]">{new Date(ticket.updatedAt).toLocaleString()}</span></Row>
+        </DarkCard>
+        <DarkCard title="Customer">
+          <p className="font-medium text-[#dde4f0]">{ticket.customerName}</p>
+          <p className="text-[#5a6a84] text-sm">{ticket.customerEmail}</p>
+        </DarkCard>
         {order && (
-          <Card>
-            <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Linked Order</CardTitle></CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              <p className="font-mono">{order.orderNumber}</p>
-              <p>${order.totalUsd} — <Badge variant="secondary">{order.status}</Badge></p>
-            </CardContent>
-          </Card>
+          <DarkCard title="Linked Order">
+            <p className="font-mono text-[#dde4f0]">{order.orderNumber}</p>
+            <p className="text-[#dde4f0] text-sm">${order.totalUsd} — <Badge variant="secondary">{order.status}</Badge></p>
+          </DarkCard>
         )}
         {data.timeline.length > 0 && (
-          <Card>
-            <CardHeader className="pb-3"><CardTitle className="text-sm font-medium">Status Timeline</CardTitle></CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              {data.timeline.map((t) => (
-                <div key={t.id} className="border-l-2 border-blue-200 pl-3">
-                  <p className="font-medium">{t.fromStatus ? `${t.fromStatus} → ${t.toStatus}` : t.toStatus}</p>
-                  {t.note && <p className="text-muted-foreground text-xs">{t.note}</p>}
-                  <p className="text-xs text-muted-foreground">{t.changedBy} · {new Date(t.createdAt).toLocaleString()}</p>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+          <DarkCard title="Status Timeline">
+            {data.timeline.map((t) => (
+              <div key={t.id} className="border-l-2 border-sky-700 pl-3">
+                <p className="font-medium text-[#dde4f0] text-sm">{t.fromStatus ? `${t.fromStatus} → ${t.toStatus}` : t.toStatus}</p>
+                {t.note && <p className="text-[#5a6a84] text-xs">{t.note}</p>}
+                <p className="text-xs text-[#5a6a84]">{t.changedBy} · {new Date(t.createdAt).toLocaleString()}</p>
+              </div>
+            ))}
+          </DarkCard>
         )}
       </div>
     </div>
@@ -227,8 +213,20 @@ export default function AdminSupportDetailPage() {
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between">
-      <span className="text-muted-foreground">{label}</span>
+      <span className="text-[#5a6a84] text-sm">{label}</span>
       <div>{children}</div>
+    </div>
+  );
+}
+
+function DarkCard({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-lg border border-[#2e3340] bg-[#181c24]" style={{boxShadow:"0 2px 8px rgba(0,0,0,0.35)"}}>
+      <div className="border-b border-[#2a2e3a] px-4 py-3 bg-[#1e2128]">
+        <p className="card-title text-[13px] font-bold uppercase tracking-widest">{title}</p>
+        {description && <p className="mt-0.5 text-[11px] text-[#5a6a84]">{description}</p>}
+      </div>
+      <div className="px-4 py-4 space-y-4">{children}</div>
     </div>
   );
 }

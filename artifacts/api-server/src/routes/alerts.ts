@@ -5,6 +5,7 @@ import { eq, and, desc } from "drizzle-orm";
 import { requireAuth, optionalAuth } from "../middleware/auth";
 import { z } from "zod";
 import { verifyUnsubscribe } from "../services/alert-service";
+import { paramString } from "../lib/route-params";
 
 const router = Router();
 
@@ -52,7 +53,7 @@ router.post("/alerts/subscribe", optionalAuth, async (req, res) => {
 });
 
 router.get("/alerts/product/:productId/counts", async (req, res) => {
-  const productId = parseInt(req.params.productId);
+  const productId = parseInt(paramString(req.params, "productId"));
   const alerts = await db.select({ type: productAlerts.alertType, id: productAlerts.id })
     .from(productAlerts)
     .where(and(eq(productAlerts.productId, productId), eq(productAlerts.isActive, true)));
@@ -79,7 +80,7 @@ router.get("/account/alerts", requireAuth, async (req, res) => {
 });
 
 router.delete("/account/alerts/:id", requireAuth, async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(paramString(req.params, "id"));
   const userId = req.user!.userId;
 
   const [alert] = await db.select().from(productAlerts)
@@ -94,7 +95,7 @@ router.delete("/account/alerts/:id", requireAuth, async (req, res) => {
 });
 
 router.get("/alerts/unsubscribe/:token", async (req, res) => {
-  const alertId = verifyUnsubscribe(req.params.token);
+  const alertId = verifyUnsubscribe(paramString(req.params, "token"));
   if (alertId === null) {
     res.status(400).send("<html><body style='text-align:center;padding:60px;font-family:sans-serif'><h2>Invalid Link</h2><p>This unsubscribe link is invalid or has expired.</p></body></html>");
     return;

@@ -7,6 +7,7 @@ import { requirePermission } from "../middleware/permissions";
 import { getMetenziConfig } from "../lib/metenzi-config";
 import { metenziRequest } from "../lib/metenzi-client";
 import { logger } from "../lib/logger";
+import { paramString } from "../lib/route-params";
 
 const router = Router();
 
@@ -91,7 +92,7 @@ router.get("/admin/claims/orders", requireAuth, requireAdmin, requirePermission(
 });
 
 router.get("/admin/claims/keys-for-order/:orderId", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
-  const orderId = Number(req.params.orderId);
+  const orderId = Number(paramString(req.params, "orderId"));
   if (!Number.isInteger(orderId) || orderId <= 0) {
     res.status(400).json({ error: "Invalid order ID" });
     return;
@@ -182,7 +183,7 @@ router.post("/admin/claims", requireAuth, requireAdmin, requirePermission("manag
 });
 
 router.post("/admin/claims/:id/refresh", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) {
     res.status(400).json({ error: "Invalid claim ID" });
     return;
@@ -237,7 +238,7 @@ router.post("/admin/claims/:id/refresh", requireAuth, requireAdmin, requirePermi
 });
 
 router.patch("/admin/claims/:id", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) {
     res.status(400).json({ error: "Invalid claim ID" });
     return;

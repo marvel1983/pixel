@@ -247,6 +247,138 @@
 
 @import "./elevate.css";
 
+/* ── Admin dark theme overrides ──────────────────────────────
+   Applied via .dark class on AdminLayout wrapper.
+   Forces legible white/light text on all admin sub-pages.
+──────────────────────────────────────────────────────────── */
+.dark {
+  /* Base text always white */
+  --foreground: 210 20% 92%;
+  --muted-foreground: 215 16% 60%;
+
+  /* Cards / panels */
+  --card: 225 18% 13%;
+  --card-foreground: 210 20% 92%;
+  --background: 228 20% 8%;
+
+  /* Borders */
+  --border: 225 15% 16%;
+  --input: 225 15% 16%;
+
+  /* Popover (dropdowns) */
+  --popover: 225 18% 13%;
+  --popover-foreground: 210 20% 92%;
+
+  /* Muted areas */
+  --muted: 225 16% 11%;
+  --accent: 225 16% 15%;
+  --accent-foreground: 210 20% 92%;
+
+  /* Table rows */
+  --secondary: 225 16% 14%;
+  --secondary-foreground: 210 20% 88%;
+}
+
+/* ── Admin dark overrides: fix hardcoded Tailwind white/grey classes ─────── */
+
+/* White/grey backgrounds → dark */
+.dark .bg-white        { background-color: #1a1d28 !important; }
+.dark .bg-gray-50      { background-color: #13161e !important; }
+.dark .bg-gray-100     { background-color: #1e2132 !important; }
+.dark .bg-gray-200     { background-color: #252836 !important; }
+.dark .bg-blue-50      { background-color: #0d1a35 !important; }
+
+/* Hover overrides */
+.dark .hover\:bg-gray-50:hover  { background-color: #1e2132 !important; }
+.dark .hover\:bg-gray-100:hover { background-color: #252836 !important; }
+.dark .hover\:bg-gray-200:hover { background-color: #2d3144 !important; }
+.dark .hover\:bg-green-200:hover { background-color: #0f2e1a !important; }
+.dark .hover\:bg-red-700:hover  { background-color: #3a1212 !important; }
+
+/* Text colours → light */
+.dark .text-gray-400   { color: #566070 !important; }
+.dark .text-gray-500   { color: #566070 !important; }
+.dark .text-gray-600   { color: #8b94a8 !important; }
+.dark .text-gray-700   { color: #c8d0e0 !important; }
+.dark .text-gray-800   { color: #e2e8f0 !important; }
+.dark .text-gray-900   { color: #e2e8f0 !important; }
+.dark .text-black      { color: #e2e8f0 !important; }
+
+/* Status badge colours → dark tinted equivalents */
+.dark .bg-green-100   { background-color: #0a2015 !important; }
+.dark .text-green-800 { color: #4ade80 !important; }
+.dark .bg-red-100     { background-color: #2a0f0f !important; }
+.dark .text-red-800   { color: #f87171 !important; }
+.dark .bg-yellow-100  { background-color: #2a1f0a !important; }
+.dark .text-yellow-800{ color: #fbbf24 !important; }
+.dark .bg-blue-100    { background-color: #0a1535 !important; }
+.dark .text-blue-800  { color: #60a5fa !important; }
+.dark .bg-orange-100  { background-color: #2a1500 !important; }
+.dark .text-orange-800{ color: #fb923c !important; }
+.dark .bg-purple-100  { background-color: #1e0a35 !important; }
+.dark .text-purple-800{ color: #c084fc !important; }
+
+/* Borders */
+.dark .border          { border-color: #252836 !important; }
+.dark .border-b        { border-bottom-color: #252836 !important; }
+.dark .border-t        { border-top-color: #252836 !important; }
+.dark .divide-y > * + * { border-top-color: #252836 !important; }
+
+/* Inputs, textareas, selects */
+.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+.dark textarea,
+.dark select {
+  background-color: #1e2d47 !important;
+  border: 1.5px solid #3d6499 !important;
+  color: #e2e8f0 !important;
+  border-radius: 6px !important;
+}
+.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):hover,
+.dark textarea:hover,
+.dark select:hover {
+  border-color: #5080c0 !important;
+}
+.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):focus,
+.dark textarea:focus,
+.dark select:focus {
+  border-color: #4f90f0 !important;
+  outline: none !important;
+  box-shadow: 0 0 0 3px rgba(79, 144, 240, 0.18) !important;
+}
+.dark input::placeholder,
+.dark textarea::placeholder { color: #9ca8be !important; }
+.dark select option { background-color: #1e2d47 !important; color: #e2e8f0 !important; }
+
+/* Tables */
+.dark table thead tr  { background-color: #1e2128 !important; }
+.dark table thead th  { color: #d4a017 !important; border-color: #2a2e3a !important; }
+.dark table tbody tr  { background-color: transparent; }
+.dark table tbody tr:hover { background-color: #1e2132 !important; }
+.dark table td, .dark table th { border-color: #252836 !important; }
+
+/* ── White text everywhere in admin dark theme ─────────────── */
+.dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 { color: #ffffff !important; }
+.dark p, .dark span, .dark td, .dark th, .dark label, .dark li { color: #e8edf5 !important; }
+.dark .card-title { color: #d4a017 !important; }
+.dark .text-muted-foreground { color: #a0b0cc !important; }
+.dark a { color: #90b8f0 !important; }
+
+/* ── Switch toggle: off state visible ───────────────────────── */
+.dark [role=switch][data-state=unchecked] {
+  background-color: #556070 !important;
+  border-color: transparent !important;
+}
+.dark [role=switch][data-state=unchecked] > span {
+  background-color: #d0d8e4 !important;
+}
+.dark [role=switch][data-state=checked] {
+  background-color: hsl(var(--primary)) !important;
+  border-color: transparent !important;
+}
+.dark [role=switch][data-state=checked] > span {
+  background-color: #ffffff !important;
+}
+
 @layer utilities {
   input[type="search"]::-webkit-search-cancel-button {
     @apply hidden;

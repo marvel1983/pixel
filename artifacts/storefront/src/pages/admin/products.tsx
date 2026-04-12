@@ -1,7 +1,7 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useLocation } from "wouter";
 import {
-  Search, RefreshCw, Download, ChevronLeft, ChevronRight,
+  Search, RefreshCw, Download, ChevronLeft, ChevronRight, Plus, X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -45,6 +45,11 @@ export default function AdminProductsPage() {
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [cats, setCats] = useState<CategoryOption[]>([]);
   const [platforms, setPlatforms] = useState<string[]>([]);
+  const [showCreate, setShowCreate] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState("");
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const token = useAuthStore((s) => s.token);
   const [, setLocation] = useLocation();
 
@@ -60,9 +65,9 @@ export default function AdminProductsPage() {
     })
       .then((r) => r.json())
       .then((d) => {
-        setProducts(d.products);
-        setTotal(d.total);
-        setTotalPages(d.totalPages);
+        setProducts(d.products ?? []);
+        setTotal(d.total ?? 0);
+        setTotalPages(d.totalPages ?? 1);
         if (d.categories) setCats(d.categories);
         if (d.platforms) setPlatforms(d.platforms);
       })
@@ -71,6 +76,29 @@ export default function AdminProductsPage() {
   }, [token, page, query, catFilter, statusFilter, platformFilter]);
 
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
+
+  const openCreate = () => {
+    setNewName(""); setCreateError(""); setShowCreate(true);
+    setTimeout(() => nameInputRef.current?.focus(), 50);
+  };
+
+  const handleCreate = async () => {
+    if (!newName.trim()) { setCreateError("Name is required"); return; }
+    setCreating(true); setCreateError("");
+    const res = await fetch(`${API_URL}/admin/products`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newName.trim(), isActive: false }),
+    });
+    setCreating(false);
+    if (res.ok) {
+      const data = await res.json();
+      setLocation(`/admin/products/${data.id}`);
+    } else {
+      const err = await res.json().catch(() => ({}));
+      setCreateError(err.error || "Failed to create product");
+    }
+  };
 
   const handleSync = async () => {
     setSyncing(true);
@@ -139,6 +167,12 @@ export default function AdminProductsPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Products ({total})</h1>
         <div className="flex gap-2">
+          <button
+            onClick={openCreate}
+            style={{ display: "flex", alignItems: "center", gap: 5, background: "#1e3a8a", border: "1px solid #2563eb", color: "#93c5fd", borderRadius: 5, padding: "5px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+          >
+            <Plus size={13} /> New Product
+          </button>
           <Button size="sm" variant="outline" onClick={handleSync} disabled={syncing}>
             <RefreshCw className={`mr-1 h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
             Sync from Metenzi
@@ -196,15 +230,15 @@ export default function AdminProductsPage() {
         <div className="rounded-lg border bg-white shadow-sm overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b bg-gray-50 text-left">
+              <tr className="border-b text-left" style={{background:"linear-gradient(to bottom,#0d2040,#0a1830)"}}>
                 <th className="px-4 py-3 w-10">
                   <Checkbox checked={selected.size === products.length && products.length > 0} onCheckedChange={toggleAll} />
                 </th>
-                <th className="px-4 py-3 font-medium text-muted-foreground">Product</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground">Category</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground">Price</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground">Stock</th>
-                <th className="px-4 py-3 font-medium text-muted-foreground">Status</th>
+                <th className="px-4 py-3 text-[10.5px] font-bold uppercase tracking-widest">Product</th>
+                <th className="px-4 py-3 text-[10.5px] font-bold uppercase tracking-widest">Category</th>
+                <th className="px-4 py-3 text-[10.5px] font-bold uppercase tracking-widest">Price</th>
+                <th className="px-4 py-3 text-[10.5px] font-bold uppercase tracking-widest">Stock</th>
+                <th className="px-4 py-3 text-[10.5px] font-bold uppercase tracking-widest">Status</th>
               </tr>
             </thead>
             <tbody>
@@ -255,6 +289,44 @@ export default function AdminProductsPage() {
             <Button size="sm" variant="outline" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
               <ChevronRight className="h-4 w-4" />
             </Button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Create Product Modal ── */}
+      {showCreate && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.6)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center" }}
+          onClick={(e) => e.target === e.currentTarget && setShowCreate(false)}>
+          <div style={{ background: "#1a1d28", border: "1px solid #252836", borderRadius: 8, padding: "20px 24px", width: 380, display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "#e2e8f0" }}>New Product</span>
+              <button onClick={() => setShowCreate(false)} style={{ background: "none", border: "none", cursor: "pointer", color: "#566070", display: "flex" }}><X size={14} /></button>
+            </div>
+            <div>
+              <label style={{ display: "block", fontSize: 10, fontWeight: 700, color: "#566070", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Product Name</label>
+              <input
+                ref={nameInputRef}
+                style={{ width: "100%", background: "#0f1117", border: "1px solid #252836", borderRadius: 4, padding: "6px 10px", fontSize: 12, color: "#c8d0e0", outline: "none", boxSizing: "border-box" }}
+                placeholder="e.g. Microsoft Office 2024"
+                value={newName}
+                onChange={(e) => { setNewName(e.target.value); setCreateError(""); }}
+                onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+              />
+              {createError && <p style={{ fontSize: 11, color: "#f87171", marginTop: 4 }}>{createError}</p>}
+            </div>
+            <p style={{ fontSize: 10, color: "#4a5568", margin: 0 }}>
+              The product will be created as <strong style={{ color: "#8b94a8" }}>Inactive</strong>. You can fill in all details on the next screen.
+            </p>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button onClick={() => setShowCreate(false)}
+                style={{ background: "none", border: "1px solid #252836", color: "#8b94a8", borderRadius: 4, padding: "5px 14px", fontSize: 12, cursor: "pointer" }}>
+                Cancel
+              </button>
+              <button onClick={handleCreate} disabled={creating}
+                style={{ background: "#1e3a8a", border: "1px solid #2563eb", color: "#93c5fd", borderRadius: 4, padding: "5px 16px", fontSize: 12, fontWeight: 600, cursor: creating ? "not-allowed" : "pointer", opacity: creating ? 0.6 : 1 }}>
+                {creating ? "Creating…" : "Create & Edit"}
+              </button>
+            </div>
           </div>
         </div>
       )}

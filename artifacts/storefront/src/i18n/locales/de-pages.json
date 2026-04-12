@@ -158,7 +158,7 @@
     "giftCards": "Geschenkkarten",
     "affiliate": "Partnerprogramm",
     "newsletter": "Newsletter",
-    "wallet": "Geldbörse",
+    "wallet": "Shop-Guthaben",
     "support": "Support",
     "myOrders": "Meine Bestellungen",
     "viewOrdersDesc": "Sehen Sie Ihre vergangenen Bestellungen und Lizenzschlüssel.",
@@ -169,7 +169,10 @@
     "failedToLoad": "Bestellungen konnten nicht geladen werden",
     "failedToLoadDetails": "Bestelldetails konnten nicht geladen werden",
     "ticketNotFound": "Ticket nicht gefunden",
-    "failedToSendReply": "Antwort konnte nicht gesendet werden"
+    "failedToSendReply": "Antwort konnte nicht gesendet werden",
+    "storeCreditTitle": "Shop-Guthaben",
+    "storeCreditHint": "Wird an der Kasse angewendet. Jederzeit aufladen.",
+    "storeCreditManage": "Shop-Guthaben verwalten"
   },
   "orderComplete": {
     "checkout": "Kasse",
@@ -186,7 +189,7 @@
     "subtitle": "Handverlesene Produkte für Sie"
   },
   "wallet": {
-    "availableBalance": "Verfügbares Guthaben",
+    "availableBalance": "Verfügbares Shop-Guthaben",
     "addFunds": "Guthaben aufladen",
     "totalDeposited": "Gesamt eingezahlt",
     "totalSpent": "Gesamt ausgegeben",
@@ -196,12 +199,31 @@
     "validCard": "Gültige Kartennummer eingeben",
     "validExpiry": "Ablaufdatum als MM/JJ eingeben",
     "validCvc": "Gültigen CVC eingeben",
-    "topUpSuccess": "{{amount}} $ zum Wallet hinzugefügt",
+    "topUpSuccess": "{{amount}} $ zum Shop-Guthaben hinzugefügt",
     "topUpFailed": "Aufladen fehlgeschlagen",
     "processing": "Verarbeitung...",
     "topUp": "Aufladen {{amount}} $",
     "transactionHistory": "Transaktionsverlauf",
     "noTransactions": "Noch keine Transaktionen",
-    "balance": "Saldo: {{amount}} $"
+    "balance": "Saldo nach: {{amount}} $",
+    "balancePageTitle": "Shop-Guthaben & Kontostand",
+    "balancePageSubtitle": "Aufladen, Verlauf sehen und wie viel Sie an der Kasse nutzen können.",
+    "viewOnFullPage": "Vollständige Shop-Guthaben-Seite öffnen",
+    "loadMore": "Mehr laden",
+    "dataLoadFailed": "Shop-Guthaben konnte nicht geladen werden. Verbindung prüfen und erneut versuchen.",
+    "retry": "Erneut versuchen"
+  },
+  "adminWallet": {
+    "amountReasonRequired": "Betrag und Grund eingeben",
+    "adjustFailed": "Anpassung fehlgeschlagen",
+    "adjustSuccess": "Shop-Guthaben aktualisiert",
+    "amountPlaceholder": "Betrag",
+    "reasonPlaceholder": "Grund",
+    "topUp": "Aufladen",
+    "creditOnly": "Nur Gutschrift",
+    "debit": "Abbuchung",
+    "deposited": "Eingezahlt: {{amount}} $",
+    "spent": "Ausgegeben: {{amount}} $",
+    "topUpVsCreditHint": "Aufladen zählt zu Einzahlungen; reine Gutschrift nur für Saldo (Aktionen, Korrekturen)."
   }
 }

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { Link, useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthStore } from "@/stores/auth-store";
-import { Wallet, ArrowUpCircle, ArrowDownCircle, Loader2, Plus, CreditCard } from "lucide-react";
+import { Wallet, ArrowUpCircle, ArrowDownCircle, Loader2, Plus, CreditCard, ExternalLink } from "lucide-react";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -17,12 +18,17 @@ interface WalletTx {
 
 export function WalletTab() {
   const { t } = useTranslation();
+  const [path] = useLocation();
   const { token } = useAuthStore();
   const { toast } = useToast();
   const [balance, setBalance] = useState("0.00");
   const [totalDeposited, setTotalDeposited] = useState("0.00");
   const [totalSpent, setTotalSpent] = useState("0.00");
   const [transactions, setTransactions] = useState<WalletTx[]>([]);
+  const [txPage, setTxPage] = useState(1);
+  const [txTotal, setTxTotal] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [loading, setLoading] = useState(true);
   const [topUpAmount, setTopUpAmount] = useState("");
   const [cardNumber, setCardNumber] = useState("");
@@ -34,18 +40,51 @@ export function WalletTab() {
 
   const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 
+  const TX_LIMIT = 20;
+
   async function loadData() {
+    setLoadError(false);
     try {
       const [balRes, txRes] = await Promise.all([
         fetch(`${API}/wallet/balance`, { headers, credentials: "include" }),
-        fetch(`${API}/wallet/transactions`, { headers, credentials: "include" }),
+        fetch(`${API}/wallet/transactions?page=1&limit=${TX_LIMIT}`, { headers, credentials: "include" }),
       ]);
+      let ok = true;
       if (balRes.ok) {
         const d = await balRes.json();
         setBalance(d.balanceUsd); setTotalDeposited(d.totalDeposited); setTotalSpent(d.totalSpent);
+      } else {
+        ok = false;
       }
-      if (txRes.ok) { const d = await txRes.json(); setTransactions(d.transactions); }
-    } catch {} finally { setLoading(false); }
+      if (txRes.ok) {
+        const d = await txRes.json();
+        setTransactions(d.transactions);
+        setTxPage(1);
+        setTxTotal(typeof d.total === "number" ? d.total : d.transactions.length);
+      } else {
+        ok = false;
+      }
+      setLoadError(!ok);
+    } catch {
+      setLoadError(true);
+    } finally { setLoading(false); }
+  }
+
+  async function loadMoreTransactions() {
+    if (loadingMore || transactions.length >= txTotal) return;
+    const next = txPage + 1;
+    setLoadingMore(true);
+    try {
+      const txRes = await fetch(`${API}/wallet/transactions?page=${next}&limit=${TX_LIMIT}`, {
+        headers, credentials: "include",
+      });
+      if (txRes.ok) {
+        const d = await txRes.json();
+        setTransactions((prev) => [...prev, ...d.transactions]);
+        setTxPage(next);
+        if (typeof d.total === "number") setTxTotal(d.total);
+      }
+    } catch {} finally { setLoadingMore(false); }
   }
 
   useEffect(() => { loadData(); }, [token]);
@@ -94,8 +133,33 @@ export function WalletTab() {
 
   if (loading) return <Card><CardContent className="py-8 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></CardContent></Card>;
 
+  if (loadError) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center space-y-3">
+          <p className="text-sm text-destructive">{t("wallet.dataLoadFailed")}</p>
+          <Button type="button" variant="outline" onClick={() => { setLoading(true); void loadData(); }}>
+            {t("wallet.retry")}
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const hasMoreTx = txTotal > transactions.length;
+
+  const onDedicatedBalancePage = path.replace(/\/$/, "") === "/account/balance";
+
   return (
     <div className="space-y-4">
+      {!onDedicatedBalancePage && (
+        <p className="text-sm text-muted-foreground">
+          <Link href="/account/balance" className="inline-flex items-center gap-1 font-medium text-primary hover:underline">
+            <ExternalLink className="h-3.5 w-3.5" />
+            {t("wallet.viewOnFullPage")}
+          </Link>
+        </p>
+      )}
       <Card>
         <CardContent className="pt-6">
           <div className="flex items-center justify-between">
@@ -193,6 +257,14 @@ export function WalletTab() {
                   </div>
                 );
               })}
+            </div>
+          )}
+          {hasMoreTx && (
+            <div className="p-4 border-t">
+              <Button type="button" variant="outline" className="w-full" disabled={loadingMore} onClick={() => void loadMoreTransactions()}>
+                {loadingMore ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                {t("wallet.loadMore")}
+              </Button>
             </div>
           )}
         </CardContent>

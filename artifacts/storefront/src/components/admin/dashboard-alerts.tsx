@@ -1,29 +1,40 @@
 import { useEffect, useState } from "react";
 import { AlertTriangle, Star, Check, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthStore } from "@/stores/auth-store";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "/api";
 
 interface LowStockItem {
-  variantId: number;
-  productName: string;
-  variantName: string;
-  sku: string;
-  stockCount: number;
-  lowStockThreshold: number;
+  variantId: number; productName: string; variantName: string;
+  sku: string; stockCount: number; lowStockThreshold: number;
 }
 
 interface PendingReview {
-  id: number;
-  productName: string;
-  userName: string;
-  rating: number;
-  title: string | null;
-  body: string | null;
-  createdAt: string;
+  id: number; productName: string; userName: string;
+  rating: number; title: string | null; body: string | null; createdAt: string;
+}
+
+function Panel({ title, icon, count, accentColor, children }: {
+  title: string; icon: React.ReactNode; count: number;
+  accentColor: string; children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-md overflow-hidden" style={{ background: "#1a1d28", border: "1px solid #252836" }}>
+      <div className="flex items-center gap-2 px-4 py-2.5" style={{ borderBottom: "1px solid #252836" }}>
+        {icon}
+        <span className="text-xs font-semibold flex-1" style={{ color: "#c8d0e0" }}>{title}</span>
+        {count > 0 && (
+          <span
+            className="rounded px-1.5 py-0.5 text-[10px] font-bold"
+            style={{ background: `${accentColor}20`, color: accentColor }}
+          >
+            {count}
+          </span>
+        )}
+      </div>
+      {children}
+    </div>
+  );
 }
 
 export function LowStockSection() {
@@ -32,70 +43,56 @@ export function LowStockSection() {
   const token = useAuthStore((s) => s.token);
 
   useEffect(() => {
-    fetch(`${API_URL}/admin/dashboard/low-stock`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    fetch(`${API_URL}/admin/dashboard/low-stock`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
-      .then((data: { items: LowStockItem[] }) => setItems(data.items))
+      .then((d: { items: LowStockItem[] }) => setItems(d.items))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [token]);
 
-  if (loading) {
-    return (
-      <div className="rounded-lg border bg-white shadow-sm">
-        <div className="border-b px-6 py-4">
-          <Skeleton className="h-6 w-40" />
-        </div>
-        <div className="p-6 space-y-3">
+  return (
+    <Panel
+      title="Low Stock Alerts"
+      icon={<AlertTriangle className="h-3.5 w-3.5" style={{ color: "#f59e0b" }} />}
+      count={items.length}
+      accentColor="#f59e0b"
+    >
+      {loading ? (
+        <div className="p-3 space-y-1.5">
           {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-10 w-full" />
+            <div key={i} className="h-8 rounded animate-pulse" style={{ background: "#252836" }} />
           ))}
         </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="rounded-lg border bg-white shadow-sm">
-      <div className="flex items-center gap-2 border-b px-6 py-4">
-        <AlertTriangle className="h-5 w-5 text-orange-500" />
-        <h2 className="text-lg font-semibold">Low Stock Alerts</h2>
-        {items.length > 0 && (
-          <Badge variant="secondary" className="bg-orange-100 text-orange-800">
-            {items.length}
-          </Badge>
-        )}
-      </div>
-      {items.length === 0 ? (
-        <div className="p-6 text-center text-muted-foreground">
+      ) : items.length === 0 ? (
+        <div className="py-6 text-center text-[11px]" style={{ color: "#3a4255" }}>
           All products are well stocked.
         </div>
       ) : (
-        <div className="divide-y">
-          {items.map((item) => (
-            <div key={item.variantId} className="flex items-center justify-between px-6 py-3">
-              <div>
-                <p className="font-medium text-sm">{item.productName}</p>
-                <p className="text-xs text-muted-foreground">
-                  {item.variantName} · {item.sku}
-                </p>
+        <div>
+          {items.map((item, i) => (
+            <div
+              key={item.variantId}
+              className="flex items-center justify-between px-4 py-2"
+              style={{ borderBottom: i < items.length - 1 ? "1px solid #1f2330" : "none" }}
+            >
+              <div className="min-w-0">
+                <p className="text-[11px] font-medium truncate" style={{ color: "#c8d0e0" }}>{item.productName}</p>
+                <p className="text-[10px] truncate" style={{ color: "#3a4255" }}>{item.variantName} · {item.sku}</p>
               </div>
-              <Badge
-                variant="secondary"
-                className={
-                  item.stockCount === 0
-                    ? "bg-red-100 text-red-800"
-                    : "bg-orange-100 text-orange-800"
+              <span
+                className="ml-3 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium"
+                style={item.stockCount === 0
+                  ? { background: "#2a0f0f", color: "#f87171" }
+                  : { background: "#2a1f0a", color: "#f59e0b" }
                 }
               >
                 {item.stockCount === 0 ? "Out of stock" : `${item.stockCount} left`}
-              </Badge>
+              </span>
             </div>
           ))}
         </div>
       )}
-    </div>
+    </Panel>
   );
 }
 
@@ -105,116 +102,94 @@ export function PendingReviewsSection() {
   const token = useAuthStore((s) => s.token);
 
   useEffect(() => {
-    fetch(`${API_URL}/admin/dashboard/pending-reviews`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    fetch(`${API_URL}/admin/dashboard/pending-reviews`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
-      .then((data: { reviews: PendingReview[] }) => setReviews(data.reviews))
+      .then((d: { reviews: PendingReview[] }) => setReviews(d.reviews))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [token]);
 
-  const handleApprove = async (id: number) => {
+  const approve = async (id: number) => {
     const res = await fetch(`${API_URL}/admin/dashboard/reviews/${id}/approve`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
+      method: "POST", headers: { Authorization: `Bearer ${token}` },
     });
-    if (res.ok) {
-      setReviews((prev) => prev.filter((r) => r.id !== id));
-    }
+    if (res.ok) setReviews((p) => p.filter((r) => r.id !== id));
   };
 
-  const handleReject = async (id: number) => {
+  const reject = async (id: number) => {
     const res = await fetch(`${API_URL}/admin/dashboard/reviews/${id}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
+      method: "DELETE", headers: { Authorization: `Bearer ${token}` },
     });
-    if (res.ok) {
-      setReviews((prev) => prev.filter((r) => r.id !== id));
-    }
+    if (res.ok) setReviews((p) => p.filter((r) => r.id !== id));
   };
-
-  if (loading) {
-    return (
-      <div className="rounded-lg border bg-white shadow-sm">
-        <div className="border-b px-6 py-4">
-          <Skeleton className="h-6 w-40" />
-        </div>
-        <div className="p-6 space-y-3">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-16 w-full" />
-          ))}
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="rounded-lg border bg-white shadow-sm">
-      <div className="flex items-center gap-2 border-b px-6 py-4">
-        <Star className="h-5 w-5 text-yellow-500" />
-        <h2 className="text-lg font-semibold">Pending Reviews</h2>
-        {reviews.length > 0 && (
-          <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-            {reviews.length}
-          </Badge>
-        )}
-      </div>
-      {reviews.length === 0 ? (
-        <div className="p-6 text-center text-muted-foreground">
+    <Panel
+      title="Pending Reviews"
+      icon={<Star className="h-3.5 w-3.5" style={{ color: "#eab308" }} />}
+      count={reviews.length}
+      accentColor="#eab308"
+    >
+      {loading ? (
+        <div className="p-3 space-y-1.5">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="h-12 rounded animate-pulse" style={{ background: "#252836" }} />
+          ))}
+        </div>
+      ) : reviews.length === 0 ? (
+        <div className="py-6 text-center text-[11px]" style={{ color: "#3a4255" }}>
           No pending reviews.
         </div>
       ) : (
-        <div className="divide-y">
-          {reviews.map((review) => (
-            <div key={review.id} className="px-6 py-3">
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="font-medium">{review.userName}</span>
-                    <span className="text-muted-foreground">on</span>
-                    <span className="font-medium truncate">{review.productName}</span>
-                  </div>
-                  <div className="flex items-center gap-1 mt-0.5">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Star
-                        key={i}
-                        className={`h-3 w-3 ${i < review.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`}
-                      />
-                    ))}
-                  </div>
-                  {review.title && (
-                    <p className="mt-1 text-sm font-medium">{review.title}</p>
-                  )}
-                  {review.body && (
-                    <p className="mt-0.5 text-sm text-muted-foreground line-clamp-2">
-                      {review.body}
-                    </p>
-                  )}
+        <div>
+          {reviews.map((r, i) => (
+            <div
+              key={r.id}
+              className="flex items-start gap-3 px-4 py-2.5"
+              style={{ borderBottom: i < reviews.length - 1 ? "1px solid #1f2330" : "none" }}
+            >
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-medium" style={{ color: "#c8d0e0" }}>{r.userName}</span>
+                  <span className="text-[10px]" style={{ color: "#3a4255" }}>on</span>
+                  <span className="text-[11px] truncate max-w-[120px]" style={{ color: "#8b94a8" }}>{r.productName}</span>
                 </div>
-                <div className="flex gap-1 flex-shrink-0">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-8 w-8 p-0 text-green-600 hover:bg-green-50"
-                    onClick={() => handleApprove(review.id)}
-                  >
-                    <Check className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-8 w-8 p-0 text-red-600 hover:bg-red-50"
-                    onClick={() => handleReject(review.id)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
+                <div className="flex items-center gap-0.5 mt-0.5">
+                  {Array.from({ length: 5 }).map((_, idx) => (
+                    <Star
+                      key={idx}
+                      className="h-2.5 w-2.5"
+                      style={{ fill: idx < r.rating ? "#eab308" : "transparent", color: idx < r.rating ? "#eab308" : "#2a2d3a" }}
+                    />
+                  ))}
                 </div>
+                {r.title && <p className="text-[11px] font-medium mt-0.5 truncate" style={{ color: "#c8d0e0" }}>{r.title}</p>}
+                {r.body && <p className="text-[10px] line-clamp-1 mt-0.5" style={{ color: "#4a5568" }}>{r.body}</p>}
+              </div>
+              <div className="flex gap-1 shrink-0">
+                <button
+                  onClick={() => approve(r.id)}
+                  className="flex h-6 w-6 items-center justify-center rounded transition-colors"
+                  style={{ background: "#0a2015", color: "#4ade80" }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = "#0f2e1a"}
+                  onMouseLeave={(e) => e.currentTarget.style.background = "#0a2015"}
+                >
+                  <Check className="h-3 w-3" />
+                </button>
+                <button
+                  onClick={() => reject(r.id)}
+                  className="flex h-6 w-6 items-center justify-center rounded transition-colors"
+                  style={{ background: "#2a0f0f", color: "#f87171" }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = "#3a1212"}
+                  onMouseLeave={(e) => e.currentTarget.style.background = "#2a0f0f"}
+                >
+                  <X className="h-3 w-3" />
+                </button>
               </div>
             </div>
           ))}
         </div>
       )}
-    </div>
+    </Panel>
   );
 }

@@ -27,37 +27,51 @@ export interface MockVariant {
 
 export { MOCK_PRODUCTS } from "./mock-products";
 
-export const MOCK_BANNERS = [
+export interface MockHeroBanner {
+  id: number;
+  badge?: string;
+  title: string;
+  subtitle: string;
+  ctaText: string;
+  ctaLink: string;
+}
+
+/** Homepage hero slides — visuals are CSS-driven in `HeroBanner` (no raster assets). */
+export const MOCK_BANNERS: MockHeroBanner[] = [
   {
     id: 1,
-    title: "Windows 11 Pro — Save 85%",
-    subtitle: "Instant digital delivery. Genuine license keys.",
-    ctaText: "Shop Now",
-    ctaLink: "/product/windows-11-pro",
-    imageUrl: "/banners/windows-sale-banner.png",
+    badge: "Instant delivery",
+    title: "Windows & Office keys, without the sticker shock",
+    subtitle:
+      "Genuine digital licenses, email in minutes. Same activation as retail — a fraction of the price.",
+    ctaText: "Shop Windows & OS",
+    ctaLink: "/category/operating-systems",
   },
   {
     id: 2,
-    title: "Office 2024 — Just Released",
-    subtitle: "Lifetime license at a fraction of the retail price.",
-    ctaText: "Get Office 2024",
-    ctaLink: "/product/office-2024-pro-plus",
-    imageUrl: "/banners/office-sale-banner.png",
+    badge: "Productivity",
+    title: "Lifetime Office suites for teams and freelancers",
+    subtitle:
+      "Word, Excel, PowerPoint, Outlook — one payment, no subscription treadmill.",
+    ctaText: "Browse Office",
+    ctaLink: "/category/office-productivity",
   },
   {
     id: 3,
-    title: "Game Keys — Up to 50% Off",
-    subtitle: "Steam, Origin, Epic — all platforms available.",
-    ctaText: "Browse Games",
+    badge: "PC gaming",
+    title: "Game keys for Steam, Epic & more",
+    subtitle:
+      "Digital codes ready when you are. Stock updated often — grab titles before they’re gone.",
+    ctaText: "See game deals",
     ctaLink: "/category/games",
-    imageUrl: "/banners/gaming-sale-banner.png",
   },
   {
     id: 4,
-    title: "Stay Protected — Up to 80% Off",
-    subtitle: "Norton, Kaspersky, Bitdefender — all top brands.",
-    ctaText: "Shop Security",
+    badge: "Peace of mind",
+    title: "Antivirus from brands you already trust",
+    subtitle:
+      "Layered protection for every device. Compare top suites and renew for less.",
+    ctaText: "Shop security",
     ctaLink: "/category/antivirus-security",
-    imageUrl: "/banners/security-banner.png",
   },
 ];

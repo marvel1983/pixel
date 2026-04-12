@@ -1,7 +1,9 @@
+import { useEffect, useState } from "react";
 import { Package, Minus, Plus } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useCartStore } from "@/stores/cart-store";
 import { useCurrencyStore, BASE_CURRENCY } from "@/stores/currency-store";
+import { useLoyaltyStore } from "@/stores/loyalty-store";
 import { getCppAmount } from "./cpp-section";
 
 interface CheckoutSummaryProps {
@@ -15,6 +17,7 @@ interface CheckoutSummaryProps {
 }
 
 export function CheckoutSummary({ cppSelected, taxRate = 0, taxLabel = "VAT", priceDisplay = "exclusive", gcDeduction = 0, loyaltyDiscount = 0, servicesTotal = 0 }: CheckoutSummaryProps) {
+  const loyaltyConfig = useLoyaltyStore((s) => s.config);
   const items = useCartStore((s) => s.items);
   const coupon = useCartStore((s) => s.coupon);
   const getTotal = useCartStore((s) => s.getTotal);
@@ -35,7 +38,7 @@ export function CheckoutSummary({ cppSelected, taxRate = 0, taxLabel = "VAT", pr
   const total = Math.max(0, preGcTotal - gcDeduction);
 
   return (
-    <div className="border rounded-lg p-5 space-y-4 bg-muted/10 sticky top-24">
+    <div className="border rounded-lg p-5 space-y-4 bg-muted/10">
       <h3 className="text-lg font-bold">Order Summary</h3>
 
       <div className="space-y-3 max-h-64 overflow-y-auto">
@@ -134,6 +137,12 @@ export function CheckoutSummary({ cppSelected, taxRate = 0, taxLabel = "VAT", pr
       {currencyCode !== BASE_CURRENCY && (
         <p className="text-xs text-muted-foreground text-center">
           Payment processed in {BASE_CURRENCY}. Displayed price is approximate.
+        </p>
+      )}
+
+      {loyaltyConfig?.enabled && loyaltyConfig.pointsPerDollar > 0 && total > 0 && (
+        <p className="text-xs text-green-600 dark:text-green-400 text-center font-medium mt-1">
+          🎯 You'll earn ~{Math.floor(total * loyaltyConfig.pointsPerDollar).toLocaleString()} points with this order
         </p>
       )}
     </div>

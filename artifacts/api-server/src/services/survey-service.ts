@@ -35,6 +35,7 @@ export async function processSurveyEmails(): Promise<{ sent: number }> {
   const baseUrl = domain.startsWith("http") ? domain : `https://${domain}`;
 
   for (const order of eligibleOrders) {
+    if (!order.email) continue;
     const token = generateToken();
     const surveyUrl = `${baseUrl}/survey/${token}`;
     const stars = [1, 2, 3, 4, 5].map((n) =>
@@ -113,7 +114,7 @@ async function createLowRatingTicket(survey: typeof surveyResponses.$inferSelect
       note: "Auto-created from low survey rating",
     });
 
-    logger.info({ ticketNumber, rating, orderId: survey.orderId }, "Support ticket created for low survey rating");
+    logger.info({ ticketNumber: ticket.ticketNumber, rating, orderId: survey.orderId }, "Support ticket created for low survey rating");
   } catch (err) {
     logger.error({ err, surveyId: survey.id }, "Failed to create support ticket for low rating");
   }

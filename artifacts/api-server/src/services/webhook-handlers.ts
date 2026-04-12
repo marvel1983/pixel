@@ -10,6 +10,7 @@ import {
 import { encrypt } from "../lib/encryption";
 import { sendKeyDeliveryEmail } from "../lib/email";
 import { logger } from "../lib/logger";
+import { awardOrderPoints } from "./loyalty-service";
 
 interface FulfilledItem {
   variantId: string;
@@ -60,6 +61,7 @@ async function findOrderByMetenziId(metenziOrderId: string) {
       orderNumber: orders.orderNumber,
       guestEmail: orders.guestEmail,
       userId: orders.userId,
+      totalUsd: orders.totalUsd,
     })
     .from(orders)
     .where(eq(orders.externalOrderId, metenziOrderId))
@@ -149,6 +151,13 @@ async function handleOrderFulfilled(data: FulfilledData) {
     .update(orders)
     .set({ status: "COMPLETED", updatedAt: new Date() })
     .where(eq(orders.id, order.id));
+
+  // Award loyalty points if the order belongs to a registered user
+  if (order.userId) {
+    awardOrderPoints(order.userId, order.id, parseFloat(order.totalUsd)).catch((err) =>
+      logger.error({ err, orderId: order.id }, "Failed to award loyalty points on webhook COMPLETED (non-fatal)"),
+    );
+  }
 
   if (keysToDeliver.length > 0 && order.email) {
     sendKeyDeliveryEmail(order.email, {

@@ -1,18 +1,35 @@
-import { Package, Minus, Plus, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { Package, Minus, Plus, Trash2, ChevronDown, ChevronUp, Tag } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useCartStore, type CartItem } from "@/stores/cart-store";
 import { useCurrencyStore } from "@/stores/currency-store";
 
+const API = import.meta.env.VITE_API_URL ?? "/api";
+
 export function CartItemsTable() {
   const { t } = useTranslation();
   const items = useCartStore((s) => s.items);
   const updateQuantity = useCartStore((s) => s.updateQuantity);
+  const updateItemPrice = useCartStore((s) => s.updateItemPrice);
   const removeItem = useCartStore((s) => s.removeItem);
   const removeBundleItems = useCartStore((s) => s.removeBundleItems);
+  const clearCart = useCartStore((s) => s.clearCart);
   const { format } = useCurrencyStore();
+
+  function handleUpdateQuantity(variantId: number, qty: number, bundleId?: number) {
+    updateQuantity(variantId, qty, bundleId);
+    if (!bundleId && qty > 0) {
+      fetch(`${API}/variants/${variantId}/price?qty=${qty}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d: { price: { effectiveUnitPriceUsd: string } } | null) => {
+          if (d?.price) updateItemPrice(variantId, d.price.effectiveUnitPriceUsd);
+        })
+        .catch(() => {});
+    }
+  }
 
   const bundleGroups = new Map<number, CartItem[]>();
   const standaloneItems: CartItem[] = [];
@@ -27,31 +44,65 @@ export function CartItemsTable() {
   }
 
   return (
-    <div className="border rounded-lg overflow-hidden">
-      <div className="hidden sm:grid grid-cols-[1fr_120px_140px_100px_40px] gap-4 px-4 py-3 bg-muted/50 text-xs font-semibold text-muted-foreground uppercase">
-        <span>{t("cart.product")}</span>
-        <span className="text-center">{t("cart.price")}</span>
-        <span className="text-center">{t("cart.quantity")}</span>
-        <span className="text-right">{t("cart.subtotal")}</span>
+    <div className="rounded-xl border border-border bg-card overflow-hidden">
+      {/* Header */}
+      <div className="hidden sm:grid grid-cols-[1fr_100px_140px_100px_44px] gap-4 px-6 py-3 bg-muted/40 border-b border-border">
+        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("cart.product")}</span>
+        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center">{t("cart.price")}</span>
+        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center">{t("cart.quantity")}</span>
+        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right">{t("cart.subtotal")}</span>
         <span />
       </div>
 
+      {/* Bundle groups */}
       {Array.from(bundleGroups.entries()).map(([bundleId, bundleItems]) => (
-        <BundleGroup key={`bundle-${bundleId}`} bundleId={bundleId} items={bundleItems}
-          format={format} onRemoveBundle={removeBundleItems} onRemoveItem={removeItem} />
+        <BundleGroup
+          key={`bundle-${bundleId}`}
+          bundleId={bundleId}
+          items={bundleItems}
+          format={format}
+          onRemoveBundle={removeBundleItems}
+          onRemoveItem={removeItem}
+        />
       ))}
 
-      {standaloneItems.map((item) => (
-        <CartRow key={`standalone-${item.variantId}`} item={item} format={format}
-          onUpdateQuantity={updateQuantity} onRemove={removeItem} />
+      {/* Standalone items */}
+      {standaloneItems.map((item, idx) => (
+        <CartRow
+          key={`standalone-${item.variantId}`}
+          item={item}
+          format={format}
+          onUpdateQuantity={handleUpdateQuantity}
+          onRemove={removeItem}
+          isLast={idx === standaloneItems.length - 1 && bundleGroups.size === 0}
+        />
       ))}
+
+      {/* Footer actions */}
+      <div className="flex items-center justify-between px-6 py-3 border-t border-border bg-muted/20">
+        <Link href="/shop">
+          <button className="text-sm font-medium text-primary hover:underline flex items-center gap-1">
+            ← {t("cart.returnToShop")}
+          </button>
+        </Link>
+        <button
+          onClick={clearCart}
+          className="text-xs text-muted-foreground hover:text-destructive transition-colors flex items-center gap-1.5"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+          {t("cart.clearCart")}
+        </button>
+      </div>
     </div>
   );
 }
 
 function BundleGroup({ bundleId, items, format, onRemoveBundle, onRemoveItem }: {
-  bundleId: number; items: CartItem[]; format: (usd: number) => string;
-  onRemoveBundle: (id: number) => void; onRemoveItem: (id: number, bundleId?: number) => void;
+  bundleId: number;
+  items: CartItem[];
+  format: (usd: number) => string;
+  onRemoveBundle: (id: number) => void;
+  onRemoveItem: (id: number, bundleId?: number) => void;
 }) {
   const [expanded, setExpanded] = useState(true);
   const bundleName = items[0]?.bundleName || "Bundle";
@@ -60,43 +111,60 @@ function BundleGroup({ bundleId, items, format, onRemoveBundle, onRemoveItem }: 
   const savings = originalTotal - bundleTotal;
 
   return (
-    <div className="border-t">
-      <div className="flex items-center gap-3 px-4 py-3 bg-blue-50/50 cursor-pointer" onClick={() => setExpanded(!expanded)}>
-        <button className="p-0.5">{expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</button>
-        <Package className="h-5 w-5 text-blue-600" />
-        <span className="font-medium flex-1">{bundleName}</span>
-        {savings > 0 && <Badge className="bg-green-100 text-green-800 text-xs">Bundle saves {format(savings)}</Badge>}
-        <span className="font-semibold">{format(bundleTotal)}</span>
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive"
-          onClick={(e) => { e.stopPropagation(); onRemoveBundle(bundleId); }}>
-          <Trash2 className="h-4 w-4" />
+    <div className="border-t border-border">
+      <div
+        className="flex items-center gap-3 px-6 py-3 bg-blue-50/60 dark:bg-blue-950/20 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <Package className="h-4 w-4 text-blue-500 shrink-0" />
+        <span className="font-semibold text-sm flex-1">{bundleName}</span>
+        {savings > 0 && (
+          <Badge className="bg-green-100 text-green-700 border-green-200 text-[10px] gap-1">
+            <Tag className="h-2.5 w-2.5" /> Saves {format(savings)}
+          </Badge>
+        )}
+        <span className="font-bold text-sm">{format(bundleTotal)}</span>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
+          onClick={(e) => { e.stopPropagation(); onRemoveBundle(bundleId); }}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
         </Button>
+        {expanded ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
       </div>
       {expanded && items.map((item) => (
-        <div key={`${bundleId}-${item.variantId}`} className="grid grid-cols-1 sm:grid-cols-[1fr_120px_140px_100px_40px] gap-3 sm:gap-4 px-4 pl-12 py-2 items-center bg-blue-50/20">
+        <div
+          key={`${bundleId}-${item.variantId}`}
+          className="grid grid-cols-1 sm:grid-cols-[1fr_100px_140px_100px_44px] gap-3 sm:gap-4 px-6 pl-14 py-3 items-center border-t border-border/50 bg-blue-50/20"
+        >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded bg-muted flex items-center justify-center shrink-0">
-              {item.imageUrl ? <img src={item.imageUrl} alt={item.productName} className="w-full h-full object-contain rounded" />
+            <div className="w-10 h-10 rounded-lg border border-border bg-muted flex items-center justify-center shrink-0 overflow-hidden">
+              {item.imageUrl
+                ? <img src={item.imageUrl} alt={item.productName} className="w-full h-full object-contain" />
                 : <Package className="h-4 w-4 text-muted-foreground/40" />}
             </div>
             <div className="min-w-0">
-              <p className="text-sm truncate">{item.productName}</p>
+              <p className="text-sm font-medium truncate">{item.productName}</p>
               <p className="text-xs text-muted-foreground">{item.variantName}</p>
             </div>
           </div>
           <div className="text-sm text-center">
             {item.originalPriceUsd && parseFloat(item.originalPriceUsd) > parseFloat(item.priceUsd) && (
-              <span className="text-xs text-muted-foreground line-through mr-1">{format(parseFloat(item.originalPriceUsd))}</span>
+              <span className="text-xs text-muted-foreground line-through block">{format(parseFloat(item.originalPriceUsd))}</span>
             )}
             <span className="font-medium">{format(parseFloat(item.priceUsd))}</span>
           </div>
           <div className="text-sm text-center text-muted-foreground">×{item.quantity}</div>
-          <div className="text-sm text-right font-medium">{format(parseFloat(item.priceUsd) * item.quantity)}</div>
+          <div className="text-sm text-right font-semibold">{format(parseFloat(item.priceUsd) * item.quantity)}</div>
           <div className="flex justify-end">
-            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
-              onClick={() => onRemoveItem(item.variantId, item.bundleId)}>
+            <button
+              className="h-7 w-7 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+              onClick={() => onRemoveItem(item.variantId, item.bundleId)}
+            >
               <Trash2 className="h-3.5 w-3.5" />
-            </Button>
+            </button>
           </div>
         </div>
       ))}
@@ -109,6 +177,7 @@ interface CartRowProps {
   format: (usd: number) => string;
   onUpdateQuantity: (variantId: number, qty: number, bundleId?: number) => void;
   onRemove: (variantId: number, bundleId?: number) => void;
+  isLast?: boolean;
 }
 
 function CartRow({ item, format, onUpdateQuantity, onRemove }: CartRowProps) {
@@ -116,40 +185,65 @@ function CartRow({ item, format, onUpdateQuantity, onRemove }: CartRowProps) {
   const subtotal = price * item.quantity;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-[1fr_120px_140px_100px_40px] gap-3 sm:gap-4 px-4 py-4 border-t items-center">
-      <div className="flex items-center gap-3">
-        <div className="w-14 h-14 rounded bg-muted flex items-center justify-center shrink-0">
-          {item.imageUrl ? (
-            <img src={item.imageUrl} alt={item.productName} className="w-full h-full object-contain rounded" />
-          ) : (
-            <Package className="h-6 w-6 text-muted-foreground/40" />
-          )}
+    <div className="grid grid-cols-1 sm:grid-cols-[1fr_100px_140px_100px_44px] gap-4 px-6 py-5 border-t border-border items-center group">
+      {/* Product */}
+      <div className="flex items-center gap-4">
+        <div className="w-16 h-16 rounded-xl border border-border bg-muted flex items-center justify-center shrink-0 overflow-hidden">
+          {item.imageUrl
+            ? <img src={item.imageUrl} alt={item.productName} className="w-full h-full object-contain" />
+            : <Package className="h-7 w-7 text-muted-foreground/30" />}
         </div>
         <div className="min-w-0">
-          <p className="text-sm font-medium truncate">{item.productName}</p>
-          <p className="text-xs text-muted-foreground">{item.variantName}</p>
+          <p className="text-sm font-semibold text-foreground leading-snug mb-0.5">{item.productName}</p>
+          <p className="text-xs text-muted-foreground mb-1">{item.variantName}</p>
           {item.platform && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{item.platform}</span>
+            <span className="inline-block text-[10px] px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground border border-border">
+              {item.platform}
+            </span>
+          )}
+          {item.regionRestrictions && item.regionRestrictions.length > 0 && (
+            <span className="inline-block ml-1 text-[10px] px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200">
+              {item.regionRestrictions.join(", ")}
+            </span>
           )}
         </div>
       </div>
-      <div className="text-sm text-center font-medium">{format(price)}</div>
+
+      {/* Unit price */}
+      <div className="text-sm text-center font-medium text-foreground">{format(price)}</div>
+
+      {/* Quantity */}
       <div className="flex items-center justify-center">
-        <div className="flex items-center border rounded">
-          <button className="px-2 py-1 hover:bg-muted transition-colors" onClick={() => onUpdateQuantity(item.variantId, item.quantity - 1, item.bundleId)}>
-            <Minus className="h-3.5 w-3.5" />
+        <div className="flex items-center rounded-lg border border-border bg-background overflow-hidden">
+          <button
+            className="px-3 py-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-40"
+            onClick={() => onUpdateQuantity(item.variantId, item.quantity - 1, item.bundleId)}
+            disabled={item.quantity <= 1}
+          >
+            <Minus className="h-3 w-3" />
           </button>
-          <span className="px-3 py-1 text-sm font-medium min-w-[36px] text-center">{item.quantity}</span>
-          <button className="px-2 py-1 hover:bg-muted transition-colors" onClick={() => onUpdateQuantity(item.variantId, item.quantity + 1, item.bundleId)}>
-            <Plus className="h-3.5 w-3.5" />
+          <span className="w-10 text-center text-sm font-semibold select-none">{item.quantity}</span>
+          <button
+            className="px-3 py-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            onClick={() => onUpdateQuantity(item.variantId, item.quantity + 1, item.bundleId)}
+          >
+            <Plus className="h-3 w-3" />
           </button>
         </div>
       </div>
-      <div className="text-sm text-right font-semibold">{format(subtotal)}</div>
+
+      {/* Subtotal */}
+      <div className="text-sm text-right font-bold text-foreground">{format(subtotal)}</div>
+
+      {/* Remove */}
       <div className="flex justify-end">
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => onRemove(item.variantId, item.bundleId)}>
+        <button
+          className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100"
+          onClick={() => onRemove(item.variantId, item.bundleId)}
+          title="Remove item"
+        >
           <Trash2 className="h-4 w-4" />
-        </Button>
+        </button>
       </div>
     </div>
   );

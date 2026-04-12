@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { blogPosts, blogCategories, users } from "@workspace/db/schema";
 import { eq, desc, and, sql, ilike, or, lte } from "drizzle-orm";
+import { paramString } from "../lib/route-params";
 
 const router = Router();
 
@@ -70,13 +71,13 @@ router.get("/blog/posts/:slug", async (req, res) => {
       .from(blogPosts)
       .leftJoin(blogCategories, eq(blogPosts.categoryId, blogCategories.id))
       .leftJoin(users, eq(blogPosts.authorId, users.id))
-      .where(and(eq(blogPosts.slug, req.params.slug), eq(blogPosts.isPublished, true)))
+      .where(and(eq(blogPosts.slug, paramString(req.params, "slug")), eq(blogPosts.isPublished, true)))
       .limit(1);
 
     if (!rows.length) return res.status(404).json({ error: "Post not found" });
 
     await db.update(blogPosts).set({ viewCount: sql`${blogPosts.viewCount} + 1` })
-      .where(eq(blogPosts.slug, req.params.slug));
+      .where(eq(blogPosts.slug, paramString(req.params, "slug")));
 
     const post = rows[0];
     const related = await db.select({

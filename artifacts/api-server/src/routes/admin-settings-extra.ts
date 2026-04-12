@@ -6,6 +6,9 @@ import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import { encrypt, decrypt } from "../lib/encryption";
 import { invalidateMailerCache } from "../lib/email/mailer";
+import { getRateLimitConfig, updateRateLimitConfig } from "../middleware/rate-limit";
+import { paramString } from "../lib/route-params";
+import { syncCurrencyRates } from "../lib/currency-sync";
 
 const router = Router();
 
@@ -77,7 +80,7 @@ router.put("/admin/settings/currencies/reorder", requireAuth, requireAdmin, requ
 });
 
 router.put("/admin/settings/currencies/:id", requireAuth, requireAdmin, requirePermission("manageSettings"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const updates: Record<string, unknown> = { updatedAt: new Date() };
   if (req.body.rateToUsd !== undefined) {
@@ -92,7 +95,7 @@ router.put("/admin/settings/currencies/:id", requireAuth, requireAdmin, requireP
 });
 
 router.delete("/admin/settings/currencies/:id", requireAuth, requireAdmin, requirePermission("manageSettings"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   await db.delete(currencyRates).where(eq(currencyRates.id, id));
   res.json({ success: true });
@@ -220,8 +223,6 @@ router.post("/admin/settings/google-oauth/test", requireAuth, requireAdmin, requ
   }
 });
 
-import { getRateLimitConfig, updateRateLimitConfig } from "../middleware/rate-limit";
-
 router.get("/admin/settings/rate-limits", requireAuth, requireAdmin, requirePermission("manageSettings"), (_req, res) => {
   res.json(getRateLimitConfig());
 });
@@ -230,6 +231,16 @@ router.put("/admin/settings/rate-limits", requireAuth, requireAdmin, requirePerm
   const { authLogin, authRegister, authReset, public: pub, admin } = req.body;
   updateRateLimitConfig({ authLogin, authRegister, authReset, public: pub, admin });
   res.json({ ok: true, config: getRateLimitConfig() });
+});
+
+// POST /admin/settings/sync-currency-rates — manual trigger
+router.post("/admin/settings/sync-currency-rates", requireAuth, requireAdmin, requirePermission("manageSettings"), async (_req, res) => {
+  try {
+    const result = await syncCurrencyRates();
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: (err as Error).message });
+  }
 });
 
 export default router;

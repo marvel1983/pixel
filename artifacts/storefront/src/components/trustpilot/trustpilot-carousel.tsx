@@ -1,10 +1,15 @@
 import { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { ChevronLeft, ChevronRight, Quote } from "lucide-react";
 import { useTrustpilot, useTrustpilotWidget } from "@/hooks/use-trustpilot";
 import { TrustpilotStars, TrustpilotLogo } from "./trustpilot-stars";
 
 interface Review {
-  id: number; name: string; rating: number; text: string; date: string;
+  id: number;
+  name: string;
+  rating: number;
+  text: string;
+  date: string;
 }
 
 const STATIC_REVIEWS: Review[] = [
@@ -17,6 +22,7 @@ const STATIC_REVIEWS: Review[] = [
 ];
 
 export function TrustpilotCarousel() {
+  const { t } = useTranslation();
   const { enabled, cachedRating, cachedCount, trustpilotUrl, businessUnitId, loaded } = useTrustpilot();
   const widgetRef = useRef<HTMLDivElement>(null);
   const widgetLoaded = useTrustpilotWidget(widgetRef, businessUnitId);
@@ -24,32 +30,51 @@ export function TrustpilotCarousel() {
   if (!loaded || !enabled) return null;
 
   return (
-    <section className="py-12 bg-gradient-to-b from-green-50/50 to-white rounded-2xl px-6">
-      <div className="text-center mb-8">
-        <div className="flex items-center justify-center gap-2 mb-3">
+    <section
+      className="rounded-2xl border border-primary/15 bg-gradient-to-b from-primary/[0.06] via-background to-muted/30 px-4 py-10 md:px-8 md:py-12"
+      aria-labelledby="trustpilot-home-heading"
+    >
+      <div className="mb-8 text-center">
+        <div className="mb-3 flex items-center justify-center gap-2">
           <TrustpilotLogo className="text-lg" />
         </div>
-        <h2 className="text-2xl font-bold mb-2">What Our Customers Say</h2>
-        <div className="flex items-center justify-center gap-2">
+        <h2 id="trustpilot-home-heading" className="mb-2 text-2xl font-bold">
+          {t("home.trustPilotHeading")}
+        </h2>
+        <div className="flex flex-wrap items-center justify-center gap-2">
           <TrustpilotStars rating={cachedRating} size="lg" />
           <span className="text-lg font-semibold">{cachedRating.toFixed(1)}</span>
-          <span className="text-muted-foreground">based on {cachedCount.toLocaleString()} reviews</span>
+          <span className="text-muted-foreground">
+            {t("home.trustPilotReviews", { count: cachedCount.toLocaleString() })}
+          </span>
         </div>
       </div>
 
       {businessUnitId && (
-        <div ref={widgetRef} className="trustpilot-widget max-w-4xl mx-auto" data-locale="en-US"
-          data-template-id="53aa8912dec7e10d38f59f36" data-businessunit-id={businessUnitId}
-          data-style-height="140px" data-style-width="100%" data-theme="light" data-stars="4,5"
-          style={{ display: widgetLoaded ? "block" : "none" }} />
+        <div
+          ref={widgetRef}
+          className="trustpilot-widget mx-auto max-w-4xl"
+          data-locale="en-US"
+          data-template-id="53aa8912dec7e10d38f59f36"
+          data-businessunit-id={businessUnitId}
+          data-style-height="140px"
+          data-style-width="100%"
+          data-theme="light"
+          data-stars="4,5"
+          style={{ display: widgetLoaded ? "block" : "none" }}
+        />
       )}
       {!widgetLoaded && <FallbackCarousel />}
 
       {trustpilotUrl && (
-        <div className="text-center mt-6">
-          <a href={trustpilotUrl} target="_blank" rel="noopener noreferrer"
-            className="text-sm text-green-600 hover:text-green-700 font-medium hover:underline">
-            Read all reviews on Trustpilot →
+        <div className="mt-6 text-center">
+          <a
+            href={trustpilotUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-medium text-primary hover:underline"
+          >
+            {t("home.trustPilotReadAll")}
           </a>
         </div>
       )}
@@ -59,33 +84,42 @@ export function TrustpilotCarousel() {
 
 function FallbackCarousel() {
   const [current, setCurrent] = useState(0);
-  const intervalRef = useRef<ReturnType<typeof setInterval>>();
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const visibleCount = 3;
   const maxIndex = STATIC_REVIEWS.length - visibleCount;
 
   useEffect(() => {
     intervalRef.current = setInterval(() => setCurrent((p) => (p >= maxIndex ? 0 : p + 1)), 5000);
-    return () => clearInterval(intervalRef.current);
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
   }, [maxIndex]);
 
   return (
-    <div className="relative max-w-5xl mx-auto">
-      <button onClick={() => setCurrent((p) => Math.max(0, p - 1))} disabled={current === 0}
-        className="absolute -left-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-card shadow-md flex items-center justify-center disabled:opacity-30 hover:bg-muted">
+    <div className="relative mx-auto max-w-5xl">
+      <button
+        type="button"
+        onClick={() => setCurrent((p) => Math.max(0, p - 1))}
+        disabled={current === 0}
+        className="absolute -left-4 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-card shadow-md hover:bg-muted disabled:opacity-30"
+      >
         <ChevronLeft className="h-5 w-5" />
       </button>
       <div className="overflow-hidden">
-        <div className="flex transition-transform duration-500 ease-in-out" style={{ transform: `translateX(-${current * (100 / visibleCount)}%)` }}>
+        <div
+          className="flex transition-transform duration-500 ease-in-out"
+          style={{ transform: `translateX(-${current * (100 / visibleCount)}%)` }}
+        >
           {STATIC_REVIEWS.map((review) => (
             <div key={review.id} className="w-1/3 flex-shrink-0 px-3">
-              <div className="bg-card border rounded-xl p-5 h-full flex flex-col shadow-sm">
-                <div className="flex items-center justify-between mb-3">
+              <div className="flex h-full flex-col rounded-xl border bg-card p-5 shadow-sm">
+                <div className="mb-3 flex items-center justify-between">
                   <TrustpilotStars rating={review.rating} size="sm" />
-                  <Quote className="h-4 w-4 text-green-200" />
+                  <Quote className="h-4 w-4 text-primary/30" />
                 </div>
-                <p className="text-sm text-gray-700 flex-1 leading-relaxed mb-4">"{review.text}"</p>
+                <p className="mb-4 flex-1 text-sm leading-relaxed text-foreground/90">"{review.text}"</p>
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span className="font-medium text-gray-900">{review.name}</span>
+                  <span className="font-medium text-foreground">{review.name}</span>
                   <span>{review.date}</span>
                 </div>
               </div>
@@ -93,8 +127,12 @@ function FallbackCarousel() {
           ))}
         </div>
       </div>
-      <button onClick={() => setCurrent((p) => Math.min(maxIndex, p + 1))} disabled={current >= maxIndex}
-        className="absolute -right-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-card shadow-md flex items-center justify-center disabled:opacity-30 hover:bg-muted">
+      <button
+        type="button"
+        onClick={() => setCurrent((p) => Math.min(maxIndex, p + 1))}
+        disabled={current >= maxIndex}
+        className="absolute -right-4 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-card shadow-md hover:bg-muted disabled:opacity-30"
+      >
         <ChevronRight className="h-5 w-5" />
       </button>
     </div>

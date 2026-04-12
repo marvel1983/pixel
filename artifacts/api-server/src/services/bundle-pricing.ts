@@ -37,7 +37,9 @@ export async function loadBundlePriceMap(items: OrderItem[]): Promise<BundlePric
     }
 
     const individualTotal = [...minByProduct.values()].reduce((s, v) => s + parseFloat(v.price), 0);
-    if (individualTotal <= 0) continue;
+    if (individualTotal === 0) {
+      throw new Error(`Bundle ${bid} has zero individual total — cannot compute price ratio`);
+    }
     const ratio = parseFloat(b.bundlePriceUsd) / individualTotal;
 
     for (const [, v] of minByProduct) {

@@ -5,6 +5,9 @@ import { eq, desc, sql, and, or, ilike, gte, lte, inArray, count, sum } from "dr
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import { decrypt } from "../lib/encryption";
+import { paramString } from "../lib/route-params";
+import { awardOrderPoints, reverseOrderLoyaltyPoints } from "../services/loyalty-service";
+import { logger } from "../lib/logger";
 
 const router = Router();
 
@@ -84,7 +87,7 @@ router.get("/admin/orders", requireAuth, requireAdmin, requirePermission("manage
 });
 
 router.get("/admin/orders/:id", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) {
     res.status(400).json({ error: "Invalid order ID" });
     return;
@@ -136,14 +139,29 @@ router.get("/admin/orders/:id", requireAuth, requireAdmin, requirePermission("ma
 });
 
 router.patch("/admin/orders/:id/status", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid order ID" }); return; }
   const validStatuses = ["PENDING", "PROCESSING", "COMPLETED", "FAILED", "REFUNDED", "PARTIALLY_REFUNDED"];
   const { status } = req.body;
   if (!validStatuses.includes(status)) { res.status(400).json({ error: "Invalid status" }); return; }
-  const [order] = await db.select({ id: orders.id }).from(orders).where(eq(orders.id, id));
+  const [order] = await db.select({ id: orders.id, userId: orders.userId, totalUsd: orders.totalUsd }).from(orders).where(eq(orders.id, id));
   if (!order) { res.status(404).json({ error: "Order not found" }); return; }
   await db.update(orders).set({ status, updatedAt: new Date() }).where(eq(orders.id, id));
+
+  // Loyalty side-effects (non-fatal)
+  if (status === "COMPLETED" && order.userId) {
+    awardOrderPoints(order.userId, id, parseFloat(order.totalUsd)).catch((err) => {
+      logger.error({ err, orderId: id }, "Failed to award loyalty points on admin status change (non-fatal)");
+    });
+  } else if ((status === "REFUNDED" || status === "PARTIALLY_REFUNDED") && order.userId) {
+    const orderTotal = parseFloat(order.totalUsd);
+    // For a full refund transition treat the refund amount as the full order total
+    const refundAmount = status === "REFUNDED" ? orderTotal : orderTotal;
+    reverseOrderLoyaltyPoints(id, refundAmount, orderTotal).catch((err) => {
+      logger.error({ err, orderId: id }, "Failed to reverse loyalty points on admin status change (non-fatal)");
+    });
+  }
+
   res.json({ success: true });
 });
 
@@ -157,14 +175,14 @@ router.post("/admin/orders/bulk-status", requireAuth, requireAdmin, requirePermi
 });
 
 router.patch("/admin/orders/:id/notes", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid order ID" }); return; }
   await db.update(orders).set({ notes: req.body.notes ?? null, updatedAt: new Date() }).where(eq(orders.id, id));
   res.json({ success: true });
 });
 
 router.post("/admin/orders/:id/resend-email", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid order ID" }); return; }
   const [order] = await db.select({ id: orders.id, orderNumber: orders.orderNumber }).from(orders).where(eq(orders.id, id));
   if (!order) { res.status(404).json({ error: "Order not found" }); return; }

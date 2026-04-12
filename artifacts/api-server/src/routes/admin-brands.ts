@@ -4,6 +4,7 @@ import { brandSections } from "@workspace/db/schema";
 import { eq, asc } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
+import { paramString } from "../lib/route-params";
 
 const router = Router();
 
@@ -40,7 +41,7 @@ router.put("/admin/brand-sections/reorder", requireAuth, requireAdmin, requirePe
 });
 
 router.put("/admin/brand-sections/:id", requireAuth, requireAdmin, requirePermission("manageContent"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const { name, slug, bannerImage, bgColor, title, description, marketingPoints, productIds, isEnabled } = req.body;
   const updates: Record<string, unknown> = { updatedAt: new Date() };
@@ -58,7 +59,7 @@ router.put("/admin/brand-sections/:id", requireAuth, requireAdmin, requirePermis
 });
 
 router.delete("/admin/brand-sections/:id", requireAuth, requireAdmin, requirePermission("manageContent"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   await db.delete(brandSections).where(eq(brandSections.id, id));
   res.json({ success: true });

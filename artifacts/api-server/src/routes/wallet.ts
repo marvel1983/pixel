@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, count } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { walletTransactions } from "@workspace/db/schema";
 import { requireAuth } from "../middleware/auth";
@@ -23,14 +23,22 @@ router.get("/wallet/balance", requireAuth, async (req, res) => {
 router.get("/wallet/transactions", requireAuth, async (req, res) => {
   const userId = req.user!.userId;
   const page = Math.max(1, parseInt(req.query.page as string) || 1);
-  const limit = 20;
+  const limitRaw = parseInt(req.query.limit as string) || 20;
+  const limit = Math.min(50, Math.max(1, limitRaw));
+
+  const [countRow] = await db
+    .select({ total: count() })
+    .from(walletTransactions)
+    .where(eq(walletTransactions.userId, userId));
+
+  const total = Number(countRow?.total ?? 0);
 
   const txs = await db.select().from(walletTransactions)
     .where(eq(walletTransactions.userId, userId))
     .orderBy(desc(walletTransactions.createdAt))
     .limit(limit).offset((page - 1) * limit);
 
-  res.json({ transactions: txs, page, limit });
+  res.json({ transactions: txs, page, limit, total });
 });
 
 const topUpSchema = z.object({

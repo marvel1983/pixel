@@ -4,6 +4,7 @@ import { newsletterSubscribers, newsletterSettings } from "@workspace/db/schema"
 import { eq, count, ilike, or, desc, inArray, type SQL, and } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
+import { paramString } from "../lib/route-params";
 
 const router = Router();
 const guard = [requireAuth, requireAdmin, requirePermission("manageSettings")];
@@ -57,7 +58,7 @@ router.get("/admin/newsletter/subscribers", ...guard, async (req, res) => {
 });
 
 router.delete("/admin/newsletter/subscribers/:id", ...guard, async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(paramString(req.params, "id"));
   if (isNaN(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
   const [deleted] = await db.delete(newsletterSubscribers)
     .where(eq(newsletterSubscribers.id, id)).returning({ id: newsletterSubscribers.id });

@@ -78,6 +78,8 @@ export const productVariants = pgTable("product_variants", {
     scale: 2,
   }),
   priceOverrideUsd: numeric("price_override_usd", { precision: 10, scale: 2 }),
+  costPriceUsd: numeric("cost_price_usd", { precision: 10, scale: 2 }),
+  b2bPriceUsd: numeric("b2b_price_usd", { precision: 10, scale: 2 }),
   stockCount: integer("stock_count").notNull().default(0),
   lowStockThreshold: integer("low_stock_threshold").notNull().default(5),
   isActive: boolean("is_active").notNull().default(true),

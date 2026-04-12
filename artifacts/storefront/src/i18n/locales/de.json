@@ -57,7 +57,10 @@
     "proceedToCheckout": "Zur Kasse gehen",
     "continueShopping": "Weiter einkaufen",
     "cartTotals": "Warenkorb-Summe",
-    "taxesNote": "Steuern werden an der Kasse berechnet"
+    "taxesNote": "Steuern werden an der Kasse berechnet",
+    "storeCreditAvailable": "Shop-Guthaben verfügbar: {{amount}} $",
+    "storeCreditManage": "Shop-Guthaben & Verlauf",
+    "storeCreditCheckoutOnly": "Nur an der Kasse verwendbar — der Warenkorb zieht kein Guthaben ab."
   },
   "checkout": {
     "title": "Kasse",
@@ -97,7 +100,15 @@
     "invalidGiftCard": "Ungültige Geschenkkarte",
     "remaining": "{{amount}} übrig",
     "apply": "Einlösen",
-    "tryAgain": "Bitte versuchen Sie es erneut"
+    "tryAgain": "Bitte versuchen Sie es erneut",
+    "walletPayTitle": "Mit Shop-Guthaben zahlen",
+    "walletBalanceLabel": "Shop-Guthaben: {{amount}} $",
+    "walletManageBalanceLink": "Shop-Guthaben verwalten",
+    "walletUseFull": "Gesamtes Guthaben nutzen ({{amount}} $)",
+    "walletCustomAmount": "Eigener Betrag",
+    "walletApplied": "-{{amount}} $ vom Shop-Guthaben",
+    "walletCoversFull": "(deckt die ganze Bestellung)",
+    "walletStaleBalanceWarning": "Guthaben konnte nicht aktualisiert werden. Der angezeigte Betrag kann veraltet sein — vor dem Zahlen aktualisieren oder fortfahren, wenn Sie sicher sind."
   },
   "product": {
     "addToCart": "In den Warenkorb",
@@ -244,7 +255,7 @@
     "title": "Mein Konto",
     "profile": "Profil",
     "orders": "Bestellungen",
-    "wallet": "Guthaben",
+    "wallet": "Shop-Guthaben",
     "security": "Sicherheit",
     "preferences": "Einstellungen"
   },

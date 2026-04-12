@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, DollarSign, Webhook, FileText, KeyRound, AlertTriangle } from "lucide-react";
@@ -33,15 +32,17 @@ export default function MetenziBalancePage() {
   useEffect(() => { fetchAll(); }, [fetchAll]);
   useEffect(() => { const iv = setInterval(fetchAll, 60000); return () => clearInterval(iv); }, [fetchAll]);
 
-  if (loading && !balance) return <div className="flex items-center justify-center py-12 text-muted-foreground">Loading...</div>;
+  if (loading && !balance) return <div className="flex items-center justify-center py-12 text-[#5a6a84]">Loading...</div>;
   if (balance && !balance.configured) return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold tracking-tight">Metenzi Balance</h1>
-      <Card><CardContent className="py-12 text-center">
-        <AlertTriangle className="mx-auto h-12 w-12 text-yellow-500 mb-4" />
-        <p className="text-lg font-medium">Metenzi API not configured</p>
-        <p className="text-sm text-muted-foreground mt-2">Set up your API keys in Settings → API Keys to enable this page.</p>
-      </CardContent></Card>
+      <div className="rounded-lg border border-[#2e3340] bg-[#181c24]" style={{boxShadow:"0 2px 8px rgba(0,0,0,0.35)"}}>
+        <div className="py-12 text-center">
+          <AlertTriangle className="mx-auto h-12 w-12 text-yellow-500 mb-4" />
+          <p className="text-lg font-medium text-[#dde4f0]">Metenzi API not configured</p>
+          <p className="text-sm text-[#5a6a84] mt-2">Set up your API keys in Settings → API Keys to enable this page.</p>
+        </div>
+      </div>
     </div>
   );
 
@@ -50,63 +51,80 @@ export default function MetenziBalancePage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Metenzi Balance</h1>
-          <p className="text-sm text-muted-foreground">Last refreshed: {lastRefresh.toLocaleTimeString()} (auto-refresh every 60s)</p>
+          <p className="text-sm text-[#5a6a84]">Last refreshed: {lastRefresh.toLocaleTimeString()} (auto-refresh every 60s)</p>
         </div>
         <Button variant="outline" onClick={fetchAll} disabled={loading}><RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />Refresh</Button>
       </div>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Account Balance</CardTitle><DollarSign className="h-4 w-4 text-muted-foreground" /></CardHeader>
-          <CardContent>
-            {balance?.error ? <p className="text-sm text-red-500">{balance.error}</p>
-              : <p className="text-2xl font-bold">${(balance?.balance ?? 0).toFixed(2)} <span className="text-sm font-normal text-muted-foreground">{balance?.currency}</span></p>}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Webhooks</CardTitle><Webhook className="h-4 w-4 text-muted-foreground" /></CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{status?.webhooks?.active ?? 0}<span className="text-sm font-normal text-muted-foreground"> / {status?.webhooks?.total ?? 0}</span></p>
-            <p className="text-xs text-muted-foreground">active webhooks</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Recent Claims</CardTitle><FileText className="h-4 w-4 text-muted-foreground" /></CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{status?.claims?.total ?? 0}</p>
-            {(status?.claims?.pending ?? 0) > 0 && <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 mt-1">{status?.claims?.pending} pending</Badge>}
-            {(status?.claims?.pending ?? 0) === 0 && <p className="text-xs text-muted-foreground">no pending claims</p>}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">API Key Status</CardTitle><KeyRound className="h-4 w-4 text-muted-foreground" /></CardHeader>
-          <CardContent>
-            {keyInfo?.lastRotated ? (<>
-              <p className="text-2xl font-bold">{keyInfo.daysSinceRotation}d</p>
-              <p className="text-xs text-muted-foreground">since last rotation</p>
+        {[
+          {
+            icon: DollarSign,
+            title: "Account Balance",
+            content: balance?.error
+              ? <p className="text-sm text-red-400">{balance.error}</p>
+              : <p className="text-2xl font-bold text-[#dde4f0]">${(balance?.balance ?? 0).toFixed(2)} <span className="text-sm font-normal text-[#5a6a84]">{balance?.currency}</span></p>
+          },
+          {
+            icon: Webhook,
+            title: "Webhooks",
+            content: <>
+              <p className="text-2xl font-bold text-[#dde4f0]">{status?.webhooks?.active ?? 0}<span className="text-sm font-normal text-[#5a6a84]"> / {status?.webhooks?.total ?? 0}</span></p>
+              <p className="text-xs text-[#5a6a84]">active webhooks</p>
+            </>
+          },
+          {
+            icon: FileText,
+            title: "Recent Claims",
+            content: <>
+              <p className="text-2xl font-bold text-[#dde4f0]">{status?.claims?.total ?? 0}</p>
+              {(status?.claims?.pending ?? 0) > 0 && <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 mt-1">{status?.claims?.pending} pending</Badge>}
+              {(status?.claims?.pending ?? 0) === 0 && <p className="text-xs text-[#5a6a84]">no pending claims</p>}
+            </>
+          },
+          {
+            icon: KeyRound,
+            title: "API Key Status",
+            content: keyInfo?.lastRotated ? <>
+              <p className="text-2xl font-bold text-[#dde4f0]">{keyInfo.daysSinceRotation}d</p>
+              <p className="text-xs text-[#5a6a84]">since last rotation</p>
               {keyInfo.needsRotation && <Badge variant="destructive" className="mt-1">Rotation recommended</Badge>}
-            </>) : <p className="text-sm text-muted-foreground">No key data</p>}
-          </CardContent>
-        </Card>
+            </> : <p className="text-sm text-[#5a6a84]">No key data</p>
+          },
+        ].map((card) => (
+          <div key={card.title} className="rounded-lg border border-[#2e3340] bg-[#181c24]" style={{boxShadow:"0 2px 8px rgba(0,0,0,0.35)"}}>
+            <div className="border-b border-[#2a2e3a] px-4 py-3 bg-[#1e2128] flex items-center justify-between">
+              <p className="text-[13px] font-bold uppercase tracking-widest">{card.title}</p>
+              <card.icon className="h-4 w-4 text-[#5a6a84]" />
+            </div>
+            <div className="px-4 py-4">{card.content}</div>
+          </div>
+        ))}
       </div>
       <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader><CardTitle className="text-base">Account Status</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">Connection</span><Badge variant={status?.isActive ? "default" : "destructive"}>{status?.isActive ? "Active" : "Inactive"}</Badge></div>
-            <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">Last Sync</span><span className="text-sm">{status?.lastSync ? new Date(status.lastSync).toLocaleString() : "Never"}</span></div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle className="text-base">Key Rotation Info</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">Last Rotated</span><span className="text-sm">{keyInfo?.lastRotated ? new Date(keyInfo.lastRotated).toLocaleDateString() : "Unknown"}</span></div>
-            <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">Days Since</span><span className="text-sm">{keyInfo?.daysSinceRotation ?? "—"}</span></div>
-            <div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">Status</span>
-              {keyInfo?.needsRotation ? <Badge variant="destructive">Rotation needed</Badge> : <Badge className="bg-green-100 text-green-800" variant="secondary">OK</Badge>}
-            </div>
-          </CardContent>
-        </Card>
+        <DarkCard title="Account Status">
+          <div className="flex items-center justify-between"><span className="text-sm text-[#5a6a84]">Connection</span><Badge variant={status?.isActive ? "default" : "destructive"}>{status?.isActive ? "Active" : "Inactive"}</Badge></div>
+          <div className="flex items-center justify-between"><span className="text-sm text-[#5a6a84]">Last Sync</span><span className="text-sm text-[#dde4f0]">{status?.lastSync ? new Date(status.lastSync).toLocaleString() : "Never"}</span></div>
+        </DarkCard>
+        <DarkCard title="Key Rotation Info">
+          <div className="flex items-center justify-between"><span className="text-sm text-[#5a6a84]">Last Rotated</span><span className="text-sm text-[#dde4f0]">{keyInfo?.lastRotated ? new Date(keyInfo.lastRotated).toLocaleDateString() : "Unknown"}</span></div>
+          <div className="flex items-center justify-between"><span className="text-sm text-[#5a6a84]">Days Since</span><span className="text-sm text-[#dde4f0]">{keyInfo?.daysSinceRotation ?? "—"}</span></div>
+          <div className="flex items-center justify-between"><span className="text-sm text-[#5a6a84]">Status</span>
+            {keyInfo?.needsRotation ? <Badge variant="destructive">Rotation needed</Badge> : <Badge className="bg-green-100 text-green-800" variant="secondary">OK</Badge>}
+          </div>
+        </DarkCard>
       </div>
+    </div>
+  );
+}
+
+function DarkCard({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-lg border border-[#2e3340] bg-[#181c24]" style={{boxShadow:"0 2px 8px rgba(0,0,0,0.35)"}}>
+      <div className="border-b border-[#2a2e3a] px-4 py-3 bg-[#1e2128]">
+        <p className="card-title text-[13px] font-bold uppercase tracking-widest">{title}</p>
+        {description && <p className="mt-0.5 text-[11px] text-[#5a6a84]">{description}</p>}
+      </div>
+      <div className="px-4 py-4 space-y-4">{children}</div>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { pages, faqs } from "@workspace/db/schema";
 import { eq, asc, count } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
+import { paramString } from "../lib/route-params";
 
 const router = Router();
 
@@ -14,7 +15,7 @@ router.get("/admin/pages", requireAuth, requireAdmin, requirePermission("manageC
 });
 
 router.get("/admin/pages/:id", requireAuth, requireAdmin, requirePermission("manageContent"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
   const [page] = await db.select().from(pages).where(eq(pages.id, id));
   if (!page) { res.status(404).json({ error: "Page not found" }); return; }
@@ -22,7 +23,7 @@ router.get("/admin/pages/:id", requireAuth, requireAdmin, requirePermission("man
 });
 
 router.put("/admin/pages/:id", requireAuth, requireAdmin, requirePermission("manageContent"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
   const { title, slug, content, metaTitle, metaDescription, isPublished, sortOrder } = req.body;
   if (!title || typeof title !== "string") { res.status(400).json({ error: "Title required" }); return; }
@@ -66,7 +67,7 @@ router.post("/admin/pages", requireAuth, requireAdmin, requirePermission("manage
 });
 
 router.delete("/admin/pages/:id", requireAuth, requireAdmin, requirePermission("manageContent"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
   await db.delete(pages).where(eq(pages.id, id));
   res.json({ success: true });
@@ -97,7 +98,7 @@ router.put("/admin/faqs/bulk", requireAuth, requireAdmin, requirePermission("man
 });
 
 router.get("/pages/:slug", async (req, res) => {
-  const slug = String(req.params.slug);
+  const slug = String(paramString(req.params, "slug"));
   const [page] = await db.select().from(pages).where(eq(pages.slug, slug));
   if (!page || !page.isPublished) { res.status(404).json({ error: "Page not found" }); return; }
   res.json({ page });

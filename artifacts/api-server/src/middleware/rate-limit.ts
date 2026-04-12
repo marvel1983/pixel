@@ -29,6 +29,18 @@ function getClientKey(req: Request): string {
   return req.ip ?? "unknown";
 }
 
+/** Lokalni dev + E2E: bez limita na loopbacku; produkcija ne dira. */
+function shouldSkipRateLimit(req: Request): boolean {
+  if (process.env.DISABLE_RATE_LIMIT === "1") return true;
+  if (process.env.NODE_ENV !== "development") return false;
+  const ip = req.ip || req.socket.remoteAddress || "";
+  return (
+    ip === "127.0.0.1" ||
+    ip === "::1" ||
+    ip === "::ffff:127.0.0.1"
+  );
+}
+
 interface RateLimitOptions {
   windowMs: number;
   max: number;
@@ -40,6 +52,11 @@ export function rateLimit(options: RateLimitOptions) {
   const store = getStore(name);
 
   return (req: Request, res: Response, next: NextFunction) => {
+    if (shouldSkipRateLimit(req)) {
+      next();
+      return;
+    }
+
     const key = getClientKey(req);
     const now = Date.now();
     let entry = store.get(key);
@@ -80,9 +97,9 @@ interface RateLimitConfig {
 }
 
 const config: RateLimitConfig = {
-  authLogin: 5,
-  authRegister: 3,
-  authReset: 3,
+  authLogin: 20,
+  authRegister: 10,
+  authReset: 10,
   public: 60,
   admin: 120,
 };
@@ -121,3 +138,6 @@ export const authRegisterLimit = dynamicLimit("authRegister", "auth-register");
 export const authPasswordResetLimit = dynamicLimit("authReset", "auth-reset");
 export const publicLimit = dynamicLimit("public", "public");
 export const adminLimit = dynamicLimit("admin", "admin");
+
+/** Strict limit for guest order lookup — prevents license key enumeration */
+export const orderLookupLimit = rateLimit({ name: "order-lookup", windowMs: 15 * 60_000, max: 10 });

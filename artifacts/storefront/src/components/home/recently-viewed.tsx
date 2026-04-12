@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { ProductCard } from "@/components/product/product-card";
 import { MOCK_PRODUCTS, type MockProduct } from "@/lib/mock-data";
 
@@ -30,6 +31,7 @@ function getRecentlyViewedIds(): number[] {
 }
 
 export function RecentlyViewed() {
+  const { t } = useTranslation();
   const [products, setProducts] = useState<MockProduct[]>([]);
 
   useEffect(() => {
@@ -43,9 +45,9 @@ export function RecentlyViewed() {
   if (products.length === 0) return null;
 
   return (
-    <section>
-      <h2 className="text-lg font-bold text-foreground mb-4">
-        Recently Viewed
+    <section aria-labelledby="recently-viewed-heading">
+      <h2 id="recently-viewed-heading" className="mb-4 text-lg font-bold text-foreground">
+        {t("home.recentlyViewed")}
       </h2>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {products.map((product) => (

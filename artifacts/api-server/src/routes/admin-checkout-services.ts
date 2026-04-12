@@ -4,6 +4,7 @@ import { checkoutServices } from "@workspace/db/schema";
 import { eq, asc } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
+import { paramString } from "../lib/route-params";
 
 const router = Router();
 const auth = [requireAuth, requireAdmin, requirePermission("manageSettings")];
@@ -43,7 +44,7 @@ router.post("/admin/checkout-services", ...auth, async (req, res) => {
 });
 
 router.put("/admin/checkout-services/:id", ...auth, async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(paramString(req.params, "id"));
   const [existing] = await db.select().from(checkoutServices).where(eq(checkoutServices.id, id));
   if (!existing) { res.status(404).json({ error: "Service not found" }); return; }
 
@@ -71,7 +72,7 @@ router.put("/admin/checkout-services/:id", ...auth, async (req, res) => {
 });
 
 router.delete("/admin/checkout-services/:id", ...auth, async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(paramString(req.params, "id"));
   const [existing] = await db.select().from(checkoutServices).where(eq(checkoutServices.id, id));
   if (!existing) { res.status(404).json({ error: "Service not found" }); return; }
   await db.delete(checkoutServices).where(eq(checkoutServices.id, id));

@@ -4,6 +4,7 @@ import { checkoutUpsell, products, productVariants } from "@workspace/db/schema"
 import { eq, desc, and } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
+import { paramString } from "../lib/route-params";
 
 const router = Router();
 
@@ -69,7 +70,7 @@ router.post("/admin/checkout-upsell", requireAuth, requireAdmin, requirePermissi
 });
 
 router.patch("/admin/checkout-upsell/:id/toggle", requireAuth, requireAdmin, requirePermission("manageDiscounts"), async (req, res) => {
-  const id = Number(req.params.id);
+  const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const [row] = await db.select({ isActive: checkoutUpsell.isActive }).from(checkoutUpsell).where(eq(checkoutUpsell.id, id));
   if (!row) { res.status(404).json({ error: "Not found" }); return; }

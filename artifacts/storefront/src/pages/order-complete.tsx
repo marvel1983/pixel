@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Breadcrumbs } from "@/components/shop/breadcrumbs";
 import { CartProgress } from "@/components/cart/cart-progress";
 import { OrderDetail } from "@/components/orders/order-detail";
+import { useAuthStore } from "@/stores/auth-store";
+import { useLoyaltyStore } from "@/stores/loyalty-store";
 
 interface OrderResponse {
   order: {
@@ -39,6 +41,8 @@ export default function OrderCompletePage() {
   const orderNumber = params.orderNumber ?? "";
   const [data, setData] = useState<OrderResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const { isAuthenticated } = useAuthStore();
+  const loyaltyConfig = useLoyaltyStore((s) => s.config);
 
   useEffect(() => {
     if (!orderNumber) return;
@@ -75,6 +79,15 @@ export default function OrderCompletePage() {
           <p className="text-muted-foreground">
             {t("order.thankYou")}
           </p>
+          {isAuthenticated() && loyaltyConfig?.enabled && data?.order?.totalUsd && (
+            <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800 px-4 py-2 text-green-700 dark:text-green-400 text-sm font-medium">
+              🎯 You earned approximately{" "}
+              {Math.floor(
+                parseFloat(data.order.totalUsd) * loyaltyConfig.pointsPerDollar
+              ).toLocaleString()}{" "}
+              points for this order!
+            </div>
+          )}
         </div>
 
         {loading && (

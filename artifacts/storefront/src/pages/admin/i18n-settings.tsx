@@ -1,14 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Globe, Plus, Trash2, Loader2, Star, Database } from "lucide-react";
 import { useAuthStore } from "@/stores/auth-store";
 import { useToast } from "@/hooks/use-toast";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
+
+const inputCls = "w-full rounded border border-[#2e3340] bg-[#0f1117] px-3 py-2 text-[13px] text-[#dde4f0] placeholder:text-[#3d5070] focus:border-sky-500/60 focus:outline-none focus:ring-1 focus:ring-sky-500/30";
 
 interface Locale { id: number; code: string; name: string; flag: string; enabled: boolean; isDefault: boolean }
 interface Override { id: number; locale: string; key: string; value: string }
@@ -85,79 +85,103 @@ export default function I18nSettingsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Language Settings</h1>
-          <p className="text-sm text-muted-foreground">Manage supported languages and translation overrides</p>
+          <p className="text-sm text-[#5a6a84]">Manage supported languages and translation overrides</p>
         </div>
-        {locales.length === 0 && <Button onClick={seed}><Database className="h-4 w-4 mr-1" /> Seed Defaults</Button>}
+        {locales.length === 0 && (
+          <button
+            onClick={seed}
+            className="flex items-center gap-2 rounded border border-sky-500 bg-sky-600 px-4 py-2 text-[13px] font-semibold text-white hover:bg-sky-500 disabled:opacity-50 transition-colors"
+          >
+            <Database className="h-4 w-4" /> Seed Defaults
+          </button>
+        )}
       </div>
 
-      <Card>
-        <CardHeader><CardTitle className="text-base flex items-center gap-2"><Globe className="h-4 w-4" /> Supported Languages</CardTitle></CardHeader>
-        <CardContent>
-          <div className="divide-y">
-            {locales.map((loc) => (
-              <div key={loc.code} className="flex items-center gap-4 py-3">
-                <span className="text-2xl">{loc.flag}</span>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">{loc.name}</span>
-                    <Badge variant="outline" className="text-xs">{loc.code}</Badge>
-                    {loc.isDefault && <Badge className="bg-blue-100 text-blue-800 text-xs">Default</Badge>}
-                  </div>
-                </div>
+      <DarkCard title="Supported Languages">
+        <div className="divide-y divide-[#2a2e3a]">
+          {locales.map((loc) => (
+            <div key={loc.code} className="flex items-center gap-4 py-3">
+              <span className="text-2xl">{loc.flag}</span>
+              <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  {!loc.isDefault && (
-                    <Button variant="ghost" size="sm" onClick={() => setDefault(loc.code)}>
-                      <Star className="h-3.5 w-3.5 mr-1" /> Set Default
-                    </Button>
-                  )}
-                  <Switch checked={loc.enabled} onCheckedChange={(v) => toggleLocale(loc.code, v)} disabled={loc.isDefault} />
+                  <span className="font-medium text-[#dde4f0]">{loc.name}</span>
+                  <Badge variant="outline" className="text-xs">{loc.code}</Badge>
+                  {loc.isDefault && <Badge className="bg-blue-100 text-blue-800 text-xs">Default</Badge>}
                 </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {!loc.isDefault && (
+                  <Button variant="ghost" size="sm" onClick={() => setDefault(loc.code)}>
+                    <Star className="h-3.5 w-3.5 mr-1" /> Set Default
+                  </Button>
+                )}
+                <Switch checked={loc.enabled} onCheckedChange={(v) => toggleLocale(loc.code, v)} disabled={loc.isDefault} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </DarkCard>
+
+      <DarkCard title="Translation Overrides">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[12px] text-[#5a6a84]">Filter by language</span>
+          <select
+            className="rounded border border-[#2e3340] bg-[#0f1117] px-2 py-1 text-[12px] text-[#dde4f0] focus:outline-none"
+            value={filterLocale}
+            onChange={(e) => setFilterLocale(e.target.value)}
+          >
+            <option value="">All languages</option>
+            {locales.map((l) => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}
+          </select>
+        </div>
+        <div className="flex gap-2">
+          <select
+            className="rounded border border-[#2e3340] bg-[#0f1117] px-2 py-1 text-[12px] text-[#dde4f0] focus:outline-none"
+            value={newLocale}
+            onChange={(e) => setNewLocale(e.target.value)}
+          >
+            {locales.map((l) => <option key={l.code} value={l.code}>{l.flag} {l.code}</option>)}
+          </select>
+          <input className={inputCls} placeholder="Translation key (e.g. nav.bestSellers)" value={newKey} onChange={(e) => setNewKey(e.target.value)} />
+          <input className={inputCls} placeholder="Override value" value={newValue} onChange={(e) => setNewValue(e.target.value)} />
+          <button
+            onClick={addOverride}
+            disabled={saving || !newKey || !newValue}
+            className="flex items-center gap-1 rounded border border-sky-500 bg-sky-600 px-3 py-2 text-[13px] font-semibold text-white hover:bg-sky-500 disabled:opacity-50 transition-colors whitespace-nowrap"
+          >
+            <Plus className="h-4 w-4" /> Add
+          </button>
+        </div>
+
+        {overrides.length === 0 ? (
+          <p className="text-sm text-[#5a6a84] text-center py-4">No translation overrides yet. Add one above to customize any translation string.</p>
+        ) : (
+          <div className="border border-[#2e3340] rounded-lg divide-y divide-[#1f2840] max-h-96 overflow-y-auto">
+            {overrides.map((o) => (
+              <div key={o.id} className="flex items-center gap-3 px-3 py-2 text-sm bg-[#0f1117] hover:bg-[#111825]">
+                <Badge variant="outline" className="shrink-0">{o.locale}</Badge>
+                <span className="text-[#5a6a84] font-mono text-xs flex-1 truncate">{o.key}</span>
+                <span className="flex-1 truncate text-[#dde4f0]">{o.value}</span>
+                <Button variant="ghost" size="sm" onClick={() => deleteOverride(o.id)}>
+                  <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                </Button>
               </div>
             ))}
           </div>
-        </CardContent>
-      </Card>
+        )}
+      </DarkCard>
+    </div>
+  );
+}
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base">Translation Overrides</CardTitle>
-            <select className="text-sm border rounded px-2 py-1" value={filterLocale} onChange={(e) => setFilterLocale(e.target.value)}>
-              <option value="">All languages</option>
-              {locales.map((l) => <option key={l.code} value={l.code}>{l.flag} {l.name}</option>)}
-            </select>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex gap-2">
-            <select className="border rounded px-2 py-1 text-sm" value={newLocale} onChange={(e) => setNewLocale(e.target.value)}>
-              {locales.map((l) => <option key={l.code} value={l.code}>{l.flag} {l.code}</option>)}
-            </select>
-            <Input placeholder="Translation key (e.g. nav.bestSellers)" value={newKey} onChange={(e) => setNewKey(e.target.value)} className="flex-1" />
-            <Input placeholder="Override value" value={newValue} onChange={(e) => setNewValue(e.target.value)} className="flex-1" />
-            <Button onClick={addOverride} disabled={saving || !newKey || !newValue}>
-              <Plus className="h-4 w-4 mr-1" /> Add
-            </Button>
-          </div>
-
-          {overrides.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">No translation overrides yet. Add one above to customize any translation string.</p>
-          ) : (
-            <div className="border rounded-lg divide-y max-h-96 overflow-y-auto">
-              {overrides.map((o) => (
-                <div key={o.id} className="flex items-center gap-3 px-3 py-2 text-sm">
-                  <Badge variant="outline" className="shrink-0">{o.locale}</Badge>
-                  <span className="text-muted-foreground font-mono text-xs flex-1 truncate">{o.key}</span>
-                  <span className="flex-1 truncate">{o.value}</span>
-                  <Button variant="ghost" size="sm" onClick={() => deleteOverride(o.id)}>
-                    <Trash2 className="h-3.5 w-3.5 text-red-500" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+function DarkCard({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-lg border border-[#2e3340] bg-[#181c24]" style={{boxShadow:"0 2px 8px rgba(0,0,0,0.35)"}}>
+      <div className="border-b border-[#2a2e3a] px-4 py-3 bg-[#1e2128]">
+        <p className="card-title text-[13px] font-bold uppercase tracking-widest">{title}</p>
+        {description && <p className="mt-0.5 text-[11px] text-[#5a6a84]">{description}</p>}
+      </div>
+      <div className="px-4 py-4 space-y-4">{children}</div>
     </div>
   );
 }

@@ -70,6 +70,21 @@ router.post("/auth/register", authRegisterLimit, async (req, res) => {
   const passwordHash = await bcrypt.hash(password, 12);
   const locale = typeof req.body.locale === "string" ? req.body.locale.slice(0, 10) : undefined;
 
+  // Resolve referral code if provided
+  let referredByUserId: number | undefined;
+  const rawReferralCode = typeof req.body.referralCode === "string" ? req.body.referralCode.trim() : undefined;
+  if (rawReferralCode && rawReferralCode.toUpperCase().startsWith("REF")) {
+    const referrerId = parseInt(rawReferralCode.slice(3), 10);
+    if (Number.isInteger(referrerId) && referrerId > 0) {
+      const [referrer] = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.id, referrerId))
+        .limit(1);
+      if (referrer) referredByUserId = referrer.id;
+    }
+  }
+
   const [user] = await db
     .insert(users)
     .values({
@@ -81,6 +96,7 @@ router.post("/auth/register", authRegisterLimit, async (req, res) => {
       isActive: true,
       emailVerified: false,
       ...(locale ? { preferredLocale: locale } : {}),
+      ...(referredByUserId !== undefined ? { referredByUserId } : {}),
     })
     .returning();
 

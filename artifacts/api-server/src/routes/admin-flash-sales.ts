@@ -4,6 +4,7 @@ import { flashSales, flashSaleProducts, products, productVariants } from "@works
 import { eq, desc, sql, and, inArray } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { z } from "zod";
+import { paramString } from "../lib/route-params";
 
 const router = Router();
 const guard = [requireAuth, requireAdmin];
@@ -28,7 +29,7 @@ router.get("/admin/flash-sales", ...guard, async (_req, res) => {
 });
 
 router.get("/admin/flash-sales/:id", ...guard, async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(paramString(req.params, "id"));
   if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
 
   const [sale] = await db.select().from(flashSales).where(eq(flashSales.id, id));
@@ -97,7 +98,7 @@ router.post("/admin/flash-sales", ...guard, async (req, res) => {
 });
 
 router.put("/admin/flash-sales/:id", ...guard, async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(paramString(req.params, "id"));
   if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
 
   const parsed = saleSchema.safeParse(req.body);
@@ -124,14 +125,14 @@ router.put("/admin/flash-sales/:id", ...guard, async (req, res) => {
 });
 
 router.delete("/admin/flash-sales/:id", ...guard, async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(paramString(req.params, "id"));
   if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
   await db.delete(flashSales).where(eq(flashSales.id, id));
   res.json({ success: true });
 });
 
 router.post("/admin/flash-sales/:id/duplicate", ...guard, async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(paramString(req.params, "id"));
   if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
 
   const [orig] = await db.select().from(flashSales).where(eq(flashSales.id, id));
@@ -167,7 +168,7 @@ router.post("/admin/flash-sales/:id/duplicate", ...guard, async (req, res) => {
 });
 
 router.get("/admin/flash-sales/:id/analytics", ...guard, async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(paramString(req.params, "id"));
   if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
 
   const items = await db.select({

@@ -57,7 +57,10 @@
     "proceedToCheckout": "Przejdź do kasy",
     "continueShopping": "Kontynuuj zakupy",
     "cartTotals": "Podsumowanie koszyka",
-    "taxesNote": "Podatki naliczane przy kasie"
+    "taxesNote": "Podatki naliczane przy kasie",
+    "storeCreditAvailable": "Dostępny kredyt sklepu: {{amount}} $",
+    "storeCreditManage": "Kredyt sklepu i historia",
+    "storeCreditCheckoutOnly": "Użycie tylko przy kasie — koszyk nie odejmuje kredytu automatycznie."
   },
   "checkout": {
     "title": "Zamówienie",
@@ -97,7 +100,15 @@
     "invalidGiftCard": "Nieprawidłowa karta podarunkowa",
     "remaining": "{{amount}} pozostało",
     "apply": "Zastosuj",
-    "tryAgain": "Spróbuj ponownie"
+    "tryAgain": "Spróbuj ponownie",
+    "walletPayTitle": "Zapłać kredytem sklepu",
+    "walletBalanceLabel": "Kredyt sklepu: {{amount}} $",
+    "walletManageBalanceLink": "Zarządzaj kredytem sklepu",
+    "walletUseFull": "Użyj całego salda ({{amount}} $)",
+    "walletCustomAmount": "Własna kwota",
+    "walletApplied": "-{{amount}} $ z kredytu sklepu",
+    "walletCoversFull": "(pokrywa całe zamówienie)",
+    "walletStaleBalanceWarning": "Nie udało się odświeżyć salda. Kwota może być nieaktualna — odśwież przed płatnością lub kontynuuj, jeśli jesteś pewien."
   },
   "product": {
     "addToCart": "Dodaj do koszyka",
@@ -244,7 +255,7 @@
     "title": "Moje konto",
     "profile": "Profil",
     "orders": "Zamówienia",
-    "wallet": "Portfel",
+    "wallet": "Kredyt sklepu",
     "security": "Bezpieczeństwo",
     "preferences": "Preferencje"
   },

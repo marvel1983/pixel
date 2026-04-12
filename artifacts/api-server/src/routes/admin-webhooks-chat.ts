@@ -6,6 +6,7 @@ import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import { getMetenziConfig } from "../lib/metenzi-config";
 import { listWebhooks, createWebhook, deleteWebhook } from "../lib/metenzi-endpoints";
+import { paramString } from "../lib/route-params";
 
 const router = Router();
 
@@ -41,7 +42,7 @@ router.delete("/admin/settings/webhooks/:id", requireAuth, requireAdmin, require
   const config = await getMetenziConfig();
   if (!config) { res.status(400).json({ error: "Metenzi API not configured" }); return; }
   try {
-    const ok = await deleteWebhook(config, req.params.id);
+    const ok = await deleteWebhook(config, paramString(req.params, "id"));
     if (ok) { res.json({ success: true }); } else { res.status(500).json({ error: "Failed to delete webhook" }); }
   } catch (e) { res.status(500).json({ error: (e as Error).message }); }
 });

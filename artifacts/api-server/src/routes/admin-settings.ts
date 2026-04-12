@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import { encrypt, decrypt } from "../lib/encryption";
+import { logger } from "../lib/logger";
 
 const router = Router();
 
@@ -87,7 +88,7 @@ router.post("/admin/settings/api-keys/reveal", requireAuth, requireAdmin, requir
   const err = validateProviderField(provider, field);
   if (err) { res.status(400).json({ error: err }); return; }
   const adminEmail = req.user?.email ?? "unknown";
-  console.log(`[AUDIT] API key reveal: provider=${provider}, field=${field}, admin=${adminEmail}, ip=${req.ip}, time=${new Date().toISOString()}`);
+  logger.info({ provider, field, admin: adminEmail, ip: req.ip }, "[AUDIT] API key reveal");
   if (provider === "metenzi") {
     const [row] = await db.select().from(apiProviders).where(eq(apiProviders.slug, "metenzi"));
     if (!row) { res.status(404).json({ error: "Provider not found" }); return; }

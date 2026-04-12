@@ -5,6 +5,7 @@ import { eq, desc, and, or, ilike, gte, lte, count } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import { processRefund, processWalletRefund, updateOrderRefundStatus } from "../lib/refund-service";
+import { paramString } from "../lib/route-params";
 
 const router = Router();
 
@@ -69,7 +70,7 @@ router.get("/admin/refunds", requireAuth, requireAdmin, requirePermission("manag
 });
 
 router.get("/admin/refunds/order/:orderId", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
-  const orderId = parseInt(req.params.orderId);
+  const orderId = parseInt(paramString(req.params, "orderId"));
   const orderRefunds = await db.select().from(refunds)
     .where(eq(refunds.orderId, orderId)).orderBy(desc(refunds.createdAt));
   const refundedTotal = orderRefunds
@@ -125,7 +126,7 @@ router.post("/admin/refunds", requireAuth, requireAdmin, requirePermission("mana
 });
 
 router.post("/admin/refunds/:id/retry", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(paramString(req.params, "id"));
   const [refund] = await db.select().from(refunds).where(eq(refunds.id, id));
   if (!refund) { res.status(404).json({ error: "Refund not found" }); return; }
   if (refund.status !== "FAILED") {

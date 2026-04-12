@@ -15,6 +15,7 @@ import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import { getMetenziConfig } from "../lib/metenzi-config";
 import { getBalance } from "../lib/metenzi-endpoints";
+import { paramString } from "../lib/route-params";
 
 const router = Router();
 
@@ -209,7 +210,7 @@ router.post(
   requireAdmin,
   requirePermission("manageProducts"),
   async (req, res) => {
-    const reviewId = Number(req.params.id);
+    const reviewId = Number(paramString(req.params, "id"));
     if (!Number.isInteger(reviewId) || reviewId <= 0) {
       res.status(400).json({ error: "Invalid review ID" });
       return;
@@ -232,7 +233,7 @@ router.delete(
   requireAdmin,
   requirePermission("manageProducts"),
   async (req, res) => {
-    const reviewId = Number(req.params.id);
+    const reviewId = Number(paramString(req.params, "id"));
     if (!Number.isInteger(reviewId) || reviewId <= 0) {
       res.status(400).json({ error: "Invalid review ID" });
       return;

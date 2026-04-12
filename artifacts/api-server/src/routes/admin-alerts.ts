@@ -4,6 +4,7 @@ import { productAlerts, alertNotifications, products, productVariants } from "@w
 import { eq, desc, sql, count, and } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
+import { paramString } from "../lib/route-params";
 
 const router = Router();
 const guard = [requireAuth, requireAdmin, requirePermission("manageOrders")];
@@ -78,7 +79,7 @@ router.get("/admin/alerts/notifications", ...guard, async (req, res) => {
 });
 
 router.delete("/admin/alerts/:id", ...guard, async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(paramString(req.params, "id"));
   await db.delete(productAlerts).where(eq(productAlerts.id, id));
   res.json({ success: true });
 });

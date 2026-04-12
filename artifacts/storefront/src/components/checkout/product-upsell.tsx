@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Package, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/stores/cart-store";
 import { useCurrencyStore } from "@/stores/currency-store";
 import { MOCK_PRODUCTS } from "@/lib/mock-data";
 import { useToast } from "@/hooks/use-toast";
+
+const API = import.meta.env.VITE_API_URL ?? "/api";
 
 interface Offer {
   id: number;
@@ -16,27 +18,65 @@ interface Offer {
   platform: string | null;
 }
 
+interface ConfiguredUpsell {
+  productId: number;
+  displayPrice: string | null;
+  strikethroughPrice: string | null;
+  urgencyMessage: string | null;
+  checkboxLabel: string | null;
+  productName: string;
+  productSlug: string;
+  productImage: string | null;
+  variantId: number;
+  variantName: string;
+  variantPrice: string;
+  platform: string | null;
+}
+
 export function ProductUpsell() {
   const items = useCartStore((s) => s.items);
   const addItem = useCartStore((s) => s.addItem);
   const { format } = useCurrencyStore();
   const { toast } = useToast();
+  const [configured, setConfigured] = useState<ConfiguredUpsell | null>(null);
   const [offers, setOffers] = useState<Offer[]>([]);
 
-  const cartProductIds = new Set(items.map((i) => i.productId));
+  const cartProductIds = items.map((i) => i.productId);
+  const cartSignature = useMemo(
+    () => items.map((i) => `${i.productId}:${i.quantity}`).join("|"),
+    [items],
+  );
 
   useEffect(() => {
-    const excludeIds = items.map((i) => i.productId).join(",");
-    const baseUrl = import.meta.env.VITE_API_URL ?? "/api";
+    let cancelled = false;
+    const excludeIds = cartProductIds.join(",");
 
-    fetch(`${baseUrl}/checkout/offers?exclude=${excludeIds}`)
-      .then((r) => r.json())
-      .then((data) => {
+    (async () => {
+      try {
+        const uRes = await fetch(`${API}/checkout/upsell`, { cache: "no-store" });
+        const uData = await uRes.json();
+        const u = uData.upsell as ConfiguredUpsell | null | undefined;
+        if (!cancelled && u && !cartProductIds.includes(u.productId)) {
+          setConfigured(u);
+          setOffers([]);
+          return;
+        }
+        if (!cancelled) setConfigured(null);
+      } catch {
+        if (!cancelled) setConfigured(null);
+      }
+
+      if (cancelled) return;
+
+      try {
+        const oRes = await fetch(`${API}/checkout/offers?exclude=${excludeIds}`);
+        const data = await oRes.json();
+        if (cancelled) return;
         if (data.offers?.length > 0) {
           setOffers(data.offers);
         } else {
           const fallback = MOCK_PRODUCTS.filter(
-            (p) => p.isFeatured && !cartProductIds.has(p.id),
+            (p) => p.isFeatured && !cartProductIds.includes(p.id),
           )
             .slice(0, 2)
             .map((p) => ({
@@ -50,10 +90,10 @@ export function ProductUpsell() {
             }));
           setOffers(fallback);
         }
-      })
-      .catch(() => {
+      } catch {
+        if (cancelled) return;
         const fallback = MOCK_PRODUCTS.filter(
-          (p) => p.isFeatured && !cartProductIds.has(p.id),
+          (p) => p.isFeatured && !cartProductIds.includes(p.id),
         )
           .slice(0, 2)
           .map((p) => ({
@@ -66,14 +106,79 @@ export function ProductUpsell() {
             platform: p.variants[0].platform,
           }));
         setOffers(fallback);
-      });
-  }, [items.length]);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [cartSignature]);
+
+  if (configured) {
+    const priceStr =
+      configured.displayPrice != null && String(configured.displayPrice).trim() !== ""
+        ? String(configured.displayPrice)
+        : configured.variantPrice;
+    const strikeStr =
+      configured.strikethroughPrice != null && String(configured.strikethroughPrice).trim() !== ""
+        ? String(configured.strikethroughPrice)
+        : null;
+    const btnLabel = configured.checkboxLabel?.trim() || "Add";
+
+    return (
+      <div className="border rounded-lg p-4 bg-blue-50/50 border-blue-200 dark:bg-blue-950/20 dark:border-blue-900">
+        <h3 className="text-sm font-semibold mb-2">Special offer</h3>
+        {configured.urgencyMessage ? (
+          <p className="text-xs text-amber-700 dark:text-amber-400 font-medium mb-3">{configured.urgencyMessage}</p>
+        ) : null}
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded bg-card border flex items-center justify-center shrink-0">
+            {configured.productImage ? (
+              <img src={configured.productImage} alt="" className="w-full h-full object-contain rounded" />
+            ) : (
+              <Package className="h-5 w-5 text-muted-foreground/40" />
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate">{configured.productName}</p>
+            <p className="text-xs text-muted-foreground">{configured.variantName}</p>
+            <div className="flex items-baseline gap-2 mt-1">
+              <span className="text-sm font-semibold">{format(parseFloat(priceStr))}</span>
+              {strikeStr ? (
+                <span className="text-xs text-muted-foreground line-through">{format(parseFloat(strikeStr))}</span>
+              ) : null}
+            </div>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 text-xs shrink-0"
+            onClick={() => {
+              addItem({
+                variantId: configured.variantId,
+                productId: configured.productId,
+                productName: configured.productName,
+                variantName: configured.variantName,
+                imageUrl: configured.productImage,
+                priceUsd: priceStr,
+                platform: configured.platform ?? undefined,
+              });
+              toast({ title: `${configured.productName} added to cart` });
+            }}
+          >
+            <Plus className="h-3 w-3 mr-1" />
+            {btnLabel}
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (offers.length === 0) return null;
 
   return (
-    <div className="border rounded-lg p-4 bg-blue-50/50 border-blue-200">
-      <h3 className="text-sm font-semibold mb-3">Complete Your Order</h3>
+    <div className="border rounded-lg p-4 bg-blue-50/50 border-blue-200 dark:bg-blue-950/20 dark:border-blue-900">
+      <h3 className="text-sm font-semibold mb-3">Complete your order</h3>
       <div className="space-y-2">
         {offers.map((o) => (
           <div key={o.variantId} className="flex items-center gap-3">
