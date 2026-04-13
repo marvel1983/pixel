@@ -79,8 +79,9 @@ export const useCurrencyStore = create<CurrencyState>()(
       },
 
       fetchRates: async () => {
-        const { lastFetched } = get();
-        if (lastFetched && Date.now() - lastFetched < RATE_CACHE_MS) return;
+        const { lastFetched, rates } = get();
+        const hasRates = Object.keys(rates).length > 0;
+        if (hasRates && lastFetched && Date.now() - lastFetched < RATE_CACHE_MS) return;
         try {
           const baseUrl = import.meta.env.VITE_API_URL ?? "/api";
           const res = await fetch(`${baseUrl}/currencies`);
