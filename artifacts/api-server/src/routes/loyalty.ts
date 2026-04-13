@@ -116,6 +116,16 @@ router.post("/loyalty/preview-redeem", requireAuth, async (req, res) => {
   });
 });
 
+/** GET /loyalty/birthday — get own date of birth */
+router.get("/loyalty/birthday", requireAuth, async (req, res) => {
+  const [u] = await db
+    .select({ dateOfBirth: users.dateOfBirth })
+    .from(users)
+    .where(eq(users.id, req.user!.userId))
+    .limit(1);
+  res.json({ dateOfBirth: u?.dateOfBirth ?? null });
+});
+
 /** PUT /loyalty/birthday — set own date of birth */
 router.put("/loyalty/birthday", requireAuth, async (req, res) => {
   const { dateOfBirth } = req.body;

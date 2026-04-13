@@ -24,11 +24,11 @@ const currencyStr = z.string().regex(/^\d+(\.\d{1,2})?$/);
 const s1 = z.string().min(1);
 const billingSchema = z.object({
   email: z.string().email(), firstName: s1, lastName: s1,
-  country: s1, city: s1, address: s1, zip: s1,
+  country: s1, city: z.string().default(""), address: z.string().default(""), zip: z.string().default(""),
 });
 const itemSchema = z.object({
   variantId: z.number().int(), productId: z.number().int(),
-  productName: s1, variantName: s1, imageUrl: z.string().nullable(),
+  productName: s1, variantName: s1, imageUrl: z.string().nullish(),
   priceUsd: currencyStr, quantity: z.number().int().positive().max(99),
   platform: z.string().optional(), bundleId: z.number().int().optional(),
 });

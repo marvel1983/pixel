@@ -230,7 +230,8 @@ export default function CheckoutPage() {
         if (res.status >= 400 && res.status < 500 && res.status !== 409) {
           setIdempotencyKey(uuidV4());
         }
-        throw new Error(data.error ?? "Order failed");
+        const detail = data.details?.fieldErrors ? Object.entries(data.details.fieldErrors as Record<string, string[]>).map(([k, v]) => `${k}: ${v[0]}`).join(", ") : null;
+        throw new Error(detail ? `${data.error}: ${detail}` : (data.error ?? "Order failed"));
       }
 
       if (newsletterOptIn && billing.email) {
