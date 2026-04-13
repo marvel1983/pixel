@@ -25,6 +25,7 @@ import { CheckoutServices } from "@/components/checkout/checkout-services";
 import { TrustpilotBadge } from "@/components/trustpilot/trustpilot-badge";
 import { CheckoutRegionBlock, hasRegionMismatch } from "@/components/cart/region-warning";
 import { setSeoMeta, clearSeoMeta } from "@/lib/seo";
+import { uuidV4 } from "@/lib/uuid";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -76,7 +77,7 @@ export default function CheckoutPage() {
 
   const capturedRef = useRef("");
   const billingPrefilledRef = useRef(false);
-  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
+  const [idempotencyKey, setIdempotencyKey] = useState(() => uuidV4());
 
   useEffect(() => {
     if (!token) {
@@ -227,7 +228,7 @@ export default function CheckoutPage() {
       const data = await res.json();
       if (!res.ok) {
         if (res.status >= 400 && res.status < 500 && res.status !== 409) {
-          setIdempotencyKey(crypto.randomUUID());
+          setIdempotencyKey(uuidV4());
         }
         throw new Error(data.error ?? "Order failed");
       }
@@ -240,7 +241,7 @@ export default function CheckoutPage() {
         }).catch(() => {});
       }
 
-      setIdempotencyKey(crypto.randomUUID());
+      setIdempotencyKey(uuidV4());
       sessionStorage.setItem("checkout_email", billing.email);
       clearCart();
       setLocation(`/order-complete/${data.orderNumber}`);

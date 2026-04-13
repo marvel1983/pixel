@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthStore } from "@/stores/auth-store";
 import { Wallet, ArrowUpCircle, ArrowDownCircle, Loader2, Plus, CreditCard, ExternalLink } from "lucide-react";
+import { uuidV4 } from "@/lib/uuid";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -36,7 +37,7 @@ export function WalletTab() {
   const [cardCvc, setCardCvc] = useState("");
   const [topping, setTopping] = useState(false);
   const [showTopUp, setShowTopUp] = useState(false);
-  const idempotencyKeyRef = useRef(crypto.randomUUID());
+  const idempotencyKeyRef = useRef(uuidV4());
 
   const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 
@@ -117,11 +118,11 @@ export function WalletTab() {
       const data = await res.json();
       if (!res.ok) {
         if (res.status >= 400 && res.status < 500 && res.status !== 409) {
-          idempotencyKeyRef.current = crypto.randomUUID();
+          idempotencyKeyRef.current = uuidV4();
         }
         throw new Error(data.error);
       }
-      idempotencyKeyRef.current = crypto.randomUUID();
+      idempotencyKeyRef.current = uuidV4();
       toast({ title: t("wallet.topUpSuccess", { amount: amt.toFixed(2) }) });
       setTopUpAmount(""); setCardNumber(""); setCardExpiry(""); setCardCvc("");
       setShowTopUp(false);
