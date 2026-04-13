@@ -196,7 +196,18 @@ export default function CheckoutPage() {
     const skipCard = walletCoversAll || paymentMethod === "invoice";
     const pResult = skipCard ? { valid: true, errors: {} } : validatePayment(payment);
     setPaymentErrors(pResult.errors as Partial<Record<keyof PaymentData, string>>);
-    if (!bResult.valid || !pResult.valid) return;
+    if (!bResult.valid || !pResult.valid) {
+      const firstBillingError = Object.values(bResult.errors)[0];
+      const firstPaymentError = !pResult.valid ? Object.values(pResult.errors)[0] : null;
+      toast({
+        title: t("checkout.validationError") || "Please check your details",
+        description: firstBillingError || firstPaymentError || "Fill in all required fields before placing the order.",
+        variant: "destructive",
+      });
+      // Scroll to the top of the form so user sees the red field errors
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
 
     setSubmitting(true);
     try {
