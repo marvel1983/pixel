@@ -33,6 +33,11 @@ const updateProfileSchema = z.object({
   lastName: z.string().min(1).max(100).optional(),
   currentPassword: z.string().optional(),
   newPassword: z.string().min(8).optional(),
+  billingCountry: z.string().max(3).optional(),
+  billingCity: z.string().max(120).optional(),
+  billingAddress: z.string().max(500).optional(),
+  billingZip: z.string().max(32).optional(),
+  billingVatNumber: z.string().max(50).optional(),
 });
 
 const forgotPasswordSchema = z.object({ email: z.string().email() });
@@ -40,7 +45,27 @@ const resetPasswordSchema = z.object({ token: z.string().min(1), password: z.str
 const COOKIE_OPTS = { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax" as const, maxAge: 30 * 24 * 60 * 60 * 1000 };
 
 function sanitizeUser(u: User) {
-  return { id: u.id, email: u.email, firstName: u.firstName, lastName: u.lastName, role: u.role, avatarUrl: u.avatarUrl, emailVerified: u.emailVerified, googleId: u.googleId, createdAt: u.createdAt, preferredLocale: u.preferredLocale, preferredTheme: u.preferredTheme, isBusinessAccount: u.isBusinessAccount, businessApproved: u.businessApproved, companyName: u.companyName };
+  return {
+    id: u.id,
+    email: u.email,
+    firstName: u.firstName,
+    lastName: u.lastName,
+    role: u.role,
+    avatarUrl: u.avatarUrl,
+    emailVerified: u.emailVerified,
+    googleId: u.googleId,
+    createdAt: u.createdAt,
+    preferredLocale: u.preferredLocale,
+    preferredTheme: u.preferredTheme,
+    isBusinessAccount: u.isBusinessAccount,
+    businessApproved: u.businessApproved,
+    companyName: u.companyName,
+    billingCountry: u.billingCountry,
+    billingCity: u.billingCity,
+    billingAddress: u.billingAddress,
+    billingZip: u.billingZip,
+    billingVatNumber: u.billingVatNumber,
+  };
 }
 
 function makeToken(u: User) {
@@ -183,11 +208,26 @@ router.put("/auth/profile", requireAuth, async (req, res) => {
     return;
   }
 
-  const { firstName, lastName, currentPassword, newPassword } = parsed.data;
+  const {
+    firstName,
+    lastName,
+    currentPassword,
+    newPassword,
+    billingCountry,
+    billingCity,
+    billingAddress,
+    billingZip,
+    billingVatNumber,
+  } = parsed.data;
   const updateData: Record<string, unknown> = { updatedAt: new Date() };
 
   if (firstName) updateData.firstName = firstName;
   if (lastName) updateData.lastName = lastName;
+  if (billingCountry !== undefined) updateData.billingCountry = billingCountry || null;
+  if (billingCity !== undefined) updateData.billingCity = billingCity || null;
+  if (billingAddress !== undefined) updateData.billingAddress = billingAddress || null;
+  if (billingZip !== undefined) updateData.billingZip = billingZip || null;
+  if (billingVatNumber !== undefined) updateData.billingVatNumber = billingVatNumber || null;
 
   if (newPassword) {
     if (!currentPassword) {

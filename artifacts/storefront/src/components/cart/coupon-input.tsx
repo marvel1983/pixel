@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Tag, X, Loader2 } from "lucide-react";
+import { Tag, X, Loader2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCartStore } from "@/stores/cart-store";
@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 export function CouponInput() {
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
+  const [checkPop, setCheckPop] = useState(false);
   const coupon = useCartStore((s) => s.coupon);
   const setCoupon = useCartStore((s) => s.setCoupon);
   const { toast } = useToast();
@@ -31,6 +32,7 @@ export function CouponInput() {
           pct: data.discount,
           label: data.label,
         });
+        setCheckPop(true);
         toast({ title: "Coupon applied!", description: `${data.label} discount` });
         setCode("");
       } else {
@@ -54,12 +56,15 @@ export function CouponInput() {
   if (coupon) {
     return (
       <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 border border-green-200">
-        <Tag className="h-4 w-4 text-green-600" />
+        <Check
+          className={`h-4 w-4 text-green-600 ${checkPop ? "animate-check-pop" : ""}`}
+          onAnimationEnd={() => setCheckPop(false)}
+        />
         <span className="text-sm font-medium text-green-700 flex-1">
           {coupon.code} — {coupon.label}
         </span>
         <button
-          onClick={() => setCoupon(null)}
+          onClick={() => { setCoupon(null); setCheckPop(false); }}
           className="text-green-600 hover:text-green-800 transition-colors"
         >
           <X className="h-4 w-4" />

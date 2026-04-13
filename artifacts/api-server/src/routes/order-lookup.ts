@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { eq, and, desc, or } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { orders, orderItems, licenseKeys, type Order } from "@workspace/db/schema";
+import { orders, orderItems, licenseKeys, productVariants, products, type Order } from "@workspace/db/schema";
 import { decrypt } from "../lib/encryption";
 import { logger } from "../lib/logger";
 import { requireAuth } from "../middleware/auth";
@@ -20,13 +20,24 @@ const orderNumberSchema = z.string().min(1).max(50);
 const emailSchema = z.string().email();
 
 async function fetchOrderWithKeys(orderId: number) {
-  const items = await db
-    .select()
+  const rows = await db
+    .select({
+      id: orderItems.id,
+      variantId: orderItems.variantId,
+      productName: orderItems.productName,
+      variantName: orderItems.variantName,
+      priceUsd: orderItems.priceUsd,
+      quantity: orderItems.quantity,
+      productId: productVariants.productId,
+      imageUrl: products.imageUrl,
+    })
     .from(orderItems)
+    .leftJoin(productVariants, eq(orderItems.variantId, productVariants.id))
+    .leftJoin(products, eq(productVariants.productId, products.id))
     .where(eq(orderItems.orderId, orderId));
 
   const allKeys = await Promise.all(
-    items.map(async (item) => {
+    rows.map(async (item) => {
       const itemKeys = await db
         .select()
         .from(licenseKeys)
@@ -46,10 +57,13 @@ async function fetchOrderWithKeys(orderId: number) {
   );
 
   return {
-    items: items.map((i) => ({
+    items: rows.map((i) => ({
       id: i.id,
+      variantId: i.variantId,
+      productId: i.productId ?? 0,
       productName: i.productName,
       variantName: i.variantName,
+      imageUrl: i.imageUrl ?? null,
       priceUsd: i.priceUsd,
       quantity: i.quantity,
     })),

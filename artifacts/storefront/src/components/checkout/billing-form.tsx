@@ -27,7 +27,7 @@ interface BillingFormProps {
   showVatField?: boolean;
 }
 
-const COUNTRIES: [string, string][] = [
+export const BILLING_COUNTRIES: [string, string][] = [
   ["US", "United States"], ["GB", "United Kingdom"], ["DE", "Germany"],
   ["FR", "France"], ["CA", "Canada"], ["AU", "Australia"],
   ["NL", "Netherlands"], ["PL", "Poland"], ["BR", "Brazil"],
@@ -91,7 +91,7 @@ export function BillingForm({ data, errors, onChange, showVatField }: BillingFor
             <SelectValue placeholder={t("checkout.selectCountry")} />
           </SelectTrigger>
           <SelectContent>
-            {COUNTRIES.map(([code, name]) => (
+            {BILLING_COUNTRIES.map(([code, name]) => (
               <SelectItem key={code} value={code}>{name}</SelectItem>
             ))}
           </SelectContent>

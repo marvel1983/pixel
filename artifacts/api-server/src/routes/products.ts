@@ -147,6 +147,9 @@ router.get("/products", async (req: Request, res: Response) => {
     case "featured":
       orderClauses.push(desc(products.isFeatured), desc(products.createdAt), desc(products.id));
       break;
+    case "popular":
+      orderClauses.push(desc(products.reviewCount));
+      break;
     default:
       orderClauses.push(desc(products.createdAt), desc(products.id));
   }

@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
-import { Loader2, Package, ChevronRight } from "lucide-react";
+import { Loader2, Package, ChevronRight, ShoppingCart, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Breadcrumbs } from "@/components/shop/breadcrumbs";
 import { OrderStatusBadge } from "@/components/orders/order-status-badge";
 import { OrderDetail } from "@/components/orders/order-detail";
 import { useCurrencyStore } from "@/stores/currency-store";
 import { useAuthStore } from "@/stores/auth-store";
+import { useCartStore } from "@/stores/cart-store";
 import { useToast } from "@/hooks/use-toast";
 
 interface OrderSummary {
@@ -33,8 +34,11 @@ interface OrderData {
 
 interface OrderItem {
   id: number;
+  variantId: number;
+  productId: number;
   productName: string;
   variantName: string;
+  imageUrl: string | null;
   priceUsd: string;
   quantity: number;
 }
@@ -53,6 +57,72 @@ interface OrderFull {
   licenseKeys: KeyGroup[];
 }
 
+// ── Buy Again button ────────────────────────────────────────────────────────
+
+interface BuyAgainButtonProps {
+  orderNumber: string;
+  cachedItems: OrderItem[] | undefined;
+  onFetchItems: (orderNumber: string) => Promise<OrderItem[]>;
+}
+
+function BuyAgainButton({ orderNumber, cachedItems, onFetchItems }: BuyAgainButtonProps) {
+  const addItem = useCartStore((s) => s.addItem);
+  const [done, setDone] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  async function handleBuyAgain(e: React.MouseEvent) {
+    e.stopPropagation();
+    setLoading(true);
+    try {
+      const items = cachedItems ?? await onFetchItems(orderNumber);
+      items.forEach((item) => {
+        if (item.variantId > 0) {
+          addItem({
+            variantId: item.variantId,
+            productId: item.productId,
+            productName: item.productName,
+            variantName: item.variantName,
+            imageUrl: item.imageUrl,
+            priceUsd: item.priceUsd,
+          });
+        }
+      });
+      setDone(true);
+      setTimeout(() => setDone(false), 2000);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <button
+      onClick={handleBuyAgain}
+      disabled={loading}
+      className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold border transition-colors disabled:opacity-60 ${
+        done
+          ? "bg-emerald-50 border-emerald-300 text-emerald-700"
+          : "bg-background border-border text-foreground hover:bg-muted"
+      }`}
+    >
+      {loading ? (
+        <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
+      ) : done ? (
+        <>
+          <Check className="h-3.5 w-3.5 shrink-0" />
+          Added!
+        </>
+      ) : (
+        <>
+          <ShoppingCart className="h-3.5 w-3.5 shrink-0" />
+          Buy Again
+        </>
+      )}
+    </button>
+  );
+}
+
+// ── Page ────────────────────────────────────────────────────────────────────
+
 export default function AccountOrdersPage() {
   const { t } = useTranslation();
   const { user, token, isAuthenticated } = useAuthStore();
@@ -61,6 +131,8 @@ export default function AccountOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<OrderFull | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  // Cache of fetched order items keyed by orderNumber (for Buy Again)
+  const [itemsCache, setItemsCache] = useState<Record<string, OrderItem[]>>({});
   const { format } = useCurrencyStore();
   const { toast } = useToast();
 
@@ -92,20 +164,28 @@ export default function AccountOrdersPage() {
     }
   }
 
+  async function fetchOrderFull(orderNumber: string): Promise<OrderFull | null> {
+    const baseUrl = import.meta.env.VITE_API_URL ?? "/api";
+    const email = user?.email ?? "";
+    const res = await fetch(
+      `${baseUrl}/orders/${orderNumber}?email=${encodeURIComponent(email)}`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+        credentials: "include",
+      },
+    );
+    if (!res.ok) return null;
+    return res.json();
+  }
+
   async function openOrder(orderNumber: string) {
     setLoadingDetail(true);
     try {
-      const baseUrl = import.meta.env.VITE_API_URL ?? "/api";
-      const email = user?.email ?? "";
-      const res = await fetch(
-        `${baseUrl}/orders/${orderNumber}?email=${encodeURIComponent(email)}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-          credentials: "include",
-        },
-      );
-      if (res.ok) {
-        setSelectedOrder(await res.json());
+      const data = await fetchOrderFull(orderNumber);
+      if (data) {
+        setSelectedOrder(data);
+        // Cache items for potential Buy Again use
+        setItemsCache((prev) => ({ ...prev, [orderNumber]: data.items }));
       } else {
         toast({ title: t("accountPage.failedToLoadDetails"), variant: "destructive" });
       }
@@ -114,6 +194,19 @@ export default function AccountOrdersPage() {
     } finally {
       setLoadingDetail(false);
     }
+  }
+
+  async function fetchItemsForBuyAgain(orderNumber: string): Promise<OrderItem[]> {
+    try {
+      const data = await fetchOrderFull(orderNumber);
+      if (data) {
+        setItemsCache((prev) => ({ ...prev, [orderNumber]: data.items }));
+        return data.items;
+      }
+    } catch {
+      toast({ title: t("accountPage.failedToLoad"), variant: "destructive" });
+    }
+    return [];
   }
 
   if (!isAuthenticated()) return null;
@@ -146,30 +239,44 @@ export default function AccountOrdersPage() {
         ) : orders.length > 0 ? (
           <div className="border rounded-lg overflow-hidden">
             {orders.map((order, idx) => (
-              <button
+              <div
                 key={order.id}
-                className={`w-full text-left px-4 py-3 flex items-center gap-4 hover:bg-muted/50 transition-colors ${idx > 0 ? "border-t" : ""}`}
-                onClick={() => openOrder(order.orderNumber)}
+                className={`px-4 py-3 flex items-center gap-3 hover:bg-muted/50 transition-colors ${idx > 0 ? "border-t" : ""}`}
               >
-                <Package className="h-5 w-5 text-muted-foreground shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-medium">{order.orderNumber}</span>
-                    <OrderStatusBadge status={order.status} />
+                {/* Clickable area opens detail view */}
+                <button
+                  className="flex flex-1 items-center gap-3 text-left min-w-0"
+                  onClick={() => openOrder(order.orderNumber)}
+                >
+                  <Package className="h-5 w-5 text-muted-foreground shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-medium">{order.orderNumber}</span>
+                      <OrderStatusBadge status={order.status} />
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {order.firstProduct}
+                      {order.itemCount > 1 && ` ${t("accountPage.moreItems", { count: order.itemCount - 1 })}`}
+                    </p>
                   </div>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {order.firstProduct}
-                    {order.itemCount > 1 && ` ${t("accountPage.moreItems", { count: order.itemCount - 1 })}`}
-                  </p>
-                </div>
-                <div className="text-right shrink-0">
-                  <p className="text-sm font-medium">{format(parseFloat(order.totalUsd))}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {new Date(order.createdAt).toLocaleDateString()}
-                  </p>
-                </div>
-                <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-              </button>
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-medium">{format(parseFloat(order.totalUsd))}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(order.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                </button>
+
+                {/* Buy Again — only for completed orders */}
+                {order.status === "COMPLETED" && (
+                  <BuyAgainButton
+                    orderNumber={order.orderNumber}
+                    cachedItems={itemsCache[order.orderNumber]}
+                    onFetchItems={fetchItemsForBuyAgain}
+                  />
+                )}
+              </div>
             ))}
           </div>
         ) : (

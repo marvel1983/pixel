@@ -4,12 +4,14 @@ const API = import.meta.env.VITE_API_URL ?? "/api";
 
 interface FlashSaleStore {
   prices: Map<number, string>;
+  endsAt: string | null;
   loaded: boolean;
   load: () => void;
 }
 
 export const useFlashSaleStore = create<FlashSaleStore>((set, get) => ({
   prices: new Map(),
+  endsAt: null,
   loaded: false,
   load: () => {
     if (get().loaded) return;
@@ -22,7 +24,7 @@ export const useFlashSaleStore = create<FlashSaleStore>((set, get) => ({
         for (const p of d.sale.products) {
           map.set(p.variantId, p.salePriceUsd);
         }
-        set({ prices: map });
+        set({ prices: map, endsAt: d.sale.endsAt ?? null });
       })
       .catch(() => {});
   },

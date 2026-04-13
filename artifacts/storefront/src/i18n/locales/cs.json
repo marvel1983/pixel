@@ -127,7 +127,9 @@
     "notFound": "Produkt nenalezen",
     "platform": "Platforma",
     "region": "Region",
-    "selectVariant": "Vyberte variantu"
+    "selectVariant": "Vyberte variantu",
+    "loyaltyEarnApprox": "Získejte ~{{points}} bodů",
+    "loyaltyEarnHint": "Přibližný počet věrnostních bodů při nákupu této položky"
   },
   "order": {
     "confirmed": "Objednávka potvrzena!",

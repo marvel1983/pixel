@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { Clock } from "lucide-react";
 import { useCartStore } from "@/stores/cart-store";
 import { CartProgress } from "@/components/cart/cart-progress";
 import { CartItemsTable } from "@/components/cart/cart-items-table";
@@ -42,12 +43,16 @@ export default function CartPage() {
           <div className="grid gap-6 lg:grid-cols-[1fr_340px] xl:grid-cols-[1fr_360px]">
             {/* Left: items */}
             <div className="space-y-4 min-w-0">
+              <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">
+                <Clock className="h-3.5 w-3.5 shrink-0" />
+                <span>Your cart is reserved for <strong>24 hours</strong>. Complete your order to secure these prices.</span>
+              </div>
               <CartRegionWarning items={items} customerCountry={customerCountry} />
               <CartItemsTable />
             </div>
 
-            {/* Right: order summary + admin checkout upsell */}
-            <div className="space-y-4">
+            {/* Right: one sticky column so summary + trust + payments + upsell scroll together (no overlap) */}
+            <div className="min-w-0 space-y-4 rounded-lg bg-background lg:sticky lg:top-24 lg:z-10 lg:self-start lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto lg:overscroll-y-contain lg:pr-1">
               <CartTotals />
               <ProductUpsell />
             </div>

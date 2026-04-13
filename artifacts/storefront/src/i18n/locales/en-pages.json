@@ -74,6 +74,16 @@
     "noOrder": "No order found. Please check your details and try again."
   },
   "support": {
+    "hubTitle": "Help & Support",
+    "hubSubtitle": "Find answers, look up an order, or open a ticket — we are here to help.",
+    "hubFaqTitle": "FAQ & help center",
+    "hubFaqDesc": "Answers to common questions about orders, keys, and activation.",
+    "hubFaqCta": "Browse FAQ",
+    "hubOrderTitle": "Order lookup",
+    "hubOrderDesc": "Already purchased? View order status and license details with your email.",
+    "hubOrderCta": "Look up order",
+    "hubTicketTitle": "Contact us",
+    "hubTicketDesc": "Could not find what you need? Submit a ticket and our team will reply.",
     "newTicket": "Submit a Support Ticket",
     "category": "Category",
     "subject": "Subject",
@@ -172,7 +182,10 @@
     "failedToSendReply": "Failed to send reply",
     "storeCreditTitle": "Store credit",
     "storeCreditHint": "Applied at checkout. Top up anytime.",
-    "storeCreditManage": "Manage store credit"
+    "storeCreditManage": "Manage store credit",
+    "billingAddressTitle": "Default billing address",
+    "billingAddressHint": "We use this to pre-fill checkout. You can still change it on each order.",
+    "billingVatOptional": "Optional — for B2B / VAT-exempt checkout"
   },
   "orderComplete": {
     "checkout": "Checkout",

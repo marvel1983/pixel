@@ -15,6 +15,11 @@ export interface AuthUser {
   isBusinessAccount?: boolean;
   businessApproved?: boolean;
   companyName?: string | null;
+  billingCountry?: string | null;
+  billingCity?: string | null;
+  billingAddress?: string | null;
+  billingZip?: string | null;
+  billingVatNumber?: string | null;
 }
 
 interface AuthState {

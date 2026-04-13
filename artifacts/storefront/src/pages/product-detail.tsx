@@ -44,6 +44,10 @@ export default function ProductDetailPage() {
   }, [product]);
 
   useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [slug]);
+
+  useEffect(() => {
     if (product) {
       addToRecentlyViewed(product.id);
       const price = product.variants[0]?.priceUsd ?? "0";
@@ -79,15 +83,15 @@ export default function ProductDetailPage() {
   ];
 
   return (
-    <div className="container mx-auto px-4 py-6 space-y-8">
+    <div className="max-w-6xl mx-auto px-4 py-6 space-y-8">
       <ProductJsonLd product={product} />
       <BreadcrumbJsonLd items={breadcrumbs} />
       <Breadcrumbs crumbs={breadcrumbs} />
 
-      <div className="grid gap-8 lg:grid-cols-2">
+      <div className="grid gap-10 lg:grid-cols-[1fr_1fr] lg:items-start">
         <ProductImage imageUrl={product.imageUrl} productName={product.name} />
 
-        <div className="space-y-5">
+        <div className="space-y-5 lg:px-8">
           <ProductInfo product={product} />
           <SocialShare productName={product.name} />
           <Separator />

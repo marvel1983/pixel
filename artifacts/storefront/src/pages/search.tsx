@@ -68,20 +68,30 @@ export default function SearchPage() {
     if (!query.trim()) {
       setItems([]);
       setTotal(0);
+      setLoading(false);
       return;
     }
     setLoading(true);
-    fetch(buildApiUrl(query, filters, perPage))
-      .then((r) => r.json())
-      .then((data: SearchResponse) => {
-        setItems(data.items.map(toMockProduct));
-        setTotal(data.total);
+    const ac = new AbortController();
+    fetch(buildApiUrl(query, filters, perPage), { signal: ac.signal })
+      .then((r) => {
+        if (!r.ok) throw new Error(`search ${r.status}`);
+        return r.json();
       })
-      .catch(() => {
+      .then((data: SearchResponse) => {
+        const list = Array.isArray(data.items) ? data.items : [];
+        setItems(list.map(toMockProduct));
+        setTotal(typeof data.total === "number" ? data.total : 0);
+      })
+      .catch((err) => {
+        if ((err as Error).name === "AbortError") return;
         setItems([]);
         setTotal(0);
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!ac.signal.aborted) setLoading(false);
+      });
+    return () => ac.abort();
   }, [query, filters, perPage]);
 
   const totalPages = Math.max(1, Math.ceil(total / perPage));

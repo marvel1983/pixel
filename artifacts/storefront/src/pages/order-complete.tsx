@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "wouter";
 import { useTranslation } from "react-i18next";
-import { CheckCircle, Download, ArrowRight, Loader2 } from "lucide-react";
+import { Download, ArrowRight, Loader2 } from "lucide-react";
+import { AnimatedCheckmark } from "@/components/order/animated-checkmark";
+import { Confetti } from "@/components/order/confetti";
 import { Button } from "@/components/ui/button";
 import { Breadcrumbs } from "@/components/shop/breadcrumbs";
 import { CartProgress } from "@/components/cart/cart-progress";
@@ -71,9 +73,10 @@ export default function OrderCompletePage() {
       <CartProgress step={3} />
 
       <div className="max-w-2xl mx-auto py-8">
+        <Confetti />
         <div className="text-center mb-8">
-          <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-            <CheckCircle className="h-10 w-10 text-green-600" />
+          <div className="flex items-center justify-center mx-auto mb-4">
+            <AnimatedCheckmark />
           </div>
           <h1 className="text-2xl font-bold mb-2">{t("order.confirmed")}</h1>
           <p className="text-muted-foreground">

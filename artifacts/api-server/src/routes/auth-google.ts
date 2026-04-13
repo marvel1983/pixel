@@ -52,9 +52,25 @@ function getRedirectUri() {
 
 function sanitizeUser(u: typeof users.$inferSelect) {
   return {
-    id: u.id, email: u.email, firstName: u.firstName, lastName: u.lastName,
-    role: u.role, avatarUrl: u.avatarUrl, emailVerified: u.emailVerified,
-    googleId: u.googleId, createdAt: u.createdAt, preferredLocale: u.preferredLocale,
+    id: u.id,
+    email: u.email,
+    firstName: u.firstName,
+    lastName: u.lastName,
+    role: u.role,
+    avatarUrl: u.avatarUrl,
+    emailVerified: u.emailVerified,
+    googleId: u.googleId,
+    createdAt: u.createdAt,
+    preferredLocale: u.preferredLocale,
+    preferredTheme: u.preferredTheme,
+    isBusinessAccount: u.isBusinessAccount,
+    businessApproved: u.businessApproved,
+    companyName: u.companyName,
+    billingCountry: u.billingCountry,
+    billingCity: u.billingCity,
+    billingAddress: u.billingAddress,
+    billingZip: u.billingZip,
+    billingVatNumber: u.billingVatNumber,
   };
 }
 

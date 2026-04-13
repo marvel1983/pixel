@@ -127,7 +127,9 @@
     "notFound": "Nie znaleziono produktu",
     "platform": "Platforma",
     "region": "Region",
-    "selectVariant": "Wybierz wariant"
+    "selectVariant": "Wybierz wariant",
+    "loyaltyEarnApprox": "Zdobądź ~{{points}} pkt",
+    "loyaltyEarnHint": "Szacunkowe punkty lojalnościowe przy zakupie tej pozycji"
   },
   "order": {
     "confirmed": "Zamówienie potwierdzone!",

@@ -74,6 +74,16 @@
     "noOrder": "Nie znaleziono zamówienia. Sprawdź swoje dane."
   },
   "support": {
+    "hubTitle": "Pomoc i wsparcie",
+    "hubSubtitle": "Znajdź odpowiedzi, sprawdź zamówienie lub napisz do nas — jesteśmy tu, by pomóc.",
+    "hubFaqTitle": "FAQ i centrum pomocy",
+    "hubFaqDesc": "Odpowiedzi na częste pytania o zamówienia, klucze i aktywację.",
+    "hubFaqCta": "Przeglądaj FAQ",
+    "hubOrderTitle": "Wyszukiwanie zamówienia",
+    "hubOrderDesc": "Już kupiłeś? Sprawdź status i dane licencji podając e-mail.",
+    "hubOrderCta": "Znajdź zamówienie",
+    "hubTicketTitle": "Kontakt",
+    "hubTicketDesc": "Nie znalazłeś odpowiedzi? Wyślij zgłoszenie — odezwiemy się.",
     "newTicket": "Złóż zgłoszenie",
     "category": "Kategoria",
     "subject": "Temat",

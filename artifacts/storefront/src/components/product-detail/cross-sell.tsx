@@ -66,8 +66,12 @@ export function CrossSell({ currentProduct, relatedProducts }: CrossSellProps) {
                 checked={selected.has(product.id)}
                 onCheckedChange={() => toggle(product.id)}
               />
-              <div className="w-8 h-8 rounded bg-muted flex items-center justify-center shrink-0">
-                <Package className="h-4 w-4 text-muted-foreground/50" />
+              <div className="w-8 h-8 rounded bg-muted flex items-center justify-center shrink-0 overflow-hidden">
+                {product.imageUrl ? (
+                  <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
+                ) : (
+                  <Package className="h-4 w-4 text-muted-foreground/50" />
+                )}
               </div>
               <span className="flex-1 truncate">{product.name}</span>
               <span className="font-medium">

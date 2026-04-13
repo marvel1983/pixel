@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link } from "wouter";
 import { useTranslation } from "react-i18next";
 import {
@@ -51,7 +51,7 @@ export function NavBar() {
 
   return (
     <>
-      <nav className="sticky top-0 z-40 w-full bg-primary text-primary-foreground shadow-[0_4px_16px_rgba(0,69,127,0.2)]">
+      <nav className="w-full bg-primary text-primary-foreground shadow-[0_4px_16px_rgba(0,69,127,0.2)]">
         <div className="container mx-auto px-4 flex items-center h-12">
           <Button
             variant="ghost"
@@ -198,8 +198,26 @@ function UserMenu() {
 }
 
 function NavBadge({ count }: { count: number }) {
+  const prevCount = useRef(count);
+  const [bounce, setBounce] = useState(false);
+
+  useEffect(() => {
+    if (count > prevCount.current) {
+      setBounce(true);
+      const timer = setTimeout(() => setBounce(false), 400);
+      return () => clearTimeout(timer);
+    }
+    prevCount.current = count;
+  }, [count]);
+
+  useEffect(() => {
+    if (!bounce) {
+      prevCount.current = count;
+    }
+  }, [bounce, count]);
+
   return (
-    <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground px-1">
+    <span className={`absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground px-1 ${bounce ? "animate-badge-bounce" : ""}`}>
       {count > 99 ? "99+" : count}
     </span>
   );

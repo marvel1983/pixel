@@ -146,6 +146,7 @@ router.get("/search", async (req: Request, res: Response) => {
     case "price-asc": orderClauses.push(sql`${minPriceSub} ASC NULLS LAST`); break;
     case "price-desc": orderClauses.push(sql`${minPriceSub} DESC NULLS LAST`); break;
     case "newest": orderClauses.push(desc(products.createdAt), desc(products.id)); break;
+    case "popular": orderClauses.push(desc(products.reviewCount)); break;
     default:
       orderClauses.push(
         sql`CASE WHEN ${products.name} ILIKE ${pattern} THEN 0 ELSE 1 END`,

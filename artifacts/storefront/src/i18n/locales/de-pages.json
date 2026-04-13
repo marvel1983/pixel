@@ -74,6 +74,16 @@
     "noOrder": "Keine Bestellung gefunden. Bitte überprüfen Sie Ihre Angaben."
   },
   "support": {
+    "hubTitle": "Hilfe & Support",
+    "hubSubtitle": "Antworten finden, Bestellung nachschlagen oder Ticket erstellen — wir helfen gern.",
+    "hubFaqTitle": "FAQ & Hilfe",
+    "hubFaqDesc": "Häufige Fragen zu Bestellungen, Keys und Aktivierung.",
+    "hubFaqCta": "FAQ ansehen",
+    "hubOrderTitle": "Bestellung suchen",
+    "hubOrderDesc": "Schon gekauft? Status und Lizenzdetails mit Ihrer E-Mail einsehen.",
+    "hubOrderCta": "Bestellung suchen",
+    "hubTicketTitle": "Kontakt",
+    "hubTicketDesc": "Keine Antwort gefunden? Ticket erstellen — unser Team meldet sich.",
     "newTicket": "Support-Ticket einreichen",
     "category": "Kategorie",
     "subject": "Betreff",

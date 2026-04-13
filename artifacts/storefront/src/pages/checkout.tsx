@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
-import { Loader2 } from "lucide-react";
+import { Loader2, Lock, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useCartStore } from "@/stores/cart-store";
@@ -71,10 +71,47 @@ export default function CheckoutPage() {
   const [regionAcknowledged, setRegionAcknowledged] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"card" | "invoice">("card");
   const user = useAuthStore((s) => s.user);
+  const token = useAuthStore((s) => s.token);
   const isBusinessApproved = !!user?.businessApproved;
 
   const capturedRef = useRef("");
+  const billingPrefilledRef = useRef(false);
   const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
+
+  useEffect(() => {
+    if (!token) {
+      billingPrefilledRef.current = false;
+      return;
+    }
+    if (billingPrefilledRef.current) return;
+
+    let cancelled = false;
+    fetch(`${API}/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { user?: Record<string, string | null> } | null) => {
+        if (cancelled || !d?.user) return;
+        billingPrefilledRef.current = true;
+        const u = d.user;
+        setBilling((prev) => ({
+          email: (u.email as string) || prev.email,
+          firstName: (u.firstName as string | null) ?? prev.firstName,
+          lastName: (u.lastName as string | null) ?? prev.lastName,
+          country: (u.billingCountry as string | null) || prev.country,
+          city: (u.billingCity as string | null) || prev.city,
+          address: (u.billingAddress as string | null) || prev.address,
+          zip: (u.billingZip as string | null) || prev.zip,
+          vatNumber: (u.billingVatNumber as string | null) ?? prev.vatNumber ?? "",
+        }));
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -228,8 +265,7 @@ export default function CheckoutPage() {
           <BillingForm data={billing} errors={billingErrors} onChange={handleBillingChange} showVatField={taxInfo.b2bEnabled} />
           <CheckoutRegionBlock items={items} customerCountry={billing.country} acknowledged={regionAcknowledged} onAcknowledge={setRegionAcknowledged} />
           <Separator />
-          <GuestAccount onPasswordChange={setGuestPassword} />
-          <Separator />
+          {!token && <><GuestAccount onPasswordChange={setGuestPassword} /><Separator /></>}
           <CppSection selected={cppSelected} onToggle={setCppSelected} subtotal={getTotal()} />
           <Separator />
           <CheckoutServices selectedIds={selectedServiceIds} onToggle={handleServiceToggle} />
@@ -281,12 +317,17 @@ export default function CheckoutPage() {
             <input type="checkbox" checked={newsletterOptIn} onChange={(e) => setNewsletterOptIn(e.target.checked)} />
             {t("checkout.newsletterOptIn")}
           </label>
+          <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground py-2">
+            <Lock className="h-3.5 w-3.5 text-emerald-500" />
+            <span>Secure & encrypted checkout</span>
+            <Shield className="h-3.5 w-3.5 text-emerald-500" />
+          </div>
           <Button size="lg" className="w-full" disabled={submitting} onClick={handleSubmit}>
             {submitting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t("checkout.processing")}</> : t("checkout.placeOrder")}
           </Button>
         </div>
 
-        <div className="space-y-4 sticky top-24 self-start">
+        <div className="min-w-0 space-y-4 rounded-lg bg-background lg:sticky lg:top-24 lg:z-10 lg:self-start lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto lg:overscroll-y-contain lg:pr-1">
           <CheckoutSummary cppSelected={cppSelected} taxRate={taxInfo.taxRate} taxLabel={taxInfo.taxLabel} priceDisplay={taxInfo.priceDisplay} gcDeduction={appliedGiftCards.reduce((s, c) => s + c.applied, 0)} loyaltyDiscount={loyaltyDiscount} servicesTotal={servicesTotal} />
           <ProductUpsell />
         </div>

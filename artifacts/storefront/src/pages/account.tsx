@@ -4,6 +4,15 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { BILLING_COUNTRIES } from "@/components/checkout/billing-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
@@ -121,6 +130,104 @@ function ProfileLoyaltyCard() {
   );
 }
 
+const EMAIL_PREFS_KEY = "email_preferences";
+
+interface EmailPrefs {
+  shippingUpdates: boolean;
+  promotions: boolean;
+  newsletter: boolean;
+}
+
+function loadEmailPrefs(): EmailPrefs {
+  try {
+    const raw = localStorage.getItem(EMAIL_PREFS_KEY);
+    if (raw) return JSON.parse(raw) as EmailPrefs;
+  } catch {
+    // ignore
+  }
+  return { shippingUpdates: true, promotions: true, newsletter: false };
+}
+
+function EmailPreferencesSection() {
+  const { toast } = useToast();
+  const [prefs, setPrefs] = useState<EmailPrefs>(loadEmailPrefs);
+  const [saved, setSaved] = useState(false);
+
+  function toggle(key: keyof EmailPrefs) {
+    setPrefs((prev) => ({ ...prev, [key]: !prev[key] }));
+    setSaved(false);
+  }
+
+  function handleSave() {
+    localStorage.setItem(EMAIL_PREFS_KEY, JSON.stringify(prefs));
+    setSaved(true);
+    toast({ title: "Email preferences saved!" });
+  }
+
+  return (
+    <Card className="mt-6">
+      <CardHeader>
+        <CardTitle className="text-base">Email Preferences</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4 max-w-md">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">Order confirmations</p>
+            <p className="text-xs text-muted-foreground">Receive a confirmation when you place an order</p>
+          </div>
+          <Switch checked disabled aria-label="Order confirmations" />
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">Shipping updates</p>
+            <p className="text-xs text-muted-foreground">Get notified when your order ships or is delivered</p>
+          </div>
+          <Switch
+            checked={prefs.shippingUpdates}
+            onCheckedChange={() => toggle("shippingUpdates")}
+            aria-label="Shipping updates"
+          />
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">Promotions &amp; deals</p>
+            <p className="text-xs text-muted-foreground">Flash sales, discount codes, and special offers</p>
+          </div>
+          <Switch
+            checked={prefs.promotions}
+            onCheckedChange={() => toggle("promotions")}
+            aria-label="Promotions and deals"
+          />
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">Newsletter</p>
+            <p className="text-xs text-muted-foreground">Monthly updates, product news, and tips</p>
+          </div>
+          <Switch
+            checked={prefs.newsletter}
+            onCheckedChange={() => toggle("newsletter")}
+            aria-label="Newsletter"
+          />
+        </div>
+
+        <Button
+          type="button"
+          variant={saved ? "outline" : "default"}
+          size="sm"
+          onClick={handleSave}
+          className="mt-2"
+        >
+          {saved ? "Preferences saved" : "Save Preferences"}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
 function ProfileTab() {
   const { t } = useTranslation();
   const { user, token, setAuth } = useAuthStore();
@@ -128,12 +235,40 @@ function ProfileTab() {
   const [form, setForm] = useState({
     firstName: user?.firstName ?? "",
     lastName: user?.lastName ?? "",
+    billingCountry: user?.billingCountry ?? "",
+    billingCity: user?.billingCity ?? "",
+    billingAddress: user?.billingAddress ?? "",
+    billingZip: user?.billingZip ?? "",
+    billingVatNumber: user?.billingVatNumber ?? "",
     currentPassword: "",
     newPassword: "",
   });
   const [saving, setSaving] = useState(false);
   const [birthday, setBirthday] = useState("");
   const [savingBirthday, setSavingBirthday] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    setForm((prev) => ({
+      ...prev,
+      firstName: user.firstName ?? "",
+      lastName: user.lastName ?? "",
+      billingCountry: user.billingCountry ?? "",
+      billingCity: user.billingCity ?? "",
+      billingAddress: user.billingAddress ?? "",
+      billingZip: user.billingZip ?? "",
+      billingVatNumber: user.billingVatNumber ?? "",
+    }));
+  }, [
+    user?.id,
+    user?.firstName,
+    user?.lastName,
+    user?.billingCountry,
+    user?.billingCity,
+    user?.billingAddress,
+    user?.billingZip,
+    user?.billingVatNumber,
+  ]);
 
   useEffect(() => {
     if (!token) return;
@@ -185,6 +320,11 @@ function ProfileTab() {
       const body: Record<string, string> = {};
       if (form.firstName) body.firstName = form.firstName;
       if (form.lastName) body.lastName = form.lastName;
+      body.billingCountry = form.billingCountry;
+      body.billingCity = form.billingCity;
+      body.billingAddress = form.billingAddress;
+      body.billingZip = form.billingZip;
+      body.billingVatNumber = form.billingVatNumber;
       if (form.newPassword) {
         body.currentPassword = form.currentPassword;
         body.newPassword = form.newPassword;
@@ -221,7 +361,7 @@ function ProfileTab() {
     <div className="space-y-0">
       <ProfileStoreCreditCard />
       <ProfileLoyaltyCard />
-      <Card>
+      <Card className="mt-0">
       <CardHeader>
         <CardTitle>{t("accountPage.profileInfo")}</CardTitle>
       </CardHeader>
@@ -239,6 +379,66 @@ function ProfileTab() {
             <div>
               <Label htmlFor="lastName">{t("auth.lastName")}</Label>
               <Input id="lastName" value={form.lastName} onChange={(e) => update("lastName", e.target.value)} />
+            </div>
+          </div>
+
+          <div className="border-t pt-4 mt-4 space-y-4">
+            <div>
+              <p className="text-sm font-medium">{t("accountPage.billingAddressTitle")}</p>
+              <p className="text-xs text-muted-foreground mt-1">{t("accountPage.billingAddressHint")}</p>
+            </div>
+            <div>
+              <Label htmlFor="profile-country">{t("checkout.country")}</Label>
+              <Select
+                value={form.billingCountry || undefined}
+                onValueChange={(v) => update("billingCountry", v)}
+              >
+                <SelectTrigger id="profile-country" className="w-full">
+                  <SelectValue placeholder={t("checkout.selectCountry")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {BILLING_COUNTRIES.map(([code, name]) => (
+                    <SelectItem key={code} value={code}>
+                      {name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="profile-city">{t("checkout.city")}</Label>
+                <Input
+                  id="profile-city"
+                  value={form.billingCity}
+                  onChange={(e) => update("billingCity", e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="profile-zip">{t("checkout.zip")}</Label>
+                <Input
+                  id="profile-zip"
+                  value={form.billingZip}
+                  onChange={(e) => update("billingZip", e.target.value)}
+                />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="profile-address">{t("checkout.address")}</Label>
+              <Input
+                id="profile-address"
+                value={form.billingAddress}
+                onChange={(e) => update("billingAddress", e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="profile-vat">{t("checkout.vatNumber")}</Label>
+              <Input
+                id="profile-vat"
+                value={form.billingVatNumber}
+                onChange={(e) => update("billingVatNumber", e.target.value)}
+                placeholder={t("accountPage.billingVatOptional")}
+              />
             </div>
           </div>
 
@@ -301,6 +501,7 @@ function ProfileTab() {
         </div>
       </CardContent>
     </Card>
+    <EmailPreferencesSection />
     </div>
   );
 }

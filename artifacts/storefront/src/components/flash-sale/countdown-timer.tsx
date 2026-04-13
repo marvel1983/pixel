@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 interface CountdownTimerProps {
   endsAt: string;
   onExpired?: () => void;
-  size?: "sm" | "md" | "lg";
+  size?: "xs" | "sm" | "md" | "lg";
   className?: string;
 }
 
@@ -32,6 +32,15 @@ export function CountdownTimer({ endsAt, onExpired, size = "md", className = "" 
 
   if (!time) {
     return <span className={`text-muted-foreground ${className}`}>Expired</span>;
+  }
+
+  // xs: compact inline text, no boxes
+  if (size === "xs") {
+    return (
+      <span className={`font-mono font-bold tabular-nums ${className}`}>
+        {pad(time.hours)}:{pad(time.minutes)}:{pad(time.seconds)}
+      </span>
+    );
   }
 
   const sizeClasses = {

@@ -19,6 +19,10 @@ import ShopPage from "@/pages/shop";
 import CategoryPage from "@/pages/category";
 import OutletPage from "@/pages/outlet";
 import HotOffersPage from "@/pages/hot-offers";
+import BestSellersRedirect from "@/pages/best-sellers";
+import NewArrivalsRedirect from "@/pages/new-arrivals";
+import DealsRedirect from "@/pages/deals-redirect";
+import SupportHubPage from "@/pages/support-hub";
 import ProductDetailPage from "@/pages/product-detail";
 import CartPage from "@/pages/cart";
 import CheckoutPage from "@/pages/checkout";
@@ -86,6 +90,9 @@ function StorefrontWithMaintenance() {
         <Route path="/category/:slug" component={CategoryPage} />
         <Route path="/outlet" component={OutletPage} />
         <Route path="/hot-offers" component={HotOffersPage} />
+        <Route path="/best-sellers" component={BestSellersRedirect} />
+        <Route path="/new-arrivals" component={NewArrivalsRedirect} />
+        <Route path="/deals" component={DealsRedirect} />
         <Route path="/flash-sale" component={FlashSalePage} />
         <Route path="/bundles/:slug" component={BundleDetailPage} />
         <Route path="/bundles" component={BundlesPage} />
@@ -112,6 +119,7 @@ function StorefrontWithMaintenance() {
         <Route path="/compare" component={ComparePage} />
         <Route path="/support/new" component={SupportNewPage} />
         <Route path="/support/tickets/:ticketNumber" component={SupportTicketPage} />
+        <Route path="/support" component={SupportHubPage} />
         <Route path="/blog/:slug" component={BlogPostPage} />
         <Route path="/blog" component={BlogPage} />
         <Route path="/business" component={BusinessPage} />

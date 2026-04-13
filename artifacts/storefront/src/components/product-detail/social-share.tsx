@@ -28,23 +28,25 @@ export function SocialShare({ productName }: SocialShareProps) {
         href={`https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`}
         target="_blank"
         rel="noopener noreferrer"
-        className="w-7 h-7 rounded-full border flex items-center justify-center hover:bg-muted transition-colors"
+        className="w-7 h-7 rounded-full flex items-center justify-center transition-opacity hover:opacity-80"
+        style={{ backgroundColor: "#1877F2" }}
       >
-        <Facebook className="h-3.5 w-3.5" />
+        <Facebook className="h-3.5 w-3.5 text-white" />
       </a>
       <a
         href={`https://twitter.com/intent/tweet?url=${encodedUrl}&text=${encodedName}`}
         target="_blank"
         rel="noopener noreferrer"
-        className="w-7 h-7 rounded-full border flex items-center justify-center hover:bg-muted transition-colors"
+        className="w-7 h-7 rounded-full flex items-center justify-center transition-opacity hover:opacity-80"
+        style={{ backgroundColor: "#000000" }}
       >
-        <Twitter className="h-3.5 w-3.5" />
+        <Twitter className="h-3.5 w-3.5 text-white" />
       </a>
       <button
         onClick={copyLink}
-        className="w-7 h-7 rounded-full border flex items-center justify-center hover:bg-muted transition-colors"
+        className="w-7 h-7 rounded-full flex items-center justify-center transition-opacity hover:opacity-80 bg-muted-foreground/20 hover:bg-muted-foreground/30"
       >
-        <LinkIcon className="h-3.5 w-3.5" />
+        <LinkIcon className="h-3.5 w-3.5 text-muted-foreground" />
       </button>
     </div>
   );

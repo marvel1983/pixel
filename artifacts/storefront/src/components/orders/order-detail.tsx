@@ -3,11 +3,15 @@ import { Separator } from "@/components/ui/separator";
 import { useCurrencyStore } from "@/stores/currency-store";
 import { LicenseKeysDisplay } from "./license-keys";
 import { OrderStatusBadge } from "./order-status-badge";
+import { OrderTimeline } from "./order-timeline";
 
 interface OrderItem {
   id: number;
+  variantId: number;
+  productId: number;
   productName: string;
   variantName: string;
+  imageUrl: string | null;
   priceUsd: string;
   quantity: number;
 }
@@ -55,6 +59,10 @@ export function OrderDetail({ order, items, licenseKeys }: OrderDetailProps) {
           </p>
         </div>
         <OrderStatusBadge status={order.status} />
+      </div>
+
+      <div className="py-2">
+        <OrderTimeline status={order.status} />
       </div>
 
       <div className="border rounded-lg overflow-hidden">

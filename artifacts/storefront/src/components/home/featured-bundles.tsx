@@ -66,14 +66,16 @@ export function FeaturedBundles() {
           return (
             <Link key={b.id} href={`/bundles/${b.slug}`}>
               <Card className="group h-full cursor-pointer overflow-hidden transition-shadow hover:shadow-lg">
-                <div className="relative flex aspect-[3/2] items-center justify-center bg-gradient-to-br from-primary/10 to-primary/5">
-                  {b.imageUrl ? (
-                    <img src={b.imageUrl} alt={b.name} className="h-full w-full object-cover" />
-                  ) : (
-                    <Package className="h-12 w-12 text-primary/35" />
-                  )}
+                <div className="relative aspect-[3/2]">
+                  <div className="absolute inset-0 flex items-center justify-center overflow-hidden bg-gradient-to-br from-primary/10 to-primary/5">
+                    {b.imageUrl ? (
+                      <img src={b.imageUrl} alt={b.name} className="h-full w-full object-cover" />
+                    ) : (
+                      <Package className="h-12 w-12 text-primary/35" />
+                    )}
+                  </div>
                   {savingsPct > 0 && (
-                    <Badge className="absolute right-2 top-2 bg-primary text-primary-foreground">
+                    <Badge className="no-default-hover-elevate pointer-events-none absolute right-2 top-2 z-10 max-w-[calc(100%-1rem)] truncate bg-primary text-primary-foreground shadow-sm">
                       {t("home.bundleSavePct", { pct: savingsPct })}
                     </Badge>
                   )}

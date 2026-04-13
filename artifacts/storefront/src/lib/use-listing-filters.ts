@@ -22,23 +22,29 @@ const PER_PAGE = 24;
 export function useListingFilters() {
   const search = useSearch();
   const [, setLocation] = useLocation();
-  const params = useMemo(() => new URLSearchParams(search), [search]);
 
-  let attrs: Record<string, string[]> = {};
-  try { attrs = JSON.parse(params.get("attrs") ?? "{}"); } catch { /* ignore */ }
-
-  const filters: ListingFilters = {
-    q:           params.get("q") ?? "",
-    categories:  params.get("cat")?.split(",").filter(Boolean) ?? [],
-    platforms:   params.get("plat")?.split(",").filter(Boolean) ?? [],
-    minPrice:    parseFloat(params.get("min") ?? "0") || 0,
-    maxPrice:    parseFloat(params.get("max") ?? "9999") || 9999,
-    inStockOnly: params.get("stock") === "1",
-    sort:        params.get("sort") ?? "newest",
-    page:        parseInt(params.get("page") ?? "1", 10) || 1,
-    tags:        params.get("tags")?.split(",").filter(Boolean) ?? [],
-    attrs,
-  };
+  /** Stable reference when URL query string is unchanged — avoids re-fetch loops in search/shop useEffect deps. */
+  const filters = useMemo((): ListingFilters => {
+    const params = new URLSearchParams(search);
+    let attrs: Record<string, string[]> = {};
+    try {
+      attrs = JSON.parse(params.get("attrs") ?? "{}");
+    } catch {
+      /* ignore */
+    }
+    return {
+      q: params.get("q") ?? "",
+      categories: params.get("cat")?.split(",").filter(Boolean) ?? [],
+      platforms: params.get("plat")?.split(",").filter(Boolean) ?? [],
+      minPrice: parseFloat(params.get("min") ?? "0") || 0,
+      maxPrice: parseFloat(params.get("max") ?? "9999") || 9999,
+      inStockOnly: params.get("stock") === "1",
+      sort: params.get("sort") ?? "newest",
+      page: parseInt(params.get("page") ?? "1", 10) || 1,
+      tags: params.get("tags")?.split(",").filter(Boolean) ?? [],
+      attrs,
+    };
+  }, [search]);
 
   function setFilters(update: Partial<ListingFilters>) {
     const merged = { ...filters, ...update };

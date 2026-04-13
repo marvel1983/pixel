@@ -1,6 +1,7 @@
+import { useState, useRef, useEffect } from "react";
 import { Link } from "wouter";
 import { useTranslation } from "react-i18next";
-import { Star, ShoppingCart, Package, Heart, GitCompareArrows, Zap } from "lucide-react";
+import { Star, ShoppingCart, Package, Heart, GitCompareArrows, Zap, Check, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useCartStore } from "@/stores/cart-store";
@@ -15,6 +16,8 @@ import { StockUrgencyBadge } from "@/components/social-proof/stock-urgency";
 import { SoldBadge } from "@/components/social-proof/sold-badge";
 import { RegionBadge } from "@/components/product/region-badge";
 import { PlatformBadge } from "@/components/product/platform-badge";
+import { QuickViewModal } from "@/components/product/quick-view-modal";
+import { CountdownTimer } from "@/components/flash-sale/countdown-timer";
 import type { MockProduct } from "@/lib/mock-data";
 
 interface ProductCardProps {
@@ -24,6 +27,7 @@ interface ProductCardProps {
 
 export function ProductCard({ product, flashSalePrice: flashSalePriceProp }: ProductCardProps) {
   const flashPrices = useFlashSaleStore((s) => s.prices);
+  const saleEndsAt = useFlashSaleStore((s) => s.endsAt);
   const { t } = useTranslation();
   const variant = product.variants?.[0];
   const resolvedFlashPrice = product.variants?.reduce<string | undefined>((found, v) => found ?? flashPrices.get(v.id), undefined);
@@ -38,6 +42,15 @@ export function ProductCard({ product, flashSalePrice: flashSalePriceProp }: Pro
   const removeCompare = useCompareStore((s) => s.removeProduct);
 
   const loyaltyConfig = useLoyaltyStore((s) => s.config);
+
+  const isNewRecently = product.isNew && product.createdAt
+    ? (Date.now() - new Date(product.createdAt).getTime()) < 14 * 24 * 60 * 60 * 1000
+    : product.isNew;
+
+  const [added, setAdded] = useState(false);
+  const addedTimer = useRef<ReturnType<typeof setTimeout>>();
+  const [heartPulse, setHeartPulse] = useState(false);
+  const [quickViewOpen, setQuickViewOpen] = useState(false);
   const isWishlisted = wishlistIds.includes(product.id);
   const isComparing = compareIds.includes(product.id);
   if (!variant) return null;
@@ -64,13 +77,23 @@ export function ProductCard({ product, flashSalePrice: flashSalePriceProp }: Pro
       platform: variant.platform,
       regionRestrictions: product.regionRestrictions,
     });
+    clearTimeout(addedTimer.current);
+    setAdded(true);
+    addedTimer.current = setTimeout(() => setAdded(false), 3000);
   }
 
   function handleWishlist(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
     toggleWishlist(product.id);
+    setHeartPulse(true);
   }
+
+  useEffect(() => {
+    if (!heartPulse) return;
+    const timer = setTimeout(() => setHeartPulse(false), 300);
+    return () => clearTimeout(timer);
+  }, [heartPulse]);
 
   function handleCompare(e: React.MouseEvent) {
     e.preventDefault();
@@ -85,34 +108,51 @@ export function ProductCard({ product, flashSalePrice: flashSalePriceProp }: Pro
   }
 
   return (
+    <>
     <Link href={`/product/${product.slug}`} onClick={() => addToRecentlyViewed(product.id)}>
-      <div className="group bg-card border border-border rounded-lg overflow-hidden hover:shadow-md transition-shadow h-full flex flex-col">
-        <div className="relative aspect-[4/3] bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center">
-          {product.imageUrl ? (
-            <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
-          ) : (
-            <Package className="h-12 w-12 text-muted-foreground/30" />
-          )}
+      <div className="group bg-card border border-border rounded-lg hover:shadow-md transition-shadow h-full flex flex-col">
+        <div className="relative aspect-[4/3] shrink-0 rounded-t-lg">
+          {/* Clip only the image so discount / NEW badges are not cut off by overflow-hidden */}
+          <div className="absolute inset-0 overflow-hidden rounded-t-lg bg-gradient-to-br from-muted to-muted/50">
+            {product.imageUrl ? (
+              <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center">
+                <Package className="h-12 w-12 text-muted-foreground/30" />
+              </div>
+            )}
+          </div>
           {discount > 0 && (
-            <Badge className="absolute top-2 left-2 bg-destructive text-destructive-foreground text-[10px] px-1.5 py-0.5">
+            <Badge
+              variant="destructive"
+              className="no-default-hover-elevate pointer-events-none absolute left-2 top-2 z-10 max-w-[calc(100%-1rem)] truncate text-[10px] px-1.5 py-0.5 shadow-sm"
+            >
               -{discount}%
             </Badge>
           )}
           {flashSalePrice && (
-            <Badge className="absolute bottom-2 left-2 bg-red-600 text-white text-[10px] px-1.5 py-0.5 flex items-center gap-0.5">
-              <Zap className="h-2.5 w-2.5 fill-current" /> FLASH SALE
-            </Badge>
+            <div className="absolute bottom-2 left-2 z-10 flex flex-col items-start gap-0.5">
+              <Badge className="no-default-hover-elevate pointer-events-none bg-red-600 text-white text-[10px] px-1.5 py-0.5 flex items-center gap-0.5 shadow-sm">
+                <Zap className="h-2.5 w-2.5 fill-current" /> FLASH SALE
+              </Badge>
+              {saleEndsAt && (
+                <div className="flex items-center gap-1 bg-red-700/90 text-white text-[9px] px-1.5 py-0.5 rounded shadow-sm pointer-events-none">
+                  <Zap className="h-2.5 w-2.5 fill-current shrink-0" />
+                  <CountdownTimer endsAt={saleEndsAt} size="xs" className="text-[9px]" />
+                </div>
+              )}
+            </div>
           )}
-          {product.isNew && !flashSalePrice && (
-            <Badge className="absolute top-2 right-2 bg-green-600 text-white text-[10px] px-1.5 py-0.5">
+          {isNewRecently && !flashSalePrice && (
+            <Badge className="no-default-hover-elevate pointer-events-none absolute right-2 top-2 z-10 bg-green-600 text-white text-[10px] px-1.5 py-0.5 shadow-sm">
               NEW
             </Badge>
           )}
-          <div className="absolute top-2 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            {!product.isNew && <span />}
+          <div className="absolute right-2 top-2 z-20 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            {!isNewRecently && <span />}
             <button
               onClick={handleWishlist}
-              className={`w-7 h-7 rounded-full bg-white/90 shadow flex items-center justify-center hover:bg-white transition-colors ${isWishlisted ? "text-red-500" : "text-muted-foreground"}`}
+              className={`w-7 h-7 rounded-full bg-white/90 shadow flex items-center justify-center hover:bg-white transition-colors ${isWishlisted ? "text-red-500" : "text-muted-foreground"} ${heartPulse ? "animate-heart-pulse" : ""}`}
             >
               <Heart className={`h-3.5 w-3.5 ${isWishlisted ? "fill-red-500" : ""}`} />
             </button>
@@ -123,9 +163,15 @@ export function ProductCard({ product, flashSalePrice: flashSalePriceProp }: Pro
               <GitCompareArrows className="h-3.5 w-3.5" />
             </button>
           </div>
+          <button
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setQuickViewOpen(true); }}
+            className="absolute inset-x-0 bottom-0 bg-black/60 text-white text-xs py-1.5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1 z-20"
+          >
+            <Eye className="h-3 w-3" /> Quick View
+          </button>
         </div>
 
-        <div className="p-3 flex flex-col flex-1 items-center text-center">
+        <div className="flex flex-1 flex-col items-center p-3 text-center">
           <h3 className="text-sm font-medium text-foreground line-clamp-2 mb-1 group-hover:text-primary transition-colors">
             {product.name}
           </h3>
@@ -180,21 +226,39 @@ export function ProductCard({ product, flashSalePrice: flashSalePriceProp }: Pro
               type="button"
               variant="default"
               size="sm"
-              className="no-default-hover-elevate no-default-active-elevate h-9 min-h-9 w-full gap-2 rounded-lg border-0 bg-primary px-3 text-xs font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 active:bg-primary/85 disabled:opacity-50"
+              className={`no-default-hover-elevate no-default-active-elevate h-9 min-h-9 w-full gap-2 rounded-lg border-0 px-3 text-xs font-semibold text-white shadow-sm transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50 ${added ? "bg-emerald-500 hover:bg-emerald-500" : "bg-primary hover:bg-primary/90 active:bg-primary/85"}`}
               onClick={handleAddToCart}
               disabled={!inStock}
             >
-              <ShoppingCart className="h-3.5 w-3.5 shrink-0" aria-hidden />
-              {t("product.addToCart")}
+              {added ? (
+                <>
+                  <Check className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                  Added
+                </>
+              ) : (
+                <>
+                  <ShoppingCart className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                  {t("product.addToCart")}
+                </>
+              )}
             </Button>
+            {loyaltyConfig && (
+              <p
+                className="text-center text-xs font-medium leading-snug tracking-tight text-emerald-700 dark:text-emerald-400"
+                title={t("product.loyaltyEarnHint")}
+              >
+                <span className="tabular-nums">
+                  {t("product.loyaltyEarnApprox", {
+                    points: Math.floor(price * loyaltyConfig.pointsPerDollar),
+                  })}
+                </span>
+              </p>
+            )}
           </div>
-          {loyaltyConfig && (
-            <p className="text-[10px] text-yellow-600 mt-0.5">
-              Earn ~{Math.floor(price * loyaltyConfig.pointsPerDollar)} pts
-            </p>
-          )}
         </div>
       </div>
     </Link>
+    <QuickViewModal product={product} open={quickViewOpen} onClose={() => setQuickViewOpen(false)} />
+    </>
   );
 }

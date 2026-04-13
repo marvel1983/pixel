@@ -74,6 +74,16 @@
     "noOrder": "Objednávka nenalezena. Zkontrolujte své údaje."
   },
   "support": {
+    "hubTitle": "Nápověda a podpora",
+    "hubSubtitle": "Odpovědi, stav objednávky nebo tiket — rádi pomůžeme.",
+    "hubFaqTitle": "FAQ a nápověda",
+    "hubFaqDesc": "Časté dotazy k objednávkám, klíčům a aktivaci.",
+    "hubFaqCta": "Zobrazit FAQ",
+    "hubOrderTitle": "Vyhledat objednávku",
+    "hubOrderDesc": "Už jste nakoupili? Stav a licence podle e-mailu.",
+    "hubOrderCta": "Najít objednávku",
+    "hubTicketTitle": "Kontakt",
+    "hubTicketDesc": "Nenašli jste odpověď? Vytvořte tiket — ozveme se.",
     "newTicket": "Odeslat tiket podpory",
     "category": "Kategorie",
     "subject": "Předmět",

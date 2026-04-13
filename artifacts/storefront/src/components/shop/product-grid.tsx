@@ -11,6 +11,7 @@ import type { MockProduct } from "@/lib/mock-data";
 
 const SORT_OPTIONS = [
   { value: "newest", label: "Newest" },
+  { value: "popular", label: "Most Popular" },
   { value: "name-asc", label: "Name A-Z" },
   { value: "name-desc", label: "Name Z-A" },
   { value: "price-asc", label: "Price: Low to High" },

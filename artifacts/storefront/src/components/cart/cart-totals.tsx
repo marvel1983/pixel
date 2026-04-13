@@ -23,7 +23,7 @@ export function CartTotals() {
   const total = subtotal - discountAmount;
 
   return (
-    <div className="sticky top-20 space-y-3">
+    <div className="space-y-3">
       {/* Summary card */}
       <div className="rounded-xl border border-border bg-card overflow-hidden">
         <div className="px-5 py-4 border-b border-border bg-muted/30">

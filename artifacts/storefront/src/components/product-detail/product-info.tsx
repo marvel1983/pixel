@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { ShoppingCart, Zap, Heart, GitCompareArrows, Star, Minus, Plus } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { ShoppingCart, Zap, Heart, GitCompareArrows, Star, Minus, Plus, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useCurrencyStore } from "@/stores/currency-store";
@@ -95,6 +95,22 @@ export function ProductInfo({ product }: ProductInfoProps) {
     .filter((e) => e.type !== "BASE" && parseFloat(e.savedUsd) > 0)
     .map((e) => e.label)[0] ?? null;
 
+  const addToCartRef = useRef<HTMLButtonElement>(null);
+  const [showStickyBar, setShowStickyBar] = useState(false);
+  const [added, setAdded] = useState(false);
+  const addedTimer = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => {
+    const btn = addToCartRef.current;
+    if (!btn) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setShowStickyBar(!entry.isIntersecting),
+      { threshold: 0 },
+    );
+    observer.observe(btn);
+    return () => observer.disconnect();
+  }, []);
+
   function handleAddToCart() {
     for (let i = 0; i < quantity; i++) {
       addItem({
@@ -110,6 +126,9 @@ export function ProductInfo({ product }: ProductInfoProps) {
         regionRestrictions: product.regionRestrictions,
       });
     }
+    clearTimeout(addedTimer.current);
+    setAdded(true);
+    addedTimer.current = setTimeout(() => setAdded(false), 3000);
   }
 
   return (
@@ -155,15 +174,25 @@ export function ProductInfo({ product }: ProductInfoProps) {
             <span className={`text-3xl font-bold ${isFlashSale ? "text-red-600" : "text-orange-600"}`}>
               {formatPrice(effectivePrice)}
             </span>
-            <span className="text-lg text-muted-foreground line-through">
-              {formatPrice(enginePrice ? parseFloat(enginePrice.basePriceUsd) : basePrice)}
-            </span>
+            <div className="relative group inline-flex items-center gap-1">
+              <span className="text-lg text-muted-foreground line-through">
+                {formatPrice(enginePrice ? parseFloat(enginePrice.basePriceUsd) : basePrice)}
+              </span>
+              <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 rounded bg-gray-800 text-white text-[10px] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                Original price
+              </span>
+            </div>
           </>
         ) : (
           <>
             <span className="text-3xl font-bold text-foreground">{formatPrice(effectivePrice)}</span>
             {compareAt && (
-              <span className="text-lg text-muted-foreground line-through">{formatPrice(compareAt)}</span>
+              <div className="relative group inline-flex items-center gap-1">
+                <span className="text-lg text-muted-foreground line-through">{formatPrice(compareAt)}</span>
+                <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 rounded bg-gray-800 text-white text-[10px] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                  Lowest price in last 30 days
+                </span>
+              </div>
             )}
           </>
         )}
@@ -243,36 +272,32 @@ export function ProductInfo({ product }: ProductInfoProps) {
 
       <VolumePricing productId={product.id} basePrice={selectedVariant.priceUsd} />
 
-      <div className="flex gap-3">
+      <div className="flex gap-2">
         <Button
-          size="lg"
-          className="flex-1"
+          ref={addToCartRef}
+          size="sm"
+          className={`w-44 h-9 text-sm transition-colors ${added ? "bg-emerald-500 hover:bg-emerald-500 text-white" : ""}`}
           disabled={!inStock}
           onClick={handleAddToCart}
         >
-          <ShoppingCart className="h-4 w-4 mr-2" />
-          Add to Cart
+          {added ? (
+            <><Check className="h-3.5 w-3.5 mr-1.5" /> Added</>
+          ) : (
+            <><ShoppingCart className="h-3.5 w-3.5 mr-1.5" /> Add to Cart</>
+          )}
         </Button>
         <Button
-          size="lg"
-          variant="secondary"
-          className="flex-1"
-          disabled={!inStock}
-          onClick={handleAddToCart}
+          size="sm"
+          className="w-44 h-9 text-sm text-white border-0 ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+          style={{ backgroundColor: isWishlisted ? "#ea8a00" : "#f97316" }}
+          onClick={() => toggleWishlist(product.id)}
         >
-          <Zap className="h-4 w-4 mr-2" />
-          Buy Now
+          <Heart className={`h-3.5 w-3.5 mr-1.5 ${isWishlisted ? "fill-white" : ""}`} />
+          {isWishlisted ? "In Wishlist" : "Wishlist"}
         </Button>
       </div>
 
-      <div className="flex gap-4 text-sm">
-        <button
-          onClick={() => toggleWishlist(product.id)}
-          className={`flex items-center gap-1.5 transition-colors ${isWishlisted ? "text-red-500" : "text-muted-foreground hover:text-foreground"}`}
-        >
-          <Heart className={`h-4 w-4 ${isWishlisted ? "fill-red-500" : ""}`} />
-          {isWishlisted ? "In Wishlist" : "Add to Wishlist"}
-        </button>
+      <div className="flex items-center gap-4 text-sm pt-1">
         <button
           onClick={() => {
             if (isComparing) {
@@ -288,10 +313,36 @@ export function ProductInfo({ product }: ProductInfoProps) {
           <GitCompareArrows className="h-4 w-4" />
           {isComparing ? "Remove from Compare" : "Compare"}
         </button>
+        <span className="text-muted-foreground/30">|</span>
+        <span className="text-xs text-muted-foreground">SKU: {selectedVariant.sku}</span>
       </div>
 
-      <div className="text-xs text-muted-foreground">
-        SKU: {selectedVariant.sku} | Platform: {selectedVariant.platform}
+      {/* Sticky Add to Cart bar */}
+      <div
+        className={`fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-sm border-t border-border transition-transform duration-300 ease-in-out ${
+          showStickyBar ? "translate-y-0" : "translate-y-full"
+        }`}
+      >
+        <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold truncate">{product.name}</p>
+            <p className={`text-lg font-bold ${isFlashSale ? "text-red-600" : hasEngineDiscount ? "text-orange-600" : "text-foreground"}`}>
+              {formatPrice(effectivePrice)}
+            </p>
+          </div>
+          <Button
+            size="lg"
+            disabled={!inStock}
+            onClick={handleAddToCart}
+            className={`shrink-0 transition-colors ${added ? "bg-emerald-500 hover:bg-emerald-500 text-white" : ""}`}
+          >
+            {added ? (
+              <><Check className="h-4 w-4 mr-2" /> Added</>
+            ) : (
+              <><ShoppingCart className="h-4 w-4 mr-2" /> Add to Cart</>
+            )}
+          </Button>
+        </div>
       </div>
     </div>
   );

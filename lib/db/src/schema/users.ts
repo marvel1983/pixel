@@ -40,6 +40,12 @@ export const users = pgTable("users", {
   lastLoginAt: timestamp("last_login_at"),
   dateOfBirth: date("date_of_birth"),
   referredByUserId: integer("referred_by_user_id"),
+  /** Default billing address — used to pre-fill checkout */
+  billingCountry: varchar("billing_country", { length: 3 }),
+  billingCity: varchar("billing_city", { length: 120 }),
+  billingAddress: varchar("billing_address", { length: 500 }),
+  billingZip: varchar("billing_zip", { length: 32 }),
+  billingVatNumber: varchar("billing_vat_number", { length: 50 }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

@@ -74,6 +74,16 @@
     "noOrder": "Aucune commande trouvée. Veuillez vérifier vos informations."
   },
   "support": {
+    "hubTitle": "Aide & support",
+    "hubSubtitle": "Réponses, suivi de commande ou ticket — nous sommes là pour vous aider.",
+    "hubFaqTitle": "FAQ & centre d’aide",
+    "hubFaqDesc": "Questions fréquentes sur les commandes, clés et activation.",
+    "hubFaqCta": "Voir la FAQ",
+    "hubOrderTitle": "Suivi de commande",
+    "hubOrderDesc": "Déjà acheté ? Consultez le statut et les détails avec votre e-mail.",
+    "hubOrderCta": "Rechercher une commande",
+    "hubTicketTitle": "Nous contacter",
+    "hubTicketDesc": "Pas trouvé ? Ouvrez un ticket — notre équipe vous répondra.",
     "newTicket": "Soumettre un ticket de support",
     "category": "Catégorie",
     "subject": "Sujet",
