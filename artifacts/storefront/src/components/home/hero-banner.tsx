@@ -284,7 +284,7 @@ export function HeroBanner() {
   return (
     <div
       className="relative w-full overflow-hidden rounded-xl shadow-2xl shadow-black/30"
-      style={{ height: 360 }}
+      style={{ minHeight: 220, height: "clamp(220px, 30vw, 380px)" }}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
@@ -310,10 +310,10 @@ export function HeroBanner() {
 
       {/* Content + Visual: 2-column */}
       <div
-        className={`relative h-full grid grid-cols-[1fr_220px] transition-opacity duration-200 ${fading ? "opacity-0" : "opacity-100"}`}
+        className={`relative h-full grid grid-cols-[1fr] sm:grid-cols-[1fr_180px] lg:grid-cols-[1fr_220px] transition-opacity duration-200 ${fading ? "opacity-0" : "opacity-100"}`}
       >
         {/* Left: text */}
-        <div className="flex flex-col justify-center px-8 py-6">
+        <div className="flex flex-col justify-center px-5 py-4 sm:px-8 sm:py-6">
           {/* Badge */}
           <div className="mb-3 flex items-center gap-2">
             <span
@@ -329,7 +329,7 @@ export function HeroBanner() {
           </div>
 
           {/* Headline */}
-          <h2 className="mb-2 text-3xl font-extrabold leading-tight text-white tracking-tight">
+          <h2 className="mb-2 text-xl sm:text-2xl lg:text-3xl font-extrabold leading-tight text-white tracking-tight">
             {s.headline}
             <span className="block" style={{ color: s.accent }}>{s.headlineAccent}</span>
           </h2>
@@ -361,8 +361,8 @@ export function HeroBanner() {
           </div>
         </div>
 
-        {/* Right: illustration */}
-        <div className="relative overflow-hidden">
+        {/* Right: illustration — hidden on xs, visible sm+ */}
+        <div className="relative overflow-hidden hidden sm:block">
           <SlideVisual visual={s.visual} accent={s.accent} />
         </div>
       </div>

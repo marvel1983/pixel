@@ -36,7 +36,7 @@ export function CategoriesDropdown({ onClose }: CategoriesDropdownProps) {
   return (
     <div
       ref={ref}
-      className="absolute top-full left-0 mt-1 w-64 bg-popover rounded-lg shadow-lg border border-border z-50 py-2"
+      className="absolute top-full left-0 mt-1 w-64 bg-popover rounded-lg shadow-lg border border-border z-[200] py-2"
     >
       {CATEGORIES.map((cat) => {
         const Icon = cat.icon;

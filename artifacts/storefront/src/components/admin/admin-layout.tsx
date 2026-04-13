@@ -22,9 +22,9 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         </SheetContent>
       </Sheet>
 
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex flex-1 flex-col overflow-hidden min-w-0">
         <AdminTopbar onMenuClick={() => setDrawerOpen(true)} />
-        <main className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">
+        <main className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4 bg-[#0f1117]">
           {children}
         </main>
       </div>
