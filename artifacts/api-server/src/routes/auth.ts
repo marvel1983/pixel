@@ -42,7 +42,7 @@ const updateProfileSchema = z.object({
 
 const forgotPasswordSchema = z.object({ email: z.string().email() });
 const resetPasswordSchema = z.object({ token: z.string().min(1), password: z.string().min(8) });
-const COOKIE_OPTS = { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax" as const, maxAge: 30 * 24 * 60 * 60 * 1000 };
+const COOKIE_OPTS = { httpOnly: true, secure: process.env.COOKIE_SECURE === "true", sameSite: "lax" as const, maxAge: 30 * 24 * 60 * 60 * 1000 };
 
 function sanitizeUser(u: User) {
   return {

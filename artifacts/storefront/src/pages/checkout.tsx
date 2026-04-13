@@ -219,7 +219,11 @@ export default function CheckoutPage() {
 
       const res = await fetch(`${API}/orders`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "X-Idempotency-Key": idempotencyKey },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Idempotency-Key": idempotencyKey,
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         credentials: "include",
         body: JSON.stringify({
           billing, items, coupon, cppSelected,

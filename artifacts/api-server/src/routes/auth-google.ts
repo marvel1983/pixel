@@ -24,7 +24,7 @@ setInterval(() => {
 
 const COOKIE_OPTS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
+  secure: process.env.COOKIE_SECURE === "true",
   sameSite: "lax" as const,
   maxAge: 30 * 24 * 60 * 60 * 1000,
 };
