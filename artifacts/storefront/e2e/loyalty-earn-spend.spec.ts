@@ -120,6 +120,7 @@ async function placeOrder(
         city: "Austin",
         zip: "78701",
         address: "123 E2E Street",
+        phone: "+1 512 5550100",
       },
       items: [
         {

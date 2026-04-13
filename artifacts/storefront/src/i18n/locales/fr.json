@@ -79,6 +79,8 @@
     "address": "Adresse",
     "zip": "Code postal",
     "vatNumber": "Numéro de TVA",
+    "phone": "Numéro de téléphone",
+    "phonePlaceholder": "ex. +33 1 23 45 67 89",
     "cardNumber": "Numéro de carte",
     "expiry": "Date d'expiration",
     "cvc": "CVC",
@@ -214,7 +216,8 @@
     "registrationFailed": "Échec de l'inscription",
     "enterPassword": "Entrez votre mot de passe",
     "signUpWithGoogle": "S'inscrire avec Google",
-    "emailPlaceholder": "vous@exemple.fr"
+    "emailPlaceholder": "vous@exemple.fr",
+    "registerAddressHint": "Nous préremplissons le paiement et votre compte avec ces informations."
   },
   "categories": {
     "operatingSystems": "Systèmes d'exploitation",

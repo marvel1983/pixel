@@ -71,6 +71,7 @@ function sanitizeUser(u: typeof users.$inferSelect) {
     billingAddress: u.billingAddress,
     billingZip: u.billingZip,
     billingVatNumber: u.billingVatNumber,
+    billingPhone: u.billingPhone,
   };
 }
 

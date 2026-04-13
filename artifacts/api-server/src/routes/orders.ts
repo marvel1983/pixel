@@ -25,6 +25,7 @@ const s1 = z.string().min(1);
 const billingSchema = z.object({
   email: z.string().email(), firstName: s1, lastName: s1,
   country: s1, city: z.string().default(""), address: z.string().default(""), zip: z.string().default(""),
+  phone: z.string().trim().min(5).max(40),
 });
 const itemSchema = z.object({
   variantId: z.number().int(), productId: z.number().int(),

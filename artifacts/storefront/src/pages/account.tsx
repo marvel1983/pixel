@@ -240,6 +240,7 @@ function ProfileTab() {
     billingAddress: user?.billingAddress ?? "",
     billingZip: user?.billingZip ?? "",
     billingVatNumber: user?.billingVatNumber ?? "",
+    billingPhone: user?.billingPhone ?? "",
     currentPassword: "",
     newPassword: "",
   });
@@ -258,6 +259,7 @@ function ProfileTab() {
       billingAddress: user.billingAddress ?? "",
       billingZip: user.billingZip ?? "",
       billingVatNumber: user.billingVatNumber ?? "",
+      billingPhone: user.billingPhone ?? "",
     }));
   }, [
     user?.id,
@@ -268,6 +270,7 @@ function ProfileTab() {
     user?.billingAddress,
     user?.billingZip,
     user?.billingVatNumber,
+    user?.billingPhone,
   ]);
 
   useEffect(() => {
@@ -325,6 +328,7 @@ function ProfileTab() {
       body.billingAddress = form.billingAddress;
       body.billingZip = form.billingZip;
       body.billingVatNumber = form.billingVatNumber;
+      body.billingPhone = form.billingPhone;
       if (form.newPassword) {
         body.currentPassword = form.currentPassword;
         body.newPassword = form.newPassword;
@@ -396,7 +400,7 @@ function ProfileTab() {
                 <SelectTrigger id="profile-country" className="w-full">
                   <SelectValue placeholder={t("checkout.selectCountry")} />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-[min(24rem,70vh)]">
                   {BILLING_COUNTRIES.map(([code, name]) => (
                     <SelectItem key={code} value={code}>
                       {name}
@@ -438,6 +442,17 @@ function ProfileTab() {
                 value={form.billingVatNumber}
                 onChange={(e) => update("billingVatNumber", e.target.value)}
                 placeholder={t("accountPage.billingVatOptional")}
+              />
+            </div>
+            <div>
+              <Label htmlFor="profile-phone">{t("checkout.phone")}</Label>
+              <Input
+                id="profile-phone"
+                type="tel"
+                autoComplete="tel"
+                value={form.billingPhone}
+                onChange={(e) => update("billingPhone", e.target.value)}
+                placeholder={t("checkout.phonePlaceholder")}
               />
             </div>
           </div>

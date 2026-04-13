@@ -10,6 +10,7 @@ const billingSchema = z.object({
   city: z.string().min(1, "City is required"),
   address: z.string().min(1, "Address is required"),
   zip: z.string().min(1, "Zip code is required"),
+  phone: z.string().trim().min(5, "Phone number is required"),
 });
 
 const paymentSchema = z.object({

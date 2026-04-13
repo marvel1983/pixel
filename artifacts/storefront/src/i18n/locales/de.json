@@ -79,6 +79,8 @@
     "address": "Adresse",
     "zip": "PLZ",
     "vatNumber": "USt-IdNr.",
+    "phone": "Telefonnummer",
+    "phonePlaceholder": "z. B. +49 30 12345678",
     "cardNumber": "Kartennummer",
     "expiry": "Ablaufdatum",
     "cvc": "CVC",
@@ -214,7 +216,8 @@
     "registrationFailed": "Registrierung fehlgeschlagen",
     "enterPassword": "Passwort eingeben",
     "signUpWithGoogle": "Mit Google registrieren",
-    "emailPlaceholder": "name@beispiel.de"
+    "emailPlaceholder": "name@beispiel.de",
+    "registerAddressHint": "Diese Angaben füllen wir bei der Kasse und in Ihrem Konto vor."
   },
   "categories": {
     "operatingSystems": "Betriebssysteme",

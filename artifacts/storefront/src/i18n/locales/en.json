@@ -80,6 +80,8 @@
     "address": "Address",
     "zip": "ZIP / Postal Code",
     "vatNumber": "VAT Number",
+    "phone": "Phone number",
+    "phonePlaceholder": "e.g. +1 555 010 0100",
     "cardNumber": "Card Number",
     "expiry": "Expiry Date",
     "cvc": "CVC",
@@ -251,7 +253,8 @@
     "registrationFailed": "Registration failed",
     "enterPassword": "Enter your password",
     "signUpWithGoogle": "Sign up with Google",
-    "emailPlaceholder": "you@example.com"
+    "emailPlaceholder": "you@example.com",
+    "registerAddressHint": "We use this to pre-fill checkout and your account."
   },
   "categories": {
     "operatingSystems": "Operating Systems",

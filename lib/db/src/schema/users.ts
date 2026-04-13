@@ -46,6 +46,7 @@ export const users = pgTable("users", {
   billingAddress: varchar("billing_address", { length: 500 }),
   billingZip: varchar("billing_zip", { length: 32 }),
   billingVatNumber: varchar("billing_vat_number", { length: 50 }),
+  billingPhone: varchar("billing_phone", { length: 40 }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

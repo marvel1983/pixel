@@ -29,6 +29,7 @@ type OrderStatus = (typeof orderStatusEnum.enumValues)[number];
 interface BillingInfo {
   email: string; firstName: string; lastName: string;
   country: string; city: string; address: string; zip: string;
+  phone: string;
 }
 interface OrderItem {
   variantId: number; productId: number; productName: string; variantName: string;

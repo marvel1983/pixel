@@ -20,6 +20,7 @@ export interface AuthUser {
   billingAddress?: string | null;
   billingZip?: string | null;
   billingVatNumber?: string | null;
+  billingPhone?: string | null;
 }
 
 interface AuthState {

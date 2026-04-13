@@ -31,7 +31,7 @@ const API = import.meta.env.VITE_API_URL ?? "/api";
 
 const INITIAL_BILLING: BillingData = {
   email: "", firstName: "", lastName: "",
-  country: "", city: "", address: "", zip: "", vatNumber: "",
+  country: "", city: "", address: "", zip: "", phone: "", vatNumber: "",
 };
 
 const INITIAL_PAYMENT: PaymentData = {
@@ -104,6 +104,7 @@ export default function CheckoutPage() {
           city: (u.billingCity as string | null) || prev.city,
           address: (u.billingAddress as string | null) || prev.address,
           zip: (u.billingZip as string | null) || prev.zip,
+          phone: (u.billingPhone as string | null) || prev.phone,
           vatNumber: (u.billingVatNumber as string | null) ?? prev.vatNumber ?? "",
         }));
       })

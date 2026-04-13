@@ -8,6 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { COUNTRY_OPTIONS } from "@/lib/country-options";
 
 export interface BillingData {
   email: string;
@@ -17,6 +18,7 @@ export interface BillingData {
   city: string;
   address: string;
   zip: string;
+  phone: string;
   vatNumber?: string;
 }
 
@@ -27,21 +29,8 @@ interface BillingFormProps {
   showVatField?: boolean;
 }
 
-export const BILLING_COUNTRIES: [string, string][] = [
-  ["US", "United States"], ["GB", "United Kingdom"], ["DE", "Germany"],
-  ["FR", "France"], ["CA", "Canada"], ["AU", "Australia"],
-  ["NL", "Netherlands"], ["PL", "Poland"], ["BR", "Brazil"],
-  ["TR", "Turkey"], ["ES", "Spain"], ["IT", "Italy"],
-  ["SE", "Sweden"], ["NO", "Norway"], ["DK", "Denmark"],
-  ["JP", "Japan"], ["KR", "South Korea"], ["IN", "India"],
-  ["MX", "Mexico"], ["CH", "Switzerland"], ["AT", "Austria"],
-  ["BE", "Belgium"], ["BG", "Bulgaria"], ["HR", "Croatia"],
-  ["CY", "Cyprus"], ["CZ", "Czech Republic"], ["EE", "Estonia"],
-  ["FI", "Finland"], ["GR", "Greece"], ["HU", "Hungary"],
-  ["IE", "Ireland"], ["LV", "Latvia"], ["LT", "Lithuania"],
-  ["LU", "Luxembourg"], ["MT", "Malta"], ["PT", "Portugal"],
-  ["RO", "Romania"], ["SK", "Slovakia"], ["SI", "Slovenia"],
-];
+/** @deprecated Use COUNTRY_OPTIONS from @/lib/country-options */
+export const BILLING_COUNTRIES: readonly [string, string][] = COUNTRY_OPTIONS;
 
 export function BillingForm({ data, errors, onChange, showVatField }: BillingFormProps) {
   const { t } = useTranslation();
@@ -90,8 +79,8 @@ export function BillingForm({ data, errors, onChange, showVatField }: BillingFor
           <SelectTrigger className={errors.country ? "border-destructive" : ""}>
             <SelectValue placeholder={t("checkout.selectCountry")} />
           </SelectTrigger>
-          <SelectContent>
-            {BILLING_COUNTRIES.map(([code, name]) => (
+          <SelectContent className="max-h-[min(24rem,70vh)]">
+            {COUNTRY_OPTIONS.map(([code, name]) => (
               <SelectItem key={code} value={code}>{name}</SelectItem>
             ))}
           </SelectContent>
@@ -131,6 +120,20 @@ export function BillingForm({ data, errors, onChange, showVatField }: BillingFor
           className={errors.address ? "border-destructive" : ""}
         />
         {errors.address && <p className="text-xs text-destructive mt-1">{errors.address}</p>}
+      </div>
+
+      <div>
+        <Label htmlFor="phone">{t("checkout.phone")} *</Label>
+        <Input
+          id="phone"
+          type="tel"
+          autoComplete="tel"
+          value={data.phone}
+          onChange={(e) => onChange("phone", e.target.value)}
+          placeholder={t("checkout.phonePlaceholder")}
+          className={errors.phone ? "border-destructive" : ""}
+        />
+        {errors.phone && <p className="text-xs text-destructive mt-1">{errors.phone}</p>}
       </div>
 
       {showVatField && (

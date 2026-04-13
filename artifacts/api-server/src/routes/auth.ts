@@ -21,6 +21,12 @@ const registerSchema = z.object({
   agreeTerms: z.literal(true, {
     message: "You must agree to the terms",
   }),
+  billingCountry: z.string().min(2).max(3),
+  billingCity: z.string().min(1).max(120),
+  billingAddress: z.string().min(1).max(500),
+  billingZip: z.string().min(1).max(32),
+  billingVatNumber: z.string().max(50).optional(),
+  billingPhone: z.string().trim().min(5).max(40),
 });
 
 const loginSchema = z.object({
@@ -38,6 +44,7 @@ const updateProfileSchema = z.object({
   billingAddress: z.string().max(500).optional(),
   billingZip: z.string().max(32).optional(),
   billingVatNumber: z.string().max(50).optional(),
+  billingPhone: z.string().trim().max(40).optional(),
 });
 
 const forgotPasswordSchema = z.object({ email: z.string().email() });
@@ -65,6 +72,7 @@ function sanitizeUser(u: User) {
     billingAddress: u.billingAddress,
     billingZip: u.billingZip,
     billingVatNumber: u.billingVatNumber,
+    billingPhone: u.billingPhone,
   };
 }
 
@@ -79,7 +87,18 @@ router.post("/auth/register", authRegisterLimit, async (req, res) => {
     return;
   }
 
-  const { email, password, firstName, lastName } = parsed.data;
+  const {
+    email,
+    password,
+    firstName,
+    lastName,
+    billingCountry,
+    billingCity,
+    billingAddress,
+    billingZip,
+    billingVatNumber,
+    billingPhone,
+  } = parsed.data;
 
   const existing = await db
     .select({ id: users.id })
@@ -110,6 +129,8 @@ router.post("/auth/register", authRegisterLimit, async (req, res) => {
     }
   }
 
+  const vatTrim = billingVatNumber?.trim();
+
   const [user] = await db
     .insert(users)
     .values({
@@ -120,6 +141,12 @@ router.post("/auth/register", authRegisterLimit, async (req, res) => {
       role: "CUSTOMER",
       isActive: true,
       emailVerified: false,
+      billingCountry: billingCountry.toUpperCase(),
+      billingCity,
+      billingAddress,
+      billingZip,
+      billingVatNumber: vatTrim ? vatTrim : null,
+      billingPhone: billingPhone.trim(),
       ...(locale ? { preferredLocale: locale } : {}),
       ...(referredByUserId !== undefined ? { referredByUserId } : {}),
     })
@@ -218,16 +245,20 @@ router.put("/auth/profile", requireAuth, async (req, res) => {
     billingAddress,
     billingZip,
     billingVatNumber,
+    billingPhone,
   } = parsed.data;
   const updateData: Record<string, unknown> = { updatedAt: new Date() };
 
   if (firstName) updateData.firstName = firstName;
   if (lastName) updateData.lastName = lastName;
-  if (billingCountry !== undefined) updateData.billingCountry = billingCountry || null;
+  if (billingCountry !== undefined) {
+    updateData.billingCountry = billingCountry ? billingCountry.toUpperCase() : null;
+  }
   if (billingCity !== undefined) updateData.billingCity = billingCity || null;
   if (billingAddress !== undefined) updateData.billingAddress = billingAddress || null;
   if (billingZip !== undefined) updateData.billingZip = billingZip || null;
   if (billingVatNumber !== undefined) updateData.billingVatNumber = billingVatNumber || null;
+  if (billingPhone !== undefined) updateData.billingPhone = billingPhone?.trim() || null;
 
   if (newPassword) {
     if (!currentPassword) {

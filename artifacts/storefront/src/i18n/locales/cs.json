@@ -79,6 +79,8 @@
     "address": "Adresa",
     "zip": "PSČ",
     "vatNumber": "DIČ",
+    "phone": "Telefonní číslo",
+    "phonePlaceholder": "např. +420 123 456 789",
     "cardNumber": "Číslo karty",
     "expiry": "Datum expirace",
     "cvc": "CVC",
@@ -214,7 +216,8 @@
     "registrationFailed": "Registrace selhala",
     "enterPassword": "Zadejte heslo",
     "signUpWithGoogle": "Registrovat se přes Google",
-    "emailPlaceholder": "vy@priklad.cz"
+    "emailPlaceholder": "vy@priklad.cz",
+    "registerAddressHint": "Údaje použijeme k předvyplnění pokladny a vašeho účtu."
   },
   "categories": {
     "operatingSystems": "Operační systémy",

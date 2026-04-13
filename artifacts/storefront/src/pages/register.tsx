@@ -6,12 +6,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthStore } from "@/stores/auth-store";
 import { Breadcrumbs } from "@/components/shop/breadcrumbs";
 import { UserPlus, Eye, EyeOff, Loader2 } from "lucide-react";
 import { GoogleButton } from "@/components/auth/google-button";
 import { setSeoMeta, clearSeoMeta } from "@/lib/seo";
+import { COUNTRY_OPTIONS } from "@/lib/country-options";
 
 export default function RegisterPage() {
   const { t, i18n } = useTranslation();
@@ -24,6 +32,12 @@ export default function RegisterPage() {
     email: "",
     password: "",
     confirmPassword: "",
+    billingCountry: "",
+    billingCity: "",
+    billingZip: "",
+    billingAddress: "",
+    billingVatNumber: "",
+    billingPhone: "",
   });
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [showPw, setShowPw] = useState(false);
@@ -49,6 +63,10 @@ export default function RegisterPage() {
       toast({ title: t("auth.agreeTerms"), variant: "destructive" });
       return;
     }
+    if (!form.billingCountry) {
+      toast({ title: t("checkout.selectCountry"), variant: "destructive" });
+      return;
+    }
 
     setLoading(true);
     try {
@@ -63,6 +81,14 @@ export default function RegisterPage() {
           lastName: form.lastName,
           agreeTerms: true,
           locale: i18n.language,
+          billingCountry: form.billingCountry,
+          billingCity: form.billingCity,
+          billingZip: form.billingZip,
+          billingAddress: form.billingAddress,
+          billingPhone: form.billingPhone,
+          ...(form.billingVatNumber.trim()
+            ? { billingVatNumber: form.billingVatNumber.trim() }
+            : {}),
         }),
       });
 
@@ -87,7 +113,7 @@ export default function RegisterPage() {
     <div className="container mx-auto px-4 py-6">
       <Breadcrumbs crumbs={[{ label: t("auth.createAccount") }]} />
 
-      <div className="max-w-md mx-auto mt-8">
+      <div className="max-w-lg mx-auto mt-8">
         <Card>
           <CardHeader className="text-center">
             <CardTitle className="text-2xl flex items-center justify-center gap-2">
@@ -127,6 +153,79 @@ export default function RegisterPage() {
                   placeholder={t("auth.emailPlaceholder")}
                   required
                 />
+              </div>
+
+              <div className="border-t pt-4 space-y-4">
+                <div>
+                  <p className="text-sm font-semibold">{t("checkout.billingDetails")}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{t("auth.registerAddressHint")}</p>
+                </div>
+                <div>
+                  <Label htmlFor="reg-country">{t("checkout.country")}</Label>
+                  <Select
+                    value={form.billingCountry || undefined}
+                    onValueChange={(v) => update("billingCountry", v)}
+                  >
+                    <SelectTrigger id="reg-country" className="w-full">
+                      <SelectValue placeholder={t("checkout.selectCountry")} />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[min(24rem,70vh)]">
+                      {COUNTRY_OPTIONS.map(([code, name]) => (
+                        <SelectItem key={code} value={code}>{name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="reg-city">{t("checkout.city")}</Label>
+                    <Input
+                      id="reg-city"
+                      value={form.billingCity}
+                      onChange={(e) => update("billingCity", e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="reg-zip">{t("checkout.zip")}</Label>
+                    <Input
+                      id="reg-zip"
+                      value={form.billingZip}
+                      onChange={(e) => update("billingZip", e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="reg-address">{t("checkout.address")}</Label>
+                  <Input
+                    id="reg-address"
+                    value={form.billingAddress}
+                    onChange={(e) => update("billingAddress", e.target.value)}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="reg-vat">{t("checkout.vatNumber")}</Label>
+                  <Input
+                    id="reg-vat"
+                    value={form.billingVatNumber}
+                    onChange={(e) => update("billingVatNumber", e.target.value)}
+                    placeholder={t("accountPage.billingVatOptional")}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="reg-phone">{t("checkout.phone")}</Label>
+                  <Input
+                    id="reg-phone"
+                    type="tel"
+                    autoComplete="tel"
+                    value={form.billingPhone}
+                    onChange={(e) => update("billingPhone", e.target.value)}
+                    placeholder={t("checkout.phonePlaceholder")}
+                    required
+                  />
+                </div>
               </div>
 
               <div>
