@@ -1,5 +1,5 @@
 import { Package, Minus, Plus, Trash2, ChevronDown, ChevronUp, Tag } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,38 @@ export function CartItemsTable() {
   const removeBundleItems = useCartStore((s) => s.removeBundleItems);
   const clearCart = useCartStore((s) => s.clearCart);
   const { format } = useCurrencyStore();
+
+  const cartPriceSyncKey = useMemo(
+    () =>
+      items
+        .filter((i) => !i.bundleId && i.variantId > 0)
+        .map((i) => `${i.variantId}:${i.quantity}`)
+        .sort()
+        .join("|"),
+    [items],
+  );
+
+  useEffect(() => {
+    if (!cartPriceSyncKey) return;
+    let cancelled = false;
+    const lines = useCartStore.getState().items.filter((i) => !i.bundleId && i.variantId > 0);
+    (async () => {
+      for (const item of lines) {
+        try {
+          const r = await fetch(`${API}/variants/${item.variantId}/price?qty=${item.quantity}`);
+          if (!r.ok || cancelled) continue;
+          const d = (await r.json()) as { price?: { effectiveUnitPriceUsd?: string } };
+          const next = d?.price?.effectiveUnitPriceUsd;
+          if (next) updateItemPrice(item.variantId, next);
+        } catch {
+          /* ignore */
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [cartPriceSyncKey, updateItemPrice]);
 
   function handleUpdateQuantity(variantId: number, qty: number, bundleId?: number) {
     updateQuantity(variantId, qty, bundleId);

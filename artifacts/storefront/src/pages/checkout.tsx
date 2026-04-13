@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { Loader2, Lock, Shield } from "lucide-react";
@@ -46,6 +46,7 @@ export default function CheckoutPage() {
   const coupon = useCartStore((s) => s.coupon);
   const getTotal = useCartStore((s) => s.getTotal);
   const clearCart = useCartStore((s) => s.clearCart);
+  const updateItemPrice = useCartStore((s) => s.updateItemPrice);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
@@ -78,6 +79,39 @@ export default function CheckoutPage() {
   const capturedRef = useRef("");
   const billingPrefilledRef = useRef(false);
   const [idempotencyKey, setIdempotencyKey] = useState(() => uuidV4());
+
+  /** Lines up cart line prices with the same engine used by POST /orders (rules, override, bulk, flash). */
+  const cartPriceSyncKey = useMemo(
+    () =>
+      items
+        .filter((i) => !i.bundleId && i.variantId > 0)
+        .map((i) => `${i.variantId}:${i.quantity}`)
+        .sort()
+        .join("|"),
+    [items],
+  );
+
+  useEffect(() => {
+    if (!cartPriceSyncKey) return;
+    let cancelled = false;
+    (async () => {
+      const lines = useCartStore.getState().items.filter((i) => !i.bundleId && i.variantId > 0);
+      for (const item of lines) {
+        try {
+          const r = await fetch(`${API}/variants/${item.variantId}/price?qty=${item.quantity}`);
+          if (!r.ok || cancelled) continue;
+          const d = (await r.json()) as { price?: { effectiveUnitPriceUsd?: string } };
+          const next = d?.price?.effectiveUnitPriceUsd;
+          if (next) updateItemPrice(item.variantId, next);
+        } catch {
+          /* non-fatal */
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [cartPriceSyncKey, updateItemPrice]);
 
   useEffect(() => {
     if (!token) {

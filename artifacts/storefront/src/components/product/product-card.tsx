@@ -20,6 +20,8 @@ import { QuickViewModal } from "@/components/product/quick-view-modal";
 import { CountdownTimer } from "@/components/flash-sale/countdown-timer";
 import type { MockProduct } from "@/lib/mock-data";
 
+const API = import.meta.env.VITE_API_URL ?? "/api";
+
 interface ProductCardProps {
   product: MockProduct;
   flashSalePrice?: string | null;
@@ -67,19 +69,31 @@ export function ProductCard({ product, flashSalePrice: flashSalePriceProp }: Pro
   function handleAddToCart(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    addItem({
-      variantId: variant.id,
-      productId: product.id,
-      productName: product.name,
-      variantName: variant.name,
-      imageUrl: product.imageUrl,
-      priceUsd: flashSalePrice || variant.priceUsd,
-      platform: variant.platform,
-      regionRestrictions: product.regionRestrictions,
-    });
-    clearTimeout(addedTimer.current);
-    setAdded(true);
-    addedTimer.current = setTimeout(() => setAdded(false), 3000);
+    void (async () => {
+      let priceUsd = flashSalePrice || variant.priceUsd;
+      try {
+        const r = await fetch(`${API}/variants/${variant.id}/price?qty=1`);
+        if (r.ok) {
+          const d = (await r.json()) as { price?: { effectiveUnitPriceUsd?: string } };
+          if (d?.price?.effectiveUnitPriceUsd) priceUsd = d.price.effectiveUnitPriceUsd;
+        }
+      } catch {
+        /* keep fallback */
+      }
+      addItem({
+        variantId: variant.id,
+        productId: product.id,
+        productName: product.name,
+        variantName: variant.name,
+        imageUrl: product.imageUrl,
+        priceUsd,
+        platform: variant.platform,
+        regionRestrictions: product.regionRestrictions,
+      });
+      clearTimeout(addedTimer.current);
+      setAdded(true);
+      addedTimer.current = setTimeout(() => setAdded(false), 3000);
+    })();
   }
 
   function handleWishlist(e: React.MouseEvent) {
