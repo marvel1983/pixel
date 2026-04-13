@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Component, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -567,21 +567,43 @@ export default function AccountPage() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="profile"><ProfileTab /></TabsContent>
-        <TabsContent value="orders"><AccountOrdersTab /></TabsContent>
-        <TabsContent value="rewards"><RewardsTab /></TabsContent>
-        <TabsContent value="loyalty"><LoyaltyDashboard /></TabsContent>
-        <TabsContent value="connected"><ConnectedAccountsTab /></TabsContent>
-        <TabsContent value="wishlist"><PlaceholderTab titleKey="accountPage.wishlist" icon={<Heart className="h-8 w-8" />} /></TabsContent>
-        <TabsContent value="reviews"><PlaceholderTab titleKey="accountPage.reviews" icon={<Star className="h-8 w-8" />} /></TabsContent>
-        <TabsContent value="gift-cards"><GiftCardsTab /></TabsContent>
-        <TabsContent value="affiliate"><AffiliateTab /></TabsContent>
-        <TabsContent value="newsletter"><NewsletterTab /></TabsContent>
-        <TabsContent value="wallet"><WalletTab /></TabsContent>
-        <TabsContent value="support"><SupportTab /></TabsContent>
+        <TabsContent value="profile"><TabErrorBoundary><ProfileTab /></TabErrorBoundary></TabsContent>
+        <TabsContent value="orders"><TabErrorBoundary><AccountOrdersTab /></TabErrorBoundary></TabsContent>
+        <TabsContent value="rewards"><TabErrorBoundary><RewardsTab /></TabErrorBoundary></TabsContent>
+        <TabsContent value="loyalty"><TabErrorBoundary><LoyaltyDashboard /></TabErrorBoundary></TabsContent>
+        <TabsContent value="connected"><TabErrorBoundary><ConnectedAccountsTab /></TabErrorBoundary></TabsContent>
+        <TabsContent value="wishlist"><TabErrorBoundary><PlaceholderTab titleKey="accountPage.wishlist" icon={<Heart className="h-8 w-8" />} /></TabErrorBoundary></TabsContent>
+        <TabsContent value="reviews"><TabErrorBoundary><PlaceholderTab titleKey="accountPage.reviews" icon={<Star className="h-8 w-8" />} /></TabErrorBoundary></TabsContent>
+        <TabsContent value="gift-cards"><TabErrorBoundary><GiftCardsTab /></TabErrorBoundary></TabsContent>
+        <TabsContent value="affiliate"><TabErrorBoundary><AffiliateTab /></TabErrorBoundary></TabsContent>
+        <TabsContent value="newsletter"><TabErrorBoundary><NewsletterTab /></TabErrorBoundary></TabsContent>
+        <TabsContent value="wallet"><TabErrorBoundary><WalletTab /></TabErrorBoundary></TabsContent>
+        <TabsContent value="support"><TabErrorBoundary><SupportTab /></TabErrorBoundary></TabsContent>
       </Tabs>
     </div>
   );
+}
+
+class TabErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { error: null };
+  }
+  static getDerivedStateFromError(error: Error) { return { error }; }
+  render() {
+    if (this.state.error) {
+      return (
+        <Card>
+          <CardContent className="py-10 text-center space-y-3">
+            <p className="text-sm font-medium text-destructive">Something went wrong loading this tab.</p>
+            <p className="text-xs text-muted-foreground font-mono">{this.state.error.message}</p>
+            <Button variant="outline" size="sm" onClick={() => this.setState({ error: null })}>Try again</Button>
+          </CardContent>
+        </Card>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 const PlaceholderTab = ({ titleKey, icon }: { titleKey: string; icon: React.ReactNode }) => {
