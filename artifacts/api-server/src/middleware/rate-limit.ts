@@ -26,7 +26,9 @@ setInterval(() => {
 }, 60_000);
 
 function getClientKey(req: Request): string {
-  return req.ip ?? "unknown";
+  // With trust proxy: 1, req.ip is already the real client IP from X-Forwarded-For
+  // Fallback to X-Real-IP header set by Nginx
+  return req.ip ?? (req.headers["x-real-ip"] as string) ?? "unknown";
 }
 
 /** Lokalni dev + E2E: bez limita na loopbacku; produkcija ne dira. */
@@ -97,11 +99,11 @@ interface RateLimitConfig {
 }
 
 const config: RateLimitConfig = {
-  authLogin: 20,
-  authRegister: 10,
+  authLogin: 50,
+  authRegister: 20,
   authReset: 10,
-  public: 60,
-  admin: 120,
+  public: 300,
+  admin: 300,
 };
 
 export function getRateLimitConfig(): RateLimitConfig {
