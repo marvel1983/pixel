@@ -28,7 +28,7 @@ export function csrfProtection(req: Request, res: Response, next: NextFunction) 
     res.cookie(CSRF_COOKIE, token, {
       httpOnly: false,
       sameSite: "strict",
-      secure: process.env.NODE_ENV === "production",
+      secure: process.env.COOKIE_SECURE === "true",
       path: "/",
       maxAge: 24 * 60 * 60 * 1000,
     });
@@ -60,7 +60,7 @@ export function csrfTokenEndpoint(req: Request, res: Response) {
     res.cookie(CSRF_COOKIE, token, {
       httpOnly: false,
       sameSite: "strict",
-      secure: process.env.NODE_ENV === "production",
+      secure: process.env.COOKIE_SECURE === "true",
       path: "/",
       maxAge: 24 * 60 * 60 * 1000,
     });
