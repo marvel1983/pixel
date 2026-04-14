@@ -26,22 +26,37 @@ router.get("/search", async (req: Request, res: Response) => {
   }
 
   const { q, limit, offset, cat, plat, min, max, stock, sort } = parsed.data;
-  const pattern = `%${q}%`;
+  const trimmed = q.trim();
+  if (!trimmed) {
+    res.json({ items: [], total: 0, limit, offset, facets: { tags: [], attributes: [] } });
+    return;
+  }
+  const tokens = trimmed.split(/\s+/).filter(Boolean);
+  const pattern = `%${trimmed}%`;
+
+  /** Each word must match at least one text field (fixes e.g. "Windows 11" vs name tokens split by punctuation). */
+  const textMatchAllTokens = and(
+    ...tokens.map((tok) => {
+      const p = `%${tok}%`;
+      return or(
+        ilike(products.name, p),
+        ilike(products.slug, p),
+        ilike(products.description, p),
+        ilike(products.shortDescription, p),
+      );
+    }),
+  );
 
   const skuSub = db
     .selectDistinct({ productId: productVariants.productId })
     .from(productVariants)
-    .where(and(eq(productVariants.isActive, true), ilike(productVariants.sku, pattern)));
+    .where(
+      and(eq(productVariants.isActive, true), ...tokens.map((tok) => ilike(productVariants.sku, `%${tok}%`))),
+    );
 
   const conditions = [
     eq(products.isActive, true),
-    or(
-      ilike(products.name, pattern),
-      ilike(products.slug, pattern),
-      ilike(products.description, pattern),
-      ilike(products.shortDescription, pattern),
-      inArray(products.id, skuSub),
-    ),
+    or(textMatchAllTokens, inArray(products.id, skuSub)),
   ];
 
   if (cat) {

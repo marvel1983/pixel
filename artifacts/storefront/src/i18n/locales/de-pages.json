@@ -9,6 +9,7 @@
     "browseProducts": "Produkte durchsuchen",
     "clearAll": "Alle löschen",
     "addAllToCart": "Alle in den Warenkorb",
+    "item": "Artikel",
     "items": "Artikel",
     "addedToCart": "in den Warenkorb gelegt"
   },
@@ -182,7 +183,9 @@
     "failedToSendReply": "Antwort konnte nicht gesendet werden",
     "storeCreditTitle": "Shop-Guthaben",
     "storeCreditHint": "Wird an der Kasse angewendet. Jederzeit aufladen.",
-    "storeCreditManage": "Shop-Guthaben verwalten"
+    "storeCreditManage": "Shop-Guthaben verwalten",
+    "reviewsEmpty": "Sie haben noch keine Bewertungen geschrieben. Nach Freigabe erscheinen sie hier.",
+    "wishlistTabHint": "Sie haben {{count}} Artikel auf der Wunschliste. Öffnen Sie die volle Liste zum Verwalten."
   },
   "orderComplete": {
     "checkout": "Kasse",

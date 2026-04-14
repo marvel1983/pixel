@@ -113,11 +113,11 @@ const COLS = [
   {
     title: "Company",
     links: [
-      { label: "About Us", href: "/about" },
+      { label: "About Us", href: "/about-us" },
       { label: "Blog", href: "/blog" },
       { label: "Careers", href: "/careers" },
       { label: "Press", href: "/press" },
-      { label: "Affiliate Program", href: "/affiliate" },
+      { label: "Affiliate Program", href: "/affiliates" },
     ],
   },
   {
@@ -128,15 +128,15 @@ const COLS = [
       { label: "How to Activate", href: "/how-to-activate" },
       { label: "Refund Policy", href: "/refund-policy" },
       { label: "FAQ", href: "/faq" },
-      { label: "Track Order", href: "/orders" },
+      { label: "Track Order", href: "/order-lookup" },
     ],
   },
 ];
 
 const LEGAL = [
   { label: "Terms of Service", href: "/terms" },
-  { label: "Privacy Policy", href: "/privacy" },
-  { label: "Cookie Policy", href: "/cookies" },
+  { label: "Privacy Policy", href: "/privacy-policy" },
+  { label: "Cookie Policy", href: "/cookie-policy" },
 ];
 
 /* ── Payment pill ─────────────────────────────────────────── */

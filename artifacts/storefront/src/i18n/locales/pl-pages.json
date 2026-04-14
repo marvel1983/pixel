@@ -9,6 +9,7 @@
     "browseProducts": "Przeglądaj produkty",
     "clearAll": "Wyczyść wszystko",
     "addAllToCart": "Dodaj wszystko do koszyka",
+    "item": "przedmiot",
     "items": "przedmiotów",
     "addedToCart": "dodano do koszyka"
   },
@@ -182,7 +183,9 @@
     "failedToSendReply": "Nie udało się wysłać odpowiedzi",
     "storeCreditTitle": "Kredyt sklepu",
     "storeCreditHint": "Stosowany przy kasie. Doładuj w dowolnym momencie.",
-    "storeCreditManage": "Zarządzaj kredytem sklepu"
+    "storeCreditManage": "Zarządzaj kredytem sklepu",
+    "reviewsEmpty": "Nie napisałeś jeszcze żadnej recenzji. Po zatwierdzeniu pojawi się tutaj.",
+    "wishlistTabHint": "Masz {{count}} zapisanych pozycji. Otwórz pełną listę życzeń, aby dodać do koszyka lub usunąć."
   },
   "orderComplete": {
     "checkout": "Kasa",

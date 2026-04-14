@@ -49,7 +49,12 @@ export default function WishlistPage() {
         added++;
       }
     });
-    toast({ title: `${added} ${t("wishlist.items")} ${t("wishlist.addedToCart")}` });
+    toast({
+      title:
+        added === 1
+          ? `${added} ${t("wishlist.item")} ${t("wishlist.addedToCart")}`
+          : `${added} ${t("wishlist.items")} ${t("wishlist.addedToCart")}`,
+    });
   }
 
   function addOneToCart(p: MockProduct) {
@@ -76,7 +81,7 @@ export default function WishlistPage() {
           <Heart className="h-6 w-6" /> {t("wishlist.myWishlist")}
           {products.length > 0 && (
             <span className="text-base font-normal text-muted-foreground">
-              ({products.length} {t("wishlist.items")})
+              ({products.length} {products.length === 1 ? t("wishlist.item") : t("wishlist.items")})
             </span>
           )}
         </h1>

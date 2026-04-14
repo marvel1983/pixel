@@ -217,7 +217,7 @@ function CartRow({ item, format, onUpdateQuantity, onRemove }: CartRowProps) {
   const subtotal = price * item.quantity;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-[1fr_100px_140px_100px_44px] gap-4 px-6 py-5 border-t border-border items-center group">
+    <div className="grid grid-cols-1 sm:grid-cols-[1fr_100px_140px_100px_44px] gap-4 px-6 py-5 border-t border-border items-center">
       {/* Product */}
       <div className="flex items-center gap-4">
         <div className="w-16 h-16 rounded-xl border border-border bg-muted flex items-center justify-center shrink-0 overflow-hidden">
@@ -270,7 +270,8 @@ function CartRow({ item, format, onUpdateQuantity, onRemove }: CartRowProps) {
       {/* Remove */}
       <div className="flex justify-end">
         <button
-          className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors opacity-0 group-hover:opacity-100"
+          type="button"
+          className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
           onClick={() => onRemove(item.variantId, item.bundleId)}
           title="Remove item"
         >

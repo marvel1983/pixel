@@ -9,6 +9,7 @@
     "browseProducts": "Browse Products",
     "clearAll": "Clear All",
     "addAllToCart": "Add All to Cart",
+    "item": "item",
     "items": "items",
     "addedToCart": "added to cart"
   },
@@ -185,7 +186,9 @@
     "storeCreditManage": "Manage store credit",
     "billingAddressTitle": "Default billing address",
     "billingAddressHint": "We use this to pre-fill checkout. You can still change it on each order.",
-    "billingVatOptional": "Optional — for B2B / VAT-exempt checkout"
+    "billingVatOptional": "Optional — for B2B / VAT-exempt checkout",
+    "reviewsEmpty": "You have not written any reviews yet. After you submit one, it will appear here once approved.",
+    "wishlistTabHint": "You have {{count}} saved item(s). Open your full wishlist to add them to cart or remove items."
   },
   "orderComplete": {
     "checkout": "Checkout",

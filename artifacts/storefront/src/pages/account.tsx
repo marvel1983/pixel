@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthStore } from "@/stores/auth-store";
+import { useWishlistStore } from "@/stores/wishlist-store";
 import { Breadcrumbs } from "@/components/shop/breadcrumbs";
 import { User, ShoppingBag, Heart, Star, Gift, Link2, Mail, Loader2, Shield, Trophy, Headphones, Wallet, Award } from "lucide-react";
 import { GiftCardsTab } from "@/components/account/gift-cards-tab";
@@ -377,11 +378,11 @@ function ProfileTab() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label htmlFor="firstName">{t("auth.firstName")}</Label>
+              <Label htmlFor="firstName">{t("checkout.firstName")}</Label>
               <Input id="firstName" value={form.firstName} onChange={(e) => update("firstName", e.target.value)} />
             </div>
             <div>
-              <Label htmlFor="lastName">{t("auth.lastName")}</Label>
+              <Label htmlFor="lastName">{t("checkout.lastName")}</Label>
               <Input id="lastName" value={form.lastName} onChange={(e) => update("lastName", e.target.value)} />
             </div>
           </div>
@@ -587,8 +588,8 @@ export default function AccountPage() {
         <TabsContent value="rewards"><TabErrorBoundary><RewardsTab /></TabErrorBoundary></TabsContent>
         <TabsContent value="loyalty"><TabErrorBoundary><LoyaltyDashboard /></TabErrorBoundary></TabsContent>
         <TabsContent value="connected"><TabErrorBoundary><ConnectedAccountsTab /></TabErrorBoundary></TabsContent>
-        <TabsContent value="wishlist"><TabErrorBoundary><PlaceholderTab titleKey="accountPage.wishlist" icon={<Heart className="h-8 w-8" />} /></TabErrorBoundary></TabsContent>
-        <TabsContent value="reviews"><TabErrorBoundary><PlaceholderTab titleKey="accountPage.reviews" icon={<Star className="h-8 w-8" />} /></TabErrorBoundary></TabsContent>
+        <TabsContent value="wishlist"><TabErrorBoundary><AccountWishlistTab /></TabErrorBoundary></TabsContent>
+        <TabsContent value="reviews"><TabErrorBoundary><PlaceholderTab emptyKey="accountPage.reviewsEmpty" icon={<Star className="h-8 w-8" />} /></TabErrorBoundary></TabsContent>
         <TabsContent value="gift-cards"><TabErrorBoundary><GiftCardsTab /></TabErrorBoundary></TabsContent>
         <TabsContent value="affiliate"><TabErrorBoundary><AffiliateTab /></TabErrorBoundary></TabsContent>
         <TabsContent value="newsletter"><TabErrorBoundary><NewsletterTab /></TabErrorBoundary></TabsContent>
@@ -621,15 +622,36 @@ class TabErrorBoundary extends Component<{ children: ReactNode }, { error: Error
   }
 }
 
-const PlaceholderTab = ({ titleKey, icon }: { titleKey: string; icon: React.ReactNode }) => {
+const PlaceholderTab = ({ emptyKey, icon }: { emptyKey: string; icon: React.ReactNode }) => {
   const { t } = useTranslation();
   return (
     <Card><CardContent className="py-12 text-center text-muted-foreground">
       <div className="flex justify-center mb-3">{icon}</div>
-      <p>{t("accountPage.noOrdersYet")}</p>
+      <p>{t(emptyKey)}</p>
     </CardContent></Card>
   );
 };
+
+function AccountWishlistTab() {
+  const { t } = useTranslation();
+  const { productIds } = useWishlistStore();
+  const count = productIds.length;
+  return (
+    <Card>
+      <CardContent className="py-10 text-center space-y-4">
+        <div className="flex justify-center">
+          <Heart className="h-10 w-10 text-muted-foreground" />
+        </div>
+        <p className="text-muted-foreground">
+          {count === 0 ? t("wishlist.empty") : t("accountPage.wishlistTabHint", { count })}
+        </p>
+        <Button asChild variant="secondary">
+          <Link href="/wishlist">{t("wishlist.myWishlist")}</Link>
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
 
 function AccountOrdersTab() {
   const { t } = useTranslation();

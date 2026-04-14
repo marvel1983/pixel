@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useLayoutEffect } from "react";
 import { useLocation, Link } from "wouter";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,7 @@ export default function RegisterPage() {
   const { t, i18n } = useTranslation();
   const [, setLocation] = useLocation();
   const { setAuth } = useAuthStore();
+  const token = useAuthStore((s) => s.token);
   const { toast } = useToast();
   const [form, setForm] = useState({
     firstName: "",
@@ -47,6 +48,10 @@ export default function RegisterPage() {
     setSeoMeta({ title: t("seo.registerTitle"), description: t("seo.registerDescription") });
     return () => { clearSeoMeta(); };
   }, [t]);
+
+  useLayoutEffect(() => {
+    if (token) setLocation("/account", { replace: true });
+  }, [token, setLocation]);
 
   function update(field: string, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));

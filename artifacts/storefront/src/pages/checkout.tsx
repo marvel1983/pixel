@@ -59,7 +59,7 @@ export default function CheckoutPage() {
   const [billingErrors, setBillingErrors] = useState<Partial<Record<keyof BillingData, string>>>({});
   const [payment, setPayment] = useState<PaymentData>(INITIAL_PAYMENT);
   const [paymentErrors, setPaymentErrors] = useState<Partial<Record<keyof PaymentData, string>>>({});
-  const [cppSelected, setCppSelected] = useState(true);
+  const [cppSelected, setCppSelected] = useState(false);
   const [guestPassword, setGuestPassword] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [taxInfo, setTaxInfo] = useState<TaxInfo>({ taxRate: 0, taxLabel: "VAT", exempt: false, b2bEnabled: false, priceDisplay: "exclusive" });
@@ -69,7 +69,7 @@ export default function CheckoutPage() {
   const [walletAmount, setWalletAmount] = useState(0);
   const [selectedServiceIds, setSelectedServiceIds] = useState<number[]>([]);
   const [servicePrices, setServicePrices] = useState<Map<number, number>>(new Map());
-  const [newsletterOptIn, setNewsletterOptIn] = useState(true);
+  const [newsletterOptIn, setNewsletterOptIn] = useState(false);
   const [regionAcknowledged, setRegionAcknowledged] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"card" | "invoice">("card");
   const user = useAuthStore((s) => s.user);

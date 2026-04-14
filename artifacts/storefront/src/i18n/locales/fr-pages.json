@@ -9,6 +9,7 @@
     "browseProducts": "Parcourir les produits",
     "clearAll": "Tout effacer",
     "addAllToCart": "Tout ajouter au panier",
+    "item": "article",
     "items": "articles",
     "addedToCart": "ajouté au panier"
   },
@@ -182,7 +183,9 @@
     "failedToSendReply": "Échec de l'envoi de la réponse",
     "storeCreditTitle": "Crédit boutique",
     "storeCreditHint": "Utilisable à la caisse. Rechargez quand vous voulez.",
-    "storeCreditManage": "Gérer le crédit boutique"
+    "storeCreditManage": "Gérer le crédit boutique",
+    "reviewsEmpty": "Vous n'avez pas encore rédigé d'avis. Après modération, ils apparaîtront ici.",
+    "wishlistTabHint": "Vous avez {{count}} article(s) en liste. Ouvrez la liste complète pour gérer."
   },
   "orderComplete": {
     "checkout": "Paiement",

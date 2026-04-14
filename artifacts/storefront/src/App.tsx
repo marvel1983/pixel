@@ -61,6 +61,15 @@ import BusinessPage from "@/pages/business";
 import SurveyPage from "@/pages/survey";
 import FaqPage from "@/pages/faq";
 import StaticPageView from "@/pages/static-page";
+import {
+  LogoutRoute,
+  ToAboutUs,
+  ToAffiliates,
+  ToCookiePolicy,
+  ToHowToBuy,
+  ToOrderLookup,
+  ToPrivacyPolicy,
+} from "@/pages/legacy-routes";
 import AdminRoot from "@/pages/admin/index";
 import AcceptInvitePage from "@/pages/admin/accept-invite";
 import NotFound from "@/pages/not-found";
@@ -127,6 +136,13 @@ function StorefrontWithMaintenance() {
         <Route path="/faq" component={FaqPage} />
         <Route path="/newsletter/confirm" component={NewsletterConfirmPage} />
         <Route path="/newsletter/unsubscribe" component={NewsletterUnsubscribePage} />
+        <Route path="/logout" component={LogoutRoute} />
+        <Route path="/about" component={ToAboutUs} />
+        <Route path="/privacy" component={ToPrivacyPolicy} />
+        <Route path="/cookies" component={ToCookiePolicy} />
+        <Route path="/orders" component={ToOrderLookup} />
+        <Route path="/affiliate" component={ToAffiliates} />
+        <Route path="/how-to-activate" component={ToHowToBuy} />
         <Route component={StaticPageView} />
       </Switch>
       <ExitIntentPopup />

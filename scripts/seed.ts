@@ -116,6 +116,9 @@ async function seed() {
     { title: "How to Buy", slug: "how-to-buy", content: "<h1>How to Buy</h1><p>Content coming soon.</p>", isPublished: true, sortOrder: 7 },
     { title: "Reseller Application", slug: "reseller-application", content: "<h1>Reseller Application</h1><p>Content coming soon.</p>", isPublished: true, sortOrder: 8 },
     { title: "Contact", slug: "contact", content: "<h1>Contact</h1><p>Content coming soon.</p>", isPublished: true, sortOrder: 9 },
+    { title: "Cookie Policy", slug: "cookie-policy", content: "<h1>Cookie Policy</h1><p>Content coming soon.</p>", isPublished: true, sortOrder: 10 },
+    { title: "Careers", slug: "careers", content: "<h1>Careers</h1><p>Content coming soon.</p>", isPublished: true, sortOrder: 11 },
+    { title: "Press", slug: "press", content: "<h1>Press</h1><p>Content coming soon.</p>", isPublished: true, sortOrder: 12 },
   ];
   await db.insert(pages).values(defaultPages);
 

@@ -9,6 +9,7 @@
     "browseProducts": "Procházet produkty",
     "clearAll": "Vymazat vše",
     "addAllToCart": "Přidat vše do košíku",
+    "item": "položka",
     "items": "položek",
     "addedToCart": "přidáno do košíku"
   },
@@ -182,7 +183,9 @@
     "failedToSendReply": "Nepodařilo se odeslat odpověď",
     "storeCreditTitle": "Obchodní kredit",
     "storeCreditHint": "Uplatní se u pokladny. Dobijte kdykoli.",
-    "storeCreditManage": "Spravovat obchodní kredit"
+    "storeCreditManage": "Spravovat obchodní kredit",
+    "reviewsEmpty": "Zatím jste nenapsali žádné recenze. Po schválení se zobrazí zde.",
+    "wishlistTabHint": "Máte {{count}} položek na seznamu přání. Otevřete celý seznam pro správu."
   },
   "orderComplete": {
     "checkout": "Pokladna",

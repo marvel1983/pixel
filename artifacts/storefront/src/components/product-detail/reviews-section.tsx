@@ -87,8 +87,11 @@ export function ReviewsSection({ productId, avgRating, reviewCount }: ReviewsSec
     load();
   }, [productId]);
 
-  const displayAvg = apiCount !== null && apiCount > 0 ? apiAvg ?? avgRating : avgRating;
-  const displayCount = apiCount !== null && apiCount > 0 ? apiCount : reviewCount;
+  /** When the API returns zero published reviews, don't fall back to PDP aggregate (avoids "342 reviews" + empty list). */
+  const displayAvg =
+    apiCount !== null && apiCount > 0 ? apiAvg ?? avgRating : apiCount === 0 ? apiAvg ?? 0 : avgRating;
+  const displayCount =
+    apiCount !== null && apiCount > 0 ? apiCount : apiCount === 0 ? 0 : reviewCount;
 
   return (
     <div className="space-y-6">
