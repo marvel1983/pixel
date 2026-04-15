@@ -786,7 +786,11 @@ export default function ProductEditPage() {
                       });
                       if (!res.ok) { const err = await res.json(); alert(err.error ?? "Upload failed"); return; }
                       const { url } = await res.json();
-                      upd("imageUrl", url);
+                      // url is a root-relative path like "/uploads/...".
+                      // Prefix with the API server origin so the image loads
+                      // correctly even when the storefront runs on a different port.
+                      const apiBase = API_URL.replace(/\/api\/?$/, "");
+                      upd("imageUrl", apiBase ? `${apiBase}${url}` : url);
                     } catch {
                       alert("Upload failed");
                     }
