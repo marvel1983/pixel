@@ -13,6 +13,8 @@ export interface MockProduct {
   warranty?: string;
   regionRestrictions?: string[];
   platformType?: string | null;
+  keyFeatures?: string[];
+  systemRequirements?: Record<string, string>;
 }
 
 export interface MockVariant {

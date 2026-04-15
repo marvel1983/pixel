@@ -133,6 +133,9 @@ export default function ProductDetailPage() {
       <ProductTabs
         productName={product.name}
         platform={product.variants[0]?.platform ?? "WINDOWS"}
+        description={product.description}
+        keyFeatures={product.keyFeatures}
+        systemRequirements={product.systemRequirements}
       />
 
       <Separator />

@@ -1,15 +1,18 @@
 import { useState } from "react";
-import { Monitor, Cpu, HardDrive, CheckCircle } from "lucide-react";
+import { Monitor, Cpu, CheckCircle } from "lucide-react";
 
 interface ProductTabsProps {
   productName: string;
   platform: string;
+  description?: string | null;
+  keyFeatures?: string[];
+  systemRequirements?: Record<string, string>;
 }
 
 const TABS = ["Description", "Key Features", "System Requirements"] as const;
 type Tab = (typeof TABS)[number];
 
-export function ProductTabs({ productName, platform }: ProductTabsProps) {
+export function ProductTabs({ productName, platform, description, keyFeatures, systemRequirements }: ProductTabsProps) {
   const [activeTab, setActiveTab] = useState<Tab>("Description");
 
   return (
@@ -31,20 +34,28 @@ export function ProductTabs({ productName, platform }: ProductTabsProps) {
       </div>
       <div className="py-5">
         {activeTab === "Description" && (
-          <DescriptionTab productName={productName} />
+          <DescriptionTab productName={productName} description={description} />
         )}
         {activeTab === "Key Features" && (
-          <KeyFeaturesTab productName={productName} />
+          <KeyFeaturesTab productName={productName} keyFeatures={keyFeatures} />
         )}
         {activeTab === "System Requirements" && (
-          <SystemRequirementsTab platform={platform} />
+          <SystemRequirementsTab platform={platform} systemRequirements={systemRequirements} />
         )}
       </div>
     </div>
   );
 }
 
-function DescriptionTab({ productName }: { productName: string }) {
+function DescriptionTab({ productName, description }: { productName: string; description?: string | null }) {
+  if (description) {
+    return (
+      <div
+        className="prose prose-sm max-w-none text-muted-foreground"
+        dangerouslySetInnerHTML={{ __html: description }}
+      />
+    );
+  }
   return (
     <div className="prose prose-sm max-w-none text-muted-foreground">
       <p>
@@ -66,15 +77,17 @@ function DescriptionTab({ productName }: { productName: string }) {
   );
 }
 
-function KeyFeaturesTab({ productName }: { productName: string }) {
-  const features = [
-    "Genuine digital license key",
-    "Instant email delivery",
-    "One-time purchase, lifetime use",
-    "Full version — no restrictions",
-    "Free updates included",
-    "Multi-language support",
-  ];
+function KeyFeaturesTab({ productName, keyFeatures }: { productName: string; keyFeatures?: string[] }) {
+  const features = keyFeatures && keyFeatures.length > 0
+    ? keyFeatures
+    : [
+        "Genuine digital license key",
+        "Instant email delivery",
+        "One-time purchase, lifetime use",
+        "Full version — no restrictions",
+        "Free updates included",
+        "Multi-language support",
+      ];
   return (
     <div className="space-y-2">
       {features.map((f, i) => (
@@ -87,7 +100,22 @@ function KeyFeaturesTab({ productName }: { productName: string }) {
   );
 }
 
-function SystemRequirementsTab({ platform }: { platform: string }) {
+function SystemRequirementsTab({ platform, systemRequirements }: { platform: string; systemRequirements?: Record<string, string> }) {
+  const hasCustomReqs = systemRequirements && Object.keys(systemRequirements).length > 0;
+
+  if (hasCustomReqs) {
+    return (
+      <div className="grid gap-4 sm:grid-cols-2">
+        {Object.entries(systemRequirements).map(([key, value]) => (
+          <div key={key} className="text-sm">
+            <dt className="font-medium text-foreground inline">{key}:</dt>{" "}
+            <dd className="inline text-muted-foreground">{value}</dd>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   const isWindows = platform === "WINDOWS";
   return (
     <div className="grid gap-4 sm:grid-cols-2">
