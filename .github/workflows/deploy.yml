@@ -94,8 +94,7 @@ jobs:
             echo "→ Syncing Nginx config..."
             cp /var/www/pixel-storefront/nginx/pixel-storefront.conf /etc/nginx/sites-available/pixel-storefront
             ln -sf /etc/nginx/sites-available/pixel-storefront /etc/nginx/sites-enabled/pixel-storefront
-            nginx -t
-            systemctl reload nginx
+            nginx -t && systemctl reload nginx
 
             echo "→ Saving PM2 config..."
             pm2 save
