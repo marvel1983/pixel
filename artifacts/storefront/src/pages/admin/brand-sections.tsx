@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { GripVertical, Plus, Pencil, Trash2, Eye, ChevronRight } from "lucide-react";
@@ -153,8 +152,8 @@ export default function BrandSectionsPage() {
         </DarkCard>
       )}
       <Dialog open={showModal} onOpenChange={() => { setEditing(null); setIsNew(false); }}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{isNew ? "Add Brand Section" : "Edit Brand Section"}</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto bg-[#181c24] border border-[#2e3340] text-[#dde4f0]">
+          <DialogHeader><DialogTitle className="text-[#dde4f0]">{isNew ? "Add Brand Section" : "Edit Brand Section"}</DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
             <div className="grid grid-cols-2 gap-3">
               <div><label className={labelCls}>Name</label><input className={inputCls} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
@@ -165,15 +164,15 @@ export default function BrandSectionsPage() {
               <label className={labelCls}>Background Color</label>
               <div className="flex gap-2 mt-1">
                 {BG_COLORS.map((c) => (
-                  <button key={c} className={`w-8 h-8 rounded-lg ${c} ${form.bgColor === c ? "ring-2 ring-offset-2 ring-sky-500" : ""}`} onClick={() => setForm({ ...form, bgColor: c })} />
+                  <button key={c} className={`w-8 h-8 rounded-lg ${c} ${form.bgColor === c ? "ring-2 ring-offset-1 ring-sky-400 ring-offset-[#181c24]" : ""}`} onClick={() => setForm({ ...form, bgColor: c })} />
                 ))}
               </div>
             </div>
             <div><label className={labelCls}>Title</label><input className={inputCls} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
-            <div><label className={labelCls}>Description</label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} className="mt-1" /></div>
-            <div><label className={labelCls}>Marketing Points (one per line)</label><Textarea value={form.marketingPoints} onChange={(e) => setForm({ ...form, marketingPoints: e.target.value })} rows={3} className="mt-1" placeholder={"Official partner\nBest prices\nInstant delivery"} /></div>
+            <div><label className={labelCls}>Description</label><textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} className={inputCls + " resize-y"} /></div>
+            <div><label className={labelCls}>Marketing Points (one per line)</label><textarea value={form.marketingPoints} onChange={(e) => setForm({ ...form, marketingPoints: e.target.value })} rows={3} className={inputCls + " resize-y"} placeholder={"Official partner\nBest prices\nInstant delivery"} /></div>
             <div><label className={labelCls}>Product IDs (comma-separated)</label><input className={inputCls} value={form.productIds} onChange={(e) => setForm({ ...form, productIds: e.target.value })} placeholder="1, 2, 3" /></div>
-            <Button variant="outline" className="w-full" onClick={() => setPreview({ id: 0, name: form.name, slug: form.slug, bannerImage: form.bannerImage || null, bgColor: form.bgColor, title: form.title || null, description: form.description || null, marketingPoints: form.marketingPoints.split("\n").filter(Boolean), productIds: [], isEnabled: true, sortOrder: 0 })}><Eye className="mr-2 h-4 w-4" />Preview</Button>
+            <button className="flex w-full items-center justify-center gap-2 rounded border border-[#2e3340] bg-[#1e2128] px-4 py-2 text-[13px] text-[#8fa0bb] hover:bg-[#252a36] transition-colors" onClick={() => setPreview({ id: 0, name: form.name, slug: form.slug, bannerImage: form.bannerImage || null, bgColor: form.bgColor, title: form.title || null, description: form.description || null, marketingPoints: form.marketingPoints.split("\n").filter(Boolean), productIds: [], isEnabled: true, sortOrder: 0 })}><Eye className="h-4 w-4" />Preview</button>
           </div>
           <DialogFooter>
             <button
