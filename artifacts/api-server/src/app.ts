@@ -2,6 +2,8 @@ import express, { type Express, type Request } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
+import path from "path";
+import fs from "fs";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { maintenanceMiddleware } from "./middleware/maintenance";
@@ -50,6 +52,7 @@ app.use(cors({
 app.use(cookieParser());
 app.use(
   express.json({
+    limit: "10mb",
     verify: (req: Request, _res, buf) => {
       if (req.url?.includes("/webhooks/")) {
         (req as Request).rawBody = buf.toString("utf8");
@@ -58,6 +61,11 @@ app.use(
   }),
 );
 app.use(express.urlencoded({ extended: true }));
+
+// Serve uploaded images statically
+const uploadsDir = path.join(process.cwd(), "uploads");
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+app.use("/uploads", express.static(uploadsDir));
 
 app.use(securityHeaders);
 app.get("/api/csrf-token", publicLimit, csrfTokenEndpoint);

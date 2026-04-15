@@ -766,6 +766,44 @@ export default function ProductEditPage() {
               </div>
             )}
             <input style={inp} value={product.imageUrl ?? ""} onChange={(e) => upd("imageUrl", e.target.value || null)} placeholder="Image URL…" />
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 5 }}>
+              <input
+                id="img-file-input"
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                style={{ display: "none" }}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = async () => {
+                    const data = reader.result as string;
+                    try {
+                      const res = await fetch(`${API_URL}/admin/upload`, {
+                        method: "POST",
+                        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+                        body: JSON.stringify({ data, mimeType: file.type, filename: file.name }),
+                      });
+                      if (!res.ok) { const err = await res.json(); alert(err.error ?? "Upload failed"); return; }
+                      const { url } = await res.json();
+                      upd("imageUrl", url);
+                    } catch {
+                      alert("Upload failed");
+                    }
+                  };
+                  reader.readAsDataURL(file);
+                  e.target.value = "";
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => document.getElementById("img-file-input")?.click()}
+                style={{ fontSize: 11, padding: "3px 10px", borderRadius: 4, border: "1px solid #3b4162", background: "#1e2235", color: "#a0aec0", cursor: "pointer", whiteSpace: "nowrap" }}
+              >
+                Upload image
+              </button>
+              <span style={{ fontSize: 10, color: "#4a5568" }}>JPEG, PNG, WebP, GIF · max 5 MB</span>
+            </div>
           </div>
 
           {/* Related */}

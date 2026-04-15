@@ -106,7 +106,7 @@ export function CategorySidebar() {
       )}
 
       {/* ── Sidebar card (overflow-hidden ensures list is clipped) ── */}
-      <div className="flex flex-col rounded-xl border border-border bg-card overflow-hidden" style={{ height: 360 }}>
+      <div className="flex flex-col rounded-xl border border-border bg-card" style={{ height: 360, overflow: "hidden" }}>
 
         {/* ── Sidebar header ──────────────────────────────────── */}
         <div className="flex items-center gap-2 px-4 py-3 bg-primary rounded-t-xl shrink-0">
