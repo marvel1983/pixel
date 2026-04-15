@@ -47,7 +47,7 @@ export function CategorySidebar() {
   }, [expanded]);
 
   return (
-    <div ref={panelRef} className="relative hidden lg:flex flex-col rounded-xl border border-border bg-card overflow-visible" style={{ height: 360 }}>
+    <div ref={panelRef} className="relative hidden lg:block" style={{ height: 360 }}>
 
       {/* ── Expanded all-categories panel ──────────────────── */}
       {expanded && (
@@ -105,46 +105,51 @@ export function CategorySidebar() {
         </div>
       )}
 
-      {/* ── Sidebar header ──────────────────────────────────── */}
-      <div className="flex items-center gap-2 px-4 py-3 bg-primary rounded-t-xl shrink-0">
-        <div className="grid grid-cols-2 gap-0.5 w-4 h-4 shrink-0">
-          {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="rounded-[1px] bg-primary-foreground/80" />
+      {/* ── Sidebar card (overflow-hidden ensures list is clipped) ── */}
+      <div className="flex flex-col h-full rounded-xl border border-border bg-card overflow-hidden">
+
+        {/* ── Sidebar header ──────────────────────────────────── */}
+        <div className="flex items-center gap-2 px-4 py-3 bg-primary rounded-t-xl shrink-0">
+          <div className="grid grid-cols-2 gap-0.5 w-4 h-4 shrink-0">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="rounded-[1px] bg-primary-foreground/80" />
+            ))}
+          </div>
+          <span className="text-sm font-bold text-primary-foreground tracking-wide">All Categories</span>
+        </div>
+
+        {/* ── Category list ────────────────────────────────────── */}
+        <div className="flex-1 min-h-0 flex flex-col divide-y divide-border/50 overflow-hidden">
+          {CATEGORIES.map(({ name, slug, icon: Icon, hot }) => (
+            <Link
+              key={slug}
+              href={`/category/${slug}`}
+              className="group flex items-center gap-3 px-4 py-[9px] text-sm text-foreground hover:bg-primary/5 hover:text-primary transition-colors"
+            >
+              <Icon className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-primary transition-colors" />
+              <span className="flex-1 leading-tight font-medium">{name}</span>
+              {hot && (
+                <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full bg-red-500/15 text-red-500 border border-red-500/20 leading-none">
+                  Hot
+                </span>
+              )}
+              <ChevronRight className="h-3 w-3 text-muted-foreground/40 group-hover:text-primary/60 transition-colors shrink-0" />
+            </Link>
           ))}
         </div>
-        <span className="text-sm font-bold text-primary-foreground tracking-wide">All Categories</span>
-      </div>
 
-      {/* ── Category list ────────────────────────────────────── */}
-      <div className="flex-1 min-h-0 flex flex-col divide-y divide-border/50 overflow-hidden">
-        {CATEGORIES.map(({ name, slug, icon: Icon, hot }) => (
-          <Link
-            key={slug}
-            href={`/category/${slug}`}
-            className="group flex items-center gap-3 px-4 py-[9px] text-sm text-foreground hover:bg-primary/5 hover:text-primary transition-colors"
-          >
-            <Icon className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-primary transition-colors" />
-            <span className="flex-1 leading-tight font-medium">{name}</span>
-            {hot && (
-              <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full bg-red-500/15 text-red-500 border border-red-500/20 leading-none">
-                Hot
-              </span>
-            )}
-            <ChevronRight className="h-3 w-3 text-muted-foreground/40 group-hover:text-primary/60 transition-colors shrink-0" />
-          </Link>
-        ))}
-      </div>
+        {/* ── Footer toggle ────────────────────────────────────── */}
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          className="flex w-full items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-semibold text-primary bg-primary/5 hover:bg-primary/10 border-t border-border transition-colors rounded-b-xl shrink-0"
+        >
+          View all categories
+          <ChevronDown
+            className={`h-3.5 w-3.5 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
+          />
+        </button>
 
-      {/* ── Footer toggle ────────────────────────────────────── */}
-      <button
-        onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-center justify-center gap-1.5 px-4 py-2.5 text-xs font-semibold text-primary bg-primary/5 hover:bg-primary/10 border-t border-border transition-colors rounded-b-xl"
-      >
-        View all categories
-        <ChevronDown
-          className={`h-3.5 w-3.5 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
-        />
-      </button>
+      </div>
     </div>
   );
 }
