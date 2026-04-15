@@ -134,7 +134,7 @@ export default function HomePage() {
 
       {/* Hero + trust + stats */}
       <div className="bg-muted/20">
-        <div className="mx-auto max-w-7xl px-4 pb-4 pt-6 sm:px-6 lg:px-8 lg:pt-8">
+        <div className="container mx-auto px-4 pb-4 pt-6 lg:pt-8">
           {/* Sidebar + banner: sidebar hidden on mobile */}
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-[220px_1fr]">
             <CategorySidebar />
