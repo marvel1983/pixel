@@ -254,7 +254,12 @@ router.get("/products/:slug", async (req: Request, res: Response) => {
 
   res.json({
     ...product,
-    variants,
+    avgRating: Number(product.avgRating),
+    reviewCount: Number(product.reviewCount),
+    variants: variants.map((v) => ({
+      ...v,
+      stockCount: Number(v.stockCount),
+    })),
   });
 });
 
