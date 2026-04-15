@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Monitor, Cpu, CheckCircle } from "lucide-react";
+import { CheckCircle } from "lucide-react";
 
 interface ProductTabsProps {
   productName: string;
@@ -37,7 +37,7 @@ export function ProductTabs({ productName, platform, description, keyFeatures, s
           <DescriptionTab productName={productName} description={description} />
         )}
         {activeTab === "Key Features" && (
-          <KeyFeaturesTab productName={productName} keyFeatures={keyFeatures} />
+          <KeyFeaturesTab keyFeatures={keyFeatures} />
         )}
         {activeTab === "System Requirements" && (
           <SystemRequirementsTab platform={platform} systemRequirements={systemRequirements} />
@@ -77,20 +77,13 @@ function DescriptionTab({ productName, description }: { productName: string; des
   );
 }
 
-function KeyFeaturesTab({ productName, keyFeatures }: { productName: string; keyFeatures?: string[] }) {
-  const features = keyFeatures && keyFeatures.length > 0
-    ? keyFeatures
-    : [
-        "Genuine digital license key",
-        "Instant email delivery",
-        "One-time purchase, lifetime use",
-        "Full version — no restrictions",
-        "Free updates included",
-        "Multi-language support",
-      ];
+function KeyFeaturesTab({ keyFeatures }: { keyFeatures?: string[] }) {
+  if (!keyFeatures || keyFeatures.length === 0) {
+    return <p className="text-sm text-muted-foreground">No key features listed for this product.</p>;
+  }
   return (
     <div className="space-y-2">
-      {features.map((f, i) => (
+      {keyFeatures.map((f, i) => (
         <div key={i} className="flex items-center gap-2 text-sm">
           <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
           <span>{f}</span>
@@ -101,46 +94,20 @@ function KeyFeaturesTab({ productName, keyFeatures }: { productName: string; key
 }
 
 function SystemRequirementsTab({ platform, systemRequirements }: { platform: string; systemRequirements?: Record<string, string> }) {
-  const hasCustomReqs = systemRequirements && Object.keys(systemRequirements).length > 0;
+  const entries = systemRequirements ? Object.entries(systemRequirements) : [];
 
-  if (hasCustomReqs) {
-    return (
-      <div className="grid gap-4 sm:grid-cols-2">
-        {Object.entries(systemRequirements).map(([key, value]) => (
-          <div key={key} className="text-sm">
-            <dt className="font-medium text-foreground inline">{key}:</dt>{" "}
-            <dd className="inline text-muted-foreground">{value}</dd>
-          </div>
-        ))}
-      </div>
-    );
+  if (entries.length === 0) {
+    return <p className="text-sm text-muted-foreground">No system requirements specified for this product.</p>;
   }
 
-  const isWindows = platform === "WINDOWS";
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
-      <div className="space-y-3">
-        <h4 className="font-semibold text-sm flex items-center gap-1.5">
-          <Monitor className="h-4 w-4" /> Minimum
-        </h4>
-        <dl className="text-sm space-y-1.5 text-muted-foreground">
-          <div><dt className="font-medium text-foreground inline">OS:</dt> {isWindows ? "Windows 10 (64-bit)" : "macOS 12+"}</div>
-          <div><dt className="font-medium text-foreground inline">Processor:</dt> 1 GHz dual-core</div>
-          <div><dt className="font-medium text-foreground inline">RAM:</dt> 4 GB</div>
-          <div><dt className="font-medium text-foreground inline">Storage:</dt> 4 GB available</div>
-        </dl>
-      </div>
-      <div className="space-y-3">
-        <h4 className="font-semibold text-sm flex items-center gap-1.5">
-          <Cpu className="h-4 w-4" /> Recommended
-        </h4>
-        <dl className="text-sm space-y-1.5 text-muted-foreground">
-          <div><dt className="font-medium text-foreground inline">OS:</dt> {isWindows ? "Windows 11 (64-bit)" : "macOS 14+"}</div>
-          <div><dt className="font-medium text-foreground inline">Processor:</dt> 2 GHz quad-core</div>
-          <div><dt className="font-medium text-foreground inline">RAM:</dt> 8 GB</div>
-          <div><dt className="font-medium text-foreground inline">Storage:</dt> 10 GB available (SSD)</div>
-        </dl>
-      </div>
+    <div className="grid gap-3 sm:grid-cols-2">
+      {entries.map(([key, value]) => (
+        <div key={key} className="text-sm">
+          <span className="font-medium text-foreground">{key}:</span>{" "}
+          <span className="text-muted-foreground">{value}</span>
+        </div>
+      ))}
     </div>
   );
 }
