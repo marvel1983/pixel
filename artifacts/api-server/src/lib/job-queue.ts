@@ -29,13 +29,22 @@ export async function enqueueJob(opts: EnqueueOptions): Promise<Job> {
 }
 
 export async function enqueueRecurringIfDue(queue: QueueName, name: string, intervalMs: number, priority: Priority = PRIORITY.NORMAL): Promise<Job | null> {
-  const existing = await db.select({ id: jobQueue.id, status: jobQueue.status, completedAt: jobQueue.completedAt })
+  const existing = await db.select({ id: jobQueue.id, status: jobQueue.status, completedAt: jobQueue.completedAt, startedAt: jobQueue.startedAt })
     .from(jobQueue).where(and(eq(jobQueue.queue, queue), eq(jobQueue.name, name)))
     .orderBy(desc(jobQueue.createdAt)).limit(1);
 
   if (existing.length > 0) {
     const last = existing[0];
-    if (last.status === "waiting" || last.status === "active") return null;
+    // Treat active jobs as stale if they've been running longer than 2× the interval
+    const staleThresholdMs = Math.max(intervalMs * 2, 5 * 60_000);
+    if (last.status === "active") {
+      const runningMs = Date.now() - (last.startedAt?.getTime() ?? 0);
+      if (runningMs < staleThresholdMs) return null;
+      // Stale — mark it failed so we can enqueue fresh
+      await db.update(jobQueue).set({ status: "failed", lastError: "Killed: exceeded stale timeout", completedAt: new Date() }).where(eq(jobQueue.id, last.id));
+      logger.warn({ jobId: last.id, queue, name, runningMs }, "Killed stale active job");
+    }
+    if (last.status === "waiting") return null;
     if (last.completedAt && Date.now() - last.completedAt.getTime() < intervalMs) return null;
   }
   return enqueueJob({ queue, name, priority, maxAttempts: 3 });
