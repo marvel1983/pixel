@@ -144,13 +144,14 @@ router.patch("/admin/orders/:id/status", requireAuth, requireAdmin, requirePermi
   const validStatuses = ["PENDING", "PROCESSING", "COMPLETED", "FAILED", "REFUNDED", "PARTIALLY_REFUNDED"];
   const { status } = req.body;
   if (!validStatuses.includes(status)) { res.status(400).json({ error: "Invalid status" }); return; }
-  const [order] = await db.select({ id: orders.id, userId: orders.userId, totalUsd: orders.totalUsd }).from(orders).where(eq(orders.id, id));
+  const [order] = await db.select({ id: orders.id, userId: orders.userId, totalUsd: orders.totalUsd, subtotalUsd: orders.subtotalUsd }).from(orders).where(eq(orders.id, id));
   if (!order) { res.status(404).json({ error: "Order not found" }); return; }
   await db.update(orders).set({ status, updatedAt: new Date() }).where(eq(orders.id, id));
 
   // Loyalty side-effects (non-fatal)
+  // Use subtotalUsd so customers earn points on product value even when paying with gift codes/coupons
   if (status === "COMPLETED" && order.userId) {
-    awardOrderPoints(order.userId, id, parseFloat(order.totalUsd)).catch((err) => {
+    awardOrderPoints(order.userId, id, parseFloat(order.subtotalUsd ?? order.totalUsd)).catch((err) => {
       logger.error({ err, orderId: id }, "Failed to award loyalty points on admin status change (non-fatal)");
     });
   } else if ((status === "REFUNDED" || status === "PARTIALLY_REFUNDED") && order.userId) {
