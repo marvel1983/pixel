@@ -4,7 +4,7 @@ import {
   socialProofEvents,
   siteSettings,
 } from "@workspace/db/schema";
-import { eq, and, gte, sql, desc } from "drizzle-orm";
+import { eq, and, gte, sql, desc, inArray } from "drizzle-orm";
 import { paramString } from "../lib/route-params";
 
 const router = Router();
@@ -41,6 +41,47 @@ router.post("/social-proof/view", async (req, res) => {
   const sid = typeof sessionId === "string" ? sessionId.slice(0, 100) : null;
   await db.insert(socialProofEvents).values({ productId: pid, eventType: "VIEW", sessionId: sid });
   res.json({ ok: true });
+});
+
+router.post("/social-proof/batch", async (req, res) => {
+  const { productIds, sessionId } = req.body;
+  if (!Array.isArray(productIds) || productIds.length === 0) {
+    return res.json({ viewers: {}, sold: {} });
+  }
+  const ids = [...new Set(productIds.map(Number).filter((n) => Number.isInteger(n) && n > 0))];
+  if (ids.length === 0) return res.json({ viewers: {}, sold: {} });
+
+  const sid = typeof sessionId === "string" ? sessionId.slice(0, 100) : null;
+  if (sid) {
+    await Promise.all(
+      ids.map((pid) =>
+        db.insert(socialProofEvents).values({ productId: pid, eventType: "VIEW", sessionId: sid }).catch(() => {})
+      )
+    );
+  }
+
+  const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
+  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+  const [viewerRows, soldRows] = await Promise.all([
+    db
+      .select({ productId: socialProofEvents.productId, count: sql<number>`count(distinct ${socialProofEvents.sessionId})` })
+      .from(socialProofEvents)
+      .where(and(inArray(socialProofEvents.productId, ids), eq(socialProofEvents.eventType, "VIEW"), gte(socialProofEvents.createdAt, fiveMinAgo)))
+      .groupBy(socialProofEvents.productId),
+    db
+      .select({ productId: socialProofEvents.productId, count: sql<number>`count(*)` })
+      .from(socialProofEvents)
+      .where(and(inArray(socialProofEvents.productId, ids), eq(socialProofEvents.eventType, "PURCHASE"), gte(socialProofEvents.createdAt, oneDayAgo)))
+      .groupBy(socialProofEvents.productId),
+  ]);
+
+  const viewers: Record<number, number> = {};
+  const sold: Record<number, number> = {};
+  for (const row of viewerRows) viewers[row.productId] = Number(row.count);
+  for (const row of soldRows) sold[row.productId] = Number(row.count);
+
+  res.json({ viewers, sold });
 });
 
 router.get("/social-proof/viewers/:productId", async (req, res) => {

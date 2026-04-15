@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect } from "react";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -48,22 +48,85 @@ function getSessionId(): string {
   return sid;
 }
 
+// ─── Global batch registry ────────────────────────────────────────────────────
+// All product cards register here. A single debounced fetch fires one batched
+// request instead of one request per card, and one shared interval polls.
+
+type Listener = (value: number) => void;
+
+const viewerListeners = new Map<number, Set<Listener>>();
+const soldListeners = new Map<number, Set<Listener>>();
+
+let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+let pollInterval: ReturnType<typeof setInterval> | null = null;
+
+function getRegisteredIds(): number[] {
+  const ids = new Set<number>();
+  for (const pid of viewerListeners.keys()) ids.add(pid);
+  for (const pid of soldListeners.keys()) ids.add(pid);
+  return [...ids];
+}
+
+async function fetchBatch() {
+  const ids = getRegisteredIds();
+  if (ids.length === 0) return;
+  try {
+    const data = await fetch(`${API}/social-proof/batch`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ productIds: ids, sessionId: getSessionId() }),
+    }).then((r) => r.json()) as { viewers: Record<number, number>; sold: Record<number, number> };
+
+    for (const [pid, callbacks] of viewerListeners) {
+      callbacks.forEach((cb) => cb(data.viewers[pid] ?? 0));
+    }
+    for (const [pid, callbacks] of soldListeners) {
+      callbacks.forEach((cb) => cb(data.sold[pid] ?? 0));
+    }
+  } catch { /* ignore */ }
+}
+
+function scheduleFlush() {
+  if (debounceTimer) clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => {
+    fetchBatch();
+    if (!pollInterval) {
+      pollInterval = setInterval(fetchBatch, 30_000);
+    }
+  }, 50);
+}
+
+function addListener(map: Map<number, Set<Listener>>, id: number, fn: Listener) {
+  if (!map.has(id)) map.set(id, new Set());
+  map.get(id)!.add(fn);
+}
+
+function removeListener(map: Map<number, Set<Listener>>, id: number, fn: Listener) {
+  map.get(id)?.delete(fn);
+  if (map.get(id)?.size === 0) map.delete(id);
+}
+
+function stopPollIfIdle() {
+  if (getRegisteredIds().length === 0 && pollInterval) {
+    clearInterval(pollInterval);
+    pollInterval = null;
+  }
+}
+
+// ─── Hooks ────────────────────────────────────────────────────────────────────
+
 export function useViewerCount(productId: number) {
   const [viewers, setViewers] = useState(0);
   const config = useSocialProofConfig();
 
   useEffect(() => {
     if (!config.viewersEnabled) return;
-    const sid = getSessionId();
-    const track = () => fetch(`${API}/social-proof/view`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ productId, sessionId: sid }),
-    }).catch(() => {});
-    const poll = () => fetch(`${API}/social-proof/viewers/${productId}`)
-      .then((r) => r.json()).then((d) => setViewers(d.viewers)).catch(() => {});
-    track(); poll();
-    const interval = setInterval(() => { track(); poll(); }, 30000);
-    return () => clearInterval(interval);
+    addListener(viewerListeners, productId, setViewers);
+    scheduleFlush();
+    return () => {
+      removeListener(viewerListeners, productId, setViewers);
+      stopPollIfIdle();
+    };
   }, [productId, config.viewersEnabled]);
 
   return { viewers, minThreshold: config.viewersMin, enabled: config.viewersEnabled };
@@ -75,8 +138,12 @@ export function useSoldCount(productId: number) {
 
   useEffect(() => {
     if (!config.soldEnabled) return;
-    fetch(`${API}/social-proof/sold/${productId}`)
-      .then((r) => r.json()).then((d) => setSold(d.sold)).catch(() => {});
+    addListener(soldListeners, productId, setSold);
+    scheduleFlush();
+    return () => {
+      removeListener(soldListeners, productId, setSold);
+      stopPollIfIdle();
+    };
   }, [productId, config.soldEnabled]);
 
   return { sold, minThreshold: config.soldMin, enabled: config.soldEnabled };
