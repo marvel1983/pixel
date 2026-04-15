@@ -28,12 +28,12 @@ export function LicenseKeysDisplay({ keyGroups }: LicenseKeysDisplayProps) {
 
   if (!hasAnyKeys) {
     return (
-      <div className="border rounded-lg p-5 bg-amber-50 border-amber-200">
+      <div className="border rounded-lg p-5 bg-amber-50 border-amber-200 dark:bg-amber-950/40 dark:border-amber-800">
         <div className="flex items-center gap-2 mb-2">
-          <Clock className="h-5 w-5 text-amber-600" />
-          <h3 className="font-semibold text-amber-800">Keys Pending</h3>
+          <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+          <h3 className="font-semibold text-amber-800 dark:text-amber-300">Keys Pending</h3>
         </div>
-        <p className="text-sm text-amber-700">
+        <p className="text-sm text-amber-700 dark:text-amber-400">
           Your license keys are being prepared and will be delivered shortly.
           Check back in a few minutes or look for a delivery email.
         </p>
