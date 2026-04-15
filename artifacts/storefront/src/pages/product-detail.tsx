@@ -1,6 +1,6 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "wouter";
-import { MOCK_PRODUCTS } from "@/lib/mock-data";
+import { MOCK_PRODUCTS, type MockProduct } from "@/lib/mock-data";
 import { Breadcrumbs } from "@/components/shop/breadcrumbs";
 import { ProductImage } from "@/components/product-detail/product-image";
 import { ProductInfo } from "@/components/product-detail/product-info";
@@ -19,6 +19,8 @@ import { setSeoMeta, clearSeoMeta } from "@/lib/seo";
 import { ProductJsonLd, BreadcrumbJsonLd } from "@/components/seo/json-ld";
 import { Separator } from "@/components/ui/separator";
 
+const API = import.meta.env.VITE_API_URL ?? "/api";
+
 const CATEGORY_NAMES: Record<string, string> = {
   "operating-systems": "Operating Systems",
   "office-productivity": "Office & Productivity",
@@ -31,10 +33,27 @@ export default function ProductDetailPage() {
   const params = useParams<{ slug: string }>();
   const slug = params.slug ?? "";
 
-  const product = useMemo(
+  const mockProduct = useMemo(
     () => MOCK_PRODUCTS.find((p) => p.slug === slug),
     [slug],
   );
+
+  const [apiProduct, setApiProduct] = useState<MockProduct | null | undefined>(undefined); // undefined = loading
+
+  useEffect(() => {
+    if (mockProduct) {
+      // Mock products don't need an API call
+      setApiProduct(null);
+      return;
+    }
+    setApiProduct(undefined);
+    fetch(`${API}/products/${encodeURIComponent(slug)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => setApiProduct(data ?? null))
+      .catch(() => setApiProduct(null));
+  }, [slug, mockProduct]);
+
+  const product: MockProduct | undefined = mockProduct ?? (apiProduct ?? undefined);
 
   const relatedProducts = useMemo(() => {
     if (!product) return [];
@@ -62,6 +81,11 @@ export default function ProductDetailPage() {
       clearSeoMeta();
     };
   }, [product]);
+
+  // Still loading API response
+  if (!mockProduct && apiProduct === undefined) {
+    return <div className="container mx-auto px-4 py-16 text-center text-muted-foreground">Loading…</div>;
+  }
 
   if (!product) {
     return (

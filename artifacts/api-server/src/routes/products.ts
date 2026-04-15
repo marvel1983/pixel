@@ -207,6 +207,57 @@ router.get("/products", async (req: Request, res: Response) => {
   res.json({ items, total, limit, offset, facets });
 });
 
+router.get("/products/:slug", async (req: Request, res: Response) => {
+  const { slug } = req.params;
+
+  const rows = await db
+    .select({
+      id: products.id,
+      name: products.name,
+      slug: products.slug,
+      imageUrl: products.imageUrl,
+      description: products.description,
+      shortDescription: products.shortDescription,
+      avgRating: products.avgRating,
+      reviewCount: products.reviewCount,
+      isFeatured: products.isFeatured,
+      isNew: sql<boolean>`false`,
+      regionRestrictions: products.regionRestrictions,
+      platformType: products.platformType,
+      categorySlug: categories.slug,
+    })
+    .from(products)
+    .leftJoin(categories, eq(products.categoryId, categories.id))
+    .where(and(eq(products.slug, slug), eq(products.isActive, true)))
+    .limit(1);
+
+  if (rows.length === 0) {
+    res.status(404).json({ error: "Product not found" });
+    return;
+  }
+
+  const product = rows[0];
+
+  const variants = await db
+    .select({
+      id: productVariants.id,
+      name: productVariants.name,
+      sku: productVariants.sku,
+      platform: productVariants.platform,
+      priceUsd: productVariants.priceUsd,
+      priceOverrideUsd: productVariants.priceOverrideUsd,
+      compareAtPriceUsd: productVariants.compareAtPriceUsd,
+      stockCount: productVariants.stockCount,
+    })
+    .from(productVariants)
+    .where(and(eq(productVariants.productId, product.id), eq(productVariants.isActive, true)));
+
+  res.json({
+    ...product,
+    variants,
+  });
+});
+
 async function computeFacets(productIds: number[]) {
   if (productIds.length === 0) return { tags: [], attributes: [] };
 
