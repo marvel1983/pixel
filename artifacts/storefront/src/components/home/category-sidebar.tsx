@@ -47,7 +47,7 @@ export function CategorySidebar() {
   }, [expanded]);
 
   return (
-    <div ref={panelRef} className="relative hidden lg:block" style={{ height: 360 }}>
+    <div ref={panelRef} className="relative hidden lg:block">
 
       {/* ── Expanded all-categories panel ──────────────────── */}
       {expanded && (
@@ -106,7 +106,7 @@ export function CategorySidebar() {
       )}
 
       {/* ── Sidebar card (overflow-hidden ensures list is clipped) ── */}
-      <div className="flex flex-col h-full rounded-xl border border-border bg-card overflow-hidden">
+      <div className="flex flex-col rounded-xl border border-border bg-card overflow-hidden" style={{ height: 360 }}>
 
         {/* ── Sidebar header ──────────────────────────────────── */}
         <div className="flex items-center gap-2 px-4 py-3 bg-primary rounded-t-xl shrink-0">
