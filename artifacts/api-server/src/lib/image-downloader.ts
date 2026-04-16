@@ -49,7 +49,10 @@ export async function ensureUploadsDir(): Promise<void> {
  * Throws on failure.
  */
 export async function downloadImageToVps(remoteUrl: string): Promise<string> {
-  // Validate URL and host
+  // Normalise relative URLs from Metenzi (e.g. /uploads/product-images/...)
+  if (remoteUrl.startsWith("//")) remoteUrl = `https:${remoteUrl}`;
+  if (remoteUrl.startsWith("/"))  remoteUrl = `https://metenzi.com${remoteUrl}`;
+
   let parsed: URL;
   try {
     parsed = new URL(remoteUrl);
