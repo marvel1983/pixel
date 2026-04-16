@@ -60,7 +60,7 @@ jobs:
         with:
           host: ${{ secrets.CONTABO_HOST }}
           username: ${{ secrets.CONTABO_USER }}
-          key: ${{ secrets.CONTABO_SSH_KEY }}
+          password: ${{ secrets.CONTABO_PASSWORD }}
           port: ${{ secrets.CONTABO_PORT || 22 }}
           envs: APP_PUBLIC_URL,STORE_PUBLIC_URL
           script: |
