@@ -60,7 +60,8 @@ export interface FulfillmentInput {
   flashVariantMap?: Map<number, number>;
   loyaltyPointsUsed?: number;
   services?: Array<{ id: number; name: string; priceUsd: string }>;
-  guestPassword?: string;
+  guestPassword?: string;   // raw password (wallet/Net30 path only)
+  guestPasswordHash?: string; // pre-hashed (Stripe/Checkout.com webhook path)
   locale?: string;
   userId?: number;
 }
@@ -81,7 +82,8 @@ export async function runFulfillment(
 
   await db.update(orders).set({ paymentIntentId }).where(eq(orders.id, orderId));
 
-  if (input.guestPassword) await createGuestAccount(billing, input.guestPassword);
+  if (input.guestPasswordHash) await createGuestAccountFromHash(billing, input.guestPasswordHash);
+  else if (input.guestPassword) await createGuestAccount(billing, input.guestPassword);
 
   const realItems = items.filter((i) => i.variantId > 0);
   const giftCardItems = items.filter((i) => i.platform?.startsWith("GIFTCARD|"));
@@ -323,6 +325,15 @@ async function createGuestAccount(billing: OrderInput["billing"], password: stri
     if (existing.length > 0) return;
     const hash = await bcrypt.hash(password, 12);
     await db.insert(users).values({ email: billing.email, passwordHash: hash, firstName: billing.firstName, lastName: billing.lastName, role: "CUSTOMER" });
+    logger.info({ email: billing.email }, "Guest account created");
+  } catch (err) { logger.error({ err }, "Failed to create guest account (non-fatal)"); }
+}
+
+async function createGuestAccountFromHash(billing: OrderInput["billing"], passwordHash: string) {
+  try {
+    const existing = await db.select({ id: users.id }).from(users).where(eq(users.email, billing.email)).limit(1);
+    if (existing.length > 0) return;
+    await db.insert(users).values({ email: billing.email, passwordHash, firstName: billing.firstName, lastName: billing.lastName, role: "CUSTOMER" });
     logger.info({ email: billing.email }, "Guest account created");
   } catch (err) { logger.error({ err }, "Failed to create guest account (non-fatal)"); }
 }

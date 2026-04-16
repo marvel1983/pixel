@@ -14,6 +14,7 @@ import { logger } from "../lib/logger";
 import { getLoyaltyConfig, getOrCreateAccount, pointsToDiscount, redeemPoints, restorePoints } from "../services/loyalty-service";
 import { getWalletBalance, debitWallet, creditWallet } from "../services/wallet-service";
 import { requireIdempotencyKey } from "../middleware/idempotency";
+import bcrypt from "bcryptjs";
 import { createStripeClient } from "../lib/stripe-client";
 import { stripeCircuit, checkoutComCircuit } from "../lib/circuit-instances";
 import { getActivePaymentConfig } from "../lib/payment-config";
@@ -58,6 +59,21 @@ const CPP_RATE = 0.05;
 const generateOrderNumber = () =>
   `PC-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
+function isAllowedRedirectUrl(url: string): boolean {
+  try {
+    const { origin } = new URL(url);
+    const storeUrl = process.env.STORE_PUBLIC_URL ?? process.env.APP_PUBLIC_URL;
+    if (storeUrl) {
+      const allowedOrigin = new URL(storeUrl).origin;
+      return origin === allowedOrigin;
+    }
+    // No env var configured — only allow HTTPS (blocks plain HTTP phishing pages)
+    return url.startsWith("https://");
+  } catch {
+    return false;
+  }
+}
+
 // Serializable fulfillment payload stored in order.notes for webhook retrieval
 interface StripeFulfillmentPayload {
   billing: z.infer<typeof billingSchema>;
@@ -68,7 +84,7 @@ interface StripeFulfillmentPayload {
   loyaltyPointsUsed: number | undefined;
   loyaltyAccountId: number | undefined;
   services: Array<{ id: number; name: string; priceUsd: string }>;
-  guestPassword: string | undefined;
+  guestPasswordHash: string | undefined;
   locale: string | undefined;
   total: number;
 }
@@ -94,6 +110,15 @@ router.post("/checkout/session", requireIdempotencyKey(), async (req, res) => {
   }
 
   const { billing, items, coupon, cppSelected, vatNumber, total, giftCards: gcInput, successUrl: clientSuccessUrl, cancelUrl: clientCancelUrl } = parsed.data;
+
+  if (clientSuccessUrl && !isAllowedRedirectUrl(clientSuccessUrl)) {
+    res.status(400).json({ error: "Invalid successUrl: must be on the store domain" });
+    return;
+  }
+  if (clientCancelUrl && !isAllowedRedirectUrl(clientCancelUrl)) {
+    res.status(400).json({ error: "Invalid cancelUrl: must be on the store domain" });
+    return;
+  }
   let userId: number | undefined;
   let userLocale: string | undefined = parsed.data.locale?.slice(0, 10);
 
@@ -363,7 +388,9 @@ router.post("/checkout/session", requireIdempotencyKey(), async (req, res) => {
       loyaltyPointsUsed: loyaltyPtsUsed || undefined,
       loyaltyAccountId,
       services: validatedServices,
-      guestPassword: parsed.data.guestPassword,
+      guestPasswordHash: parsed.data.guestPassword
+        ? await bcrypt.hash(parsed.data.guestPassword, 12)
+        : undefined,
       locale: userLocale,
       total: computedTotal,
     };
@@ -447,7 +474,7 @@ router.post("/checkout/session", requireIdempotencyKey(), async (req, res) => {
     if (loyaltyRedeemed && loyaltyAccountId && loyaltyPtsUsed) {
       await restorePoints(loyaltyAccountId, loyaltyPtsUsed, `Points restored: ${orderNumber} session failed`, order.id).catch(() => {});
     }
-    await db.update(orders).set({ status: "FAILED", updatedAt: new Date() }).where(eq(orders.id, order.id));
+    await db.update(orders).set({ status: "FAILED", notes: null, updatedAt: new Date() }).where(eq(orders.id, order.id));
     logger.error({ err, orderNumber }, "Failed to create Stripe checkout session");
     res.status(500).json({ error: err instanceof Error ? err.message : "Failed to create checkout session" });
   }

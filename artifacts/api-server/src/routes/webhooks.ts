@@ -201,7 +201,7 @@ async function handleStripeSessionCompleted(session: import("stripe").Stripe.Che
         affiliateRefCode: payload.affiliateRefCode,
         loyaltyPointsUsed: payload.loyaltyPointsUsed,
         services: payload.services,
-        guestPassword: payload.guestPassword,
+        guestPasswordHash: payload.guestPasswordHash,
         locale: payload.locale,
         userId: order.userId ?? undefined,
       },
@@ -213,6 +213,7 @@ async function handleStripeSessionCompleted(session: import("stripe").Stripe.Che
     logger.info({ orderId, orderNumber: order.orderNumber }, "Stripe: order fulfilled");
   } catch (err) {
     logger.error({ err, orderId }, "Stripe session.completed: fulfillment failed");
+    await db.update(orders).set({ notes: null, updatedAt: new Date() }).where(eq(orders.id, orderId)).catch(() => {});
   }
 }
 
@@ -252,6 +253,21 @@ async function handleStripeSessionExpired(session: import("stripe").Stripe.Check
 
 // ── Checkout.com webhook ──────────────────────────────────────────────────────
 
+// In-memory event ID deduplication — 10-minute window, same approach as Stripe's 5-min timestamp window
+const seenCheckoutEventIds = new Map<string, number>();
+const CHECKOUT_REPLAY_WINDOW_MS = 10 * 60 * 1000;
+
+function isCheckoutReplay(eventId: string): boolean {
+  const now = Date.now();
+  // Evict expired entries
+  for (const [id, ts] of seenCheckoutEventIds) {
+    if (now - ts > CHECKOUT_REPLAY_WINDOW_MS) seenCheckoutEventIds.delete(id);
+  }
+  if (seenCheckoutEventIds.has(eventId)) return true;
+  seenCheckoutEventIds.set(eventId, now);
+  return false;
+}
+
 router.post("/webhooks/checkout", async (req, res) => {
   const signature = req.headers["cko-signature"];
   if (typeof signature !== "string") {
@@ -274,6 +290,13 @@ router.post("/webhooks/checkout", async (req, res) => {
   if (!verifyCheckoutSignature(rawBody, signature, webhookSecret)) {
     logger.warn("Checkout.com webhook signature verification failed");
     res.status(401).json({ error: "Invalid signature" });
+    return;
+  }
+
+  const eventId: string = req.body?.id ?? "";
+  if (!eventId || isCheckoutReplay(eventId)) {
+    logger.warn({ eventId }, "Checkout.com webhook replay or missing event ID — rejected");
+    res.status(200).json({ received: true }); // 200 so Checkout.com doesn't retry
     return;
   }
 
@@ -332,7 +355,7 @@ async function handleCheckoutPaymentApproved(data: Record<string, unknown>) {
         affiliateRefCode: payload.affiliateRefCode,
         loyaltyPointsUsed: payload.loyaltyPointsUsed,
         services: payload.services,
-        guestPassword: payload.guestPassword,
+        guestPasswordHash: payload.guestPasswordHash,
         locale: payload.locale,
         userId: order.userId ?? undefined,
       },
@@ -342,6 +365,7 @@ async function handleCheckoutPaymentApproved(data: Record<string, unknown>) {
     logger.info({ orderId, orderNumber: order.orderNumber }, "Checkout.com: order fulfilled");
   } catch (err) {
     logger.error({ err, orderId }, "Checkout.com payment_approved: fulfillment failed");
+    await db.update(orders).set({ notes: null, updatedAt: new Date() }).where(eq(orders.id, orderId)).catch(() => {});
   }
 }
 

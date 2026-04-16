@@ -3,9 +3,11 @@ import jwt from "jsonwebtoken";
 import { logger } from "../lib/logger";
 
 function getJwtSecret(): string {
-  const secret = process.env.ENCRYPTION_KEY;
+  // JWT_SECRET is the dedicated signing key. Falls back to ENCRYPTION_KEY for
+  // existing deployments that haven't set JWT_SECRET yet.
+  const secret = process.env.JWT_SECRET ?? process.env.ENCRYPTION_KEY;
   if (!secret) {
-    throw new Error("ENCRYPTION_KEY environment variable is required for JWT signing");
+    throw new Error("JWT_SECRET environment variable is required for JWT signing");
   }
   return secret;
 }
