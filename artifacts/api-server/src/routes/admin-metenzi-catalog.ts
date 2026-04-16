@@ -13,9 +13,19 @@ import { getMetenziConfig } from "../lib/metenzi-config";
 import { getCatalogPage } from "../lib/metenzi-endpoints";
 import { downloadImageToVps } from "../lib/image-downloader";
 import { logger } from "../lib/logger";
+import { metenziRequest } from "../lib/metenzi-client";
 
 const router = Router();
 const guard = [requireAuth, requireAdmin, requirePermission("manageProducts")];
+
+// ── GET /admin/metenzi/debug ─────────────────────────────────────────────────
+// Returns raw Metenzi API response for debugging
+router.get("/admin/metenzi/debug", ...guard, async (_req, res) => {
+  const config = await getMetenziConfig();
+  if (!config) { res.status(503).json({ error: "Not configured", baseUrl: null }); return; }
+  const rawRes = await metenziRequest(config, { method: "GET", path: "/public/products", query: { limit: "3", offset: "0" } });
+  res.json({ baseUrl: config.baseUrl, ok: rawRes.ok, status: rawRes.status, data: rawRes.data });
+});
 
 // ── GET /admin/metenzi/catalog ───────────────────────────────────────────────
 // Proxy paginated Metenzi catalog with mapping status overlay
