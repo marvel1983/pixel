@@ -22,8 +22,8 @@ export async function getMetenziConfig(): Promise<MetenziClientConfig | null> {
       .where(eq(apiProviders.slug, "metenzi"))
       .limit(1);
 
-    if (!provider || !provider.isActive) {
-      logger.warn("Metenzi provider not found or inactive");
+    if (!provider) {
+      logger.warn("Metenzi provider not found");
       return null;
     }
 
