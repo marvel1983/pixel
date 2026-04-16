@@ -30,21 +30,26 @@ export async function getActivePaymentConfig(): Promise<PaymentProviderConfig | 
       .where(eq(apiCredentials.isActive, true))
       .limit(1);
 
-    if (!row?.secretKeyEncrypted) {
+    const extra = (row.extra ?? {}) as Record<string, string>;
+    const mode: PaymentMode = extra.mode === "live" ? "live" : "sandbox";
+
+    // Keys are stored per-mode in extra: e.g. extra.sandbox_secretKeyEncrypted
+    const sk = extra[`${mode}_secretKeyEncrypted`];
+    const pk = extra[`${mode}_publicKeyEncrypted`];
+    const wh = extra[`${mode}_webhookSecretEncrypted`];
+
+    if (!sk) {
       cachedConfig = null;
       cacheTimestamp = now;
       return null;
     }
 
-    const extra = (row.extra ?? {}) as Record<string, string>;
-    const mode: PaymentMode = extra.mode === "live" ? "live" : "sandbox";
-
     cachedConfig = {
       provider: row.provider as PaymentProvider,
       mode,
-      secretKey: decrypt(row.secretKeyEncrypted),
-      publishableKey: row.publicKeyEncrypted ? decrypt(row.publicKeyEncrypted) : undefined,
-      webhookSecret: extra.webhookSecretEncrypted ? decrypt(extra.webhookSecretEncrypted) : undefined,
+      secretKey: decrypt(sk),
+      publishableKey: pk ? decrypt(pk) : undefined,
+      webhookSecret: wh ? decrypt(wh) : undefined,
     };
     cacheTimestamp = now;
     return cachedConfig;

@@ -41,6 +41,8 @@ router.get("/admin/settings/payment-providers", ...auth, async (req, res) => {
 
   const stripeExtra = (stripeRow?.extra ?? {}) as Record<string, string>;
   const checkoutExtra = (checkoutRow?.extra ?? {}) as Record<string, string>;
+  const stripeMode = stripeExtra.mode === "live" ? "live" : "sandbox";
+  const checkoutMode = checkoutExtra.mode === "live" ? "live" : "sandbox";
 
   const appUrl = process.env.APP_PUBLIC_URL ?? `https://${process.env.REPLIT_DEV_DOMAIN ?? "localhost:8080"}`;
 
@@ -48,17 +50,17 @@ router.get("/admin/settings/payment-providers", ...auth, async (req, res) => {
     activeProvider: stripeRow?.isActive ? "stripe" : checkoutRow?.isActive ? "checkout" : null,
     stripe: {
       isActive: stripeRow?.isActive ?? false,
-      mode: stripeExtra.mode === "live" ? "live" : "sandbox",
-      hasSecretKey: !!stripeRow?.secretKeyEncrypted,
-      hasPublishableKey: !!stripeRow?.publicKeyEncrypted,
-      hasWebhookSecret: !!stripeExtra.webhookSecretEncrypted,
+      mode: stripeMode,
+      hasSecretKey: !!stripeExtra[`${stripeMode}_secretKeyEncrypted`],
+      hasPublishableKey: !!stripeExtra[`${stripeMode}_publicKeyEncrypted`],
+      hasWebhookSecret: !!stripeExtra[`${stripeMode}_webhookSecretEncrypted`],
       webhookUrl: `${appUrl}/api/webhooks/stripe`,
     },
     checkout: {
       isActive: checkoutRow?.isActive ?? false,
-      mode: checkoutExtra.mode === "live" ? "live" : "sandbox",
-      hasSecretKey: !!checkoutRow?.secretKeyEncrypted,
-      hasPublishableKey: !!checkoutRow?.publicKeyEncrypted,
+      mode: checkoutMode,
+      hasSecretKey: !!checkoutExtra[`${checkoutMode}_secretKeyEncrypted`],
+      hasPublishableKey: !!checkoutExtra[`${checkoutMode}_publicKeyEncrypted`],
     },
   });
 });
@@ -128,21 +130,20 @@ router.post("/admin/settings/payment-providers/:provider/keys", ...auth, async (
   const encrypted = encrypt(value.trim());
   const [existing] = await db.select().from(apiCredentials).where(eq(apiCredentials.provider, provider));
   const currentExtra = (existing?.extra ?? {}) as Record<string, string>;
+  const mode = currentExtra.mode === "live" ? "live" : "sandbox";
 
-  let colUpdate: Record<string, unknown> = {};
-  if (field === "secretKey") {
-    colUpdate = { secretKeyEncrypted: encrypted };
-  } else if (field === "publishableKey") {
-    colUpdate = { publicKeyEncrypted: encrypted };
-  } else if (field === "webhookSecret") {
-    colUpdate = { extra: { ...currentExtra, webhookSecretEncrypted: encrypted } };
-  }
+  const extraKey =
+    field === "secretKey" ? `${mode}_secretKeyEncrypted` :
+    field === "publishableKey" ? `${mode}_publicKeyEncrypted` :
+    `${mode}_webhookSecretEncrypted`;
+
+  const newExtra = { ...currentExtra, [extraKey]: encrypted };
 
   if (existing) {
-    await db.update(apiCredentials).set({ ...colUpdate, updatedAt: new Date() })
+    await db.update(apiCredentials).set({ extra: newExtra, updatedAt: new Date() })
       .where(eq(apiCredentials.id, existing.id));
   } else {
-    await db.insert(apiCredentials).values({ provider, ...colUpdate });
+    await db.insert(apiCredentials).values({ provider, extra: newExtra });
   }
 
   clearPaymentConfigCache();
@@ -166,10 +167,13 @@ router.post("/admin/settings/payment-providers/:provider/reveal", ...auth, async
   if (!row) { res.json({ value: "" }); return; }
 
   try {
-    let enc: string | null | undefined;
-    if (field === "secretKey") enc = row.secretKeyEncrypted;
-    else if (field === "publishableKey") enc = row.publicKeyEncrypted;
-    else if (field === "webhookSecret") enc = ((row.extra ?? {}) as Record<string, string>).webhookSecretEncrypted;
+    const extra = (row.extra ?? {}) as Record<string, string>;
+    const mode = extra.mode === "live" ? "live" : "sandbox";
+    const extraKey =
+      field === "secretKey" ? `${mode}_secretKeyEncrypted` :
+      field === "publishableKey" ? `${mode}_publicKeyEncrypted` :
+      `${mode}_webhookSecretEncrypted`;
+    const enc = extra[extraKey];
 
     res.json({ value: enc ? decrypt(enc) : "" });
   } catch {
@@ -184,12 +188,15 @@ router.post("/admin/settings/payment-providers/:provider/test", ...auth, async (
   if (!isValidProvider(provider)) { res.status(400).json({ error: "Invalid provider" }); return; }
 
   const [row] = await db.select().from(apiCredentials).where(eq(apiCredentials.provider, provider));
-  if (!row?.secretKeyEncrypted) {
-    res.json({ success: false, message: "No secret key configured" }); return;
+  const extra = (row?.extra ?? {}) as Record<string, string>;
+  const mode = extra.mode === "live" ? "live" : "sandbox";
+  const skEnc = extra[`${mode}_secretKeyEncrypted`];
+  if (!skEnc) {
+    res.json({ success: false, message: `No ${mode} secret key configured` }); return;
   }
 
   try {
-    const sk = decrypt(row.secretKeyEncrypted);
+    const sk = decrypt(skEnc);
 
     if (provider === "stripe") {
       const { createStripeClient } = await import("../lib/stripe-client");
@@ -198,8 +205,7 @@ router.post("/admin/settings/payment-providers/:provider/test", ...auth, async (
       const currency = balance.available[0]?.currency?.toUpperCase() ?? "USD";
       res.json({ success: true, message: `Connected! Available balance currency: ${currency}` });
     } else if (provider === "checkout") {
-      const extra = (row.extra ?? {}) as Record<string, string>;
-      const baseUrl = extra.mode === "live"
+      const baseUrl = mode === "live"
         ? "https://api.checkout.com"
         : "https://api.sandbox.checkout.com";
       const r = await fetch(`${baseUrl}/instruments`, {
