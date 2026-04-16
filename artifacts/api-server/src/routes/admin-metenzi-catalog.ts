@@ -10,10 +10,23 @@ import {
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import { getMetenziConfig } from "../lib/metenzi-config";
-import { getCatalogPage } from "../lib/metenzi-endpoints";
+import { getCatalogPage, getProducts, type MetenziProduct } from "../lib/metenzi-endpoints";
 import { downloadImageToVps } from "../lib/image-downloader";
 import { logger } from "../lib/logger";
 import { metenziRequest } from "../lib/metenzi-client";
+
+// ── Full-catalog cache (5-min TTL) ───────────────────────────────────────────
+let _cachedAll: MetenziProduct[] | null = null;
+let _cacheTs = 0;
+const CATALOG_TTL = 5 * 60 * 1000;
+
+async function getAllProducts(config: Parameters<typeof getProducts>[0]): Promise<MetenziProduct[]> {
+  const now = Date.now();
+  if (_cachedAll && now - _cacheTs < CATALOG_TTL) return _cachedAll;
+  _cachedAll = await getProducts(config);
+  _cacheTs = now;
+  return _cachedAll;
+}
 
 const router = Router();
 const guard = [requireAuth, requireAdmin, requirePermission("manageProducts")];
@@ -55,11 +68,30 @@ router.get("/admin/metenzi/catalog", ...guard, async (req, res) => {
   try {
     const page     = Math.max(1, parseInt(req.query.page as string)  || 1);
     const limit    = Math.min(50, Math.max(5, parseInt(req.query.limit as string) || 20));
-    const search   = req.query.search   as string | undefined;
+    const search   = (req.query.search   as string | undefined)?.trim().toLowerCase();
     const category = req.query.category as string | undefined;
     const platform = req.query.platform as string | undefined;
 
-    const catalog = await getCatalogPage(config, { page, limit, search, category, platform });
+    // When any filter is active, search the full catalog locally for accurate results.
+    // Otherwise use paginated Metenzi API directly.
+    let pageProducts: MetenziProduct[];
+    let total: number;
+
+    if (search || category || platform) {
+      let all = await getAllProducts(config);
+      if (search)   all = all.filter(p => p.name.toLowerCase().includes(search) || p.sku.toLowerCase().includes(search));
+      if (category) all = all.filter(p => p.category === category);
+      if (platform) all = all.filter(p => p.platform === platform);
+      total = all.length;
+      pageProducts = all.slice((page - 1) * limit, page * limit);
+    } else {
+      const catalog = await getCatalogPage(config, { page, limit });
+      pageProducts = catalog.products;
+      total = catalog.total;
+    }
+
+    // Shim to match old variable name used below
+    const catalog = { products: pageProducts, total };
 
     // Overlay mapping status for each product on this page
     const metenziIds = catalog.products.map((p) => p.id);
