@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuthStore } from "@/stores/auth-store";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
+const STRIPE_WEBHOOK_URL = `${API.replace(/\/api$/, "")}/api/webhooks/stripe`;
 
 type Provider = "stripe" | "checkout";
 type Mode = "sandbox" | "live";
@@ -173,21 +174,19 @@ export default function SettingsPaymentProvidersTab() {
         />
 
         {/* Webhook URL */}
-        {data.stripe.webhookUrl && (
-          <div className="pt-3 border-t space-y-1.5">
+        <div className="pt-3 border-t space-y-1.5">
             <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
               <Webhook className="h-3.5 w-3.5" />
               Your Stripe webhook endpoint
             </div>
             <div className="flex items-center gap-2 rounded-md border bg-muted/40 px-3 py-2">
-              <code className="text-xs font-mono flex-1 break-all">{data.stripe.webhookUrl}</code>
-              <Button size="sm" variant="ghost" className="h-7 px-2 flex-shrink-0" onClick={() => copyWebhookUrl(data.stripe.webhookUrl!)}>
+              <code className="text-xs font-mono flex-1 break-all">{STRIPE_WEBHOOK_URL}</code>
+              <Button size="sm" variant="ghost" className="h-7 px-2 flex-shrink-0" onClick={() => copyWebhookUrl(STRIPE_WEBHOOK_URL)}>
                 {copied ? <CheckCircle className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">Register this URL in your Stripe Dashboard → Developers → Webhooks. Enable: <code className="bg-muted px-1 rounded">checkout.session.completed</code> and <code className="bg-muted px-1 rounded">checkout.session.expired</code>.</p>
           </div>
-        )}
 
         <div className="flex items-center gap-2 pt-3 border-t">
           <Button size="sm" variant="outline" onClick={() => testConnection("stripe")}>
