@@ -262,64 +262,38 @@ router.post("/admin/metenzi/sync-field", ...guard, async (req, res) => {
     .where(eq(productVariants.productId, mapping.pixelProductId))
     .limit(1);
 
-  const productUpdates: Record<string, unknown> = { updatedAt: new Date() };
-  const variantUpdates: Record<string, unknown> = { updatedAt: new Date() };
   const synced: string[] = [];
+  const productCols: { name?: string; description?: string; shortDescription?: string; imageUrl?: string; updatedAt?: Date } = {};
+  const variantCols: { sku?: string; priceUsd?: string; b2bPriceUsd?: string; stockCount?: number; updatedAt?: Date } = {};
 
   for (const field of fields) {
     switch (field) {
-      case "name":
-        productUpdates.name = mp.name;
-        synced.push("name");
-        break;
-      case "description":
-        productUpdates.description = mp.description;
-        synced.push("description");
-        break;
-      case "shortDescription":
-        productUpdates.shortDescription = mp.shortDescription;
-        synced.push("shortDescription");
-        break;
-      case "b2bPrice":
-        variantUpdates.b2bPriceUsd = mp.b2bPrice;
-        synced.push("b2bPrice");
-        break;
-      case "retailPrice":
-        variantUpdates.priceUsd = mp.retailPrice;
-        synced.push("retailPrice");
-        break;
-      case "sku":
-        variantUpdates.sku = mp.sku;
-        synced.push("sku");
-        break;
-      case "stock":
-        variantUpdates.stockCount = mp.stock;
-        synced.push("stock");
-        break;
+      case "name":             productCols.name = mp.name;                    synced.push("name");             break;
+      case "description":      productCols.description = mp.description;      synced.push("description");      break;
+      case "shortDescription": productCols.shortDescription = mp.shortDescription; synced.push("shortDescription"); break;
+      case "b2bPrice":         variantCols.b2bPriceUsd = mp.b2bPrice;        synced.push("b2bPrice");         break;
+      case "retailPrice":      variantCols.priceUsd = mp.retailPrice;         synced.push("retailPrice");      break;
+      case "sku":              variantCols.sku = mp.sku;                      synced.push("sku");              break;
+      case "stock":            variantCols.stockCount = mp.stock;             synced.push("stock");            break;
       case "image":
-        if (mp.imageUrl) {
-          try {
-            const localUrl = await downloadImageToVps(mp.imageUrl);
-            productUpdates.imageUrl = localUrl;
-            synced.push("image");
-          } catch (err) {
-            logger.warn({ err, imageUrl: mp.imageUrl }, "Image sync failed");
-            res.status(500).json({ error: `Image download failed: ${(err as Error).message}` });
-            return;
-          }
-        } else {
-          res.status(422).json({ error: "Metenzi product has no imageUrl" });
+        if (!mp.imageUrl) { res.status(422).json({ error: "Metenzi product has no imageUrl" }); return; }
+        try {
+          productCols.imageUrl = await downloadImageToVps(mp.imageUrl);
+          synced.push("image");
+        } catch (err) {
+          logger.warn({ err, imageUrl: mp.imageUrl }, "Image sync failed");
+          res.status(500).json({ error: `Image download failed: ${(err as Error).message}` });
           return;
         }
         break;
     }
   }
 
-  if (Object.keys(productUpdates).length > 1) {
-    await db.update(products).set(productUpdates).where(eq(products.id, mapping.pixelProductId));
+  if (Object.keys(productCols).length > 0) {
+    await db.update(products).set({ ...productCols, updatedAt: new Date() }).where(eq(products.id, mapping.pixelProductId));
   }
-  if (variant && Object.keys(variantUpdates).length > 1) {
-    await db.update(productVariants).set(variantUpdates).where(eq(productVariants.id, variant.id));
+  if (variant && Object.keys(variantCols).length > 0) {
+    await db.update(productVariants).set({ ...variantCols, updatedAt: new Date() }).where(eq(productVariants.id, variant.id));
   }
 
   await db.update(metenziProductMappings)
