@@ -1,14 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Search, RefreshCw, Unlink, Download, Check,
-  ChevronLeft, ChevronRight, X, AlertTriangle,
+  ChevronLeft, ChevronRight, X, AlertTriangle, Package,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
-
-// ── Types ────────────────────────────────────────────────────────────────────
 
 interface MetenziProduct {
   id: string; sku: string; name: string; category: string; platform: string;
@@ -17,7 +15,6 @@ interface MetenziProduct {
   mapped: boolean; mappingId: number | null; autoSyncStock: boolean;
   pixelProduct: { id: number; name: string; slug: string } | null;
 }
-
 interface PixelSearch { id: number; name: string; slug: string }
 
 const SYNC_FIELDS = [
@@ -32,37 +29,39 @@ const SYNC_FIELDS = [
 ] as const;
 type SyncFieldKey = typeof SYNC_FIELDS[number]["key"];
 
-// ── Styles (matching orders.tsx) ─────────────────────────────────────────────
-const thBase = "border-b border-r border-[#2a2e3a] bg-[#1e2128] px-2.5 py-[8px] text-[10.5px] font-bold uppercase tracking-widest select-none whitespace-nowrap card-title";
-const td = "border-b border-r border-[#1f2840] px-2.5 py-[6px] align-middle text-[12.5px] leading-none text-[#dde4f0]";
+const CSYM: Record<string, string> = { EUR: "€", USD: "$", GBP: "£" };
+const csym = (c: string) => CSYM[c] ?? c;
+const imgProxy = (url: string | null) =>
+  url ? `${API}/admin/metenzi/proxy-image?url=${encodeURIComponent(url)}` : null;
+const skuShort = (sku: string) => sku.length > 8 ? `${sku.slice(0, 8)}…` : sku;
+const nameShort = (n: string) => n.length > 45 ? `${n.slice(0, 45)}…` : n;
 
-// ── Main ─────────────────────────────────────────────────────────────────────
+const thBase = "border-b border-r border-[#2a2e3a] bg-[#1e2128] px-2.5 py-[8px] text-[10.5px] font-bold uppercase tracking-widest select-none whitespace-nowrap card-title";
+const td = "border-b border-r border-[#1f2840] px-2.5 py-[5px] align-middle text-[12.5px] leading-none text-[#dde4f0] whitespace-nowrap";
 
 export default function MetenziCatalogPage() {
   const token = localStorage.getItem("token");
   const hdrs: Record<string, string> = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 
-  const [products, setProducts]   = useState<MetenziProduct[]>([]);
-  const [total, setTotal]         = useState(0);
-  const [page, setPage]           = useState(1);
-  const [search, setSearch]       = useState("");
-  const [category, setCategory]   = useState("");
-  const [platform, setPlatform]   = useState("");
+  const [products, setProducts]     = useState<MetenziProduct[]>([]);
+  const [total, setTotal]           = useState(0);
+  const [page, setPage]             = useState(1);
+  const [search, setSearch]         = useState("");
+  const [category, setCategory]     = useState("");
+  const [platform, setPlatform]     = useState("");
   const [categories, setCategories] = useState<string[]>([]);
   const [platforms, setPlatforms]   = useState<string[]>([]);
-  const [loading, setLoading]     = useState(false);
+  const [loading, setLoading]       = useState(false);
   const [configured, setConfigured] = useState(true);
-
-  const [selected, setSelected]   = useState<MetenziProduct | null>(null);
-  const [drawer, setDrawer]       = useState(false);
-
-  const [pixelQuery, setPixelQuery]   = useState("");
-  const [pixelResults, setPixelResults] = useState<PixelSearch[]>([]);
-  const [pixelLoading, setPixelLoading] = useState(false);
+  const [selected, setSelected]     = useState<MetenziProduct | null>(null);
+  const [drawer, setDrawer]         = useState(false);
+  const [pixelQuery, setPixelQuery]       = useState("");
+  const [pixelResults, setPixelResults]   = useState<PixelSearch[]>([]);
+  const [pixelLoading, setPixelLoading]   = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [syncingFields, setSyncingFields] = useState<Set<SyncFieldKey>>(new Set());
-
-  const [showImport, setShowImport] = useState(false);
+  const [syncedResult, setSyncedResult]   = useState<string[]>([]);
+  const [showImport, setShowImport]   = useState(false);
   const [importFields, setImportFields] = useState<Set<SyncFieldKey>>(
     new Set(["name","image","b2bPrice","retailPrice","description","shortDescription","sku","stock"] as SyncFieldKey[])
   );
@@ -70,8 +69,6 @@ export default function MetenziCatalogPage() {
 
   const limit = 20;
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // ── Fetch ──────────────────────────────────────────────────────────────────
 
   const fetchCatalog = useCallback(async (p = page, s = search, cat = category, plt = platform) => {
     setLoading(true);
@@ -91,26 +88,21 @@ export default function MetenziCatalogPage() {
   }, [page, search, category, platform]);
 
   useEffect(() => { fetchCatalog(page, search, category, platform); }, [page, category, platform]);
-
   useEffect(() => {
     if (searchTimer.current) clearTimeout(searchTimer.current);
     searchTimer.current = setTimeout(() => { setPage(1); fetchCatalog(1, search, category, platform); }, 400);
     return () => { if (searchTimer.current) clearTimeout(searchTimer.current); };
   }, [search]);
-
   useEffect(() => {
     fetch(`${API}/admin/metenzi/catalog/meta`, { headers: hdrs })
       .then(r => r.json()).then(d => { setCategories(d.categories ?? []); setPlatforms(d.platforms ?? []); }).catch(() => {});
   }, []);
-
   useEffect(() => {
     if (selected) {
       const updated = products.find(p => p.id === selected.id);
       if (updated) setSelected(updated);
     }
   }, [products]);
-
-  // ── Actions ────────────────────────────────────────────────────────────────
 
   const handlePixelSearch = useCallback((q: string) => {
     setPixelQuery(q);
@@ -154,12 +146,14 @@ export default function MetenziCatalogPage() {
   const handleSyncField = async (field: SyncFieldKey) => {
     if (!selected?.mappingId) return;
     setSyncingFields(prev => new Set(prev).add(field));
+    setSyncedResult([]);
     const res = await fetch(`${API}/admin/metenzi/sync-field`, {
       method: "POST", headers: hdrs,
       body: JSON.stringify({ mappingId: selected.mappingId, fields: [field] }),
     });
     const data = await res.json();
-    if (!res.ok || !data.success) alert(data.error ?? "Sync failed");
+    if (res.ok && data.success) setSyncedResult(data.synced ?? [field]);
+    else alert(data.error ?? "Sync failed");
     await fetchCatalog(page, search, category, platform);
     setSyncingFields(prev => { const s = new Set(prev); s.delete(field); return s; });
   };
@@ -178,11 +172,11 @@ export default function MetenziCatalogPage() {
     setImportLoading(false);
   };
 
-  const openDrawer = (p: MetenziProduct) => { setSelected(p); setDrawer(true); setPixelQuery(""); setPixelResults([]); };
+  const openDrawer = (p: MetenziProduct) => {
+    setSelected(p); setDrawer(true); setPixelQuery(""); setPixelResults([]); setSyncedResult([]);
+  };
 
   const totalPages = Math.ceil(total / limit);
-
-  // ── Not configured ─────────────────────────────────────────────────────────
 
   if (!configured) return (
     <div className="space-y-4">
@@ -194,8 +188,6 @@ export default function MetenziCatalogPage() {
       </div>
     </div>
   );
-
-  // ── Page ───────────────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-3 text-[#e8edf5]">
@@ -211,12 +203,8 @@ export default function MetenziCatalogPage() {
       <div className="flex flex-wrap items-end gap-2.5 rounded-md border border-[#2d3344] bg-[#161a24] p-2.5">
         <div className="min-w-[200px] flex-1 relative">
           <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8b95ab]" />
-          <input
-            className="h-8 w-full rounded border border-[#3d4558] bg-[#0f1117] pl-8 pr-2 text-[13px] text-[#e8edf5] placeholder:text-[#6b7280] focus:border-sky-500/60 focus:outline-none focus:ring-1 focus:ring-sky-500/40"
-            placeholder="Search products..."
-            value={search}
-            onChange={e => { setSearch(e.target.value); setPage(1); }}
-          />
+          <input className="h-8 w-full rounded border border-[#3d4558] bg-[#0f1117] pl-8 pr-2 text-[13px] text-[#e8edf5] placeholder:text-[#6b7280] focus:border-sky-500/60 focus:outline-none focus:ring-1 focus:ring-sky-500/40"
+            placeholder="Search products..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
         </div>
         {categories.length > 0 && (
           <select className="h-8 rounded border border-[#3d4558] bg-[#0f1117] px-2 text-[13px] text-[#e8edf5]" value={category} onChange={e => { setCategory(e.target.value); setPage(1); }}>
@@ -241,51 +229,53 @@ export default function MetenziCatalogPage() {
       {/* Table */}
       {loading ? (
         <div className="space-y-px rounded-md overflow-hidden border border-[#1e2638]">
-          {Array.from({ length: 10 }).map((_, i) => <Skeleton key={i} className="h-[29px] rounded-none bg-[#181e2c]" />)}
+          {Array.from({ length: 10 }).map((_, i) => <Skeleton key={i} className="h-[28px] rounded-none bg-[#181e2c]" />)}
         </div>
       ) : (
         <div className="overflow-x-auto rounded-md border border-[#1e2a40] bg-[#0c1018]" style={{ boxShadow: "0 4px 20px rgba(0,0,0,0.5)" }}>
           <table className="w-full border-collapse text-left" style={{ borderSpacing: 0 }}>
             <thead>
               <tr className="border-b-2 border-[#2a2e3a]" style={{ backgroundColor: "#1e2128" }}>
-                <th className={`${thBase} border-l-0`} style={{ color: "#ffffff" }}>Product</th>
-                <th className={thBase} style={{ color: "#ffffff" }}>SKU</th>
-                <th className={thBase} style={{ color: "#ffffff" }}>Category</th>
-                <th className={thBase} style={{ color: "#ffffff" }}>Platform</th>
-                <th className={`${thBase} text-right`} style={{ color: "#ffffff" }}>B2B</th>
-                <th className={`${thBase} text-right`} style={{ color: "#ffffff" }}>Retail</th>
-                <th className={`${thBase} text-right`} style={{ color: "#ffffff" }}>Stock</th>
-                <th className={thBase} style={{ color: "#ffffff" }}>Status</th>
-                <th className={`${thBase} border-r-0`} style={{ color: "#ffffff" }}>Linked Pixel product</th>
+                <th className={`${thBase} border-l-0`} style={{ color: "#fff" }}>Product</th>
+                <th className={thBase} style={{ color: "#fff" }}>SKU</th>
+                <th className={thBase} style={{ color: "#fff" }}>Category</th>
+                <th className={thBase} style={{ color: "#fff" }}>Platform</th>
+                <th className={`${thBase} text-right`} style={{ color: "#fff" }}>B2B</th>
+                <th className={`${thBase} text-right`} style={{ color: "#fff" }}>Retail</th>
+                <th className={`${thBase} text-right`} style={{ color: "#fff" }}>Stock</th>
+                <th className={thBase} style={{ color: "#fff" }}>Status</th>
+                <th className={`${thBase} border-r-0`} style={{ color: "#fff" }}>Linked product</th>
               </tr>
             </thead>
             <tbody>
               {products.map((p, i) => (
-                <tr
-                  key={p.id}
-                  onClick={() => openDrawer(p)}
-                  className={`cursor-pointer transition-colors ${selected?.id === p.id ? "bg-[#131b2e]" : i % 2 === 0 ? "bg-[#0c1018] hover:bg-[#10151f]" : "bg-[#0e1320] hover:bg-[#10151f]"}`}
+                <tr key={p.id} onClick={() => openDrawer(p)}
+                  className={`cursor-pointer transition-colors duration-75 ${selected?.id === p.id ? "bg-sky-500/10" : i % 2 === 0 ? "bg-[#0c1018] hover:bg-[#111825]" : "bg-[#0f1520] hover:bg-[#141e2e]"}`}
                 >
-                  <td className={`${td} border-l-0 max-w-[260px]`}>
+                  <td className={`${td} border-l-0`}>
                     <div className="flex items-center gap-2">
-                      {p.imageUrl && <img src={p.imageUrl} alt="" className="h-7 w-7 rounded object-cover flex-shrink-0" />}
-                      <span className="truncate">{p.name}</span>
+                      {imgProxy(p.imageUrl)
+                        ? <img src={imgProxy(p.imageUrl)!} alt="" className="h-6 w-6 rounded object-cover flex-shrink-0 bg-[#1a1f2e]" onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                        : <Package className="h-4 w-4 text-[#3d4558] flex-shrink-0" />
+                      }
+                      <span title={p.name}>{nameShort(p.name)}</span>
                     </div>
                   </td>
-                  <td className={`${td} text-[11px] text-[#8b95ab] font-mono`}>{p.sku}</td>
+                  <td className={`${td} font-mono text-[11px] text-[#8b95ab]`}>
+                    <span title={p.sku}>{skuShort(p.sku)}</span>
+                  </td>
                   <td className={`${td} text-[11px] text-[#8b95ab]`}>{p.category || "—"}</td>
                   <td className={`${td} text-[11px] text-[#8b95ab]`}>{p.platform || "—"}</td>
-                  <td className={`${td} text-right tabular-nums`}>{p.b2bPrice} {p.currency}</td>
-                  <td className={`${td} text-right tabular-nums`}>{p.retailPrice} {p.currency}</td>
+                  <td className={`${td} text-right tabular-nums`}>{p.b2bPrice} {csym(p.currency)}</td>
+                  <td className={`${td} text-right tabular-nums`}>{p.retailPrice} {csym(p.currency)}</td>
                   <td className={`${td} text-right tabular-nums`}>{p.stock}</td>
                   <td className={td}>
-                    {p.mapped ? (
-                      <span className="inline-flex items-center gap-1 rounded border border-emerald-700 bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-bold text-emerald-300">mapped</span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 rounded border border-[#3d4558] bg-[#1a1f2e] px-1.5 py-0.5 text-[10px] text-[#6b7280]">unmapped</span>
-                    )}
+                    {p.mapped
+                      ? <span className="inline-flex items-center justify-center rounded border border-emerald-400 bg-emerald-500/40 px-1.5 text-[10px] font-bold text-emerald-100 tracking-wider" style={{ height: 17 }}>mapped</span>
+                      : <span className="inline-flex items-center justify-center rounded border border-red-500 bg-red-500/20 px-1.5 text-[10px] font-bold text-red-400 tracking-wider" style={{ height: 17 }}>unmapped</span>
+                    }
                     {p.autoSyncStock && (
-                      <span className="ml-1 inline-flex items-center gap-1 rounded border border-sky-700 bg-sky-500/20 px-1.5 py-0.5 text-[10px] font-bold text-sky-300">auto-stock</span>
+                      <span className="ml-1 inline-flex items-center justify-center rounded border border-sky-400 bg-sky-500/40 px-1.5 text-[10px] font-bold text-sky-100 tracking-wider" style={{ height: 17 }}>auto-sync</span>
                     )}
                   </td>
                   <td className={`${td} border-r-0 text-[11px] text-[#5a8fcc]`}>
@@ -293,6 +283,9 @@ export default function MetenziCatalogPage() {
                   </td>
                 </tr>
               ))}
+              {products.length === 0 && (
+                <tr><td colSpan={9} className="px-3 py-12 text-center text-[13px] text-[#4a5570]">No products found</td></tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -300,42 +293,49 @@ export default function MetenziCatalogPage() {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-end gap-2 pt-1">
-          <Button size="sm" variant="outline" className="h-7 border-[#3d4558] bg-[#1a1f2e] text-[#e8edf5]" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1 || loading}>
-            <ChevronLeft className="h-4 w-4" />
+        <div className="flex items-center justify-between text-[13px] text-[#9ca8bc]">
+          <Button size="sm" variant="outline" className="h-8 border-[#3d4558] bg-[#1a1f2e] text-[#e8edf5] disabled:opacity-40" disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>
+            <ChevronLeft className="mr-1 h-4 w-4" /> Previous
           </Button>
-          <span className="text-[13px] text-[#9ca8bc]">{page} / {totalPages}</span>
-          <Button size="sm" variant="outline" className="h-7 border-[#3d4558] bg-[#1a1f2e] text-[#e8edf5]" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages || loading}>
-            <ChevronRight className="h-4 w-4" />
+          <span>Page <span className="tabular-nums text-[#e8edf5]">{page}</span> of <span className="tabular-nums text-[#e8edf5]">{totalPages}</span></span>
+          <Button size="sm" variant="outline" className="h-8 border-[#3d4558] bg-[#1a1f2e] text-[#e8edf5] disabled:opacity-40" disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))}>
+            Next <ChevronRight className="ml-1 h-4 w-4" />
           </Button>
         </div>
       )}
 
-      {/* ── Side drawer ─────────────────────────────────────────────────────── */}
+      {/* ── Side drawer ──────────────────────────────────────────────────────── */}
       {drawer && selected && (
-        <div className="fixed inset-0 z-40 flex" onClick={e => { if (e.target === e.currentTarget) setDrawer(false); }}>
-          {/* backdrop */}
+        <div className="fixed inset-0 z-40 flex">
           <div className="flex-1 bg-black/40" onClick={() => setDrawer(false)} />
-          {/* panel */}
           <div className="w-full max-w-[440px] flex flex-col h-full bg-[#0f1420] border-l border-[#1e2a40] shadow-2xl overflow-y-auto">
             {/* header */}
             <div className="flex items-start justify-between gap-3 border-b border-[#1e2a40] px-5 py-4 bg-[#1e2128]">
               <div className="flex items-start gap-3 min-w-0">
-                {selected.imageUrl && <img src={selected.imageUrl} alt="" className="h-12 w-12 rounded object-cover flex-shrink-0" />}
+                {imgProxy(selected.imageUrl)
+                  ? <img src={imgProxy(selected.imageUrl)!} alt="" className="h-14 w-14 rounded object-cover flex-shrink-0 bg-[#1a1f2e]" onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                  : <div className="h-14 w-14 rounded bg-[#1a1f2e] flex items-center justify-center flex-shrink-0"><Package className="h-6 w-6 text-[#3d4558]" /></div>
+                }
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-[#dde4f0] leading-snug">{selected.name}</p>
-                  <p className="text-[11px] text-[#5a6a84] mt-0.5">{selected.sku} · {selected.id}</p>
+                  <p className="text-[11px] text-[#5a6a84] mt-0.5 font-mono">{selected.sku} · {selected.id}</p>
                   <p className="text-[11px] text-[#5a6a84]">
-                    B2B: <strong className="text-[#dde4f0]">{selected.b2bPrice}</strong> · Retail: <strong className="text-[#dde4f0]">{selected.retailPrice}</strong> · Stock: <strong className="text-[#dde4f0]">{selected.stock}</strong>
+                    B2B: <strong className="text-[#dde4f0]">{selected.b2bPrice}{csym(selected.currency)}</strong> · Retail: <strong className="text-[#dde4f0]">{selected.retailPrice}{csym(selected.currency)}</strong> · Stock: <strong className="text-[#dde4f0]">{selected.stock}</strong>
                   </p>
                 </div>
               </div>
-              <button onClick={() => setDrawer(false)} className="text-[#5a6a84] hover:text-[#dde4f0] flex-shrink-0 mt-0.5">
-                <X className="h-5 w-5" />
-              </button>
+              <button onClick={() => setDrawer(false)} className="text-[#5a6a84] hover:text-[#dde4f0] flex-shrink-0 mt-0.5"><X className="h-5 w-5" /></button>
             </div>
 
             <div className="px-5 py-5 space-y-5 flex-1">
+              {/* Sync feedback */}
+              {syncedResult.length > 0 && (
+                <div className="rounded border border-emerald-800 bg-emerald-900/20 px-3 py-2 flex items-center gap-2">
+                  <Check className="h-4 w-4 text-emerald-400 flex-shrink-0" />
+                  <span className="text-[12px] text-emerald-300">Synced: <strong>{syncedResult.join(", ")}</strong></span>
+                </div>
+              )}
+
               {selected.mapped && selected.pixelProduct ? (
                 <>
                   {/* Linked product */}
@@ -356,11 +356,8 @@ export default function MetenziCatalogPage() {
                       <p className="text-sm font-medium text-[#dde4f0]">Auto-sync stock</p>
                       <p className="text-[11px] text-[#5a6a84]">Update stock every 15 min from Metenzi</p>
                     </div>
-                    <button
-                      onClick={handleToggleAutoSync}
-                      disabled={actionLoading}
-                      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${selected.autoSyncStock ? "bg-sky-600" : "bg-[#2e3340]"}`}
-                    >
+                    <button onClick={handleToggleAutoSync} disabled={actionLoading}
+                      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${selected.autoSyncStock ? "bg-sky-600" : "bg-[#2e3340]"}`}>
                       <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${selected.autoSyncStock ? "translate-x-5" : "translate-x-0"}`} />
                     </button>
                   </div>
@@ -371,15 +368,15 @@ export default function MetenziCatalogPage() {
                     <div className="grid grid-cols-2 gap-1.5">
                       {SYNC_FIELDS.map(({ key, label }) => {
                         const syncing = syncingFields.has(key);
+                        const synced  = syncedResult.includes(key);
                         return (
-                          <button
-                            key={key}
-                            onClick={() => handleSyncField(key)}
-                            disabled={syncing || actionLoading}
-                            className="flex items-center justify-between rounded border border-[#2a2e3a] bg-[#161a24] px-3 py-2 text-left hover:border-[#3a4050] hover:bg-[#1e2332] transition-colors disabled:opacity-60"
-                          >
-                            <span className="text-[13px] text-[#dde4f0]">{label}</span>
-                            <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "text-sky-400 animate-spin" : "text-[#5a6a84]"}`} />
+                          <button key={key} onClick={() => handleSyncField(key)} disabled={syncing || actionLoading}
+                            className={`flex items-center justify-between rounded border px-3 py-2 text-left transition-colors disabled:opacity-60 ${synced ? "border-emerald-700 bg-emerald-900/20" : "border-[#2a2e3a] bg-[#161a24] hover:border-[#3a4050] hover:bg-[#1e2332]"}`}>
+                            <span className={`text-[13px] ${synced ? "text-emerald-300" : "text-[#dde4f0]"}`}>{label}</span>
+                            {synced
+                              ? <Check className="h-3.5 w-3.5 text-emerald-400" />
+                              : <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "text-sky-400 animate-spin" : "text-[#5a6a84]"}`} />
+                            }
                           </button>
                         );
                       })}
@@ -388,17 +385,12 @@ export default function MetenziCatalogPage() {
                 </>
               ) : (
                 <div className="space-y-4">
-                  {/* Map to existing */}
                   <div>
                     <p className="text-[10.5px] font-bold uppercase tracking-widest text-[#5a6a84] mb-2">Link to existing Pixel product</p>
                     <div className="relative">
                       <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-[#5a6a84]" />
-                      <input
-                        className="h-8 w-full rounded border border-[#3d4558] bg-[#0f1117] pl-8 pr-2 text-[13px] text-[#e8edf5] placeholder:text-[#6b7280] focus:border-sky-500/60 focus:outline-none focus:ring-1 focus:ring-sky-500/40"
-                        placeholder="Search Pixel products..."
-                        value={pixelQuery}
-                        onChange={e => handlePixelSearch(e.target.value)}
-                      />
+                      <input className="h-8 w-full rounded border border-[#3d4558] bg-[#0f1117] pl-8 pr-2 text-[13px] text-[#e8edf5] placeholder:text-[#6b7280] focus:border-sky-500/60 focus:outline-none focus:ring-1 focus:ring-sky-500/40"
+                        placeholder="Search Pixel products..." value={pixelQuery} onChange={e => handlePixelSearch(e.target.value)} />
                     </div>
                     {pixelLoading && <p className="text-[11px] text-[#5a6a84] mt-1 ml-1">Searching...</p>}
                     {pixelResults.length > 0 && (
@@ -415,20 +407,13 @@ export default function MetenziCatalogPage() {
                       <p className="text-[11px] text-[#5a6a84] mt-1 ml-1">No products found</p>
                     )}
                   </div>
-
                   <div className="flex items-center gap-3">
                     <div className="flex-1 h-px bg-[#2a2e3a]" />
                     <span className="text-[11px] text-[#5a6a84]">or</span>
                     <div className="flex-1 h-px bg-[#2a2e3a]" />
                   </div>
-
-                  <Button
-                    variant="outline"
-                    className="w-full border-[#3d4558] bg-[#1a1f2e] text-[#e8edf5] hover:bg-[#252a38]"
-                    onClick={() => setShowImport(true)}
-                  >
-                    <Download className="mr-2 h-4 w-4" />
-                    Import as new Pixel product
+                  <Button variant="outline" className="w-full border-[#3d4558] bg-[#1a1f2e] text-[#e8edf5] hover:bg-[#252a38]" onClick={() => setShowImport(true)}>
+                    <Download className="mr-2 h-4 w-4" /> Import as new Pixel product
                   </Button>
                 </div>
               )}
@@ -437,14 +422,18 @@ export default function MetenziCatalogPage() {
         </div>
       )}
 
-      {/* ── Import modal ─────────────────────────────────────────────────────── */}
+      {/* ── Import modal ──────────────────────────────────────────────────────── */}
       {showImport && selected && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div className="w-full max-w-md rounded-lg border border-[#2a2e3a] bg-[#0f1420] shadow-2xl">
-            <div className="border-b border-[#1e2a40] px-5 py-4 bg-[#1e2128] rounded-t-lg flex items-center justify-between">
-              <div>
+            <div className="border-b border-[#1e2a40] px-5 py-4 bg-[#1e2128] rounded-t-lg flex items-center gap-3">
+              {imgProxy(selected.imageUrl)
+                ? <img src={imgProxy(selected.imageUrl)!} alt="" className="h-10 w-10 rounded object-cover flex-shrink-0 bg-[#1a1f2e]" onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                : <div className="h-10 w-10 rounded bg-[#1a1f2e] flex items-center justify-center flex-shrink-0"><Package className="h-5 w-5 text-[#3d4558]" /></div>
+              }
+              <div className="flex-1 min-w-0">
                 <p className="font-semibold text-[#dde4f0]">Import as new product</p>
-                <p className="text-[11px] text-[#5a6a84] mt-0.5 truncate max-w-[300px]">{selected.name}</p>
+                <p className="text-[11px] text-[#5a6a84] mt-0.5 truncate">{selected.name}</p>
               </div>
               <button onClick={() => setShowImport(false)} className="text-[#5a6a84] hover:text-[#dde4f0]"><X className="h-5 w-5" /></button>
             </div>

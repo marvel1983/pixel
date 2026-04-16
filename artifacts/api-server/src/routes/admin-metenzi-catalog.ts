@@ -19,12 +19,28 @@ const router = Router();
 const guard = [requireAuth, requireAdmin, requirePermission("manageProducts")];
 
 // ── GET /admin/metenzi/debug ─────────────────────────────────────────────────
-// Returns raw Metenzi API response for debugging
 router.get("/admin/metenzi/debug", ...guard, async (_req, res) => {
   const config = await getMetenziConfig();
   if (!config) { res.status(503).json({ error: "Not configured", baseUrl: null }); return; }
   const rawRes = await metenziRequest(config, { method: "GET", path: "/api/public/products", query: { limit: "3", offset: "0" } });
   res.json({ baseUrl: config.baseUrl, ok: rawRes.ok, status: rawRes.status, data: rawRes.data });
+});
+
+// ── GET /admin/metenzi/proxy-image ───────────────────────────────────────────
+// Proxies Metenzi product images through the server to bypass CORS/auth issues
+router.get("/admin/metenzi/proxy-image", ...guard, async (req, res) => {
+  let url = String(req.query.url || "");
+  if (url.startsWith("//")) url = `https:${url}`;
+  if (url.startsWith("/")) url = `https://metenzi.com${url}`;
+  if (!url.startsWith("http://") && !url.startsWith("https://")) { res.status(400).end(); return; }
+  try {
+    const r = await fetch(url);
+    if (!r.ok) { res.status(r.status).end(); return; }
+    const ct = r.headers.get("content-type") || "image/jpeg";
+    res.setHeader("Content-Type", ct);
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    res.end(Buffer.from(await r.arrayBuffer()));
+  } catch { res.status(502).end(); }
 });
 
 // ── GET /admin/metenzi/catalog ───────────────────────────────────────────────
