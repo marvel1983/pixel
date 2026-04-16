@@ -83,6 +83,7 @@ import adminAttributesRouter from "./admin-attributes";
 import adminTagsRouter from "./admin-tags";
 import adminUploadRouter from "./admin-upload";
 import adminImportsRouter from "./admin-imports";
+import adminMetenziCatalogRouter from "./admin-metenzi-catalog";
 import productsRouter from "./products";
 
 const router: IRouter = Router();
@@ -171,6 +172,7 @@ router.use(adminAttributesRouter);
 router.use(adminTagsRouter);
 router.use(adminUploadRouter);
 router.use(adminImportsRouter);
+router.use(adminMetenziCatalogRouter);
 router.use(productsRouter);
 
 export default router;

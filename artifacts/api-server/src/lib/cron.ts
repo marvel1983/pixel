@@ -6,8 +6,10 @@ import { processAbandonedCarts } from "../services/abandoned-cart-service";
 import { processPendingInvites } from "../services/trustpilot-service";
 import { processSurveyEmails } from "../services/survey-service";
 import { logger } from "./logger";
+import { syncMetenziStock } from "./metenzi-stock-sync";
 
 let syncTask: ScheduledTask | null = null;
+let metenziStockTask: ScheduledTask | null = null;
 let emailTask: ScheduledTask | null = null;
 let affiliateTask: ScheduledTask | null = null;
 let abandonedCartTask: ScheduledTask | null = null;
@@ -79,7 +81,18 @@ export function startCronJobs(): void {
     }
   });
 
-  logger.info("Cron jobs started (product sync 30m, email 1m, affiliate 6h, abandoned cart 15m, trustpilot 30m, survey 4h)");
+  metenziStockTask = cron.schedule("*/15 * * * *", async () => {
+    try {
+      const result = await syncMetenziStock();
+      if (result.updated > 0) {
+        logger.info(result, "Cron: Metenzi stock sync finished");
+      }
+    } catch (error) {
+      logger.error({ error }, "Cron: Metenzi stock sync failed");
+    }
+  });
+
+  logger.info("Cron jobs started (product sync 30m, email 1m, affiliate 6h, abandoned cart 15m, trustpilot 30m, survey 4h, metenzi-stock 15m)");
 }
 
 export function stopCronJobs(): void {
@@ -106,6 +119,10 @@ export function stopCronJobs(): void {
   if (surveyTask) {
     surveyTask.stop();
     surveyTask = null;
+  }
+  if (metenziStockTask) {
+    metenziStockTask.stop();
+    metenziStockTask = null;
   }
   logger.info("Cron jobs stopped");
 }

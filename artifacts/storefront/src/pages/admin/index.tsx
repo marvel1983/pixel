@@ -27,6 +27,7 @@ import FaqEditorPage from "./faq-editor";
 import AdminSettingsPage from "./settings";
 import AuditLogPage from "./audit-log";
 import MetenziBalancePage from "./metenzi-balance";
+import MetenziCatalogPage from "./metenzi-catalog";
 import CheckoutUpsellPage from "./checkout-upsell";
 import HomepageSectionsPage from "./homepage-sections";
 import BrandSectionsPage from "./brand-sections";
@@ -152,6 +153,7 @@ export default function AdminRoot() {
           <Route path="/admin/settings" component={AdminSettingsPage} />
           <Route path="/admin/audit-log" component={AuditLogPage} />
           <Route path="/admin/metenzi-balance" component={MetenziBalancePage} />
+          <Route path="/admin/metenzi-catalog" component={MetenziCatalogPage} />
           <Route path="/admin/jobs" component={AdminJobsPage} />
           <Route path="/admin/system-status" component={SystemStatusPage} />
           <Route path="/admin/loyalty/events" component={LoyaltyEventsPage} />

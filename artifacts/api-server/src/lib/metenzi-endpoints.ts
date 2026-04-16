@@ -5,26 +5,33 @@ import {
 
 export interface MetenziProduct {
   id: string;
+  sku: string;
   name: string;
-  slug: string;
+  category: string;
   description: string;
   shortDescription: string;
-  type: string;
-  category: string;
-  imageUrl: string;
-  galleryImages: string[];
-  variants: MetenziVariant[];
-  isActive: boolean;
+  platform: string;
+  b2bPrice: string;
+  b2bPriceCents: number;
+  retailPrice: string;
+  retailPriceCents: number;
+  currency: string;
+  stock: number;
+  status: string;
+  isKeyManaged: boolean;
+  textKeyStock: number;
+  imageKeyStock: number;
+  imageUrl: string | null;
+  warrantyDays: number;
+  instructions: string | null;
+  updatedAt: string;
 }
 
-export interface MetenziVariant {
-  id: string;
-  name: string;
-  sku: string;
-  platform: string;
-  priceUsd: number;
-  compareAtPriceUsd: number | null;
-  stockCount: number;
+export interface MetenziCatalogResponse {
+  products: MetenziProduct[];
+  total: number;
+  limit: number;
+  offset: number;
 }
 
 export interface MetenziOrder {
@@ -64,14 +71,67 @@ export interface MetenziClaim {
 export async function getProducts(
   config: MetenziClientConfig,
 ): Promise<MetenziProduct[]> {
-  const res = await metenziRequest<{ products: MetenziProduct[] }>(config, {
+  const res = await metenziRequest<{ data: MetenziProduct[]; products?: MetenziProduct[] }>(config, {
     method: "GET",
-    path: "/api/products",
+    path: "/public/products",
+    query: { retrieveAll: "true" },
   });
   if (!res.ok) {
     throw new Error(`Failed to fetch Metenzi products: ${res.status}`);
   }
-  return res.data.products ?? [];
+  return res.data.data ?? res.data.products ?? [];
+}
+
+export interface CatalogFilters {
+  search?: string;
+  category?: string;
+  platform?: string;
+  status?: string;
+  page?: number;
+  limit?: number;
+}
+
+export async function getCatalogPage(
+  config: MetenziClientConfig,
+  filters: CatalogFilters = {},
+): Promise<MetenziCatalogResponse> {
+  const limit = filters.limit ?? 20;
+  const page = filters.page ?? 1;
+  const offset = (page - 1) * limit;
+
+  const query: Record<string, string> = {
+    limit: String(limit),
+    offset: String(offset),
+  };
+  if (filters.search)   query.search   = filters.search;
+  if (filters.category) query.category = filters.category;
+  if (filters.platform) query.platform = filters.platform;
+  if (filters.status)   query.status   = filters.status;
+
+  const res = await metenziRequest<{
+    success: boolean;
+    data: MetenziProduct[];
+    products?: MetenziProduct[];
+    total: number;
+    limit: number;
+    offset: number;
+  }>(config, {
+    method: "GET",
+    path: "/public/products",
+    query,
+  });
+
+  if (!res.ok) {
+    throw new Error(`Failed to fetch Metenzi catalog: ${res.status}`);
+  }
+
+  const items = res.data.data ?? res.data.products ?? [];
+  return {
+    products: items,
+    total: res.data.total ?? items.length,
+    limit: res.data.limit ?? limit,
+    offset: res.data.offset ?? offset,
+  };
 }
 
 export async function getProductById(

@@ -7,7 +7,7 @@ import {
   FileText, Image, Settings, Shield, ShieldCheck,
   Bell, BarChart3, Truck, Flag, Ticket, MessageSquare,
   HelpCircle, ClipboardList, Wallet, Gift, Globe,
-  Link2, Zap, BookOpen, ListTodo, Activity, ArrowLeft, Tag, Sliders,
+  Link2, Zap, BookOpen, ListTodo, Activity, ArrowLeft, Tag, Sliders, RefreshCw,
   type LucideIcon,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -29,8 +29,9 @@ const sections: NavSection[] = [
   {
     title: "CATALOGUE",
     items: [
-      { label: "Products",    href: "/admin/products",   icon: Package },
-      { label: "Bundles",     href: "/admin/bundles",    icon: Package },
+      { label: "Products",         href: "/admin/products",        icon: Package },
+      { label: "Metenzi Catalog",  href: "/admin/metenzi-catalog", icon: RefreshCw },
+      { label: "Bundles",          href: "/admin/bundles",         icon: Package },
       { label: "Categories",  href: "/admin/categories", icon: Tags },
       { label: "Platforms",   href: "/admin/platforms",  icon: Layers },
       { label: "Reviews",     href: "/admin/reviews",    icon: MessageSquare },
