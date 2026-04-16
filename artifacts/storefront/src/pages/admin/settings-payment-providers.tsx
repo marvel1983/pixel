@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { Eye, EyeOff, Save, Zap, ShieldCheck, X, Copy, CheckCircle, Webhook } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -377,8 +378,8 @@ function KeyRow({
 }
 
 function Modal({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60" onClick={onClose}>
       <div className="bg-card text-card-foreground rounded-lg shadow-xl w-full max-w-md p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <div />
@@ -386,6 +387,7 @@ function Modal({ children, onClose }: { children: React.ReactNode; onClose: () =
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
