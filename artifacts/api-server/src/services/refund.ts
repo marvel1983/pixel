@@ -1,5 +1,5 @@
 import { logger } from "../lib/logger";
-import { checkoutCircuit } from "../lib/circuit-instances";
+import { stripeCircuit } from "../lib/circuit-instances";
 
 export interface RefundRequest {
   paymentIntentId: string;
@@ -40,7 +40,7 @@ async function rawProcessProviderRefund(params: RefundRequest): Promise<RefundRe
 }
 
 export async function processProviderRefund(params: RefundRequest): Promise<RefundResult> {
-  return checkoutCircuit.exec(
+  return stripeCircuit.exec(
     () => rawProcessProviderRefund(params),
     async () => ({
       success: false,
