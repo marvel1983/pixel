@@ -6,6 +6,9 @@ import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import { encrypt, decrypt } from "../lib/encryption";
 import { logger } from "../lib/logger";
+import { clearMetenziConfigCache } from "../lib/metenzi-config";
+import { getCatalogPage } from "../lib/metenzi-endpoints";
+import type { MetenziClientConfig } from "../lib/metenzi-client";
 
 const router = Router();
 
@@ -113,8 +116,9 @@ router.put("/admin/settings/api-keys", requireAuth, requireAdmin, requirePermiss
   if (provider === "metenzi") {
     const col = field === "apiKey" ? "apiKeyEncrypted" : "hmacSecretEncrypted";
     const [row] = await db.select({ id: apiProviders.id }).from(apiProviders).where(eq(apiProviders.slug, "metenzi"));
-    if (row) { await db.update(apiProviders).set({ [col]: encrypted, updatedAt: new Date() }).where(eq(apiProviders.id, row.id)); }
-    else { await db.insert(apiProviders).values({ name: "Metenzi", slug: "metenzi", baseUrl: "https://metenzi.com/api", [col]: encrypted }); }
+    if (row) { await db.update(apiProviders).set({ [col]: encrypted, isActive: true, updatedAt: new Date() }).where(eq(apiProviders.id, row.id)); }
+    else { await db.insert(apiProviders).values({ name: "Metenzi", slug: "metenzi", baseUrl: "https://metenzi.com", isActive: true, [col]: encrypted }); }
+    clearMetenziConfigCache();
   } else if (provider === "checkout") {
     const col = field === "publicKey" ? "publicKeyEncrypted" : "secretKeyEncrypted";
     const [row] = await db.select({ id: apiCredentials.id }).from(apiCredentials).where(eq(apiCredentials.provider, "checkout"));
@@ -128,12 +132,17 @@ router.post("/admin/settings/api-keys/test", requireAuth, requireAdmin, requireP
   const { provider } = req.body;
   if (provider === "metenzi") {
     const [row] = await db.select().from(apiProviders).where(eq(apiProviders.slug, "metenzi"));
-    if (!row?.apiKeyEncrypted) { res.json({ success: false, message: "No API key configured" }); return; }
+    if (!row?.apiKeyEncrypted || !row?.hmacSecretEncrypted) {
+      res.json({ success: false, message: "Both API Key and Signing Secret must be saved first" }); return;
+    }
     try {
-      const apiKey = decrypt(row.apiKeyEncrypted);
-      const r = await fetch("https://metenzi.com/api/balance", { headers: { Authorization: `Bearer ${apiKey}` } });
-      if (r.ok) { const d = await r.json(); res.json({ success: true, message: `Connected! Balance: ${d.balance ?? "N/A"}` }); }
-      else { res.json({ success: false, message: `API returned ${r.status}` }); }
+      const config: MetenziClientConfig = {
+        baseUrl: row.baseUrl || "https://metenzi.com",
+        apiKey: decrypt(row.apiKeyEncrypted),
+        hmacSecret: decrypt(row.hmacSecretEncrypted),
+      };
+      const catalog = await getCatalogPage(config, { limit: 1 });
+      res.json({ success: true, message: `Connected! ${catalog.total} products available.` });
     } catch (e) { res.json({ success: false, message: `Connection failed: ${(e as Error).message}` }); }
   } else if (provider === "checkout") {
     const [row] = await db.select().from(apiCredentials).where(eq(apiCredentials.provider, "checkout"));
