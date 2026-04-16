@@ -7,8 +7,8 @@ export const metenziCircuit = new CircuitBreaker({
   halfOpenTestIntervalMs: 60_000,
 });
 
-export const checkoutCircuit = new CircuitBreaker({
-  name: "checkout",
+export const stripeCircuit = new CircuitBreaker({
+  name: "stripe",
   failureThreshold: 5,
   resetTimeoutMs: 30_000,
   halfOpenTestIntervalMs: 60_000,

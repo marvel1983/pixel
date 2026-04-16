@@ -102,18 +102,19 @@ export async function checkMetenzi(): Promise<DependencyCheck> {
 export async function checkPaymentGateway(): Promise<DependencyCheck> {
   const now = new Date().toISOString();
   const circuits = getAllCircuitStatus();
-  const checkout = circuits["checkout"];
+  const stripe = circuits["stripe"];
 
-  if (checkout?.state === "OPEN") {
+  if (stripe?.state === "OPEN") {
     return { name: "payment", status: "down", latencyMs: 0, lastChecked: now, error: "Circuit breaker OPEN" };
   }
 
   const result = await timedCheck(async () => {
-    const res = await fetch("https://api.sandbox.checkout.com/", {
+    const res = await fetch("https://api.stripe.com/v1/", {
       method: "GET",
       signal: AbortSignal.timeout(5000),
     });
-    if (res.status >= 500) throw new Error(`Checkout.com HTTP ${res.status}`);
+    // Stripe returns 401 for unauthenticated root requests — that's fine, the API is reachable
+    if (res.status >= 500) throw new Error(`Stripe HTTP ${res.status}`);
   });
 
   return {

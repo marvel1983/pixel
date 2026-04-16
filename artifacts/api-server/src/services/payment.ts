@@ -1,5 +1,5 @@
 import { logger } from "../lib/logger";
-import { checkoutCircuit } from "../lib/circuit-instances";
+import { stripeCircuit } from "../lib/circuit-instances";
 
 export interface PaymentRequest {
   amount: string;
@@ -41,7 +41,7 @@ async function rawProcessPayment(params: PaymentRequest): Promise<PaymentResult>
 }
 
 export async function processPayment(params: PaymentRequest): Promise<PaymentResult> {
-  return checkoutCircuit.exec(
+  return stripeCircuit.exec(
     () => rawProcessPayment(params),
     async () => ({
       success: false,

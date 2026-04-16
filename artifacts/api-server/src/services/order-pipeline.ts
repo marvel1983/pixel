@@ -52,6 +52,146 @@ interface OrderInput {
   locale?: string;
 }
 
+export interface FulfillmentInput {
+  billing: BillingInfo;
+  items: OrderItem[];
+  giftCards?: Array<{ code: string; amount: number }>;
+  affiliateRefCode?: string;
+  flashVariantMap?: Map<number, number>;
+  loyaltyPointsUsed?: number;
+  services?: Array<{ id: number; name: string; priceUsd: string }>;
+  guestPassword?: string;
+  locale?: string;
+  userId?: number;
+}
+
+/**
+ * Runs all post-payment fulfillment steps: inserts order items, redeems gift cards,
+ * fulfills via Metenzi, sends emails, and fires non-critical side effects.
+ * Called both by executeOrderPipeline (sync path) and the Stripe webhook (async path).
+ */
+export async function runFulfillment(
+  orderId: number,
+  orderNumber: string,
+  paymentIntentId: string,
+  input: FulfillmentInput,
+  total: number,
+): Promise<void> {
+  const { billing, items } = input;
+
+  await db.update(orders).set({ paymentIntentId }).where(eq(orders.id, orderId));
+
+  if (input.guestPassword) await createGuestAccount(billing, input.guestPassword);
+
+  const realItems = items.filter((i) => i.variantId > 0);
+  const giftCardItems = items.filter((i) => i.platform?.startsWith("GIFTCARD|"));
+
+  let purchaserUserId: number | null = null;
+  if (giftCardItems.length) {
+    const [existingUser] = await db.select({ id: users.id }).from(users)
+      .where(eq(users.email, billing.email)).limit(1);
+    purchaserUserId = existingUser?.id ?? null;
+  }
+
+  const { insertedItems, createdCards } = await db.transaction(async (tx) => {
+    const insertableItems = realItems.length ? realItems : [];
+    const inserted = insertableItems.length ? await tx
+      .insert(orderItems)
+      .values(insertableItems.map((item) => ({
+        orderId, variantId: item.variantId,
+        productName: item.productName, variantName: item.variantName,
+        priceUsd: item.priceUsd, quantity: item.quantity,
+        bundleId: item.bundleId ?? null,
+      })))
+      .returning({ id: orderItems.id, variantId: orderItems.variantId }) : [];
+
+    const cards: Awaited<ReturnType<typeof createGiftCardForOrder>>[] = [];
+    for (const gcItem of giftCardItems) {
+      const parts = (gcItem.platform || "").split("|");
+      const [, recipientEmail, recipientName, senderName, personalMessage] = parts;
+      const qty = Math.max(1, gcItem.quantity);
+      for (let q = 0; q < qty; q++) {
+        const card = await createGiftCardForOrder(
+          orderId, purchaserUserId, gcItem.priceUsd,
+          recipientEmail || billing.email, recipientName || "",
+          senderName || "", personalMessage || "", tx as unknown as typeof db,
+        );
+        cards.push(card);
+      }
+    }
+
+    if (input.giftCards?.length) {
+      await redeemGiftCards(orderId, input.giftCards, tx as unknown as typeof db);
+    }
+
+    if (input.services?.length) {
+      await tx.insert(orderServices).values(
+        input.services.map((s) => ({
+          orderId, serviceId: s.id,
+          serviceName: s.name, priceUsd: s.priceUsd,
+        })),
+      );
+    }
+
+    return { insertedItems: inserted, createdCards: cards };
+  });
+
+  if (createdCards.length) {
+    sendGiftCardEmails(createdCards).catch(() => {});
+  }
+
+  const metenziFulfilled = insertedItems.length
+    ? await fulfillFromMetenzi(orderId, realItems, insertedItems)
+    : false;
+
+  if (metenziFulfilled) {
+    await updateOrderStatus(orderId, "PROCESSING");
+    await sendOrderConfirmationOnly(billing, orderNumber, orderId, items, total, input.locale);
+  } else {
+    await updateOrderStatus(orderId, "COMPLETED");
+    await triggerOrderEmails(billing, orderNumber, orderId, items, total, input.locale);
+  }
+
+  if (input.flashVariantMap?.size) {
+    incrementFlashSaleSoldCounts(input.flashVariantMap, items).catch((err) => {
+      logger.error({ err, orderNumber }, "Failed to increment flash sale sold counts (non-fatal)");
+    });
+  }
+
+  if (input.affiliateRefCode) {
+    createCommissionForOrder(input.affiliateRefCode, orderId, total).catch((err) => {
+      logger.error({ err, orderNumber }, "Failed to create affiliate commission (non-fatal)");
+    });
+  }
+
+  markCartRecovered(billing.email, orderId).catch((err) => {
+    logger.error({ err, orderNumber }, "Failed to mark cart recovered (non-fatal)");
+  });
+
+  if (input.userId) {
+    awardOrderPoints(input.userId, orderId, total).catch((err) => {
+      logger.error({ err, orderNumber }, "Failed to award loyalty points (non-fatal)");
+    });
+  } else {
+    const [eu] = await db.select({ id: users.id }).from(users)
+      .where(eq(users.email, billing.email)).limit(1);
+    if (eu) {
+      awardOrderPoints(eu.id, orderId, total).catch((err) => {
+        logger.error({ err, orderNumber }, "Failed to award loyalty points (non-fatal)");
+      });
+    }
+  }
+
+  scheduleTrustpilotInvite({ email: billing.email, name: `${billing.firstName} ${billing.lastName}`, orderNumber })
+    .catch((err) => logger.error({ err, orderNumber }, "Trustpilot invite failed (non-fatal)"));
+  recordPurchaseEvents(
+    items.map((i) => ({ productId: i.productId, productName: i.productName, imageUrl: i.imageUrl ?? undefined })),
+    `${billing.firstName}`, billing.city,
+  ).catch((err) => logger.error({ err, orderNumber }, "Social proof record failed (non-fatal)"));
+
+  logger.info({ orderNumber, total: total.toFixed(2) }, "Order fulfillment complete");
+}
+
 export async function executeOrderPipeline(input: OrderInput) {
   const { billing, items, orderNumber, total } = input;
 
@@ -110,113 +250,19 @@ export async function executeOrderPipeline(input: OrderInput) {
       paymentIntentId = `wallet_${Date.now()}`;
     }
 
-    await db.update(orders).set({ paymentIntentId }).where(eq(orders.id, order.id));
-    if (input.guestPassword) await createGuestAccount(billing, input.guestPassword);
-    const realItems = items.filter((i) => i.variantId > 0);
-    const giftCardItems = items.filter((i) => i.platform?.startsWith("GIFTCARD|"));
+    await runFulfillment(order.id, orderNumber, paymentIntentId, {
+      billing,
+      items,
+      giftCards: input.giftCards,
+      affiliateRefCode: input.affiliateRefCode,
+      flashVariantMap: input.flashVariantMap,
+      loyaltyPointsUsed: input.loyaltyPointsUsed,
+      services: input.services,
+      guestPassword: input.guestPassword,
+      locale: input.locale,
+      userId: input.userId,
+    }, total);
 
-    let purchaserUserId: number | null = null;
-    if (giftCardItems.length) {
-      const [existingUser] = await db.select({ id: users.id }).from(users)
-        .where(eq(users.email, billing.email)).limit(1);
-      purchaserUserId = existingUser?.id ?? null;
-    }
-
-    const { insertedItems, createdCards } = await db.transaction(async (tx) => {
-      const insertableItems = realItems.length ? realItems : [];
-      const inserted = insertableItems.length ? await tx
-        .insert(orderItems)
-        .values(insertableItems.map((item) => ({
-          orderId: order.id, variantId: item.variantId,
-          productName: item.productName, variantName: item.variantName,
-          priceUsd: item.priceUsd, quantity: item.quantity,
-          bundleId: item.bundleId ?? null,
-        })))
-        .returning({ id: orderItems.id, variantId: orderItems.variantId }) : [];
-
-      const cards: Awaited<ReturnType<typeof createGiftCardForOrder>>[] = [];
-      for (const gcItem of giftCardItems) {
-        const parts = (gcItem.platform || "").split("|");
-        const [, recipientEmail, recipientName, senderName, personalMessage] = parts;
-        const qty = Math.max(1, gcItem.quantity);
-        for (let q = 0; q < qty; q++) {
-          const card = await createGiftCardForOrder(
-            order.id, purchaserUserId, gcItem.priceUsd,
-            recipientEmail || billing.email, recipientName || "",
-            senderName || "", personalMessage || "", tx as unknown as typeof db,
-          );
-          cards.push(card);
-        }
-      }
-
-      if (input.giftCards?.length) {
-        await redeemGiftCards(order.id, input.giftCards, tx as unknown as typeof db);
-      }
-
-      if (input.services?.length) {
-        await tx.insert(orderServices).values(
-          input.services.map((s) => ({
-            orderId: order.id, serviceId: s.id,
-            serviceName: s.name, priceUsd: s.priceUsd,
-          })),
-        );
-      }
-
-      return { insertedItems: inserted, createdCards: cards };
-    });
-
-    if (createdCards.length) {
-      sendGiftCardEmails(createdCards).catch(() => {});
-    }
-
-    const metenziFulfilled = insertedItems.length
-      ? await fulfillFromMetenzi(order.id, realItems, insertedItems)
-      : false;
-
-    if (metenziFulfilled) {
-      await updateOrderStatus(order.id, "PROCESSING");
-      await sendOrderConfirmationOnly(billing, orderNumber, order.id, items, total, input.locale);
-    } else {
-      await updateOrderStatus(order.id, "COMPLETED");
-      await triggerOrderEmails(billing, orderNumber, order.id, items, total, input.locale);
-    }
-
-    if (input.flashVariantMap?.size) {
-      incrementFlashSaleSoldCounts(input.flashVariantMap, items).catch((err) => {
-        logger.error({ err, orderNumber }, "Failed to increment flash sale sold counts (non-fatal)");
-      });
-    }
-
-    if (input.affiliateRefCode) {
-      createCommissionForOrder(input.affiliateRefCode, order.id, total).catch((err) => {
-        logger.error({ err, orderNumber }, "Failed to create affiliate commission (non-fatal)");
-      });
-    }
-
-    markCartRecovered(billing.email, order.id).catch((err) => {
-      logger.error({ err, orderNumber }, "Failed to mark cart recovered (non-fatal)");
-    });
-
-    if (input.userId) {
-      awardOrderPoints(input.userId, order.id, total).catch((err) => {
-        logger.error({ err, orderNumber }, "Failed to award loyalty points (non-fatal)");
-      });
-    } else {
-      const [eu] = await db.select({ id: users.id }).from(users)
-        .where(eq(users.email, billing.email)).limit(1);
-      if (eu) {
-        awardOrderPoints(eu.id, order.id, total).catch((err) => {
-          logger.error({ err, orderNumber }, "Failed to award loyalty points (non-fatal)");
-        });
-      }
-    }
-
-    scheduleTrustpilotInvite({ email: billing.email, name: `${billing.firstName} ${billing.lastName}`, orderNumber })
-      .catch((err) => logger.error({ err, orderNumber }, "Trustpilot invite failed (non-fatal)"));
-    recordPurchaseEvents(
-      items.map((i) => ({ productId: i.productId, productName: i.productName, imageUrl: i.imageUrl ?? undefined })),
-      `${billing.firstName}`, billing.city,
-    ).catch((err) => logger.error({ err, orderNumber }, "Social proof record failed (non-fatal)"));
     logger.info({ orderNumber, total: total.toFixed(2) }, "Order pipeline complete");
     return { orderNumber, status: "COMPLETED" };
   } catch (err) {

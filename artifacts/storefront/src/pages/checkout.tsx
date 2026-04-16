@@ -10,12 +10,11 @@ import { useToast } from "@/hooks/use-toast";
 import { Breadcrumbs } from "@/components/shop/breadcrumbs";
 import { CartProgress } from "@/components/cart/cart-progress";
 import { BillingForm, type BillingData } from "@/components/checkout/billing-form";
-import { PaymentForm, type PaymentData } from "@/components/checkout/payment-form";
 import { CppSection } from "@/components/checkout/cpp-section";
 import { GuestAccount } from "@/components/checkout/guest-account";
 import { CheckoutSummary } from "@/components/checkout/checkout-summary";
 import { ProductUpsell } from "@/components/checkout/product-upsell";
-import { validateBilling, validatePayment } from "@/lib/checkout-validation";
+import { validateBilling } from "@/lib/checkout-validation";
 import { getCppAmount } from "@/components/checkout/cpp-section";
 import { EmptyCart } from "@/components/cart/empty-cart";
 import { GiftCardInput, type AppliedGiftCard } from "@/components/checkout/gift-card-input";
@@ -32,10 +31,6 @@ const API = import.meta.env.VITE_API_URL ?? "/api";
 const INITIAL_BILLING: BillingData = {
   email: "", firstName: "", lastName: "",
   country: "", city: "", address: "", zip: "", phone: "", vatNumber: "",
-};
-
-const INITIAL_PAYMENT: PaymentData = {
-  cardNumber: "", expiry: "", cvc: "", cardName: "",
 };
 
 interface TaxInfo { taxRate: number; taxLabel: string; exempt: boolean; b2bEnabled: boolean; priceDisplay: string }
@@ -57,8 +52,6 @@ export default function CheckoutPage() {
 
   const [billing, setBilling] = useState<BillingData>(INITIAL_BILLING);
   const [billingErrors, setBillingErrors] = useState<Partial<Record<keyof BillingData, string>>>({});
-  const [payment, setPayment] = useState<PaymentData>(INITIAL_PAYMENT);
-  const [paymentErrors, setPaymentErrors] = useState<Partial<Record<keyof PaymentData, string>>>({});
   const [cppSelected, setCppSelected] = useState(false);
   const [guestPassword, setGuestPassword] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -195,11 +188,6 @@ export default function CheckoutPage() {
     setServicePrices((prev) => new Map(prev).set(id, price));
   }
 
-  function handlePaymentChange(field: keyof PaymentData, value: string) {
-    setPayment((prev) => ({ ...prev, [field]: value }));
-    if (paymentErrors[field]) setPaymentErrors((prev) => ({ ...prev, [field]: undefined }));
-  }
-
   async function handleSubmit() {
     const bResult = validateBilling(billing);
     setBillingErrors(bResult.errors);
@@ -210,6 +198,16 @@ export default function CheckoutPage() {
     });
     if (hasRegionIssue && !regionAcknowledged) {
       toast({ title: "Region mismatch", description: "Please acknowledge the region restriction warning before proceeding.", variant: "destructive" });
+      return;
+    }
+
+    if (!bResult.valid) {
+      toast({
+        title: t("checkout.validationError") || "Please check your details",
+        description: Object.values(bResult.errors)[0] || "Fill in all required fields before placing the order.",
+        variant: "destructive",
+      });
+      window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
 
@@ -226,76 +224,95 @@ export default function CheckoutPage() {
     const preGcTotal = isInclusive ? beforeTax : beforeTax + taxAmount;
     const gcTotal = appliedGiftCards.reduce((s, c) => s + c.applied, 0);
     const total = Math.max(0, preGcTotal - gcTotal);
+    const cardTotal = Math.max(0, total - walletAmount);
 
-    const walletCoversAll = walletAmount >= total - 0.01;
-    const skipCard = walletCoversAll || paymentMethod === "invoice";
-    const pResult = skipCard ? { valid: true, errors: {} } : validatePayment(payment);
-    setPaymentErrors(pResult.errors as Partial<Record<keyof PaymentData, string>>);
-    if (!bResult.valid || !pResult.valid) {
-      const firstBillingError = Object.values(bResult.errors)[0];
-      const firstPaymentError = !pResult.valid ? Object.values(pResult.errors)[0] : null;
-      toast({
-        title: t("checkout.validationError") || "Please check your details",
-        description: firstBillingError || firstPaymentError || "Fill in all required fields before placing the order.",
-        variant: "destructive",
-      });
-      // Scroll to the top of the form so user sees the red field errors
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      return;
-    }
+    // Card payment → Stripe Checkout hosted page
+    const needsStripe = cardTotal > 0.01 && paymentMethod === "card";
+
+    const sharedPayload = {
+      billing, items, coupon, cppSelected,
+      vatNumber: billing.vatNumber || undefined,
+      total: total.toFixed(2),
+      giftCards: appliedGiftCards.map((c) => ({ code: c.code, amount: c.applied })),
+      loyaltyPointsUsed: loyaltyPoints || undefined,
+      walletAmountUsd: walletAmount > 0 ? walletAmount : undefined,
+      serviceIds: selectedServiceIds.length > 0 ? selectedServiceIds : undefined,
+      guestPassword: guestPassword || undefined,
+      locale: i18n.language,
+    };
 
     setSubmitting(true);
     try {
-      let cardToken: string | undefined;
-      if (!skipCard) {
-        const cardDigits = payment.cardNumber.replace(/\s/g, "");
-        cardToken = `tok_${cardDigits.slice(-4)}_${Date.now()}`;
-      }
-
-      const res = await fetch(`${API}/orders`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Idempotency-Key": idempotencyKey,
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          billing, items, coupon, cppSelected,
-          vatNumber: billing.vatNumber || undefined,
-          total: total.toFixed(2),
-          giftCards: appliedGiftCards.map((c) => ({ code: c.code, amount: c.applied })),
-          loyaltyPointsUsed: loyaltyPoints || undefined,
-          walletAmountUsd: walletAmount > 0 ? walletAmount : undefined,
-          serviceIds: selectedServiceIds.length > 0 ? selectedServiceIds : undefined,
-          payment: { cardToken },
-          paymentMethod: paymentMethod === "invoice" ? "net30" : "card",
-          guestPassword: guestPassword || undefined,
-          locale: i18n.language,
-        }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        if (res.status >= 400 && res.status < 500 && res.status !== 409) {
-          setIdempotencyKey(uuidV4());
-        }
-        const detail = data.details?.fieldErrors ? Object.entries(data.details.fieldErrors as Record<string, string[]>).map(([k, v]) => `${k}: ${v[0]}`).join(", ") : null;
-        throw new Error(detail ? `${data.error}: ${detail}` : (data.error ?? "Order failed"));
-      }
-
-      if (newsletterOptIn && billing.email) {
-        fetch(`${API}/newsletter/subscribe`, {
+      if (needsStripe) {
+        // Redirect to Stripe Checkout
+        const res = await fetch(`${API}/checkout/session`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: billing.email, source: "checkout" }),
-        }).catch(() => {});
-      }
+          headers: {
+            "Content-Type": "application/json",
+            "X-Idempotency-Key": idempotencyKey,
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          credentials: "include",
+          body: JSON.stringify(sharedPayload),
+        });
 
-      setIdempotencyKey(uuidV4());
-      sessionStorage.setItem("checkout_email", billing.email);
-      clearCart();
-      setLocation(`/order-complete/${data.orderNumber}`);
+        const data = await res.json();
+        if (!res.ok) {
+          if (res.status >= 400 && res.status < 500 && res.status !== 409) setIdempotencyKey(uuidV4());
+          throw new Error(data.error ?? "Failed to start checkout");
+        }
+
+        if (newsletterOptIn && billing.email) {
+          fetch(`${API}/newsletter/subscribe`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: billing.email, source: "checkout" }),
+          }).catch(() => {});
+        }
+
+        // Persist email for order-complete page; clear cart before leaving
+        sessionStorage.setItem("checkout_email", billing.email);
+        clearCart();
+        window.location.href = data.url as string;
+      } else {
+        // Wallet-only or Net30: existing synchronous flow
+        const res = await fetch(`${API}/orders`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Idempotency-Key": idempotencyKey,
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            ...sharedPayload,
+            payment: { cardToken: undefined },
+            paymentMethod: paymentMethod === "invoice" ? "net30" : "card",
+          }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          if (res.status >= 400 && res.status < 500 && res.status !== 409) setIdempotencyKey(uuidV4());
+          const detail = data.details?.fieldErrors
+            ? Object.entries(data.details.fieldErrors as Record<string, string[]>).map(([k, v]) => `${k}: ${v[0]}`).join(", ")
+            : null;
+          throw new Error(detail ? `${data.error}: ${detail}` : (data.error ?? "Order failed"));
+        }
+
+        if (newsletterOptIn && billing.email) {
+          fetch(`${API}/newsletter/subscribe`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: billing.email, source: "checkout" }),
+          }).catch(() => {});
+        }
+
+        setIdempotencyKey(uuidV4());
+        sessionStorage.setItem("checkout_email", billing.email);
+        clearCart();
+        setLocation(`/order-complete/${data.orderNumber}`);
+      }
     } catch (err) {
       toast({
         title: t("checkout.orderFailed"),
@@ -363,7 +380,22 @@ export default function CheckoutPage() {
               {paymentMethod === "invoice" && <p className="text-xs text-muted-foreground">Payment due within 30 days. An invoice will be sent to your billing email.</p>}
             </div>
           )}
-          {paymentMethod === "card" && <PaymentForm data={payment} errors={paymentErrors} onChange={handlePaymentChange} />}
+          {paymentMethod === "card" && (
+            <div className="border rounded-lg p-4 space-y-2 bg-muted/5">
+              <div className="flex items-center gap-2">
+                <Lock className="h-4 w-4 text-primary" />
+                <span className="text-sm font-semibold">Secure Card Payment via Stripe</span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                You will be redirected to Stripe's secure payment page to enter your card details.
+              </p>
+              <div className="flex gap-2 pt-1">
+                {["Visa", "Mastercard", "Amex"].map((m) => (
+                  <span key={m} className="text-[10px] px-2 py-0.5 rounded border bg-card text-muted-foreground font-medium">{m}</span>
+                ))}
+              </div>
+            </div>
+          )}
           <TrustpilotBadge variant="full" />
           <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
             <input type="checkbox" checked={newsletterOptIn} onChange={(e) => setNewsletterOptIn(e.target.checked)} />
@@ -375,7 +407,11 @@ export default function CheckoutPage() {
             <Shield className="h-3.5 w-3.5 text-emerald-500" />
           </div>
           <Button size="lg" className="w-full" disabled={submitting} onClick={handleSubmit}>
-            {submitting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t("checkout.processing")}</> : t("checkout.placeOrder")}
+            {submitting
+              ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t("checkout.processing")}</>
+              : paymentMethod === "card" && walletAmount < (getTotal())
+                ? "Continue to Stripe →"
+                : t("checkout.placeOrder")}
           </Button>
         </div>
 
