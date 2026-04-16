@@ -116,7 +116,7 @@ router.put("/admin/settings/api-keys", requireAuth, requireAdmin, requirePermiss
   if (provider === "metenzi") {
     const col = field === "apiKey" ? "apiKeyEncrypted" : "hmacSecretEncrypted";
     const [row] = await db.select({ id: apiProviders.id }).from(apiProviders).where(eq(apiProviders.slug, "metenzi"));
-    if (row) { await db.update(apiProviders).set({ [col]: encrypted, isActive: true, updatedAt: new Date() }).where(eq(apiProviders.id, row.id)); }
+    if (row) { await db.update(apiProviders).set({ [col]: encrypted, baseUrl: "https://metenzi.com", isActive: true, updatedAt: new Date() }).where(eq(apiProviders.id, row.id)); }
     else { await db.insert(apiProviders).values({ name: "Metenzi", slug: "metenzi", baseUrl: "https://metenzi.com", isActive: true, [col]: encrypted }); }
     clearMetenziConfigCache();
   } else if (provider === "checkout") {
