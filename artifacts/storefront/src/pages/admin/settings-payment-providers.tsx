@@ -6,7 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { useAuthStore } from "@/stores/auth-store";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
-const STRIPE_WEBHOOK_URL = `${API.replace(/\/api$/, "")}/api/webhooks/stripe`;
+const STRIPE_WEBHOOK_URL = (() => {
+  const base = API.startsWith("http") ? API.replace(/\/api$/, "") : window.location.origin;
+  return `${base}/api/webhooks/stripe`;
+})();
 
 type Provider = "stripe" | "checkout";
 type Mode = "sandbox" | "live";
