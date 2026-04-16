@@ -23,7 +23,7 @@ const guard = [requireAuth, requireAdmin, requirePermission("manageProducts")];
 router.get("/admin/metenzi/debug", ...guard, async (_req, res) => {
   const config = await getMetenziConfig();
   if (!config) { res.status(503).json({ error: "Not configured", baseUrl: null }); return; }
-  const rawRes = await metenziRequest(config, { method: "GET", path: "/public/products", query: { limit: "3", offset: "0" } });
+  const rawRes = await metenziRequest(config, { method: "GET", path: "/api/public/products", query: { limit: "3", offset: "0" } });
   res.json({ baseUrl: config.baseUrl, ok: rawRes.ok, status: rawRes.status, data: rawRes.data });
 });
 

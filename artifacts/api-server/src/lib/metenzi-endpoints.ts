@@ -73,7 +73,7 @@ export async function getProducts(
 ): Promise<MetenziProduct[]> {
   const res = await metenziRequest<{ data: MetenziProduct[]; products?: MetenziProduct[] }>(config, {
     method: "GET",
-    path: "/public/products",
+    path: "/api/public/products",
     query: { retrieveAll: "true" },
   });
   if (!res.ok) {
@@ -117,7 +117,7 @@ export async function getCatalogPage(
     offset: number;
   }>(config, {
     method: "GET",
-    path: "/public/products",
+    path: "/api/public/products",
     query,
   });
 
