@@ -18,7 +18,7 @@ type Provider = (typeof PROVIDERS)[number];
 // Fields allowed per provider and where they live in the DB row
 const PROVIDER_FIELDS: Record<Provider, string[]> = {
   stripe: ["secretKey", "publishableKey", "webhookSecret"],
-  checkout: ["secretKey", "publishableKey"],
+  checkout: ["secretKey", "publishableKey", "webhookSecret"],
 };
 
 function isValidProvider(p: unknown): p is Provider {
@@ -61,8 +61,24 @@ router.get("/admin/settings/payment-providers", ...auth, async (req, res) => {
       mode: checkoutMode,
       hasSecretKey: !!checkoutExtra[`${checkoutMode}_secretKeyEncrypted`],
       hasPublishableKey: !!checkoutExtra[`${checkoutMode}_publicKeyEncrypted`],
+      hasWebhookSecret: !!checkoutExtra[`${checkoutMode}_webhookSecretEncrypted`],
+      webhookUrl: `${appUrl}/api/webhooks/checkout`,
     },
   });
+});
+
+// ── PUT /admin/settings/payment-providers/:provider/disable ──────────────────
+
+router.put("/admin/settings/payment-providers/:provider/disable", ...auth, async (req, res) => {
+  const { provider } = req.params;
+  if (!isValidProvider(provider)) { res.status(400).json({ error: "Invalid provider" }); return; }
+
+  await db.update(apiCredentials).set({ isActive: false, updatedAt: new Date() })
+    .where(eq(apiCredentials.provider, provider));
+
+  clearPaymentConfigCache();
+  logger.info({ provider, admin: req.user?.email }, "[AUDIT] Payment provider disabled");
+  res.json({ success: true });
 });
 
 // ── PUT /admin/settings/payment-providers/active ─────────────────────────────

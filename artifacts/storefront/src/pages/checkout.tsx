@@ -226,8 +226,8 @@ export default function CheckoutPage() {
     const total = Math.max(0, preGcTotal - gcTotal);
     const cardTotal = Math.max(0, total - walletAmount);
 
-    // Card payment → Stripe Checkout hosted page
-    const needsStripe = cardTotal > 0.01 && paymentMethod === "card";
+    // Card payment → hosted checkout page (Stripe or Checkout.com depending on active provider)
+    const needsCardPayment = cardTotal > 0.01 && paymentMethod === "card";
 
     const sharedPayload = {
       billing, items, coupon, cppSelected,
@@ -243,7 +243,7 @@ export default function CheckoutPage() {
 
     setSubmitting(true);
     try {
-      if (needsStripe) {
+      if (needsCardPayment) {
         // Redirect to Stripe Checkout
         const res = await fetch(`${API}/checkout/session`, {
           method: "POST",
@@ -414,7 +414,7 @@ export default function CheckoutPage() {
             {submitting
               ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t("checkout.processing")}</>
               : paymentMethod === "card" && walletAmount < (getTotal())
-                ? "Continue to Stripe →"
+                ? "Continue to Payment →"
                 : t("checkout.placeOrder")}
           </Button>
         </div>

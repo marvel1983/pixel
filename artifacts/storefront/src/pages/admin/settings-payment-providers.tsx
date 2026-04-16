@@ -6,10 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { useAuthStore } from "@/stores/auth-store";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
-const STRIPE_WEBHOOK_URL = (() => {
+const getWebhookUrl = (provider: string) => {
   const base = API.startsWith("http") ? API.replace(/\/api$/, "") : window.location.origin;
-  return `${base}/api/webhooks/stripe`;
-})();
+  return `${base}/api/webhooks/${provider}`;
+};
 
 type Provider = "stripe" | "checkout";
 type Mode = "sandbox" | "live";
@@ -55,12 +55,17 @@ export default function SettingsPaymentProvidersTab() {
 
   useEffect(() => { load(); }, [load]);
 
-  // ── Active provider ──────────────────────────────────────────────────────────
+  // ── Enable / disable provider ────────────────────────────────────────────────
 
-  const setActiveProvider = async (provider: Provider) => {
+  const enableProvider = async (provider: Provider) => {
     const d = await api("/admin/settings/payment-providers/active", {
       method: "PUT", body: JSON.stringify({ provider }),
     });
+    if (d) { setReveal({}); load(); }
+  };
+
+  const disableProvider = async (provider: Provider) => {
+    const d = await api(`/admin/settings/payment-providers/${provider}/disable`, { method: "PUT" });
     if (d) { setReveal({}); load(); }
   };
 
@@ -143,9 +148,10 @@ export default function SettingsPaymentProvidersTab() {
         title="Stripe"
         description="Hosted checkout page — customers are redirected to Stripe to enter card details."
         logo="https://upload.wikimedia.org/wikipedia/commons/b/ba/Stripe_Logo%2C_revised_2016.svg"
-        isActive={data.activeProvider === "stripe"}
+        isActive={data.stripe.isActive}
         mode={data.stripe.mode}
-        onActivate={() => setActiveProvider("stripe")}
+        onEnable={() => enableProvider("stripe")}
+        onDisable={() => disableProvider("stripe")}
         onModeChange={(m) => setMode("stripe", m)}
       >
         <KeyRow
@@ -177,19 +183,12 @@ export default function SettingsPaymentProvidersTab() {
         />
 
         {/* Webhook URL */}
-        <div className="pt-3 border-t space-y-1.5">
-            <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-              <Webhook className="h-3.5 w-3.5" />
-              Your Stripe webhook endpoint
-            </div>
-            <div className="flex items-center gap-2 rounded-md border bg-muted/40 px-3 py-2">
-              <code className="text-xs font-mono flex-1 break-all">{STRIPE_WEBHOOK_URL}</code>
-              <Button size="sm" variant="ghost" className="h-7 px-2 flex-shrink-0" onClick={() => copyWebhookUrl(STRIPE_WEBHOOK_URL)}>
-                {copied ? <CheckCircle className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">Register this URL in your Stripe Dashboard → Developers → Webhooks. Enable: <code className="bg-muted px-1 rounded">checkout.session.completed</code> and <code className="bg-muted px-1 rounded">checkout.session.expired</code>.</p>
-          </div>
+        <WebhookUrlBlock
+          url={getWebhookUrl("stripe")}
+          copied={copied}
+          onCopy={copyWebhookUrl}
+          instructions={<>Register in Stripe Dashboard → Developers → Webhooks. Enable: <code className="bg-muted px-1 rounded">checkout.session.completed</code> and <code className="bg-muted px-1 rounded">checkout.session.expired</code>.</>}
+        />
 
         <div className="flex items-center gap-2 pt-3 border-t">
           <Button size="sm" variant="outline" onClick={() => testConnection("stripe")}>
@@ -206,10 +205,11 @@ export default function SettingsPaymentProvidersTab() {
       {/* Checkout.com */}
       <ProviderCard
         title="Checkout.com"
-        description="Alternative payment gateway — coming soon or for custom integrations."
-        isActive={data.activeProvider === "checkout"}
+        description="Hosted payment page — customers are redirected to Checkout.com to enter card details."
+        isActive={data.checkout.isActive}
         mode={data.checkout.mode}
-        onActivate={() => setActiveProvider("checkout")}
+        onEnable={() => enableProvider("checkout")}
+        onDisable={() => disableProvider("checkout")}
         onModeChange={(m) => setMode("checkout", m)}
       >
         <KeyRow
@@ -229,6 +229,22 @@ export default function SettingsPaymentProvidersTab() {
           reveal={reveal}
           onReveal={() => requestReveal("checkout", "publishableKey", "Checkout.com Publishable Key")}
           onUpdate={() => openKeyModal("checkout", "publishableKey", "Checkout.com Publishable Key")}
+        />
+        <KeyRow
+          label="Webhook Secret"
+          hint="webhook secret..."
+          hasValue={!!data.checkout.hasWebhookSecret}
+          revealKey="checkout.webhookSecret"
+          reveal={reveal}
+          onReveal={() => requestReveal("checkout", "webhookSecret", "Checkout.com Webhook Secret")}
+          onUpdate={() => openKeyModal("checkout", "webhookSecret", "Checkout.com Webhook Secret")}
+        />
+
+        <WebhookUrlBlock
+          url={getWebhookUrl("checkout")}
+          copied={copied}
+          onCopy={copyWebhookUrl}
+          instructions={<>Register in Checkout.com Dashboard → Developers → Webhooks. Enable: <code className="bg-muted px-1 rounded">payment_approved</code>, <code className="bg-muted px-1 rounded">payment_declined</code>, and <code className="bg-muted px-1 rounded">payment_expired</code>.</>}
         />
 
         <div className="flex items-center gap-2 pt-3 border-t">
@@ -288,14 +304,15 @@ export default function SettingsPaymentProvidersTab() {
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function ProviderCard({
-  title, description, logo, isActive, mode, onActivate, onModeChange, children,
+  title, description, logo, isActive, mode, onEnable, onDisable, onModeChange, children,
 }: {
   title: string;
   description: string;
   logo?: string;
   isActive: boolean;
   mode: Mode;
-  onActivate: () => void;
+  onEnable: () => void;
+  onDisable: () => void;
   onModeChange: (m: Mode) => void;
   children: React.ReactNode;
 }) {
@@ -304,23 +321,36 @@ function ProviderCard({
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
-          {logo && <img src={logo} alt={title} className="h-6 object-contain" />}
-          {!logo && <span className="font-semibold text-base">{title}</span>}
-          {logo && <span className="font-semibold">{title}</span>}
+          {logo ? <img src={logo} alt={title} className="h-6 object-contain" /> : null}
+          <span className="font-semibold">{title}</span>
           {isActive && <Badge className="bg-green-100 text-green-700 border-green-300 text-xs">Active</Badge>}
         </div>
 
-        {/* Sandbox / Live toggle */}
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <span className={`text-xs font-medium ${mode === "sandbox" ? "text-amber-600" : "text-muted-foreground"}`}>Sandbox</span>
-          <button
-            type="button"
-            onClick={() => onModeChange(mode === "sandbox" ? "live" : "sandbox")}
-            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${mode === "live" ? "bg-green-500" : "bg-amber-400"}`}
-          >
-            <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${mode === "live" ? "translate-x-4.5" : "translate-x-0.5"}`} />
-          </button>
-          <span className={`text-xs font-medium ${mode === "live" ? "text-green-600" : "text-muted-foreground"}`}>Live</span>
+        <div className="flex items-center gap-4 flex-shrink-0">
+          {/* Enable / disable toggle */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Enabled</span>
+            <button
+              type="button"
+              onClick={() => isActive ? onDisable() : onEnable()}
+              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${isActive ? "bg-blue-600" : "bg-muted-foreground/30"}`}
+            >
+              <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${isActive ? "translate-x-4.5" : "translate-x-0.5"}`} />
+            </button>
+          </div>
+
+          {/* Sandbox / Live toggle */}
+          <div className="flex items-center gap-2">
+            <span className={`text-xs font-medium ${mode === "sandbox" ? "text-amber-600" : "text-muted-foreground"}`}>Sandbox</span>
+            <button
+              type="button"
+              onClick={() => onModeChange(mode === "sandbox" ? "live" : "sandbox")}
+              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${mode === "live" ? "bg-green-500" : "bg-amber-400"}`}
+            >
+              <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${mode === "live" ? "translate-x-4.5" : "translate-x-0.5"}`} />
+            </button>
+            <span className={`text-xs font-medium ${mode === "live" ? "text-green-600" : "text-muted-foreground"}`}>Live</span>
+          </div>
         </div>
       </div>
 
@@ -330,15 +360,29 @@ function ProviderCard({
       <div className="space-y-0 divide-y">
         {children}
       </div>
+    </div>
+  );
+}
 
-      {/* Activate button */}
-      {!isActive && (
-        <div className="pt-1">
-          <Button size="sm" onClick={onActivate} className="w-full">
-            Set as Active Provider
-          </Button>
-        </div>
-      )}
+function WebhookUrlBlock({ url, copied, onCopy, instructions }: {
+  url: string;
+  copied: boolean;
+  onCopy: (url: string) => void;
+  instructions: React.ReactNode;
+}) {
+  return (
+    <div className="pt-3 border-t space-y-1.5">
+      <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+        <Webhook className="h-3.5 w-3.5" />
+        Your webhook endpoint
+      </div>
+      <div className="flex items-center gap-2 rounded-md border bg-muted/40 px-3 py-2">
+        <code className="text-xs font-mono flex-1 break-all">{url}</code>
+        <Button size="sm" variant="ghost" className="h-7 px-2 flex-shrink-0" onClick={() => onCopy(url)}>
+          {copied ? <CheckCircle className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+        </Button>
+      </div>
+      <p className="text-xs text-muted-foreground">{instructions}</p>
     </div>
   );
 }

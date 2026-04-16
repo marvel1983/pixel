@@ -102,19 +102,20 @@ export async function checkMetenzi(): Promise<DependencyCheck> {
 export async function checkPaymentGateway(): Promise<DependencyCheck> {
   const now = new Date().toISOString();
   const circuits = getAllCircuitStatus();
-  const stripe = circuits["stripe"];
 
-  if (stripe?.state === "OPEN") {
+  const { getActivePaymentConfig } = await import("./payment-config");
+  const config = await getActivePaymentConfig().catch(() => null);
+  const provider = config?.provider ?? "stripe";
+  const circuitName = provider === "checkout" ? "checkout" : "stripe";
+
+  if (circuits[circuitName]?.state === "OPEN") {
     return { name: "payment", status: "down", latencyMs: 0, lastChecked: now, error: "Circuit breaker OPEN" };
   }
 
+  const pingUrl = provider === "checkout" ? "https://api.checkout.com/" : "https://api.stripe.com/v1/";
   const result = await timedCheck(async () => {
-    const res = await fetch("https://api.stripe.com/v1/", {
-      method: "GET",
-      signal: AbortSignal.timeout(5000),
-    });
-    // Stripe returns 401 for unauthenticated root requests — that's fine, the API is reachable
-    if (res.status >= 500) throw new Error(`Stripe HTTP ${res.status}`);
+    const res = await fetch(pingUrl, { method: "GET", signal: AbortSignal.timeout(5000) });
+    if (res.status >= 500) throw new Error(`${provider} HTTP ${res.status}`);
   });
 
   return {

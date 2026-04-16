@@ -15,8 +15,9 @@ import { getLoyaltyConfig, getOrCreateAccount, pointsToDiscount, redeemPoints, r
 import { getWalletBalance, debitWallet, creditWallet } from "../services/wallet-service";
 import { requireIdempotencyKey } from "../middleware/idempotency";
 import { createStripeClient } from "../lib/stripe-client";
-import { stripeCircuit } from "../lib/circuit-instances";
+import { stripeCircuit, checkoutComCircuit } from "../lib/circuit-instances";
 import { getActivePaymentConfig } from "../lib/payment-config";
+import { createCheckoutPaymentLink } from "../lib/checkout-com-client";
 
 const router = Router();
 
@@ -370,13 +371,13 @@ router.post("/checkout/session", requireIdempotencyKey(), async (req, res) => {
       .set({ notes: serializeFulfillmentPayload(payload) })
       .where(eq(orders.id, order.id));
 
-    // Create Stripe Checkout Session
+    // Create hosted payment session with the active provider
     const paymentConfig = await getActivePaymentConfig();
-    if (!paymentConfig || paymentConfig.provider !== "stripe") {
-      res.status(503).json({ error: "Stripe is not configured as the active payment provider. Please contact support." });
+    if (!paymentConfig) {
+      res.status(503).json({ error: "No payment provider is configured. Please contact support." });
       return;
     }
-    const stripe = createStripeClient(paymentConfig.secretKey);
+
     const storeUrl = process.env.STORE_PUBLIC_URL ?? process.env.APP_PUBLIC_URL ?? "http://localhost:18539";
     const successUrl = clientSuccessUrl?.replace("{ORDER_NUMBER}", orderNumber) ?? `${storeUrl}/order-complete/${orderNumber}`;
     const cancelUrl = clientCancelUrl ?? `${storeUrl}/checkout`;
@@ -385,34 +386,59 @@ router.post("/checkout/session", requireIdempotencyKey(), async (req, res) => {
       ? `PixelCodes Order #${orderNumber} (incl. $${walletDeduction.toFixed(2)} wallet credit)`
       : `PixelCodes Order #${orderNumber}`;
 
-    const session = await stripeCircuit.exec(
-      async () => stripe.checkout.sessions.create({
-        mode: "payment",
-        customer_email: billing.email,
-        line_items: [{
-          price_data: {
-            currency: "usd",
-            product_data: { name: description },
-            unit_amount: Math.round(cardTotal * 100),
-          },
-          quantity: 1,
-        }],
-        metadata: {
-          orderId: String(order.id),
-          orderNumber,
-        },
-        payment_intent_data: {
-          metadata: { orderId: String(order.id), orderNumber },
-        },
-        success_url: successUrl,
-        cancel_url: cancelUrl,
-        expires_at: Math.floor(Date.now() / 1000) + 30 * 60, // 30 minutes
-      }),
-      async () => { throw new Error("Payment processing temporarily unavailable, please try again shortly"); },
-    );
+    let redirectUrl: string;
 
-    logger.info({ orderNumber, sessionId: session.id, cardTotal }, "Stripe checkout session created");
-    res.status(201).json({ url: session.url, orderNumber });
+    if (paymentConfig.provider === "stripe") {
+      const stripe = createStripeClient(paymentConfig.secretKey);
+      const session = await stripeCircuit.exec(
+        async () => stripe.checkout.sessions.create({
+          mode: "payment",
+          customer_email: billing.email,
+          line_items: [{
+            price_data: {
+              currency: "usd",
+              product_data: { name: description },
+              unit_amount: Math.round(cardTotal * 100),
+            },
+            quantity: 1,
+          }],
+          metadata: { orderId: String(order.id), orderNumber },
+          payment_intent_data: { metadata: { orderId: String(order.id), orderNumber } },
+          success_url: successUrl,
+          cancel_url: cancelUrl,
+          expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
+        }),
+        async () => { throw new Error("Payment processing temporarily unavailable, please try again shortly"); },
+      );
+      logger.info({ orderNumber, sessionId: session.id, cardTotal }, "Stripe checkout session created");
+      redirectUrl = session.url!;
+    } else if (paymentConfig.provider === "checkout") {
+      const link = await checkoutComCircuit.exec(
+        async () => createCheckoutPaymentLink(
+          { secretKey: paymentConfig.secretKey, mode: paymentConfig.mode },
+          {
+            amountCents: Math.round(cardTotal * 100),
+            currency: "USD",
+            reference: orderNumber,
+            description,
+            customerEmail: billing.email,
+            customerName: `${billing.firstName} ${billing.lastName}`,
+            successUrl,
+            failureUrl: cancelUrl,
+            expiresAt: new Date(Date.now() + 30 * 60 * 1000),
+            metadata: { orderId: String(order.id), orderNumber },
+          },
+        ),
+        async () => { throw new Error("Payment processing temporarily unavailable, please try again shortly"); },
+      );
+      logger.info({ orderNumber, linkId: link.id, cardTotal }, "Checkout.com payment link created");
+      redirectUrl = link.redirectUrl;
+    } else {
+      res.status(503).json({ error: "Unsupported payment provider" });
+      return;
+    }
+
+    res.status(201).json({ url: redirectUrl, orderNumber });
   } catch (err) {
     // Rollback pre-payment side effects
     if (walletDebited && userId) {

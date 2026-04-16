@@ -10,6 +10,7 @@ import { handleWebhookEvent } from "../services/webhook-handlers";
 import { logger } from "../lib/logger";
 import { createStripeClient } from "../lib/stripe-client";
 import { getActivePaymentConfig } from "../lib/payment-config";
+import { verifyCheckoutSignature } from "../lib/checkout-com-client";
 import { runFulfillment } from "../services/order-pipeline";
 import { creditWallet } from "../services/wallet-service";
 import { restorePoints } from "../services/loyalty-service";
@@ -247,6 +248,134 @@ async function handleStripeSessionExpired(session: import("stripe").Stripe.Check
     .where(eq(orders.id, orderId));
 
   logger.info({ orderId, orderNumber: order.orderNumber }, "Stripe: session expired, order cancelled");
+}
+
+// ── Checkout.com webhook ──────────────────────────────────────────────────────
+
+router.post("/webhooks/checkout", async (req, res) => {
+  const signature = req.headers["cko-signature"];
+  if (typeof signature !== "string") {
+    res.status(400).json({ error: "Missing Cko-Signature header" });
+    return;
+  }
+
+  const config = await getActivePaymentConfig();
+  const webhookSecret = config?.provider === "checkout" && config.webhookSecret
+    ? config.webhookSecret
+    : undefined;
+
+  if (!webhookSecret) {
+    logger.warn("Checkout.com webhook: no webhook secret configured");
+    res.status(400).json({ error: "Checkout.com webhook not configured" });
+    return;
+  }
+
+  const rawBody = req.rawBody ?? JSON.stringify(req.body);
+  if (!verifyCheckoutSignature(rawBody, signature, webhookSecret)) {
+    logger.warn("Checkout.com webhook signature verification failed");
+    res.status(401).json({ error: "Invalid signature" });
+    return;
+  }
+
+  res.json({ received: true });
+
+  const type: string = req.body?.type ?? "";
+  const data = req.body?.data ?? req.body;
+
+  try {
+    if (type === "payment_approved") {
+      await handleCheckoutPaymentApproved(data);
+    } else if (type === "payment_declined" || type === "payment_expired") {
+      await handleCheckoutPaymentFailed(data);
+    }
+  } catch (err) {
+    logger.error({ err, type }, "Checkout.com webhook handler threw");
+  }
+});
+
+async function handleCheckoutPaymentApproved(data: Record<string, unknown>) {
+  const metadata = (data.metadata ?? {}) as Record<string, string>;
+  const orderId = parseInt(metadata.orderId ?? "0", 10);
+  const orderNumber = metadata.orderNumber ?? "";
+  if (!orderId) {
+    logger.error({ data }, "Checkout.com payment_approved: no orderId in metadata");
+    return;
+  }
+
+  const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+  if (!order) {
+    logger.error({ orderId }, "Checkout.com payment_approved: order not found");
+    return;
+  }
+  if (order.status !== "PENDING" && order.status !== "PROCESSING") {
+    logger.warn({ orderId, status: order.status }, "Checkout.com payment_approved: order already processed, skipping");
+    return;
+  }
+
+  const paymentId = (data.id ?? data.payment_id ?? "") as string;
+  const payload = parseFulfillmentPayload(order.notes);
+  if (!payload) {
+    logger.error({ orderId }, "Checkout.com payment_approved: no fulfillment payload in order notes");
+    return;
+  }
+
+  try {
+    await runFulfillment(
+      orderId,
+      orderNumber || order.orderNumber,
+      paymentId,
+      {
+        billing: payload.billing,
+        items: payload.items,
+        giftCards: payload.giftCards,
+        flashVariantMap: payload.flashVariantMap.length ? new Map<number, number>(payload.flashVariantMap) : undefined,
+        affiliateRefCode: payload.affiliateRefCode,
+        loyaltyPointsUsed: payload.loyaltyPointsUsed,
+        services: payload.services,
+        guestPassword: payload.guestPassword,
+        locale: payload.locale,
+        userId: order.userId ?? undefined,
+      },
+      payload.total,
+    );
+    await db.update(orders).set({ notes: null, updatedAt: new Date() }).where(eq(orders.id, orderId));
+    logger.info({ orderId, orderNumber: order.orderNumber }, "Checkout.com: order fulfilled");
+  } catch (err) {
+    logger.error({ err, orderId }, "Checkout.com payment_approved: fulfillment failed");
+  }
+}
+
+async function handleCheckoutPaymentFailed(data: Record<string, unknown>) {
+  const metadata = (data.metadata ?? {}) as Record<string, string>;
+  const orderId = parseInt(metadata.orderId ?? "0", 10);
+  if (!orderId) return;
+
+  const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+  if (!order || order.status !== "PENDING") return;
+
+  const walletUsed = parseFloat(order.walletAmountUsed ?? "0");
+  if (walletUsed > 0.01 && order.userId) {
+    await creditWallet(
+      order.userId, walletUsed, "REFUND",
+      `Cancelled: Checkout.com payment failed for ${order.orderNumber}`,
+      `reversal:${orderId}`,
+    ).catch((err) => logger.error({ err, orderId }, "Checkout.com failed: wallet restore failed"));
+  }
+
+  const payload = parseFulfillmentPayload(order.notes);
+  if (payload?.loyaltyPointsUsed && payload.loyaltyAccountId) {
+    await restorePoints(
+      payload.loyaltyAccountId, payload.loyaltyPointsUsed,
+      `Points restored: Checkout.com payment failed for ${order.orderNumber}`,
+      orderId,
+    ).catch((err) => logger.error({ err, orderId }, "Checkout.com failed: loyalty restore failed"));
+  }
+
+  await db.update(orders)
+    .set({ status: "FAILED", notes: null, updatedAt: new Date() })
+    .where(eq(orders.id, orderId));
+
+  logger.info({ orderId, orderNumber: order.orderNumber }, "Checkout.com: payment failed, order cancelled");
 }
 
 // ── Metenzi webhook ───────────────────────────────────────────────────────────

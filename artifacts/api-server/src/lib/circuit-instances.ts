@@ -14,6 +14,13 @@ export const stripeCircuit = new CircuitBreaker({
   halfOpenTestIntervalMs: 60_000,
 });
 
+export const checkoutComCircuit = new CircuitBreaker({
+  name: "checkout",
+  failureThreshold: 5,
+  resetTimeoutMs: 30_000,
+  halfOpenTestIntervalMs: 60_000,
+});
+
 export const trustpilotCircuit = new CircuitBreaker({
   name: "trustpilot",
   failureThreshold: 5,
