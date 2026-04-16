@@ -62,9 +62,24 @@ jobs:
           username: ${{ secrets.CONTABO_USER }}
           key: ${{ secrets.CONTABO_SSH_KEY }}
           port: ${{ secrets.CONTABO_PORT || 22 }}
+          envs: APP_PUBLIC_URL,STORE_PUBLIC_URL
           script: |
             set -e
             cd /var/www/pixel-storefront
+
+            echo "→ Updating env vars..."
+            ENV_FILE="/var/www/pixel-storefront/.env"
+            touch "$ENV_FILE"
+            for VAR in APP_PUBLIC_URL STORE_PUBLIC_URL; do
+              VAL="${!VAR}"
+              if [ -n "$VAL" ]; then
+                if grep -q "^${VAR}=" "$ENV_FILE"; then
+                  sed -i "s|^${VAR}=.*|${VAR}=${VAL}|" "$ENV_FILE"
+                else
+                  echo "${VAR}=${VAL}" >> "$ENV_FILE"
+                fi
+              fi
+            done
 
             echo "→ Pulling latest code..."
             git pull origin main
