@@ -253,7 +253,11 @@ export default function CheckoutPage() {
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           credentials: "include",
-          body: JSON.stringify(sharedPayload),
+          body: JSON.stringify({
+            ...sharedPayload,
+            successUrl: `${window.location.origin}/order-complete/{ORDER_NUMBER}`,
+            cancelUrl: `${window.location.origin}/checkout`,
+          }),
         });
 
         const data = await res.json();
@@ -270,9 +274,9 @@ export default function CheckoutPage() {
           }).catch(() => {});
         }
 
-        // Persist email for order-complete page; clear cart before leaving
+        // Persist email for order-complete page; redirect without clearing cart
+        // (cart is cleared on order-complete after successful fulfillment)
         sessionStorage.setItem("checkout_email", billing.email);
-        clearCart();
         window.location.href = data.url as string;
       } else {
         // Wallet-only or Net30: existing synchronous flow

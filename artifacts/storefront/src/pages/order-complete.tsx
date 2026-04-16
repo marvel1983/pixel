@@ -10,6 +10,7 @@ import { CartProgress } from "@/components/cart/cart-progress";
 import { OrderDetail } from "@/components/orders/order-detail";
 import { useAuthStore } from "@/stores/auth-store";
 import { useLoyaltyStore } from "@/stores/loyalty-store";
+import { useCartStore } from "@/stores/cart-store";
 
 interface OrderResponse {
   order: {
@@ -45,6 +46,11 @@ export default function OrderCompletePage() {
   const [loading, setLoading] = useState(true);
   const { isAuthenticated } = useAuthStore();
   const loyaltyConfig = useLoyaltyStore((s) => s.config);
+  const clearCart = useCartStore((s) => s.clearCart);
+
+  useEffect(() => {
+    clearCart();
+  }, []);
 
   useEffect(() => {
     if (!orderNumber) return;

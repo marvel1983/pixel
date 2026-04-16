@@ -49,6 +49,8 @@ const sessionSchema = z.object({
   loyaltyPointsUsed: z.number().int().min(0).optional(),
   serviceIds: z.array(z.number().int().positive()).max(10).optional(),
   locale: z.string().max(10).optional(),
+  successUrl: z.string().url().optional(),
+  cancelUrl: z.string().url().optional(),
 });
 
 const CPP_RATE = 0.05;
@@ -90,7 +92,7 @@ router.post("/checkout/session", requireIdempotencyKey(), async (req, res) => {
     return;
   }
 
-  const { billing, items, coupon, cppSelected, vatNumber, total, giftCards: gcInput } = parsed.data;
+  const { billing, items, coupon, cppSelected, vatNumber, total, giftCards: gcInput, successUrl: clientSuccessUrl, cancelUrl: clientCancelUrl } = parsed.data;
   let userId: number | undefined;
   let userLocale: string | undefined = parsed.data.locale?.slice(0, 10);
 
@@ -376,6 +378,8 @@ router.post("/checkout/session", requireIdempotencyKey(), async (req, res) => {
     }
     const stripe = createStripeClient(paymentConfig.secretKey);
     const storeUrl = process.env.STORE_PUBLIC_URL ?? process.env.APP_PUBLIC_URL ?? "http://localhost:18539";
+    const successUrl = clientSuccessUrl?.replace("{ORDER_NUMBER}", orderNumber) ?? `${storeUrl}/order-complete/${orderNumber}`;
+    const cancelUrl = clientCancelUrl ?? `${storeUrl}/checkout`;
 
     const description = walletUsed
       ? `PixelCodes Order #${orderNumber} (incl. $${walletDeduction.toFixed(2)} wallet credit)`
@@ -400,8 +404,8 @@ router.post("/checkout/session", requireIdempotencyKey(), async (req, res) => {
         payment_intent_data: {
           metadata: { orderId: String(order.id), orderNumber },
         },
-        success_url: `${storeUrl}/order-complete/${orderNumber}`,
-        cancel_url: `${storeUrl}/checkout`,
+        success_url: successUrl,
+        cancel_url: cancelUrl,
         expires_at: Math.floor(Date.now() / 1000) + 30 * 60, // 30 minutes
       }),
       async () => { throw new Error("Payment processing temporarily unavailable, please try again shortly"); },
