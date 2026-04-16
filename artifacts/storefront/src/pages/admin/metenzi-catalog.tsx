@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  RefreshCw, Search, LinkOff, Download,
+  RefreshCw, Search, Unlink, Download,
   Check, AlertTriangle, ChevronLeft, ChevronRight,
   Package, X,
 } from "lucide-react";
@@ -434,7 +434,7 @@ export default function MetenziCatalogPage() {
                       </div>
                       <div className="flex flex-col gap-1.5 items-end">
                         <Button size="sm" variant="outline" className="h-7 text-xs border-red-800 text-red-400 hover:bg-red-950" onClick={handleUnmap} disabled={mappingLoading}>
-                          <LinkOff className="mr-1 h-3 w-3" /> Unmap
+                          <Unlink className="mr-1 h-3 w-3" /> Unmap
                         </Button>
                       </div>
                     </div>
