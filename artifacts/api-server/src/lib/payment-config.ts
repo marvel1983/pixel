@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, isNotNull, or } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { apiCredentials } from "@workspace/db/schema";
 import { decrypt } from "./encryption";
@@ -18,6 +18,35 @@ export interface PaymentProviderConfig {
 const CACHE_TTL_MS = 5 * 60 * 1000;
 let cachedConfig: PaymentProviderConfig | null = null;
 let cacheTimestamp = 0;
+
+/** One-time migration: move keys from legacy columns into mode-prefixed extra fields. */
+export async function migratePaymentKeysIfNeeded(): Promise<void> {
+  try {
+    const rows = await db.select().from(apiCredentials)
+      .where(or(isNotNull(apiCredentials.secretKeyEncrypted), isNotNull(apiCredentials.publicKeyEncrypted)));
+
+    for (const row of rows) {
+      const extra = (row.extra ?? {}) as Record<string, string>;
+      const mode = extra.mode === "live" ? "live" : "sandbox";
+      // Skip if already migrated
+      if (extra[`${mode}_secretKeyEncrypted`]) continue;
+
+      const updates: Record<string, string> = { ...extra };
+      if (row.secretKeyEncrypted) updates[`${mode}_secretKeyEncrypted`] = row.secretKeyEncrypted;
+      if (row.publicKeyEncrypted) updates[`${mode}_publicKeyEncrypted`] = row.publicKeyEncrypted;
+      // legacy webhookSecretEncrypted in extra (old format without mode prefix)
+      if (extra.webhookSecretEncrypted) updates[`${mode}_webhookSecretEncrypted`] = extra.webhookSecretEncrypted;
+
+      await db.update(apiCredentials)
+        .set({ extra: updates, secretKeyEncrypted: null, publicKeyEncrypted: null, updatedAt: new Date() })
+        .where(eq(apiCredentials.id, row.id));
+
+      logger.info({ provider: row.provider, mode }, "Migrated payment keys to mode-prefixed format");
+    }
+  } catch (err) {
+    logger.error({ err }, "Payment key migration failed");
+  }
+}
 
 export async function getActivePaymentConfig(): Promise<PaymentProviderConfig | null> {
   const now = Date.now();

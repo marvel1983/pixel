@@ -3,6 +3,7 @@ import { logger } from "./lib/logger";
 import { startJobProcessor, stopJobProcessor } from "./lib/job-queue";
 import { registerAllWorkers, scheduleRecurringJobs, stopScheduler } from "./lib/job-workers";
 import { seedDefaultLocales } from "./lib/seed-locales";
+import { migratePaymentKeysIfNeeded } from "./lib/payment-config";
 
 const rawPort = process.env["PORT"];
 
@@ -23,6 +24,12 @@ async function bootstrap() {
     await seedDefaultLocales();
   } catch (e) {
     logger.warn({ err: e }, "Failed to auto-seed locales");
+  }
+
+  try {
+    await migratePaymentKeysIfNeeded();
+  } catch (e) {
+    logger.warn({ err: e }, "Payment key migration failed");
   }
 
   registerAllWorkers();
