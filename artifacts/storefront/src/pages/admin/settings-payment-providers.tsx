@@ -263,7 +263,7 @@ export default function SettingsPaymentProvidersTab() {
           <input
             type="password"
             autoComplete="new-password"
-            className="w-full rounded-md border px-3 py-2 text-sm font-mono"
+            className="w-full rounded-md border bg-background text-foreground px-3 py-2 text-sm font-mono"
             placeholder="Paste new value…"
             value={keyValue}
             onChange={(e) => setKeyValue(e.target.value)}
@@ -297,7 +297,7 @@ function ProviderCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className={`rounded-lg border bg-white p-5 space-y-4 transition-colors ${isActive ? "border-blue-400 ring-1 ring-blue-200" : ""}`}>
+    <div className={`rounded-lg border bg-card p-5 space-y-4 transition-colors ${isActive ? "border-blue-400 ring-1 ring-blue-200" : ""}`}>
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
@@ -357,7 +357,7 @@ function KeyRow({
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium">{label}</p>
         {revealed !== undefined ? (
-          <code className="text-xs font-mono bg-gray-100 px-2 py-0.5 rounded break-all">{revealed}</code>
+          <code className="text-xs font-mono bg-muted px-2 py-0.5 rounded break-all">{revealed}</code>
         ) : hasValue ? (
           <span className="text-xs text-muted-foreground font-mono">••••••••••••••••</span>
         ) : (
@@ -379,7 +379,7 @@ function KeyRow({
 function Modal({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-card text-card-foreground rounded-lg shadow-xl w-full max-w-md p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <div />
           <button onClick={onClose}><X className="h-5 w-5 text-muted-foreground" /></button>
