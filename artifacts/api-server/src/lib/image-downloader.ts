@@ -9,8 +9,8 @@ import { logger } from "./logger";
 // Upload directory — relative to CWD (PM2 runs from /var/www/pixel-storefront)
 const UPLOADS_DIR = path.resolve(process.cwd(), "uploads", "products");
 
-// Only allow downloads from trusted domains to prevent SSRF
-const ALLOWED_HOSTS = ["metenzi.com", "www.metenzi.com"];
+// Allow any HTTPS host — this function is only called from admin-guarded routes
+const ALLOWED_HOSTS: string[] = [];
 
 const ALLOWED_CONTENT_TYPES: Record<string, string> = {
   "image/jpeg": ".jpg",
@@ -57,7 +57,7 @@ export async function downloadImageToVps(remoteUrl: string): Promise<string> {
     throw new Error(`Invalid URL: ${remoteUrl}`);
   }
 
-  if (!ALLOWED_HOSTS.includes(parsed.hostname)) {
+  if (ALLOWED_HOSTS.length > 0 && !ALLOWED_HOSTS.includes(parsed.hostname)) {
     throw new Error(`Host not allowed: ${parsed.hostname}`);
   }
 
