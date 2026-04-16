@@ -81,7 +81,7 @@ router.get("/admin/metenzi/catalog", ...guard, async (req, res) => {
       return {
         ...mp,
         mapped:       !!mapping,
-        mappingId:    mapping?.id ?? null,
+        mappingId:    mapping?.mappingId ?? null,
         autoSyncStock: mapping?.autoSyncStock ?? false,
         pixelProduct: pixel ?? null,
       };
