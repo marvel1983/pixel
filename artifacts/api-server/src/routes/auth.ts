@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { eq, and, isNull, gt } from "drizzle-orm";
+import { verifyPasswordAny, getHashFormat } from "../lib/password-verify";
 import { db } from "@workspace/db";
 import { users, passwordResets, type User } from "@workspace/db/schema";
 import { signToken, requireAuth, type JwtPayload } from "../middleware/auth";
@@ -194,10 +195,17 @@ router.post("/auth/login", authLoginLimit, async (req, res) => {
     res.status(401).json({ error: "This account uses Google sign-in. Use \"Continue with Google\" or set a password in account settings." });
     return;
   }
-  const valid = await bcrypt.compare(password, user.passwordHash);
+  const valid = await verifyPasswordAny(password, user.passwordHash);
   if (!valid) {
     res.status(401).json({ error: "Invalid email or password" });
     return;
+  }
+
+  // Transparently migrate legacy hashes (phpass etc.) to bcrypt on first login
+  if (getHashFormat(user.passwordHash) !== "bcrypt") {
+    const newHash = await bcrypt.hash(password, 12);
+    await db.update(users).set({ passwordHash: newHash }).where(eq(users.id, user.id));
+    logger.info({ userId: user.id }, "Migrated legacy password hash to bcrypt");
   }
 
   await db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, user.id));

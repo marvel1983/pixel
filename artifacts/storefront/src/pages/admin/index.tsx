@@ -18,6 +18,7 @@ import DiscountBulkPage from "./discount-bulk";
 import DiscountUsagePage from "./discount-usage";
 import AdminCustomersPage from "./customers";
 import CustomerDetailPage from "./customer-detail";
+import AdminUserImportsPage from "./user-imports";
 import AdminReviewsPage from "./reviews";
 import AdminBannersPage from "./banners";
 import AdminStaticPagesPage from "./static-pages";
@@ -108,6 +109,7 @@ export default function AdminRoot() {
           <Route path="/admin/checkout-services" component={AdminCheckoutServicesPage} />
           <Route path="/admin/customers/:id" component={CustomerDetailPage} />
           <Route path="/admin/customers" component={AdminCustomersPage} />
+          <Route path="/admin/user-imports" component={AdminUserImportsPage} />
           <Route path="/admin/reviews" component={AdminReviewsPage} />
           <Route path="/admin/homepage-sections" component={HomepageSectionsPage} />
           <Route path="/admin/brand-sections" component={BrandSectionsPage} />

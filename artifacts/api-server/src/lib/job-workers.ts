@@ -110,6 +110,12 @@ export function registerAllWorkers() {
     await enqueueEmail(adminEmail, subject, html, { type: "circuit-breaker-alert", service });
   });
 
+  registerWorker("imports", "process-user-import", async (payload) => {
+    const { importJobId } = payload as { importJobId: number };
+    const { processImportJob } = await import("../services/user-import-service");
+    await processImportJob(importJobId);
+  });
+
   logger.info("All job workers registered");
 }
 

@@ -82,6 +82,7 @@ import adminPriceRulesRouter from "./admin-price-rules";
 import adminAttributesRouter from "./admin-attributes";
 import adminTagsRouter from "./admin-tags";
 import adminUploadRouter from "./admin-upload";
+import adminImportsRouter from "./admin-imports";
 import productsRouter from "./products";
 
 const router: IRouter = Router();
@@ -169,6 +170,7 @@ router.use(adminPriceRulesRouter);
 router.use(adminAttributesRouter);
 router.use(adminTagsRouter);
 router.use(adminUploadRouter);
+router.use(adminImportsRouter);
 router.use(productsRouter);
 
 export default router;
