@@ -240,7 +240,7 @@ export async function executeOrderPipeline(input: OrderInput) {
     if (cardAmount > 0.01 && input.cardToken) {
       const paymentResult = await processPayment({
         amount: cardAmount.toFixed(2),
-        currency: "USD",
+        currency: "EUR",
         cardToken: input.cardToken,
         email: billing.email,
       });

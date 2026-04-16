@@ -35,7 +35,7 @@ router.get("/currencies", async (_req, res) => {
         .finally(() => { syncInProgress = false; });
     }
 
-    res.json({ base: "USD", rates });
+    res.json({ base: "EUR", rates });
   } catch (err) {
     logger.error({ err }, "Failed to fetch currency rates");
     res.status(500).json({ error: "Failed to fetch currency rates" });

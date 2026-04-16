@@ -55,7 +55,7 @@ router.post("/wallet/topup", requireAuth, requireIdempotencyKey(), async (req, r
   try {
     const payResult = await processPayment({
       amount: amountUsd.toFixed(2),
-      currency: "USD",
+      currency: "EUR",
       cardToken,
       email: req.user!.email ?? "customer@store.com",
     });

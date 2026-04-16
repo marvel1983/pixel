@@ -16,7 +16,7 @@ export const SUPPORTED_CURRENCIES = [
 
 export type CurrencyCode = (typeof SUPPORTED_CURRENCIES)[number]["code"];
 
-export const BASE_CURRENCY = "USD";
+export const BASE_CURRENCY = "EUR";
 
 // Build a fresh `format` function that captures current code+rates.
 // Called on every setCode / setRates so components subscribed to `format`
@@ -34,7 +34,7 @@ function buildFormat(
     if (displayCode === "HUF" || displayCode === "CZK") {
       return `${Math.round(converted)} ${currency?.symbol ?? displayCode}`;
     }
-    return `${currency?.symbol ?? "$"}${converted.toFixed(2)}`;
+    return `${currency?.symbol ?? "€"}${converted.toFixed(2)}`;
   };
 }
 

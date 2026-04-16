@@ -32,10 +32,10 @@ export const siteSettings = pgTable("site_settings", {
   maintenanceMode: boolean("maintenance_mode").notNull().default(false),
   defaultCurrency: varchar("default_currency", { length: 3 })
     .notNull()
-    .default("USD"),
+    .default("EUR"),
   enabledCurrencies: jsonb("enabled_currencies")
     .$type<string[]>()
-    .default(["USD", "EUR", "GBP"]),
+    .default(["EUR", "USD", "GBP"]),
   cppEnabled: boolean("cpp_enabled").notNull().default(false),
   cppLabel: varchar("cpp_label", { length: 200 }).default("Checkout Protection Plan"),
   cppPrice: numeric("cpp_price", { precision: 10, scale: 2 }).default("0.99"),

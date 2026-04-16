@@ -44,8 +44,8 @@ async function seed() {
     siteDescription: "Your trusted source for digital software licenses",
     contactEmail: "support@pixelcodes.com",
     supportEmail: "support@pixelcodes.com",
-    defaultCurrency: "USD",
-    enabledCurrencies: ["USD", "EUR", "GBP", "CAD", "AUD", "PLN"],
+    defaultCurrency: "EUR",
+    enabledCurrencies: ["EUR", "USD", "GBP", "CAD", "AUD", "PLN"],
     metaTitleTemplate: "{title} | PixelCodes",
     metaDescription:
       "Buy genuine software license keys at the best prices. Instant digital delivery.",
@@ -130,16 +130,17 @@ async function seed() {
     rateLimit: 60,
   });
 
+  // Rates are relative to EUR base (1 EUR = X of that currency)
   await db.insert(currencyRates).values([
-    { currencyCode: "EUR", rateToUsd: "0.92" },
-    { currencyCode: "GBP", rateToUsd: "0.79" },
-    { currencyCode: "PLN", rateToUsd: "4.02" },
-    { currencyCode: "CZK", rateToUsd: "23.5" },
-    { currencyCode: "HUF", rateToUsd: "365" },
-    { currencyCode: "CAD", rateToUsd: "1.36" },
-    { currencyCode: "AUD", rateToUsd: "1.53" },
-    { currencyCode: "BRL", rateToUsd: "5.05" },
-    { currencyCode: "TRY", rateToUsd: "32.5" },
+    { currencyCode: "USD", symbol: "$",  rateToUsd: "1.08",   sortOrder: 1 },
+    { currencyCode: "GBP", symbol: "£",  rateToUsd: "0.86",   sortOrder: 2 },
+    { currencyCode: "PLN", symbol: "zł", rateToUsd: "4.30",   sortOrder: 3 },
+    { currencyCode: "CZK", symbol: "Kč", rateToUsd: "25.30",  sortOrder: 4 },
+    { currencyCode: "HUF", symbol: "Ft", rateToUsd: "395.00", sortOrder: 5 },
+    { currencyCode: "CAD", symbol: "C$", rateToUsd: "1.47",   sortOrder: 6 },
+    { currencyCode: "AUD", symbol: "A$", rateToUsd: "1.66",   sortOrder: 7 },
+    { currencyCode: "BRL", symbol: "R$", rateToUsd: "5.50",   sortOrder: 8 },
+    { currencyCode: "TRY", symbol: "₺",  rateToUsd: "35.20",  sortOrder: 9 },
   ]);
 
   console.log("Seeding complete!");
