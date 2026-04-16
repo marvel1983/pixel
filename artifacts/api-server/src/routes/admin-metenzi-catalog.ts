@@ -272,7 +272,12 @@ router.post("/admin/metenzi/sync-field", ...guard, async (req, res) => {
             synced.push("image");
           } catch (err) {
             logger.warn({ err, imageUrl: mp.imageUrl }, "Image sync failed");
+            res.status(500).json({ error: `Image download failed: ${(err as Error).message}` });
+            return;
           }
+        } else {
+          res.status(422).json({ error: "Metenzi product has no imageUrl" });
+          return;
         }
         break;
     }
@@ -326,7 +331,8 @@ router.post("/admin/metenzi/import", ...guard, async (req, res) => {
   // Download image if requested
   let imageUrl: string | null = null;
   if (include("image") && mp.imageUrl) {
-    try { imageUrl = await downloadImageToVps(mp.imageUrl); } catch { /* skip */ }
+    try { imageUrl = await downloadImageToVps(mp.imageUrl); }
+    catch (err) { logger.warn({ err, imageUrl: mp.imageUrl }, "Image download failed during import"); }
   }
 
   // Generate slug from name

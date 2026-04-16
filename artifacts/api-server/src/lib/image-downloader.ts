@@ -95,13 +95,8 @@ export async function downloadImageToVps(remoteUrl: string): Promise<string> {
       }
 
       const ct = res.headers["content-type"] ?? "";
-      const ctExt = extFromContentType(ct);
-      if (!ctExt) {
-        reject(new Error(`Unsupported content-type: ${ct}`));
-        return;
-      }
-
-      // Rename if content-type gives a different ext
+      // Fall back to URL extension if content-type is unrecognised (e.g. application/octet-stream from CDNs)
+      const ctExt = extFromContentType(ct) ?? tempExt;
       const finalExt = ctExt;
       const finalName = `${hash}${finalExt}`;
       const finalPath = path.join(UPLOADS_DIR, finalName);
