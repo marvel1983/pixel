@@ -50,6 +50,18 @@ app.use(cors({
   credentials: true,
 }));
 app.use(cookieParser());
+// Webhook endpoints must accept requests from any origin (Metenzi, Stripe, etc.)
+// They use their own HMAC signature verification instead of CORS for security.
+app.use((req, res, next) => {
+  if (req.path.startsWith("/api/webhooks/") || req.path === "/api/webhooks") {
+    res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "content-type, authorization, x-metenzi-signature, x-metenzi-timestamp, x-metenzi-event, stripe-signature, cko-signature");
+    if (req.method === "OPTIONS") { res.status(204).end(); return; }
+  }
+  next();
+});
+
 app.use(
   express.json({
     limit: "10mb",
