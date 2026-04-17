@@ -57,11 +57,19 @@ export interface MetenziKeyItem {
   productId: string;
 }
 
+export interface MetenziBackorderItem {
+  productId: string;
+  quantity: number;
+  availableNow: number;
+  onBackorder: number;
+}
+
 export interface MetenziOrder {
   id: string;
   status: string;
   items: MetenziOrderItem[];
   keys?: MetenziKeyItem[]; // Keys at order level, present when status = "paid"
+  backorderItems?: MetenziBackorderItem[]; // Present when status = "backorder" or partial
   totalUsd?: number;
   total?: string;
   createdAt: string;
@@ -204,6 +212,7 @@ export async function createOrder(
     status: (inner.status ?? "") as string,
     items: (inner.items ?? []) as MetenziOrderItem[],
     keys: inner.keys as MetenziKeyItem[] | undefined,
+    backorderItems: inner.backorderItems as MetenziBackorderItem[] | undefined,
     total: inner.total as string | undefined,
     createdAt: (inner.createdAt ?? "") as string,
   };

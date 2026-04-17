@@ -323,30 +323,23 @@ async function fulfillFromMetenzi(orderId: number, items: OrderInput["items"], _
       mappings.filter((m) => m.pixelProductId !== null).map((m) => [m.pixelProductId!, m.metenziProductId])
     );
 
-    // Build resolved items with per-variant stock data
-    const variantIds = items.map((i) => i.variantId).filter(Boolean);
-    const stockRows = variantIds.length
-      ? await db.select({ id: productVariants.id, stockCount: productVariants.stockCount, backorderAllowed: productVariants.backorderAllowed })
-          .from(productVariants).where(inArray(productVariants.id, variantIds))
-      : [];
-    const stockByVariantId = new Map(stockRows.map((s) => [s.id, { stock: s.stockCount ?? 0, backorderAllowed: s.backorderAllowed ?? false }]));
-
-    // Aggregate per product: total requested qty, total available stock, backorder allowed
-    const byProduct = new Map<number, { metenziId: string; requestedQty: number; availableStock: number; backorderAllowed: boolean }>();
+    // Build full-quantity Metenzi items (no stock cap)
+    // Metenzi natively supports backorders when allow_backorder = true on the price list.
+    // We attempt the full quantity first; if Metenzi rejects with insufficient stock
+    // (backorder disabled for this market, or Metenzi bug not yet fixed), we fall back
+    // to ordering only available stock and tracking the remainder ourselves.
+    const byProduct = new Map<number, { metenziId: string; requestedQty: number }>();
     for (const it of items) {
       const metenziId = mappingByProductId.get(it.productId);
       if (!metenziId) {
         logger.warn({ orderId, productId: it.productId }, "Item has no Metenzi mapping — skipping (add mapping via Admin → Metenzi)");
         continue;
       }
-      const sv = stockByVariantId.get(it.variantId) ?? { stock: 0, backorderAllowed: false };
       const existing = byProduct.get(it.productId);
       if (existing) {
         existing.requestedQty += it.quantity;
-        existing.availableStock += sv.stock;
-        existing.backorderAllowed = existing.backorderAllowed || sv.backorderAllowed;
       } else {
-        byProduct.set(it.productId, { metenziId, requestedQty: it.quantity, availableStock: sv.stock, backorderAllowed: sv.backorderAllowed });
+        byProduct.set(it.productId, { metenziId, requestedQty: it.quantity });
       }
     }
 
@@ -355,44 +348,83 @@ async function fulfillFromMetenzi(orderId: number, items: OrderInput["items"], _
       return "skip";
     }
 
-    // Determine what to order now vs backorder.
-    // Metenzi B2B API rejects orders where qty > available stock — we must cap at stockCount.
-    // The remainder is tracked internally: backorder poller places a follow-up order when stock arrives.
-    const metenziItems: { productId: string; quantity: number }[] = [];
-    let anyBackordered = false;
+    const fullQtyItems = [...byProduct.values()].map((info) => ({ productId: info.metenziId, quantity: info.requestedQty }));
 
-    for (const [, info] of byProduct) {
-      const orderNow = Math.min(info.requestedQty, info.availableStock);
-      if (orderNow <= 0) {
-        anyBackordered = true;
-        logger.info({ orderId, metenziProductId: info.metenziId, requestedQty: info.requestedQty }, "Zero stock — product fully backordered, skipping Metenzi order");
-        continue;
+    let metenziOrder: Awaited<ReturnType<typeof metenziCreateOrder>>;
+    let usedStockFallback = false;
+
+    try {
+      metenziOrder = await metenziCreateOrder(config, fullQtyItems);
+    } catch (err) {
+      // If Metenzi rejects because backorder is disabled for this market (or their fix not yet deployed),
+      // fall back to stock-capped ordering and track the remainder with the backorder poller.
+      const errMsg = err instanceof Error ? err.message : String(err);
+      if (!errMsg.includes("Insufficient stock")) throw err;
+
+      logger.info({ orderId }, "Metenzi rejected full qty (backorder disabled or not yet supported) — falling back to stock-cap");
+      usedStockFallback = true;
+
+      // Fetch current stock per variant
+      const variantIds = items.map((i) => i.variantId).filter(Boolean);
+      const stockRows = variantIds.length
+        ? await db.select({ id: productVariants.id, stockCount: productVariants.stockCount })
+            .from(productVariants).where(inArray(productVariants.id, variantIds))
+        : [];
+      const stockByVariantId = new Map(stockRows.map((s) => [s.id, s.stockCount ?? 0]));
+
+      // Re-aggregate with stock cap
+      const cappedByProduct = new Map<number, { metenziId: string; requestedQty: number; availableStock: number }>();
+      for (const it of items) {
+        const metenziId = mappingByProductId.get(it.productId);
+        if (!metenziId) continue;
+        const stock = stockByVariantId.get(it.variantId) ?? 0;
+        const existing = cappedByProduct.get(it.productId);
+        if (existing) {
+          existing.requestedQty += it.quantity;
+          existing.availableStock += stock;
+        } else {
+          cappedByProduct.set(it.productId, { metenziId, requestedQty: it.quantity, availableStock: stock });
+        }
       }
-      metenziItems.push({ productId: info.metenziId, quantity: orderNow });
-      if (orderNow < info.requestedQty) {
-        anyBackordered = true;
-        logger.info({ orderId, metenziProductId: info.metenziId, orderNow, requestedQty: info.requestedQty, backordered: info.requestedQty - orderNow }, "Partial stock — ordering available qty now, remainder backordered");
+
+      const cappedItems: { productId: string; quantity: number }[] = [];
+      let anyBackordered = false;
+      for (const [, info] of cappedByProduct) {
+        const orderNow = Math.min(info.requestedQty, info.availableStock);
+        if (orderNow <= 0) { anyBackordered = true; continue; }
+        cappedItems.push({ productId: info.metenziId, quantity: orderNow });
+        if (orderNow < info.requestedQty) anyBackordered = true;
       }
+
+      if (cappedItems.length === 0) {
+        await db.update(orders).set({ status: "BACKORDERED", notes: "Awaiting stock from supplier", updatedAt: new Date() }).where(eq(orders.id, orderId));
+        logger.info({ orderId }, "All items out of stock — order BACKORDERED, poller will fulfill when stock arrives");
+        return "backordered";
+      }
+
+      metenziOrder = await metenziCreateOrder(config, cappedItems);
+      if (anyBackordered) logger.info({ orderId, metenziOrderId: metenziOrder.id }, "Stock-cap fallback: partial Metenzi order placed, remainder tracked by backorder poller");
     }
 
-    if (metenziItems.length === 0) {
-      // All products have zero stock — set BACKORDERED and poll later
-      await db.update(orders).set({ status: "BACKORDERED", notes: "Awaiting stock from supplier", updatedAt: new Date() }).where(eq(orders.id, orderId));
-      logger.info({ orderId }, "All items have zero stock — order set to BACKORDERED, backorder poller will fulfill when stock arrives");
-      return "backordered";
-    }
-
-    // Place Metenzi order for the available (capped) quantities only
-    const metenziOrder = await metenziCreateOrder(config, metenziItems);
-
-    // Store externalOrderId BEFORE processing inline keys so findOrderByMetenziId can match
+    // Store externalOrderId BEFORE processing keys so findOrderByMetenziId can match
     await db.update(orders).set({ externalOrderId: metenziOrder.id }).where(eq(orders.id, orderId));
-    logger.info({ orderId, metenziOrderId: metenziOrder.id, metenziStatus: metenziOrder.status, keysInResponse: metenziOrder.keys?.length ?? 0, anyBackordered }, "Metenzi order placed");
 
-    // Metenzi often returns keys immediately (status: "paid") — process them now
-    if (metenziOrder.status === "paid" && (metenziOrder.keys?.length ?? 0) > 0) {
+    // Metenzi native backorder: full qty accepted but no stock available yet
+    if (metenziOrder.status === "backorder" && !(metenziOrder.keys?.length)) {
+      await db.update(orders).set({ status: "BACKORDERED", notes: "Awaiting stock from Metenzi", updatedAt: new Date() }).where(eq(orders.id, orderId));
+      logger.info({ orderId, metenziOrderId: metenziOrder.id, backorderItems: metenziOrder.backorderItems }, "Metenzi accepted order in backorder — will auto-fulfill when stock arrives");
+      return "ok"; // webhook will deliver keys when Metenzi fulfills
+    }
+
+    const keysInResponse = metenziOrder.keys?.length ?? 0;
+    const hasNativeBackorder = (metenziOrder.backorderItems?.length ?? 0) > 0;
+    logger.info({ orderId, metenziOrderId: metenziOrder.id, metenziStatus: metenziOrder.status, keysInResponse, hasNativeBackorder, usedStockFallback }, "Metenzi order placed");
+
+    // Metenzi returns keys immediately (status: "paid") — process them now
+    if (keysInResponse > 0) {
       const { handleWebhookEvent } = await import("./webhook-handlers");
       await handleWebhookEvent("order.fulfilled", { id: metenziOrder.id, keys: metenziOrder.keys });
+      // handleOrderFulfilled will set PARTIALLY_DELIVERED if not all keys arrived (native partial backorder)
     }
     return "ok";
   } catch (err) {
