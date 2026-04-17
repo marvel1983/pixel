@@ -26,15 +26,30 @@ function verifySignature(
   signature: string,
   secret: string,
 ): boolean {
+  // Strip common prefixes (whsec_, sha256=, etc.)
+  const rawSecret = secret.replace(/^whsec_/, "");
+  // Normalize signature — strip "sha256=" prefix if present
+  const rawSig = signature.replace(/^sha256=/, "");
+
   const payload = `${timestamp}.${body}`;
   const expected = crypto
-    .createHmac("sha256", secret)
+    .createHmac("sha256", rawSecret)
     .update(payload)
     .digest("hex");
-  return crypto.timingSafeEqual(
-    Buffer.from(signature, "hex"),
-    Buffer.from(expected, "hex"),
-  );
+
+  try {
+    // Try hex comparison
+    if (rawSig.length === expected.length) {
+      return crypto.timingSafeEqual(Buffer.from(rawSig, "hex"), Buffer.from(expected, "hex"));
+    }
+    // Try base64 comparison (some systems send base64-encoded sig)
+    const expectedB64 = Buffer.from(expected, "hex").toString("base64");
+    if (rawSig === expectedB64) return true;
+    const expectedB64url = Buffer.from(expected, "hex").toString("base64url");
+    return rawSig === expectedB64url;
+  } catch {
+    return false;
+  }
 }
 
 function isReplayAttack(timestamp: string): boolean {
@@ -88,7 +103,7 @@ router.post("/webhooks/metenzi", async (req, res) => {
   }
 
   if (!valid) {
-    logger.warn("Webhook signature verification failed");
+    logger.warn({ signature: (signature as string).slice(0, 20) + "…", timestamp }, "Webhook signature verification failed");
     res.status(401).json({ error: "Invalid signature" });
     return;
   }
