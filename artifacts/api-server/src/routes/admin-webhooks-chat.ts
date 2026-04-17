@@ -47,8 +47,10 @@ router.delete("/admin/settings/webhooks/:id", requireAuth, requireAdmin, require
   } catch (e) { res.status(500).json({ error: (e as Error).message }); }
 });
 
-router.get("/admin/settings/webhooks/endpoint-url", requireAuth, requireAdmin, requirePermission("manageSettings"), async (_req, res) => {
-  const baseUrl = process.env.APP_PUBLIC_URL ?? `https://${process.env.REPLIT_DEV_DOMAIN ?? "localhost"}`;
+router.get("/admin/settings/webhooks/endpoint-url", requireAuth, requireAdmin, requirePermission("manageSettings"), async (req, res) => {
+  const host = (req.headers["x-forwarded-host"] ?? req.headers.host ?? "localhost") as string;
+  const proto = (req.headers["x-forwarded-proto"] ?? (host === "localhost" ? "http" : "https")) as string;
+  const baseUrl = process.env.APP_PUBLIC_URL ?? `${proto}://${host}`;
   res.json({ url: `${baseUrl}/api/webhooks/metenzi` });
 });
 

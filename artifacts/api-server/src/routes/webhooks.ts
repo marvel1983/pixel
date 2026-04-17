@@ -423,7 +423,9 @@ router.post(
       return;
     }
 
-    const baseUrl = process.env.APP_PUBLIC_URL ?? `https://${process.env.REPLIT_DEV_DOMAIN ?? "localhost"}`;
+    const host = (req.headers["x-forwarded-host"] ?? req.headers.host ?? "localhost") as string;
+    const proto = (req.headers["x-forwarded-proto"] ?? (host === "localhost" ? "http" : "https")) as string;
+    const baseUrl = process.env.APP_PUBLIC_URL ?? `${proto}://${host}`;
     const webhookUrl = `${baseUrl}/api/webhooks/metenzi`;
 
     try {
