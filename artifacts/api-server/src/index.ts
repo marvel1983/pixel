@@ -4,6 +4,9 @@ import { startJobProcessor, stopJobProcessor } from "./lib/job-queue";
 import { registerAllWorkers, scheduleRecurringJobs, stopScheduler } from "./lib/job-workers";
 import { seedDefaultLocales } from "./lib/seed-locales";
 import { migratePaymentKeysIfNeeded } from "./lib/payment-config";
+import { db } from "@workspace/db";
+import { productVariants } from "@workspace/db/schema";
+import { eq } from "drizzle-orm";
 
 const rawPort = process.env["PORT"];
 
@@ -30,6 +33,18 @@ async function bootstrap() {
     await migratePaymentKeysIfNeeded();
   } catch (e) {
     logger.warn({ err: e }, "Payment key migration failed");
+  }
+
+  // Ensure all active variants have backorder enabled (Metenzi supports backorder for all products)
+  try {
+    const result = await db.update(productVariants)
+      .set({ backorderAllowed: true })
+      .where(eq(productVariants.isActive, true));
+    if ((result.rowCount ?? 0) > 0) {
+      logger.info({ updated: result.rowCount }, "Startup: enabled backorder on active variants");
+    }
+  } catch (e) {
+    logger.warn({ err: e }, "Startup: backorder migration failed");
   }
 
   registerAllWorkers();
