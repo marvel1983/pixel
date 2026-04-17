@@ -74,7 +74,7 @@ export function CheckoutSummary({ cppSelected, taxRate = 0, taxLabel = "VAT", pr
                   </button>
                 </div>
                 {backorderQty > 0 && (
-                  <div className="flex items-center gap-1 mt-1 text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
+                  <div className="flex items-center gap-1 mt-1 text-[10px] text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-700 rounded px-1.5 py-0.5">
                     <Clock className="h-2.5 w-2.5 shrink-0" />
                     {inStockQty > 0
                       ? <span><b>{inStockQty}</b> in stock · <b>{backorderQty}</b> on backorder{item.backorderEta ? ` (est. ${item.backorderEta})` : ""}</span>

@@ -47,14 +47,14 @@ export default function CartPage() {
           <div className="grid gap-6 lg:grid-cols-[1fr_340px] xl:grid-cols-[1fr_360px]">
             {/* Left: items */}
             <div className="space-y-4 min-w-0">
-              <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">
+              <div className="flex items-center gap-2 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-700 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
                 <Clock className="h-3.5 w-3.5 shrink-0" />
                 <span>Your cart is reserved for <strong>24 hours</strong>. Complete your order to secure these prices.</span>
               </div>
               <CartRegionWarning items={items} customerCountry={customerCountry} />
               {backorderItems.length > 0 && (
-                <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5 text-xs text-amber-800">
-                  <Clock className="h-3.5 w-3.5 shrink-0 mt-0.5 text-amber-600" />
+                <div className="flex items-start gap-2 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-700 px-3 py-2.5 text-xs text-amber-800 dark:text-amber-300">
+                  <Clock className="h-3.5 w-3.5 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
                   <div>
                     <p className="font-semibold mb-0.5">Some items are on backorder</p>
                     <p>
@@ -64,7 +64,7 @@ export default function CartPage() {
                         return `${i.productName} (${boQty} on backorder${i.backorderEta ? `, est. ${i.backorderEta}` : ""})`;
                       }).join(" · ")}
                     </p>
-                    <p className="mt-1 text-amber-700">Your order will be placed now. Backordered keys are delivered automatically once our supplier ships them.</p>
+                    <p className="mt-1 text-amber-700 dark:text-amber-400">Your order will be placed now. Backordered keys are delivered automatically once our supplier ships them.</p>
                   </div>
                 </div>
               )}
