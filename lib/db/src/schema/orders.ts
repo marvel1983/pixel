@@ -20,6 +20,7 @@ export const orderStatusEnum = pgEnum("order_status", [
   "PROCESSING",
   "BACKORDERED",
   "COMPLETED",
+  "PARTIALLY_DELIVERED",
   "FAILED",
   "REFUNDED",
   "PARTIALLY_REFUNDED",

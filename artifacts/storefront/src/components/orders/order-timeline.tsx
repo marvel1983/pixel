@@ -1,4 +1,4 @@
-import { ShoppingCart, Clock, CheckCircle, XCircle } from "lucide-react";
+import { ShoppingCart, Clock, CheckCircle, XCircle, PackageOpen } from "lucide-react";
 
 interface Step {
   key: string;
@@ -13,6 +13,7 @@ const STEPS: Step[] = [
 ];
 
 const ERROR_STATUSES = new Set(["FAILED", "REFUNDED", "PARTIALLY_REFUNDED"]);
+const BACKORDER_STATUSES = new Set(["BACKORDERED", "PARTIALLY_DELIVERED"]);
 
 function getStepIndex(status: string): number {
   const idx = STEPS.findIndex((s) => s.key === status);
@@ -27,6 +28,10 @@ interface OrderTimelineProps {
 export function OrderTimeline({ status }: OrderTimelineProps) {
   if (ERROR_STATUSES.has(status)) {
     return <ErrorTimeline status={status} />;
+  }
+
+  if (BACKORDER_STATUSES.has(status)) {
+    return <BackorderTimeline status={status} />;
   }
 
   const currentIdx = getStepIndex(status);
@@ -170,6 +175,25 @@ const ERROR_LABELS: Record<string, string> = {
   REFUNDED:           "Refunded",
   PARTIALLY_REFUNDED: "Partially Refunded",
 };
+
+function BackorderTimeline({ status }: { status: string }) {
+  const isPartial = status === "PARTIALLY_DELIVERED";
+  return (
+    <div className="flex items-center gap-3 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/40 dark:border-amber-700 px-4 py-3">
+      <PackageOpen className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
+      <div>
+        <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+          {isPartial ? "Partially Delivered" : "Backordered"}
+        </p>
+        <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+          {isPartial
+            ? "Some keys have been delivered. Remaining keys are on backorder and will be emailed automatically once available."
+            : "Your order is on backorder. We will deliver your keys automatically once the supplier ships stock."}
+        </p>
+      </div>
+    </div>
+  );
+}
 
 function ErrorTimeline({ status }: { status: string }) {
   const label = ERROR_LABELS[status] ?? status;

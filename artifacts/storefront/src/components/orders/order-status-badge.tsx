@@ -23,6 +23,14 @@ const STATUS_MAP: Record<string, { label: string; className: string }> = {
     label: "Partially Refunded",
     className: "bg-orange-100 text-orange-800 border-orange-200",
   },
+  BACKORDERED: {
+    label: "Backordered",
+    className: "bg-amber-100 text-amber-800 border-amber-200",
+  },
+  PARTIALLY_DELIVERED: {
+    label: "Partially Delivered",
+    className: "bg-sky-100 text-sky-800 border-sky-200",
+  },
 };
 
 interface OrderStatusBadgeProps {

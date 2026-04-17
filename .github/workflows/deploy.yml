@@ -106,6 +106,9 @@ jobs:
             echo "→ Enabling backorder on all active variants..."
             psql "$DATABASE_URL" -c "UPDATE product_variants SET backorder_allowed = true WHERE is_active = true;" || true
 
+            echo "→ Adding PARTIALLY_DELIVERED to order_status enum..."
+            psql "$DATABASE_URL" -c "ALTER TYPE order_status ADD VALUE IF NOT EXISTS 'PARTIALLY_DELIVERED';" || true
+
             echo "→ Reloading PM2..."
             set -a; source /var/www/pixel-storefront/.env; set +a
             pm2 reload pixel-api --update-env

@@ -199,23 +199,42 @@ async function handleOrderFulfilled(data: FulfilledData) {
     return;
   }
 
+  // Determine if all expected keys have now been delivered
+  const allItems = await db
+    .select({ id: orderItems.id, quantity: orderItems.quantity })
+    .from(orderItems)
+    .where(eq(orderItems.orderId, order.id));
+  const totalExpected = allItems.reduce((s, i) => s + i.quantity, 0);
+  const itemIds = allItems.map((i) => i.id);
+  const deliveredRows = itemIds.length > 0
+    ? await db.select({ id: licenseKeys.id }).from(licenseKeys).where(inArray(licenseKeys.orderItemId, itemIds))
+    : [];
+  const totalDelivered = deliveredRows.length;
+
+  const newStatus = totalDelivered >= totalExpected ? "COMPLETED" : "PARTIALLY_DELIVERED";
   await db
     .update(orders)
-    .set({ status: "COMPLETED", updatedAt: new Date() })
+    .set({ status: newStatus, updatedAt: new Date() })
     .where(eq(orders.id, order.id));
 
-  // Award loyalty points if the order belongs to a registered user
-  if (order.userId) {
+  logger.info({ orderId: order.id, totalExpected, totalDelivered, newStatus }, "Order fulfillment status updated");
+
+  // Award loyalty points only when fully completed
+  if (newStatus === "COMPLETED" && order.userId) {
     awardOrderPoints(order.userId, order.id, parseFloat(order.totalUsd)).catch((err) =>
       logger.error({ err, orderId: order.id }, "Failed to award loyalty points on webhook COMPLETED (non-fatal)"),
     );
   }
 
-  if (keysToDeliver.length > 0 && order.email) {
+  if (order.email) {
+    const backorderNote = newStatus === "PARTIALLY_DELIVERED"
+      ? `${keysToDeliver.length} of ${totalExpected} key(s) delivered. The remaining ${totalExpected - totalDelivered} key(s) are on backorder and will be emailed automatically once available.`
+      : undefined;
     sendKeyDeliveryEmail(order.email, {
       orderRef: order.orderNumber,
       customerName: "Customer",
       keys: keysToDeliver,
+      backorderNote,
     }).catch((err) =>
       logger.error({ err }, "Failed to enqueue key delivery email from webhook"),
     );
@@ -225,6 +244,9 @@ async function handleOrderFulfilled(data: FulfilledData) {
     webhookEvent: "order.fulfilled",
     metenziOrderId,
     keysDelivered: keysToDeliver.length,
+    totalDelivered,
+    totalExpected,
+    status: newStatus,
   });
 }
 
@@ -234,14 +256,32 @@ async function handleOrderBackorder(data: OrderEventData) {
 
   const order = await findOrderByMetenziId(metenziOrderId);
   if (order) {
+    // If some keys were already delivered, use PARTIALLY_DELIVERED; otherwise BACKORDERED
+    const existingItems = await db
+      .select({ id: orderItems.id })
+      .from(orderItems)
+      .where(eq(orderItems.orderId, order.id));
+    const itemIds = existingItems.map((i) => i.id);
+    const deliveredCount = itemIds.length > 0
+      ? (await db.select({ id: licenseKeys.id }).from(licenseKeys).where(inArray(licenseKeys.orderItemId, itemIds))).length
+      : 0;
+    const backorderStatus = deliveredCount > 0 ? "PARTIALLY_DELIVERED" : "BACKORDERED";
+
     await db
       .update(orders)
-      .set({ status: "BACKORDERED", notes: "Backordered: awaiting stock from supplier", updatedAt: new Date() })
+      .set({ status: backorderStatus, notes: "Backordered: awaiting remaining stock from supplier", updatedAt: new Date() })
       .where(eq(orders.id, order.id));
 
     if (order.email) {
-      const subject = `Your order ${order.orderNumber} is on backorder`;
-      const html = `<p>Hi,</p>
+      const subject = deliveredCount > 0
+        ? `Some keys for order ${order.orderNumber} are on backorder`
+        : `Your order ${order.orderNumber} is on backorder`;
+      const html = deliveredCount > 0
+        ? `<p>Hi,</p>
+<p>We have delivered <strong>${deliveredCount}</strong> key(s) for your order <strong>${order.orderNumber}</strong>. The remaining key(s) are currently on backorder.</p>
+<p>We are awaiting stock from our supplier and will email you the remaining key(s) automatically once they are available — no action needed on your part.</p>
+<p>Thank you for your patience.</p>`
+        : `<p>Hi,</p>
 <p>Your order <strong>${order.orderNumber}</strong> has been placed on backorder.</p>
 <p>We are awaiting stock from our supplier. Your order will be fulfilled automatically as soon as the keys are available — no action needed on your part.</p>
 <p>You will receive your license key(s) by email once the order is fulfilled.</p>

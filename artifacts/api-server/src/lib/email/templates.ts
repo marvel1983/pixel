@@ -120,6 +120,7 @@ export interface KeyDeliveryData {
   customerName: string;
   keys: { productName: string; variant: string; licenseKey: string }[];
   locale?: string;
+  backorderNote?: string; // shown when partial keys delivered; remaining are on backorder
 }
 
 export function keyDeliveryEmail(data: KeyDeliveryData): { subject: string; html: string } {
@@ -143,7 +144,8 @@ export function keyDeliveryEmail(data: KeyDeliveryData): { subject: string; html
 ${et(lang, "email.keys.body", { orderRef: data.orderRef })}
 </p>
 ${keyBlocks}
-<div style="background:#fff3cd;padding:12px 16px;border-radius:6px;border:1px solid #ffc107;margin-top:24px;">
+${data.backorderNote ? `<div style="background:#fff8e1;padding:12px 16px;border-radius:6px;border:1px solid #f59e0b;margin-top:16px;margin-bottom:8px;"><p style="margin:0;font-size:13px;color:#92400e;">⏳ ${data.backorderNote}</p></div>` : ""}
+<div style="background:#fff3cd;padding:12px 16px;border-radius:6px;border:1px solid #ffc107;margin-top:${data.backorderNote ? "8px" : "24px"}">
 <p style="margin:0;font-size:13px;color:#856404;">
 ${et(lang, "email.keys.warning")}
 </p>
