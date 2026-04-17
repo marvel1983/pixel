@@ -6,6 +6,8 @@ import {
   licenseKeys,
   auditLog,
   users,
+  metenziProductMappings,
+  productVariants,
 } from "@workspace/db/schema";
 import { encrypt } from "../lib/encryption";
 import { sendKeyDeliveryEmail } from "../lib/email";
@@ -114,28 +116,42 @@ async function handleOrderFulfilled(data: FulfilledData) {
   const keysToDeliver: { productName: string; variant: string; licenseKey: string }[] = [];
 
   for (const item of data.items) {
-    const variantId = parseInt(item.variantId, 10);
-    if (Number.isNaN(variantId)) continue;
+    const keys = item.keys ?? [];
+    if (keys.length === 0) continue;
 
-    const dbItems = await db
-      .select({ id: orderItems.id, productName: orderItems.productName, variantName: orderItems.variantName })
-      .from(orderItems)
-      .where(and(eq(orderItems.orderId, order.id), eq(orderItems.variantId, variantId)))
+    // Resolve Pixel order item via metenzi_product_mappings (metenziProductId → pixelProductId → variant → orderItem)
+    const [mapping] = await db
+      .select({ pixelProductId: metenziProductMappings.pixelProductId })
+      .from(metenziProductMappings)
+      .where(eq(metenziProductMappings.metenziProductId, item.variantId))
       .limit(1);
 
-    const dbItem = dbItems[0];
-    const keys = item.keys ?? [];
+    if (!mapping?.pixelProductId) {
+      logger.warn({ metenziProductId: item.variantId, orderId: order.id }, "No Pixel mapping for Metenzi product in webhook — storing keys without orderItem link");
+    }
+
+    // Find the order item: join orderItems → productVariants to match by pixelProductId
+    let dbItem: { id: number; variantId: number; productName: string; variantName: string } | undefined;
+    if (mapping?.pixelProductId) {
+      const [found] = await db
+        .select({ id: orderItems.id, variantId: orderItems.variantId, productName: orderItems.productName, variantName: orderItems.variantName })
+        .from(orderItems)
+        .innerJoin(productVariants, eq(orderItems.variantId, productVariants.id))
+        .where(and(eq(orderItems.orderId, order.id), eq(productVariants.productId, mapping.pixelProductId)))
+        .limit(1);
+      dbItem = found;
+    }
 
     for (const key of keys) {
       const encryptedKey = encrypt(key);
       const keyMask = key.length <= 8 ? key.slice(0, 2) + "****" : key.slice(0, 4) + "****" + key.slice(-4);
       await db.insert(licenseKeys).values({
-        variantId,
+        variantId: dbItem?.variantId ?? 0,
         keyValue: encryptedKey,
         keyMask,
         status: "SOLD",
         source: "API",
-        orderItemId: dbItem?.id,
+        orderItemId: dbItem?.id ?? null,
         soldAt: new Date(),
       });
 

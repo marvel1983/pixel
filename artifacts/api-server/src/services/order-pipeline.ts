@@ -7,6 +7,7 @@ import {
   users,
   orderStatusEnum,
   flashSaleProducts,
+  metenziProductMappings,
 } from "@workspace/db/schema";
 import { processPayment } from "./payment";
 import { createGiftCardForOrder, sendGiftCardEmails, redeemGiftCards } from "./gift-card-service";
@@ -296,7 +297,29 @@ async function fulfillFromMetenzi(orderId: number, items: OrderInput["items"], _
   try {
     const config = await getMetenziConfig();
     if (!config) { logger.warn({ orderId }, "Metenzi not configured, skipping fulfillment"); return false; }
-    const metenziItems = items.map((it) => ({ variantId: String(it.variantId), quantity: it.quantity }));
+
+    // Resolve Metenzi product IDs from the mapping table (product-level mapping)
+    const productIds = [...new Set(items.map((it) => it.productId).filter(Boolean))];
+    const mappings = productIds.length
+      ? await db
+          .select({ pixelProductId: metenziProductMappings.pixelProductId, metenziProductId: metenziProductMappings.metenziProductId })
+          .from(metenziProductMappings)
+          .where(inArray(metenziProductMappings.pixelProductId, productIds))
+      : [];
+    const mappingByProductId = new Map(mappings.map((m) => [m.pixelProductId!, m.metenziProductId]));
+
+    const metenziItems = items
+      .flatMap((it) => {
+        const metenziId = mappingByProductId.get(it.productId);
+        if (!metenziId) return [];
+        return [{ variantId: metenziId, quantity: it.quantity }];
+      });
+
+    if (metenziItems.length === 0) {
+      logger.info({ orderId }, "No Metenzi-mapped items in order, skipping Metenzi fulfillment");
+      return false;
+    }
+
     const metenziOrder = await metenziCreateOrder(config, metenziItems);
     await db.update(orders).set({ externalOrderId: metenziOrder.id }).where(eq(orders.id, orderId));
     logger.info({ orderId, metenziOrderId: metenziOrder.id }, "Metenzi order placed, awaiting fulfillment webhook");
