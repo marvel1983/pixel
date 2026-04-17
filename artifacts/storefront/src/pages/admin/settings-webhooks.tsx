@@ -22,6 +22,8 @@ export default function SettingsWebhooksTab() {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [autoRegistering, setAutoRegistering] = useState(false);
   const [autoRegResult, setAutoRegResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [recentLogs, setRecentLogs] = useState<{ ts: string; event: string; outcome: string; status: number; error?: string }[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
   const token = useAuthStore((s) => s.token);
 
   const api = useCallback(async (path: string, opts?: RequestInit) => {
@@ -65,6 +67,12 @@ export default function SettingsWebhooksTab() {
       setWebhooks((p) => p.filter((w) => w.id !== id));
     } catch (e) { alert((e as Error).message); }
     setConfirmDelete(null);
+  };
+
+  const loadLogs = async () => {
+    setLogsLoading(true);
+    try { const d = await api("/admin/settings/webhook-logs"); setRecentLogs(d.logs ?? []); } catch { /* ignore */ }
+    setLogsLoading(false);
   };
 
   if (!loaded) return <div className="text-sm text-muted-foreground p-4">Loading...</div>;
@@ -144,6 +152,31 @@ export default function SettingsWebhooksTab() {
           </div>
         </div>
       )}
+
+      <div className="rounded-lg border bg-white p-5 space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-sm">Recent Incoming Events</h3>
+          <Button size="sm" variant="outline" onClick={loadLogs} disabled={logsLoading}>{logsLoading ? "Loading…" : "Refresh Logs"}</Button>
+        </div>
+        {recentLogs.length === 0 ? (
+          <p className="text-xs text-muted-foreground">Click "Refresh Logs" to see recent webhook activity (in-memory, last 50).</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs border-collapse">
+              <thead><tr className="bg-gray-50 text-left"><th className="px-2 py-1 border">Time</th><th className="px-2 py-1 border">Event</th><th className="px-2 py-1 border">Status</th><th className="px-2 py-1 border">Outcome</th><th className="px-2 py-1 border">Error</th></tr></thead>
+              <tbody>{recentLogs.slice(0, 20).map((l, i) => (
+                <tr key={i} className={l.outcome === "ok" ? "bg-green-50" : l.outcome === "challenge" ? "bg-blue-50" : "bg-red-50"}>
+                  <td className="px-2 py-1 border font-mono whitespace-nowrap">{new Date(l.ts).toLocaleTimeString()}</td>
+                  <td className="px-2 py-1 border font-mono">{l.event}</td>
+                  <td className="px-2 py-1 border">{l.status}</td>
+                  <td className="px-2 py-1 border">{l.outcome}</td>
+                  <td className="px-2 py-1 border text-red-600 max-w-xs truncate">{l.error ?? ""}</td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {confirmDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setConfirmDelete(null)}>
