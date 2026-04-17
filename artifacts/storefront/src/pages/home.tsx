@@ -1,6 +1,6 @@
 import { useState, useEffect, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { MOCK_PRODUCTS } from "@/lib/mock-data";
+import type { MockProduct } from "@/lib/mock-data";
 import { HeroBanner } from "@/components/home/hero-banner";
 import { CategorySidebar } from "@/components/home/category-sidebar";
 import { FeaturedSpotlight } from "@/components/home/featured-spotlight";
@@ -28,22 +28,61 @@ interface Section {
   config: Record<string, unknown>;
 }
 
-const windowsProducts = MOCK_PRODUCTS.filter((p) => p.categorySlug === "operating-systems");
-const officeProducts = MOCK_PRODUCTS.filter((p) => p.categorySlug === "office-productivity");
-const antivirusProducts = MOCK_PRODUCTS.filter((p) => p.categorySlug === "antivirus-security");
-const gameProducts = MOCK_PRODUCTS.filter((p) => p.categorySlug === "games");
-const devProducts = MOCK_PRODUCTS.filter((p) => p.categorySlug === "servers-development");
-const newProducts = MOCK_PRODUCTS.filter((p) => p.isNew);
-const featuredProducts = MOCK_PRODUCTS.filter((p) => p.isFeatured);
+interface ApiVariant {
+  id: number; name: string; sku: string; platform: string | null;
+  priceUsd: string; compareAtPriceUsd: string | null; stockCount: number;
+}
+interface ApiProduct {
+  id: number; name: string; slug: string; imageUrl: string | null;
+  avgRating: string | null; reviewCount: number; isFeatured: boolean;
+  categorySlug: string | null; regionRestrictions?: string[];
+  platformType?: string | null; variants: ApiVariant[];
+}
+
+function toMockProduct(p: ApiProduct): MockProduct {
+  return {
+    id: p.id,
+    name: p.name,
+    slug: p.slug,
+    imageUrl: p.imageUrl,
+    categorySlug: p.categorySlug ?? "",
+    avgRating: Number(p.avgRating ?? 0),
+    reviewCount: p.reviewCount,
+    isFeatured: p.isFeatured,
+    isNew: false,
+    regionRestrictions: p.regionRestrictions ?? [],
+    platformType: p.platformType ?? null,
+    variants: p.variants.map((v) => ({
+      id: v.id,
+      name: v.name,
+      sku: v.sku,
+      platform: v.platform ?? "",
+      priceUsd: v.priceUsd,
+      compareAtPriceUsd: v.compareAtPriceUsd,
+      stockCount: v.stockCount,
+    })),
+  };
+}
+
+async function fetchProducts(params: Record<string, string>): Promise<MockProduct[]> {
+  const p = new URLSearchParams({ limit: "12", stock: "1", ...params });
+  const r = await fetch(`${API}/products?${p}`);
+  if (!r.ok) return [];
+  const d = await r.json() as { items?: ApiProduct[] };
+  return (d.items ?? []).map(toMockProduct);
+}
+
+const CATEGORY_TABS = [
+  { value: "operating-systems",   categorySlug: "operating-systems",   labelKey: "home.categoryTabOs" },
+  { value: "office-productivity", categorySlug: "office-productivity", labelKey: "home.categoryTabOffice" },
+  { value: "antivirus-security",  categorySlug: "antivirus-security",  labelKey: "home.categoryTabSecurity" },
+  { value: "games",               categorySlug: "games",               labelKey: "home.categoryTabGames" },
+  { value: "servers-development", categorySlug: "servers-development", labelKey: "home.categoryTabDev" },
+];
 
 const ALL_TYPES = [
-  "HERO_SLIDER",
-  "CATEGORY_ROW",
-  "BRAND_SECTIONS",
-  "PRODUCT_SPOTLIGHT",
-  "FEATURED_TEXT_BANNER",
-  "NEW_ADDITIONS",
-  "FEATURED_BUNDLES",
+  "HERO_SLIDER", "CATEGORY_ROW", "BRAND_SECTIONS",
+  "PRODUCT_SPOTLIGHT", "FEATURED_TEXT_BANNER", "NEW_ADDITIONS", "FEATURED_BUNDLES",
 ];
 
 const SECTION_VARIANT: Partial<Record<string, "default" | "muted" | "card">> = {
@@ -54,40 +93,15 @@ const SECTION_VARIANT: Partial<Record<string, "default" | "muted" | "card">> = {
   FEATURED_BUNDLES: "card",
 };
 
-function renderSection(type: string, t: (key: string, opts?: Record<string, string>) => string): ReactNode {
-  switch (type) {
-    case "HERO_SLIDER":
-      return null;
-    case "CATEGORY_ROW":
-      return (
-        <CategoryBrowseTabs
-          eyebrow={t("home.sectionEyebrowShop")}
-          title={t("home.browseByCategory")}
-          tabs={[
-            { value: "operating-systems", categorySlug: "operating-systems", labelKey: "home.categoryTabOs", products: windowsProducts },
-            { value: "office-productivity", categorySlug: "office-productivity", labelKey: "home.categoryTabOffice", products: officeProducts },
-            { value: "antivirus-security", categorySlug: "antivirus-security", labelKey: "home.categoryTabSecurity", products: antivirusProducts },
-            { value: "games", categorySlug: "games", labelKey: "home.categoryTabGames", products: gameProducts },
-            { value: "servers-development", categorySlug: "servers-development", labelKey: "home.categoryTabDev", products: devProducts },
-          ]}
-        />
-      );
-    case "BRAND_SECTIONS":
-      return <ShopByBrand />;
-    case "PRODUCT_SPOTLIGHT":
-      return <FeaturedSpotlight products={featuredProducts} />;
-    case "NEW_ADDITIONS":
-      return <NewAdditions products={newProducts} />;
-    case "FEATURED_BUNDLES":
-      return <FeaturedBundles />;
-    default:
-      return null;
-  }
+interface HomepageProducts {
+  featured: MockProduct[];
+  byCategory: Record<string, MockProduct[]>;
 }
 
 export default function HomePage() {
   const { t } = useTranslation();
   const [sectionTypes, setSectionTypes] = useState<string[]>(ALL_TYPES);
+  const [hp, setHp] = useState<HomepageProducts>({ featured: [], byCategory: {} });
 
   useEffect(() => {
     setSeoMeta({ title: t("seo.homeTitle"), description: t("seo.homeDescription") });
@@ -108,22 +122,59 @@ export default function HomePage() {
       .catch(() => {});
   }, []);
 
-  // Split: sections before and after PRODUCT_SPOTLIGHT to insert promo banner between them
-  const otherSections = sectionTypes.filter((t) => t !== "HERO_SLIDER");
+  useEffect(() => {
+    // Fetch all product data in parallel
+    const categoryFetches = CATEGORY_TABS.map(({ categorySlug }) =>
+      fetchProducts({ cat: categorySlug }).then((items) => [categorySlug, items] as const)
+    );
+    const featuredFetch = fetchProducts({ featured: "1" });
+
+    Promise.all([featuredFetch, ...categoryFetches]).then(([featured, ...catResults]) => {
+      const byCategory: Record<string, MockProduct[]> = {};
+      for (const [slug, items] of catResults) byCategory[slug] = items;
+      setHp({ featured, byCategory });
+    }).catch(() => {});
+  }, []);
+
+  function renderSection(type: string): ReactNode {
+    switch (type) {
+      case "HERO_SLIDER":
+        return null;
+      case "CATEGORY_ROW":
+        return (
+          <CategoryBrowseTabs
+            eyebrow={t("home.sectionEyebrowShop")}
+            title={t("home.browseByCategory")}
+            tabs={CATEGORY_TABS.map((tab) => ({
+              ...tab,
+              products: hp.byCategory[tab.categorySlug] ?? [],
+            }))}
+          />
+        );
+      case "BRAND_SECTIONS":
+        return <ShopByBrand />;
+      case "PRODUCT_SPOTLIGHT":
+        return <FeaturedSpotlight products={hp.featured} />;
+      case "NEW_ADDITIONS":
+        return <NewAdditions products={hp.featured.filter((_, i) => i < 6)} />;
+      case "FEATURED_BUNDLES":
+        return <FeaturedBundles />;
+      default:
+        return null;
+    }
+  }
+
+  const otherSections = sectionTypes.filter((s) => s !== "HERO_SLIDER");
   const spotlightIdx = otherSections.indexOf("PRODUCT_SPOTLIGHT");
   const beforePromo = spotlightIdx >= 0 ? otherSections.slice(0, spotlightIdx) : otherSections;
   const afterPromo = spotlightIdx >= 0 ? otherSections.slice(spotlightIdx) : [];
 
   function renderBlocks(types: string[]) {
     return types.map((type) => {
-      const inner = renderSection(type, t);
+      const inner = renderSection(type);
       if (!inner) return null;
       const variant = SECTION_VARIANT[type] ?? "default";
-      return (
-        <PageSection key={type} variant={variant}>
-          {inner}
-        </PageSection>
-      );
+      return <PageSection key={type} variant={variant}>{inner}</PageSection>;
     });
   }
 
@@ -131,11 +182,8 @@ export default function HomePage() {
     <div>
       <OrganizationJsonLd />
       <WebSiteJsonLd />
-
-      {/* Hero + trust + stats */}
       <div className="bg-muted/20">
         <div className="container mx-auto px-4 pb-4 pt-6 lg:pt-8">
-          {/* Sidebar + banner: sidebar hidden on mobile */}
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-[220px_1fr]">
             <CategorySidebar />
             <HeroBanner />
@@ -144,19 +192,10 @@ export default function HomePage() {
           <StatsStrip className="mt-3" />
         </div>
       </div>
-
-      {/* Homepage body */}
       <div className="container mx-auto space-y-6 px-4 pt-3 pb-6">
-
-        {/* Sections before promo banner */}
         {renderBlocks(beforePromo)}
-
-        {/* Mid-page promo banner */}
         {spotlightIdx >= 0 && <PromoBanner />}
-
-        {/* Sections after promo banner */}
         {renderBlocks(afterPromo)}
-
         <TrustpilotCarousel />
         <RecentlyViewed />
       </div>

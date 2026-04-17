@@ -13,17 +13,19 @@ import { z } from "zod";
 const router = Router();
 
 const browseSchema = z.object({
-  q:      z.string().max(200).optional(),
-  limit:  z.coerce.number().int().min(1).max(100).default(24),
-  offset: z.coerce.number().int().min(0).default(0),
-  cat:    z.string().optional(),
-  plat:   z.string().optional(),
-  min:    z.coerce.number().min(0).optional(),
-  max:    z.coerce.number().min(0).optional(),
-  stock:  z.enum(["0", "1"]).optional(),
-  sort:   z.string().optional(),
-  tags:   z.string().optional(),
-  attrs:  z.string().optional(),
+  q:        z.string().max(200).optional(),
+  limit:    z.coerce.number().int().min(1).max(100).default(24),
+  offset:   z.coerce.number().int().min(0).default(0),
+  cat:      z.string().optional(),
+  plat:     z.string().optional(),
+  min:      z.coerce.number().min(0).optional(),
+  max:      z.coerce.number().min(0).optional(),
+  stock:    z.enum(["0", "1"]).optional(),
+  sort:     z.string().optional(),
+  tags:     z.string().optional(),
+  attrs:    z.string().optional(),
+  featured: z.enum(["0", "1"]).optional(),
+  ids:      z.string().optional(),
 });
 
 router.get("/products", async (req: Request, res: Response) => {
@@ -33,10 +35,18 @@ router.get("/products", async (req: Request, res: Response) => {
     return;
   }
 
-  const { q, limit, offset, cat, plat, min, max, stock, sort } = parsed.data;
+  const { q, limit, offset, cat, plat, min, max, stock, sort, featured, ids } = parsed.data;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const conditions: SQL<any>[] = [eq(products.isActive, true)];
+
+  if (featured === "1") conditions.push(eq(products.isFeatured, true));
+
+  // ID list filter (recently viewed, etc.)
+  if (ids) {
+    const parsedIds = ids.split(",").map(Number).filter((n) => Number.isInteger(n) && n > 0);
+    if (parsedIds.length > 0) conditions.push(inArray(products.id, parsedIds));
+  }
 
   // Full-text search
   if (q && q.trim().length > 0) {
