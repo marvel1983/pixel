@@ -330,7 +330,13 @@ async function fulfillFromMetenzi(orderId: number, items: OrderInput["items"], _
     const metenziItems = resolvedItems.map((it) => ({ productId: it.metenziProductId, quantity: it.quantity }));
     const metenziOrder = await metenziCreateOrder(config, metenziItems);
     await db.update(orders).set({ externalOrderId: metenziOrder.id }).where(eq(orders.id, orderId));
-    logger.info({ orderId, metenziOrderId: metenziOrder.id }, "Metenzi order placed, awaiting fulfillment webhook");
+    logger.info({ orderId, metenziOrderId: metenziOrder.id, status: metenziOrder.status, keysInResponse: metenziOrder.keys?.length ?? 0 }, "Metenzi order placed");
+
+    // Metenzi often returns keys immediately (status: "paid") — process them now rather than waiting for webhook
+    if (metenziOrder.status === "paid" && (metenziOrder.keys?.length ?? 0) > 0) {
+      const { handleWebhookEvent } = await import("./webhook-handlers");
+      await handleWebhookEvent("order.fulfilled", { id: metenziOrder.id, keys: metenziOrder.keys });
+    }
     return true;
   } catch (err) {
     const isCircuitOpen = err instanceof CircuitOpenError;

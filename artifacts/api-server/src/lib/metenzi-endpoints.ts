@@ -173,11 +173,23 @@ export async function createOrder(
   if (!res.ok) {
     throw new Error(`Failed to create Metenzi order: ${res.status}`);
   }
-  // Handle { order: {...} }, { data: {...} }, or direct object
+  // Metenzi wraps response: { success, data: { orderId, keys, status, ... } }
+  // Note: creation response uses "orderId" (not "id"); GET response uses "id"
   const d = res.data;
-  const order = (d.order ?? d.data ?? (d.id ? d : undefined)) as MetenziOrder | undefined;
-  if (!order?.id) {
-    throw new Error(`Metenzi createOrder: unexpected response (no order id). Raw: ${JSON.stringify(d).slice(0, 200)}`);
+  const inner = (d.data ?? d.order ?? (d.orderId || d.id ? d : undefined)) as Record<string, unknown> | undefined;
+  if (!inner) {
+    throw new Error(`Metenzi createOrder: unexpected response shape. Raw: ${JSON.stringify(d).slice(0, 200)}`);
+  }
+  const order: MetenziOrder = {
+    id: (inner.orderId ?? inner.id) as string,
+    status: (inner.status ?? "") as string,
+    items: (inner.items ?? []) as MetenziOrderItem[],
+    keys: inner.keys as MetenziKeyItem[] | undefined,
+    total: inner.total as string | undefined,
+    createdAt: (inner.createdAt ?? "") as string,
+  };
+  if (!order.id) {
+    throw new Error(`Metenzi createOrder: no order id in response. Raw: ${JSON.stringify(d).slice(0, 200)}`);
   }
   return order;
 }
