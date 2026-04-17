@@ -104,8 +104,8 @@ async function processOrderBackorder(
     return;
   }
 
-  // Place Metenzi order for available portion
-  const metenziOrder = await metenziCreateOrder(config!, metenziItems, true);
+  // Place Metenzi order for available portion only (Metenzi rejects qty > stock)
+  const metenziOrder = await metenziCreateOrder(config!, metenziItems);
 
   // Append new Metenzi order ID (comma-separated) so findOrderByMetenziId LIKE query matches it
   const newExternalId = order.externalOrderId

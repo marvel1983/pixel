@@ -355,23 +355,24 @@ async function fulfillFromMetenzi(orderId: number, items: OrderInput["items"], _
       return "skip";
     }
 
-    // Determine what to order now vs backorder
-    // - If availableStock >= requestedQty: order full qty (Metenzi delivers all immediately)
-    // - If 0 < availableStock < requestedQty AND backorderAllowed: order full qty with allowBackorder=true
-    //   (Metenzi delivers in-stock now and queues the rest via backorder.fulfilled webhook)
-    // - If availableStock = 0: skip Metenzi order for this product — poll until stock arrives
+    // Determine what to order now vs backorder.
+    // Metenzi B2B API rejects orders where qty > available stock — we must cap at stockCount.
+    // The remainder is tracked internally: backorder poller places a follow-up order when stock arrives.
     const metenziItems: { productId: string; quantity: number }[] = [];
     let anyBackordered = false;
 
     for (const [, info] of byProduct) {
-      if (info.availableStock <= 0) {
+      const orderNow = Math.min(info.requestedQty, info.availableStock);
+      if (orderNow <= 0) {
         anyBackordered = true;
         logger.info({ orderId, metenziProductId: info.metenziId, requestedQty: info.requestedQty }, "Zero stock — product fully backordered, skipping Metenzi order");
         continue;
       }
-      // Has some or all stock — let Metenzi handle the split via allowBackorder
-      metenziItems.push({ productId: info.metenziId, quantity: info.requestedQty });
-      if (info.requestedQty > info.availableStock) anyBackordered = true;
+      metenziItems.push({ productId: info.metenziId, quantity: orderNow });
+      if (orderNow < info.requestedQty) {
+        anyBackordered = true;
+        logger.info({ orderId, metenziProductId: info.metenziId, orderNow, requestedQty: info.requestedQty, backordered: info.requestedQty - orderNow }, "Partial stock — ordering available qty now, remainder backordered");
+      }
     }
 
     if (metenziItems.length === 0) {
@@ -381,9 +382,8 @@ async function fulfillFromMetenzi(orderId: number, items: OrderInput["items"], _
       return "backordered";
     }
 
-    // Place Metenzi order; pass allowBackorder=true so Metenzi delivers in-stock keys now
-    // and queues the shortage via backorder.fulfilled webhook (requires price_list.allow_backorder=true)
-    const metenziOrder = await metenziCreateOrder(config, metenziItems, true);
+    // Place Metenzi order for the available (capped) quantities only
+    const metenziOrder = await metenziCreateOrder(config, metenziItems);
 
     // Store externalOrderId BEFORE processing inline keys so findOrderByMetenziId can match
     await db.update(orders).set({ externalOrderId: metenziOrder.id }).where(eq(orders.id, orderId));

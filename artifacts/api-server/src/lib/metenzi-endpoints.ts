@@ -180,12 +180,11 @@ export async function getProductById(
 export async function createOrder(
   config: MetenziClientConfig,
   items: { productId: string; quantity: number }[],
-  allowBackorder = true,
 ): Promise<MetenziOrder> {
   const res = await metenziRequest<Record<string, unknown>>(config, {
     method: "POST",
     path: "/api/public/orders",
-    body: { items, allowBackorder },
+    body: { items },
   });
   if (!res.ok) {
     const detail = typeof res.data === "object" && res.data !== null
