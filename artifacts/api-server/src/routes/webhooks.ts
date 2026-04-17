@@ -20,33 +20,27 @@ const router = Router();
 
 const REPLAY_WINDOW_MS = 5 * 60 * 1000;
 
+// Metenzi signature format: HMAC-SHA256(secret, timestamp + "." + METHOD + "." + path + "." + body)
+// Headers: X-Signature-Timestamp, X-Signature
 function verifySignature(
   body: string,
   timestamp: string,
   signature: string,
   secret: string,
+  method: string,
+  path: string,
 ): boolean {
-  // Strip common prefixes (whsec_, sha256=, etc.)
   const rawSecret = secret.replace(/^whsec_/, "");
-  // Normalize signature — strip "sha256=" prefix if present
   const rawSig = signature.replace(/^sha256=/, "");
-
-  const payload = `${timestamp}.${body}`;
-  const expected = crypto
-    .createHmac("sha256", rawSecret)
-    .update(payload)
-    .digest("hex");
-
+  const payload = `${timestamp}.${method.toUpperCase()}.${path}.${body}`;
+  const expected = crypto.createHmac("sha256", rawSecret).update(payload).digest("hex");
   try {
-    // Try hex comparison
     if (rawSig.length === expected.length) {
       return crypto.timingSafeEqual(Buffer.from(rawSig, "hex"), Buffer.from(expected, "hex"));
     }
-    // Try base64 comparison (some systems send base64-encoded sig)
+    // fallback: base64
     const expectedB64 = Buffer.from(expected, "hex").toString("base64");
-    if (rawSig === expectedB64) return true;
-    const expectedB64url = Buffer.from(expected, "hex").toString("base64url");
-    return rawSig === expectedB64url;
+    return rawSig === expectedB64 || rawSig === Buffer.from(expected, "hex").toString("base64url");
   } catch {
     return false;
   }
@@ -78,11 +72,12 @@ router.post("/webhooks/metenzi", async (req, res) => {
     return;
   }
 
-  const signature = req.headers["x-signature"];
-  const timestamp = req.headers["x-timestamp"];
+  // Metenzi uses X-Signature-Timestamp (not X-Timestamp)
+  const signature = req.headers["x-signature"] as string | undefined;
+  const timestamp = (req.headers["x-signature-timestamp"] ?? req.headers["x-timestamp"]) as string | undefined;
 
-  if (typeof signature !== "string" || typeof timestamp !== "string") {
-    logger.warn("Webhook missing signature headers");
+  if (!signature || !timestamp) {
+    logger.warn({ headers: Object.keys(req.headers) }, "Webhook missing signature headers");
     res.status(401).json({ error: "Missing signature headers" });
     return;
   }
@@ -103,15 +98,17 @@ router.post("/webhooks/metenzi", async (req, res) => {
   const rawBody = req.rawBody ?? JSON.stringify(req.body);
   // Use dedicated webhookSecret for inbound verification; fall back to hmacSecret
   const verifySecret = config.webhookSecret ?? config.hmacSecret;
+  // Path for signature: just the pathname without query string
+  const reqPath = req.path || "/api/webhooks/metenzi";
   let valid: boolean;
   try {
-    valid = verifySignature(rawBody, timestamp, signature, verifySecret);
+    valid = verifySignature(rawBody, timestamp, signature, verifySecret, req.method, reqPath);
   } catch {
     valid = false;
   }
 
   if (!valid) {
-    logger.warn({ signature: (signature as string).slice(0, 20) + "…", timestamp }, "Webhook signature verification failed");
+    logger.warn({ sig: signature.slice(0, 20) + "…", timestamp, path: reqPath }, "Webhook signature verification failed");
     res.status(401).json({ error: "Invalid signature" });
     return;
   }
