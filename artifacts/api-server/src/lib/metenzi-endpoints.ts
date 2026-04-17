@@ -68,6 +68,8 @@ export interface MetenziWebhook {
   url: string;
   events: string[];
   isActive: boolean;
+  signingSecret?: string; // returned only on creation, save immediately
+  secret?: string;        // alternate key name Metenzi may use
 }
 
 export interface MetenziClaim {
@@ -259,7 +261,9 @@ export async function createWebhook(
     // Webhook was likely created — return a stub so callers don't crash
     return { id: String(d.id ?? "unknown"), url, events, isActive: true } as MetenziWebhook;
   }
-  return wh;
+  // Capture signing secret if present at any level of the response
+  const secret = (wh.signingSecret ?? wh.secret ?? (d as Record<string, unknown>).signingSecret ?? (d as Record<string, unknown>).secret) as string | undefined;
+  return { ...wh, signingSecret: secret };
 }
 
 export async function deleteWebhook(

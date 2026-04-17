@@ -469,12 +469,27 @@ router.post(
 
     try {
       const webhook = await createWebhook(config, webhookUrl, WEBHOOK_EVENTS);
-      logger.info({ webhookId: webhook.id, webhookUrl }, "Metenzi webhook registered");
-      res.json({ webhook });
+      logger.info({ webhookId: webhook.id, webhookUrl, hasSecret: !!webhook.signingSecret }, "Metenzi webhook registered");
+
+      // Auto-save signing secret if Metenzi returned it in the response
+      if (webhook.signingSecret) {
+        const { encrypt } = await import("../lib/encryption");
+        const { db } = await import("@workspace/db");
+        const { apiProviders } = await import("@workspace/db/schema");
+        const { eq } = await import("drizzle-orm");
+        const { clearMetenziConfigCache } = await import("../lib/metenzi-config");
+        const encrypted = encrypt(webhook.signingSecret);
+        await db.update(apiProviders)
+          .set({ webhookSecretEncrypted: encrypted, updatedAt: new Date() })
+          .where(eq(apiProviders.slug, "metenzi"));
+        clearMetenziConfigCache();
+        logger.info({ webhookId: webhook.id }, "Auto-saved Metenzi webhook signing secret");
+      }
+
+      res.json({ webhook, secretSaved: !!webhook.signingSecret });
     } catch (err) {
       logger.error({ err }, "Failed to register Metenzi webhook");
       const msg = err instanceof Error ? err.message : "Registration failed";
-      // Return 403 directly if Metenzi rejected it (API key may not have webhook permissions)
       const status = msg.includes("403") ? 403 : 500;
       res.status(status).json({ error: msg });
     }
