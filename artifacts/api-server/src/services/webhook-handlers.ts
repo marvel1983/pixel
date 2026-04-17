@@ -10,7 +10,7 @@ import {
   productVariants,
 } from "@workspace/db/schema";
 import { encrypt } from "../lib/encryption";
-import { sendKeyDeliveryEmail } from "../lib/email";
+import { sendKeyDeliveryEmail, enqueueEmail } from "../lib/email";
 import { logger } from "../lib/logger";
 import { awardOrderPoints } from "./loyalty-service";
 
@@ -251,8 +251,20 @@ async function handleOrderBackorder(data: OrderEventData) {
   if (order) {
     await db
       .update(orders)
-      .set({ status: "PROCESSING", notes: "Backorder: awaiting supplier stock", updatedAt: new Date() })
+      .set({ status: "BACKORDERED", notes: "Backordered: awaiting stock from supplier", updatedAt: new Date() })
       .where(eq(orders.id, order.id));
+
+    if (order.email) {
+      const subject = `Your order ${order.orderNumber} is on backorder`;
+      const html = `<p>Hi,</p>
+<p>Your order <strong>${order.orderNumber}</strong> has been placed on backorder.</p>
+<p>We are awaiting stock from our supplier. Your order will be fulfilled automatically as soon as the keys are available — no action needed on your part.</p>
+<p>You will receive your license key(s) by email once the order is fulfilled.</p>
+<p>Thank you for your patience.</p>`;
+      enqueueEmail(order.email, subject, html, { type: "backorder-notification", orderId: order.id }).catch((err) =>
+        logger.error({ err, orderId: order.id }, "Failed to enqueue backorder notification email"),
+      );
+    }
   }
 
   await logAuditEvent("UPDATE", "order", order?.id ?? null, {
@@ -319,8 +331,11 @@ export async function handleWebhookEvent(event: string, data: unknown) {
       await handleOrderFulfilled(data as FulfilledData);
       break;
     case "order.backorder":
-    case "backorder.fulfilled":
       await handleOrderBackorder(data as OrderEventData);
+      break;
+    // backorder.fulfilled = Metenzi has received stock and fulfilled the backorder — deliver keys
+    case "backorder.fulfilled":
+      await handleOrderFulfilled(data as FulfilledData);
       break;
     case "order.cancelled":
       await handleOrderCancelled(data as OrderEventData);

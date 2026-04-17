@@ -160,6 +160,7 @@ async function upsertVariant(
     priceUsd: v.priceUsd.toString(),
     compareAtPriceUsd: v.compareAtPriceUsd?.toString() ?? null,
     stockCount: v.stockCount,
+    backorderAllowed: true, // Metenzi fulfills orders even when stock is 0
     updatedAt: new Date(),
   };
 

@@ -82,6 +82,7 @@ export const productVariants = pgTable("product_variants", {
   b2bPriceUsd: numeric("b2b_price_usd", { precision: 10, scale: 2 }),
   stockCount: integer("stock_count").notNull().default(0),
   lowStockThreshold: integer("low_stock_threshold").notNull().default(5),
+  backorderAllowed: boolean("backorder_allowed").notNull().default(false),
   isActive: boolean("is_active").notNull().default(true),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),

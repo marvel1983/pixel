@@ -68,6 +68,7 @@ export function QuickViewModal({ product, open, onClose }: QuickViewModalProps) 
     ? Math.round(((comparePrice - price) / comparePrice) * 100)
     : 0;
   const inStock = variant.stockCount > 0;
+  const canOrder = inStock || !!variant.backorderAllowed;
   const displayPrice = flashSalePrice ? parseFloat(flashSalePrice) : price;
 
   function handleAddToCart() {
@@ -198,10 +199,10 @@ export function QuickViewModal({ product, open, onClose }: QuickViewModalProps) 
           <div className="flex flex-wrap items-center gap-1.5">
             <span
               className={`text-xs font-medium ${
-                inStock ? "text-green-600" : "text-destructive"
+                inStock ? "text-green-600" : canOrder ? "text-amber-600" : "text-destructive"
               }`}
             >
-              {inStock ? t("product.inStock") : t("product.outOfStock")}
+              {inStock ? t("product.inStock") : canOrder ? "Pre-order" : t("product.outOfStock")}
             </span>
             <RegionBadge regions={product.regionRestrictions ?? []} compact />
             <StockUrgencyBadge stockCount={variant.stockCount} compact />
@@ -230,15 +231,22 @@ export function QuickViewModal({ product, open, onClose }: QuickViewModalProps) 
               className={`h-9 w-full gap-2 text-xs font-semibold text-white transition-colors ${
                 added
                   ? "bg-emerald-500 hover:bg-emerald-500"
+                  : !inStock && canOrder
+                  ? "bg-amber-500 hover:bg-amber-600"
                   : "bg-primary hover:bg-primary/90"
               }`}
               onClick={handleAddToCart}
-              disabled={!inStock}
+              disabled={!canOrder}
             >
               {added ? (
                 <>
                   <Check className="h-3.5 w-3.5 shrink-0" />
                   Added to Cart
+                </>
+              ) : !inStock && canOrder ? (
+                <>
+                  <ShoppingCart className="h-3.5 w-3.5 shrink-0" />
+                  Pre-order
                 </>
               ) : (
                 <>

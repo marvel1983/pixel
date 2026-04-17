@@ -65,6 +65,7 @@ export function ProductCard({ product, flashSalePrice: flashSalePriceProp }: Pro
     ? Math.round(((comparePrice - price) / comparePrice) * 100)
     : 0;
   const inStock = variant.stockCount > 0;
+  const canOrder = inStock || !!variant.backorderAllowed;
 
   function handleAddToCart(e: React.MouseEvent) {
     e.preventDefault();
@@ -203,8 +204,8 @@ export function ProductCard({ product, flashSalePrice: flashSalePriceProp }: Pro
           </div>
 
           <div className="flex items-center justify-center gap-1.5 mb-1 flex-wrap">
-            <span className={`text-xs ${inStock ? "text-green-600" : "text-destructive"}`}>
-              {inStock ? t("product.inStock") : t("product.outOfStock")}
+            <span className={`text-xs ${inStock ? "text-green-600" : canOrder ? "text-amber-600" : "text-destructive"}`}>
+              {inStock ? t("product.inStock") : canOrder ? "Pre-order" : t("product.outOfStock")}
             </span>
             <RegionBadge regions={product.regionRestrictions ?? []} compact />
             <StockUrgencyBadge stockCount={variant.stockCount} compact />
@@ -240,14 +241,19 @@ export function ProductCard({ product, flashSalePrice: flashSalePriceProp }: Pro
               type="button"
               variant="default"
               size="sm"
-              className={`no-default-hover-elevate no-default-active-elevate h-9 min-h-9 w-full gap-2 rounded-lg border-0 px-3 text-xs font-semibold text-white shadow-sm transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50 ${added ? "bg-emerald-500 hover:bg-emerald-500" : "bg-primary hover:bg-primary/90 active:bg-primary/85"}`}
+              className={`no-default-hover-elevate no-default-active-elevate h-9 min-h-9 w-full gap-2 rounded-lg border-0 px-3 text-xs font-semibold text-white shadow-sm transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50 ${added ? "bg-emerald-500 hover:bg-emerald-500" : !inStock && canOrder ? "bg-amber-500 hover:bg-amber-600 active:bg-amber-700" : "bg-primary hover:bg-primary/90 active:bg-primary/85"}`}
               onClick={handleAddToCart}
-              disabled={!inStock}
+              disabled={!canOrder}
             >
               {added ? (
                 <>
                   <Check className="h-3.5 w-3.5 shrink-0" aria-hidden />
                   Added
+                </>
+              ) : !inStock && canOrder ? (
+                <>
+                  <ShoppingCart className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                  Pre-order
                 </>
               ) : (
                 <>

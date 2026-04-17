@@ -18,6 +18,7 @@ import { coupons } from "./coupons";
 export const orderStatusEnum = pgEnum("order_status", [
   "PENDING",
   "PROCESSING",
+  "BACKORDERED",
   "COMPLETED",
   "FAILED",
   "REFUNDED",

@@ -76,6 +76,7 @@ export function ProductInfo({ product }: ProductInfoProps) {
     : null;
   const discount = compareAt ? Math.round((1 - basePrice / compareAt) * 100) : 0;
   const inStock = selectedVariant.stockCount > 0;
+  const canOrder = inStock || !!selectedVariant.backorderAllowed;
 
   // Use engine price when available, fallback to variant base price
   const effectivePrice = enginePrice
@@ -264,8 +265,8 @@ export function ProductInfo({ product }: ProductInfoProps) {
             <Plus className="h-4 w-4" />
           </button>
         </div>
-        <span className={`text-sm ${inStock ? "text-green-600" : "text-red-500"}`}>
-          {inStock ? `In Stock (${selectedVariant.stockCount})` : "Out of Stock"}
+        <span className={`text-sm ${inStock ? "text-green-600" : canOrder ? "text-amber-600" : "text-red-500"}`}>
+          {inStock ? `In Stock (${selectedVariant.stockCount})` : canOrder ? "Available for Pre-order" : "Out of Stock"}
         </span>
         <StockUrgencyBadge stockCount={selectedVariant.stockCount} />
       </div>
@@ -276,12 +277,14 @@ export function ProductInfo({ product }: ProductInfoProps) {
         <Button
           ref={addToCartRef}
           size="sm"
-          className={`w-44 h-9 text-sm transition-colors ${added ? "bg-emerald-500 hover:bg-emerald-500 text-white" : ""}`}
-          disabled={!inStock}
+          className={`w-44 h-9 text-sm transition-colors ${added ? "bg-emerald-500 hover:bg-emerald-500 text-white" : !inStock && canOrder ? "bg-amber-500 hover:bg-amber-600 text-white" : ""}`}
+          disabled={!canOrder}
           onClick={handleAddToCart}
         >
           {added ? (
             <><Check className="h-3.5 w-3.5 mr-1.5" /> Added</>
+          ) : !inStock && canOrder ? (
+            <><ShoppingCart className="h-3.5 w-3.5 mr-1.5" /> Pre-order</>
           ) : (
             <><ShoppingCart className="h-3.5 w-3.5 mr-1.5" /> Add to Cart</>
           )}
@@ -332,12 +335,14 @@ export function ProductInfo({ product }: ProductInfoProps) {
           </div>
           <Button
             size="lg"
-            disabled={!inStock}
+            disabled={!canOrder}
             onClick={handleAddToCart}
-            className={`shrink-0 transition-colors ${added ? "bg-emerald-500 hover:bg-emerald-500 text-white" : ""}`}
+            className={`shrink-0 transition-colors ${added ? "bg-emerald-500 hover:bg-emerald-500 text-white" : !inStock && canOrder ? "bg-amber-500 hover:bg-amber-600 text-white" : ""}`}
           >
             {added ? (
               <><Check className="h-4 w-4 mr-2" /> Added</>
+            ) : !inStock && canOrder ? (
+              <><ShoppingCart className="h-4 w-4 mr-2" /> Pre-order</>
             ) : (
               <><ShoppingCart className="h-4 w-4 mr-2" /> Add to Cart</>
             )}

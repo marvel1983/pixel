@@ -189,7 +189,7 @@ router.get("/products", async (req: Request, res: Response) => {
   let variants: {
     id: number; productId: number; name: string; sku: string;
     platform: string | null; priceUsd: string; priceOverrideUsd: string | null;
-    compareAtPriceUsd: string | null; stockCount: number;
+    compareAtPriceUsd: string | null; stockCount: number; backorderAllowed: boolean;
   }[] = [];
 
   if (productIds.length > 0) {
@@ -204,6 +204,7 @@ router.get("/products", async (req: Request, res: Response) => {
         priceOverrideUsd: productVariants.priceOverrideUsd,
         compareAtPriceUsd: productVariants.compareAtPriceUsd,
         stockCount: productVariants.stockCount,
+        backorderAllowed: productVariants.backorderAllowed,
       })
       .from(productVariants)
       .where(and(eq(productVariants.isActive, true), inArray(productVariants.productId, productIds)));
@@ -218,6 +219,7 @@ router.get("/products", async (req: Request, res: Response) => {
         priceUsd: priceOverrideUsd ?? v.priceUsd,
       })),
   }));
+
 
   const facets = await computeFacets(allMatchingIds);
 
@@ -268,6 +270,7 @@ router.get("/products/:slug", async (req: Request, res: Response) => {
       priceOverrideUsd: productVariants.priceOverrideUsd,
       compareAtPriceUsd: productVariants.compareAtPriceUsd,
       stockCount: productVariants.stockCount,
+      backorderAllowed: productVariants.backorderAllowed,
     })
     .from(productVariants)
     .where(and(eq(productVariants.productId, product.id), eq(productVariants.isActive, true)));
