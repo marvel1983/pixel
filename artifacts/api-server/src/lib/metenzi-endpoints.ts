@@ -163,7 +163,7 @@ export async function getProductById(
 
 export async function createOrder(
   config: MetenziClientConfig,
-  items: { productId: string; quantity: number }[],
+  items: { variantId: string; quantity: number }[],
 ): Promise<MetenziOrder> {
   const res = await metenziRequest<Record<string, unknown>>(config, {
     method: "POST",
@@ -171,7 +171,10 @@ export async function createOrder(
     body: { items },
   });
   if (!res.ok) {
-    throw new Error(`Failed to create Metenzi order: ${res.status}`);
+    const detail = typeof res.data === "object" && res.data !== null
+      ? JSON.stringify(res.data).slice(0, 200)
+      : String(res.data ?? "");
+    throw new Error(`Failed to create Metenzi order: ${res.status} — ${detail}`);
   }
   // Metenzi wraps response: { success, data: { orderId, keys, status, ... } }
   // Note: creation response uses "orderId" (not "id"); GET response uses "id"

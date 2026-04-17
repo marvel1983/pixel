@@ -327,7 +327,7 @@ async function fulfillFromMetenzi(orderId: number, items: OrderInput["items"], _
       return false;
     }
 
-    const metenziItems = resolvedItems.map((it) => ({ productId: it.metenziProductId, quantity: it.quantity }));
+    const metenziItems = resolvedItems.map((it) => ({ variantId: it.metenziProductId, quantity: it.quantity }));
     const metenziOrder = await metenziCreateOrder(config, metenziItems);
     await db.update(orders).set({ externalOrderId: metenziOrder.id }).where(eq(orders.id, orderId));
     logger.info({ orderId, metenziOrderId: metenziOrder.id, status: metenziOrder.status, keysInResponse: metenziOrder.keys?.length ?? 0 }, "Metenzi order placed");
