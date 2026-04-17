@@ -42,7 +42,9 @@ function verifySignature(
 function isReplayAttack(timestamp: string): boolean {
   const ts = parseInt(timestamp, 10);
   if (Number.isNaN(ts)) return true;
-  const age = Math.abs(Date.now() - ts * 1000);
+  // Metenzi sends timestamp in milliseconds; if the value looks like seconds (< 1e12), convert
+  const tsMs = ts < 1e12 ? ts * 1000 : ts;
+  const age = Math.abs(Date.now() - tsMs);
   return age > REPLAY_WINDOW_MS;
 }
 
