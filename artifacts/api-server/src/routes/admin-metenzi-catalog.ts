@@ -39,13 +39,13 @@ router.get("/admin/metenzi/debug", ...guard, async (_req, res) => {
   res.json({ baseUrl: config.baseUrl, ok: rawRes.ok, status: rawRes.status, data: rawRes.data });
 });
 
-// ── POST /admin/metenzi/debug-order ─────────────────────────────────────────
-// Test order creation with a specific Metenzi product ID to see raw response
-router.post("/admin/metenzi/debug-order", ...guard, async (req, res) => {
+// ── GET /admin/metenzi/debug-order ──────────────────────────────────────────
+// Test order creation: /admin/metenzi/debug-order?id=<metenziProductId>
+router.get("/admin/metenzi/debug-order", ...guard, async (req, res) => {
   const config = await getMetenziConfig();
   if (!config) { res.status(503).json({ error: "Not configured" }); return; }
-  const { metenziProductId } = req.body;
-  if (!metenziProductId) { res.status(400).json({ error: "metenziProductId required" }); return; }
+  const metenziProductId = req.query.id as string | undefined;
+  if (!metenziProductId) { res.status(400).json({ error: "?id=<metenziProductId> required" }); return; }
   const rawRes = await metenziRequest(config, {
     method: "POST",
     path: "/api/public/orders",
