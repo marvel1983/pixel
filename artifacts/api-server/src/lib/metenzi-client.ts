@@ -59,7 +59,8 @@ function computeSignatureHeaders(
   path: string,
   bodyStr?: string,
 ): Record<string, string> {
-  const timestamp = Math.floor(Date.now() / 1000).toString();
+  // Metenzi requires milliseconds timestamp
+  const timestamp = Date.now().toString();
   const body = bodyStr ?? "";
   // Metenzi format: timestamp + "." + METHOD + "." + path + "." + body
   const signaturePayload = `${timestamp}.${method.toUpperCase()}.${path}.${body}`;

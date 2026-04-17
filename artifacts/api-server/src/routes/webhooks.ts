@@ -453,7 +453,9 @@ router.post(
     } catch (err) {
       logger.error({ err }, "Failed to register Metenzi webhook");
       const msg = err instanceof Error ? err.message : "Registration failed";
-      res.status(500).json({ error: msg });
+      // Return 403 directly if Metenzi rejected it (API key may not have webhook permissions)
+      const status = msg.includes("403") ? 403 : 500;
+      res.status(status).json({ error: msg });
     }
   },
 );
