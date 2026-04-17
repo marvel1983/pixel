@@ -50,13 +50,12 @@ function isReplayAttack(timestamp: string): boolean {
 }
 
 router.get("/webhooks/metenzi", (req, res) => {
-  const challenge = req.query.challenge;
+  // Metenzi uses "metenzi_challenge" query param for verification
+  const challenge = (req.query.metenzi_challenge ?? req.query.challenge) as string | undefined;
   if (typeof challenge === "string" && challenge.length > 0) {
     logger.info({ challenge }, "Metenzi webhook verification challenge received");
     appendWebhookLog({ direction: "in", source: "metenzi", event: "challenge", status: 200, outcome: "challenge", body: { challenge } });
-    // Metenzi expects plain text response with exactly the challenge value
-    res.setHeader("Content-Type", "text/plain");
-    res.send(challenge);
+    res.type("text/plain").send(challenge);
     return;
   }
   res.json({ status: "ok", message: "Metenzi webhook endpoint active" });
