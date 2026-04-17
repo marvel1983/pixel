@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Plus, Trash2, Webhook, AlertCircle, CheckCircle, X, Copy } from "lucide-react";
+import { Plus, Trash2, Webhook, AlertCircle, CheckCircle, X, Copy, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuthStore } from "@/stores/auth-store";
@@ -20,6 +20,8 @@ export default function SettingsWebhooksTab() {
   const [saving, setSaving] = useState(false);
   const [endpointUrl, setEndpointUrl] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [autoRegistering, setAutoRegistering] = useState(false);
+  const [autoRegResult, setAutoRegResult] = useState<{ ok: boolean; msg: string } | null>(null);
   const token = useAuthStore((s) => s.token);
 
   const api = useCallback(async (path: string, opts?: RequestInit) => {
@@ -81,10 +83,24 @@ export default function SettingsWebhooksTab() {
       {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 flex items-center gap-2"><AlertCircle className="h-4 w-4" /> {error}</div>}
 
       <div className="rounded-lg border bg-white p-5 space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2"><Webhook className="h-5 w-5 text-blue-600" /><h3 className="font-semibold">Registered Webhooks</h3></div>
-          <Button size="sm" onClick={openAdd}><Plus className="h-3 w-3 mr-1" /> Register Webhook</Button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button size="sm" variant="outline" disabled={autoRegistering} onClick={async () => {
+              setAutoRegistering(true); setAutoRegResult(null);
+              try {
+                await api("/webhooks/metenzi/register", { method: "POST" });
+                setAutoRegResult({ ok: true, msg: "Webhook registered successfully" });
+                await load();
+              } catch (e) { setAutoRegResult({ ok: false, msg: (e as Error).message }); }
+              setAutoRegistering(false);
+            }}><Zap className="h-3 w-3 mr-1" />{autoRegistering ? "Registering..." : "Auto-register Metenzi"}</Button>
+            <Button size="sm" onClick={openAdd}><Plus className="h-3 w-3 mr-1" /> Custom</Button>
+          </div>
         </div>
+        {autoRegResult && (
+          <p className={`text-xs ${autoRegResult.ok ? "text-green-600" : "text-red-600"}`}>{autoRegResult.msg}</p>
+        )}
         <div className="rounded-md border bg-gray-50 p-3 flex items-center gap-2 text-xs">
           <span className="text-muted-foreground">Your endpoint:</span>
           <code className="font-mono bg-white px-2 py-0.5 rounded border flex-1 truncate">{endpointUrl}</code>

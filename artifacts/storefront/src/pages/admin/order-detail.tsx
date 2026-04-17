@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "wouter";
-import { ArrowLeft, Send, CheckCircle, XCircle, Copy, Save, Clock, RotateCcw } from "lucide-react";
+import { ArrowLeft, Send, CheckCircle, XCircle, Copy, Save, Clock, RotateCcw, Key } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthStore } from "@/stores/auth-store";
@@ -40,6 +40,7 @@ export default function OrderDetailPage() {
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [refundOpen, setRefundOpen] = useState(false);
+  const [redelivering, setRedelivering] = useState(false);
   const token = useAuthStore((s) => s.token);
 
   const reload = () => {
@@ -69,6 +70,19 @@ export default function OrderDetailPage() {
       method: "POST", headers: { Authorization: `Bearer ${token}` },
     });
     alert("Email queued for resend");
+  };
+
+  const redeliverKeys = async () => {
+    if (!confirm("Re-fetch keys from Metenzi and assign them to this order?")) return;
+    setRedelivering(true);
+    try {
+      const r = await fetch(`${API}/admin/orders/${params.id}/redeliver-keys`, {
+        method: "POST", headers: { Authorization: `Bearer ${token}` },
+      });
+      const d = await r.json();
+      if (!r.ok) { alert(d.error ?? "Failed"); } else { alert("Keys redelivered successfully"); reload(); }
+    } catch { alert("Request failed"); }
+    setRedelivering(false);
   };
 
   const saveNotes = async () => {
@@ -121,6 +135,11 @@ export default function OrderDetailPage() {
         <ActionBtn onClick={resendEmail} icon={<Send className="h-3.5 w-3.5" />} color="sky">
           Resend Email
         </ActionBtn>
+        {order.externalOrderId && (
+          <ActionBtn onClick={redeliverKeys} disabled={redelivering} icon={<Key className="h-3.5 w-3.5" />} color="amber">
+            {redelivering ? "Re-delivering..." : "Re-deliver Keys"}
+          </ActionBtn>
+        )}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
@@ -342,6 +361,7 @@ function ActionBtn({ onClick, disabled, icon, color, children }: {
     red:     "border-red-300     bg-[#e53e3e]    hover:bg-[#fc5c5c]",
     violet:  "border-violet-300  bg-[#7c3aed]   hover:bg-[#8b5cf6]",
     sky:     "border-sky-300     bg-[#0284c7]   hover:bg-[#0ea5e9]",
+    amber:   "border-amber-300   bg-amber-600   hover:bg-amber-500",
   };
   return (
     <button
