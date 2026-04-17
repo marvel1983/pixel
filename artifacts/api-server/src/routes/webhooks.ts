@@ -70,6 +70,14 @@ router.get("/webhooks/metenzi", (req, res) => {
 });
 
 router.post("/webhooks/metenzi", async (req, res) => {
+  // Handle verification challenge (Metenzi sends this without HMAC headers)
+  const bodyChallenge = req.body?.challenge;
+  if (bodyChallenge && typeof bodyChallenge === "string") {
+    logger.info("Metenzi webhook challenge received (POST)");
+    res.json({ challenge: bodyChallenge });
+    return;
+  }
+
   const signature = req.headers["x-signature"];
   const timestamp = req.headers["x-timestamp"];
 
