@@ -263,7 +263,10 @@ export function ProductInfo({ product }: ProductInfoProps) {
           </span>
           <button
             className="px-2 py-1.5 hover:bg-muted transition-colors"
-            onClick={() => setQuantity((q) => Math.min(10, q + 1))}
+            onClick={() => setQuantity((q) => {
+              const max = selectedVariant.backorderAllowed ? 999 : Math.max(1, selectedVariant.stockCount);
+              return Math.min(max, q + 1);
+            })}
           >
             <Plus className="h-4 w-4" />
           </button>

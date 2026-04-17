@@ -75,9 +75,10 @@ export async function syncMetenziStock(): Promise<StockSyncResult> {
         continue;
       }
 
+      const eta = mp.estimatedRestockDate ?? mp.backorderEta ?? mp.restockEta ?? null;
       await db
         .update(productVariants)
-        .set({ stockCount: mp.stock, updatedAt: new Date() })
+        .set({ stockCount: mp.stock, backorderAllowed: true, backorderEta: eta, updatedAt: new Date() })
         .where(eq(productVariants.id, variant.id));
 
       await db
