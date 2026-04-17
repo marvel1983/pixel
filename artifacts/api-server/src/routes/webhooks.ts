@@ -64,8 +64,11 @@ router.post("/webhooks/metenzi", async (req, res) => {
   const timestamp = req.headers["x-metenzi-timestamp"] as string | undefined;
   const eventHeader = req.headers["x-metenzi-event"] as string | undefined;
 
+  // Log all headers for debugging
+  logger.info({ headers: req.headers, body: req.body }, "Metenzi webhook POST received");
+
   if (!signature || !timestamp) {
-    logger.warn({ headers: Object.keys(req.headers) }, "Webhook missing Metenzi signature headers");
+    logger.warn({ allHeaders: Object.keys(req.headers) }, "Webhook missing Metenzi signature headers");
     res.status(401).json({ error: "Missing signature headers" });
     return;
   }
@@ -84,14 +87,18 @@ router.post("/webhooks/metenzi", async (req, res) => {
   }
 
   const rawBody = req.rawBody ?? JSON.stringify(req.body);
-  const verifySecret = config.webhookSecret ?? config.hmacSecret;
-  // eventType for signature: use X-Metenzi-Event header or fall back to body event
   const eventType = eventHeader ?? (req.body?.event as string) ?? "";
-  let valid: boolean;
-  try {
-    valid = verifySignature(rawBody, timestamp, eventType, signature, verifySecret);
-  } catch {
-    valid = false;
+
+  // Try webhookSecret first, then fall back to hmacSecret
+  const secrets = [config.webhookSecret, config.hmacSecret].filter(Boolean) as string[];
+  let valid = false;
+  for (const secret of secrets) {
+    try {
+      if (verifySignature(rawBody, timestamp, eventType, signature, secret)) {
+        valid = true;
+        break;
+      }
+    } catch { /* continue */ }
   }
 
   if (!valid) {
