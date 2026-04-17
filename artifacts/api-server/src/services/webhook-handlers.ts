@@ -268,21 +268,40 @@ async function handleClaimResolved(data: ClaimEventData) {
 
 export async function handleWebhookEvent(event: string, data: unknown) {
   switch (event) {
+    // Our internal names (used by redeliver-keys endpoint)
     case "order.fulfilled":
+    // Metenzi actual event name
+    case "keys.delivered":
       await handleOrderFulfilled(data as FulfilledData);
       break;
     case "order.backorder":
+    case "backorder.fulfilled":
       await handleOrderBackorder(data as OrderEventData);
       break;
     case "order.cancelled":
       await handleOrderCancelled(data as OrderEventData);
       break;
     case "claim.opened":
+    case "claim.created":
       await handleClaimOpened(data as ClaimEventData);
       break;
     case "claim.resolved":
       await handleClaimResolved(data as ClaimEventData);
       break;
+    case "order.status_changed": {
+      // Metenzi sends status changes as one event — dispatch by status value
+      const d = data as Record<string, unknown>;
+      const status = (d.status ?? d.currentStatus ?? "") as string;
+      if (status === "cancelled" || status === "CANCELLED") {
+        await handleOrderCancelled({ orderId: d.orderId as string, reason: d.reason as string | undefined });
+      } else if (status === "backordered" || status === "BACKORDERED") {
+        await handleOrderBackorder({ orderId: d.orderId as string, reason: d.reason as string | undefined });
+      } else {
+        logger.info({ event, status }, "order.status_changed with unhandled status — logged only");
+        await logAuditEvent("UPDATE", "order", null, { webhookEvent: event, data, status: "unhandled_status" });
+      }
+      break;
+    }
     default:
       logger.warn({ event }, "Unknown webhook event type received");
       await logAuditEvent("CREATE", "webhook", null, {
