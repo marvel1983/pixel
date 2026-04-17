@@ -125,6 +125,9 @@ export function ProductInfo({ product }: ProductInfoProps) {
           : selectedVariant.priceUsd,
         platform: selectedVariant.platform,
         regionRestrictions: product.regionRestrictions,
+        stockCount: selectedVariant.stockCount,
+        backorderAllowed: selectedVariant.backorderAllowed,
+        backorderEta: selectedVariant.backorderEta,
       });
     }
     clearTimeout(addedTimer.current);

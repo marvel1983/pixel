@@ -25,6 +25,9 @@ export interface MetenziProduct {
   warrantyDays: number;
   instructions: string | null;
   updatedAt: string;
+  estimatedRestockDate?: string | null;
+  backorderEta?: string | null;
+  restockEta?: string | null;
   // Optional fields that some Metenzi integrations may include
   slug?: string;
   type?: string;

@@ -83,6 +83,7 @@ export const productVariants = pgTable("product_variants", {
   stockCount: integer("stock_count").notNull().default(0),
   lowStockThreshold: integer("low_stock_threshold").notNull().default(5),
   backorderAllowed: boolean("backorder_allowed").notNull().default(false),
+  backorderEta: varchar("backorder_eta", { length: 100 }),
   isActive: boolean("is_active").notNull().default(true),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),

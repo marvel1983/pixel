@@ -14,6 +14,9 @@ export interface CartItem {
   bundleName?: string;
   originalPriceUsd?: string;
   regionRestrictions?: string[];
+  stockCount?: number;
+  backorderAllowed?: boolean;
+  backorderEta?: string | null;
 }
 
 export interface CouponData {

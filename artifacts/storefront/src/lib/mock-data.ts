@@ -27,6 +27,7 @@ export interface MockVariant {
   compareAtPriceUsd: string | null;
   stockCount: number;
   backorderAllowed?: boolean;
+  backorderEta?: string | null;
 }
 
 export { MOCK_PRODUCTS } from "./mock-products";

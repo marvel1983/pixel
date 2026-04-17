@@ -13,6 +13,10 @@ import { setSeoMeta, clearSeoMeta } from "@/lib/seo";
 export default function CartPage() {
   const { t } = useTranslation();
   const items = useCartStore((s) => s.items);
+  const backorderItems = useMemo(() =>
+    items.filter((i) => i.backorderAllowed && i.quantity > (i.stockCount ?? 0)),
+    [items],
+  );
   const isEmpty = items.length === 0;
   const customerCountry = useMemo(() => detectCountryFromLocale(), []);
 
@@ -48,6 +52,22 @@ export default function CartPage() {
                 <span>Your cart is reserved for <strong>24 hours</strong>. Complete your order to secure these prices.</span>
               </div>
               <CartRegionWarning items={items} customerCountry={customerCountry} />
+              {backorderItems.length > 0 && (
+                <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5 text-xs text-amber-800">
+                  <Clock className="h-3.5 w-3.5 shrink-0 mt-0.5 text-amber-600" />
+                  <div>
+                    <p className="font-semibold mb-0.5">Some items are on backorder</p>
+                    <p>
+                      {backorderItems.map((i) => {
+                        const stock = i.stockCount ?? 0;
+                        const boQty = i.quantity - Math.min(i.quantity, stock);
+                        return `${i.productName} (${boQty} on backorder${i.backorderEta ? `, est. ${i.backorderEta}` : ""})`;
+                      }).join(" · ")}
+                    </p>
+                    <p className="mt-1 text-amber-700">Your order will be placed now. Backordered keys are delivered automatically once our supplier ships them.</p>
+                  </div>
+                </div>
+              )}
               <CartItemsTable />
             </div>
 

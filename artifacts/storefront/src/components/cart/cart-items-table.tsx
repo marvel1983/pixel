@@ -1,4 +1,4 @@
-import { Package, Minus, Plus, Trash2, ChevronDown, ChevronUp, Tag } from "lucide-react";
+import { Package, Minus, Plus, Trash2, ChevronDown, ChevronUp, Tag, Clock } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "wouter";
@@ -212,6 +212,26 @@ interface CartRowProps {
   isLast?: boolean;
 }
 
+function BackorderNotice({ item }: { item: CartItem }) {
+  const stock = item.stockCount ?? 0;
+  const backorderQty = item.backorderAllowed ? Math.max(0, item.quantity - stock) : 0;
+  const inStockQty = Math.min(item.quantity, stock);
+  if (!item.backorderAllowed || backorderQty === 0) return null;
+
+  return (
+    <div className="mt-1.5 flex items-start gap-1.5 rounded-md bg-amber-50 border border-amber-200 px-2 py-1.5 text-xs text-amber-800">
+      <Clock className="h-3 w-3 shrink-0 mt-0.5 text-amber-600" />
+      <span>
+        {inStockQty > 0
+          ? <><strong>{inStockQty}</strong> available now · <strong>{backorderQty}</strong> on backorder</>
+          : <><strong>{backorderQty}</strong> on backorder</>
+        }
+        {item.backorderEta && <> · Est. delivery: <strong>{item.backorderEta}</strong></>}
+      </span>
+    </div>
+  );
+}
+
 function CartRow({ item, format, onUpdateQuantity, onRemove }: CartRowProps) {
   const price = parseFloat(item.priceUsd);
   const subtotal = price * item.quantity;
@@ -238,6 +258,7 @@ function CartRow({ item, format, onUpdateQuantity, onRemove }: CartRowProps) {
               {item.regionRestrictions.join(", ")}
             </span>
           )}
+          <BackorderNotice item={item} />
         </div>
       </div>
 

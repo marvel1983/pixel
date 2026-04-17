@@ -190,6 +190,7 @@ router.get("/products", async (req: Request, res: Response) => {
     id: number; productId: number; name: string; sku: string;
     platform: string | null; priceUsd: string; priceOverrideUsd: string | null;
     compareAtPriceUsd: string | null; stockCount: number; backorderAllowed: boolean;
+    backorderEta: string | null;
   }[] = [];
 
   if (productIds.length > 0) {
@@ -205,6 +206,7 @@ router.get("/products", async (req: Request, res: Response) => {
         compareAtPriceUsd: productVariants.compareAtPriceUsd,
         stockCount: productVariants.stockCount,
         backorderAllowed: productVariants.backorderAllowed,
+        backorderEta: productVariants.backorderEta,
       })
       .from(productVariants)
       .where(and(eq(productVariants.isActive, true), inArray(productVariants.productId, productIds)));
@@ -271,6 +273,7 @@ router.get("/products/:slug", async (req: Request, res: Response) => {
       compareAtPriceUsd: productVariants.compareAtPriceUsd,
       stockCount: productVariants.stockCount,
       backorderAllowed: productVariants.backorderAllowed,
+      backorderEta: productVariants.backorderEta,
     })
     .from(productVariants)
     .where(and(eq(productVariants.productId, product.id), eq(productVariants.isActive, true)));

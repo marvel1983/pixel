@@ -133,9 +133,10 @@ async function upsertProduct(mp: MetenziProduct): Promise<void> {
     productId = created.id;
   }
 
+  const backorderEta = mp.estimatedRestockDate ?? mp.backorderEta ?? mp.restockEta ?? null;
   if (mp.variants?.length) {
     for (const v of mp.variants) {
-      await upsertVariant(productId, v);
+      await upsertVariant(productId, v, backorderEta);
     }
   }
 }
@@ -145,6 +146,7 @@ type MetenziVariant = NonNullable<MetenziProduct["variants"]>[number];
 async function upsertVariant(
   productId: number,
   v: MetenziVariant,
+  backorderEta: string | null = null,
 ): Promise<void> {
   const [existing] = await db
     .select()
@@ -161,8 +163,10 @@ async function upsertVariant(
     compareAtPriceUsd: v.compareAtPriceUsd?.toString() ?? null,
     stockCount: v.stockCount,
     backorderAllowed: true, // Metenzi fulfills orders even when stock is 0
+    backorderEta,
     updatedAt: new Date(),
   };
+
 
   if (existing) {
     const oldPrice = existing.priceUsd;

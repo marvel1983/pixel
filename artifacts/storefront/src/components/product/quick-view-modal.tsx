@@ -92,6 +92,9 @@ export function QuickViewModal({ product, open, onClose }: QuickViewModalProps) 
         priceUsd,
         platform: variant.platform,
         regionRestrictions: product.regionRestrictions,
+        stockCount: variant.stockCount,
+        backorderAllowed: variant.backorderAllowed,
+        backorderEta: variant.backorderEta,
       });
       clearTimeout(addedTimer.current);
       setAdded(true);
