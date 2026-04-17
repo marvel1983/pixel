@@ -80,12 +80,12 @@ export function registerAllWorkers() {
     const dbItems = await db.select({ variantId: orderItems.variantId, quantity: orderItems.quantity, productId: orderItems.variantId })
       .from(orderItems).where(eq(orderItems.orderId, orderId));
 
-    const metenziItems: { variantId: string; quantity: number }[] = [];
+    const metenziItems: { productId: string; quantity: number }[] = [];
     for (const pid of productIds) {
       const metenziId = mappingMap.get(pid);
       if (!metenziId) continue;
       const qty = dbItems.reduce((s, i) => s + i.quantity, 0) || 1;
-      metenziItems.push({ variantId: metenziId, quantity: qty });
+      metenziItems.push({ productId: metenziId, quantity: qty });
     }
 
     if (metenziItems.length === 0) { logger.warn({ orderId }, "Retry: no Metenzi-mapped items found"); return; }

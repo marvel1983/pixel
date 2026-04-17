@@ -49,7 +49,7 @@ router.get("/admin/metenzi/debug-order", ...guard, async (req, res) => {
   const rawRes = await metenziRequest(config, {
     method: "POST",
     path: "/api/public/orders",
-    body: { items: [{ variantId: metenziProductId, quantity: 1 }] },
+    body: { items: [{ productId: metenziProductId, quantity: 1 }] },
   });
   res.json({ ok: rawRes.ok, status: rawRes.status, data: rawRes.data });
 });

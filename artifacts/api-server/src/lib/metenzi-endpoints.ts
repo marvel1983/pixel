@@ -163,7 +163,7 @@ export async function getProductById(
 
 export async function createOrder(
   config: MetenziClientConfig,
-  items: { variantId: string; quantity: number }[],
+  items: { productId: string; quantity: number }[],
 ): Promise<MetenziOrder> {
   const res = await metenziRequest<Record<string, unknown>>(config, {
     method: "POST",
