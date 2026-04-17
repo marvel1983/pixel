@@ -83,6 +83,13 @@ export function startCronJobs(): void {
     }
   });
 
+  // Run stock sync once immediately on startup so backorderAllowed is set right away
+  setImmediate(() => {
+    syncMetenziStock()
+      .then((result) => { if (result.updated > 0) logger.info(result, "Startup: Metenzi stock sync finished"); })
+      .catch((error) => logger.error({ error }, "Startup: Metenzi stock sync failed"));
+  });
+
   metenziStockTask = cron.schedule("*/15 * * * *", async () => {
     try {
       const result = await syncMetenziStock();
