@@ -11,7 +11,9 @@ type PermKey =
   | "manageContent"
   | "manageSettings"
   | "manageAdmins"
-  | "viewAnalytics";
+  | "viewAnalytics"
+  | "manageUsers"
+  | "manageLoyalty";
 
 export function requirePermission(permission: PermKey) {
   return async (req: Request, res: Response, next: NextFunction) => {
@@ -32,7 +34,7 @@ export function requirePermission(permission: PermKey) {
       .from(adminPermissions)
       .where(eq(adminPermissions.userId, req.user.userId));
 
-    if (!perms || !perms[permission]) {
+    if (!perms || !(perms as Record<string, unknown>)[permission]) {
       res.status(403).json({ error: `Permission denied: ${permission}` });
       return;
     }

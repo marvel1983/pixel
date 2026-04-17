@@ -98,7 +98,7 @@ export function ProductInfo({ product }: ProductInfoProps) {
   const addToCartRef = useRef<HTMLButtonElement>(null);
   const [showStickyBar, setShowStickyBar] = useState(false);
   const [added, setAdded] = useState(false);
-  const addedTimer = useRef<ReturnType<typeof setTimeout>>();
+  const addedTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
     const btn = addToCartRef.current;

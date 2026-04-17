@@ -101,7 +101,7 @@ router.get("/admin/orders/:id", requireAuth, requireAdmin, requirePermission("ma
 
   const items = await db.select().from(orderItems).where(eq(orderItems.orderId, id));
   const itemIds = items.map((i) => i.id);
-  let keys: { orderItemId: number; id: number; keyValue: string; status: string; soldAt: Date | null }[] = [];
+  let keys: { orderItemId: number | null; id: number; keyValue: string; status: string; soldAt: Date | null }[] = [];
   if (itemIds.length > 0) {
     keys = await db
       .select({ orderItemId: licenseKeys.orderItemId, id: licenseKeys.id, keyValue: licenseKeys.keyValue, status: licenseKeys.status, soldAt: licenseKeys.soldAt })
@@ -122,7 +122,7 @@ router.get("/admin/orders/:id", requireAuth, requireAdmin, requirePermission("ma
 
   let coupon = null;
   if (order.couponId) {
-    const [c] = await db.select({ id: coupons.id, code: coupons.code, discountPercent: coupons.discountPercent }).from(coupons).where(eq(coupons.id, order.couponId));
+    const [c] = await db.select({ id: coupons.id, code: coupons.code, discountValue: coupons.discountValue }).from(coupons).where(eq(coupons.id, order.couponId));
     coupon = c ?? null;
   }
 

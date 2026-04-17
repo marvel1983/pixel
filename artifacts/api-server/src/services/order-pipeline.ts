@@ -34,7 +34,7 @@ interface BillingInfo {
 }
 interface OrderItem {
   variantId: number; productId: number; productName: string; variantName: string;
-  priceUsd: string; quantity: number; platform?: string; bundleId?: number;
+  priceUsd: string; quantity: number; platform?: string | null; bundleId?: number;
   imageUrl?: string | null;
 }
 interface OrderInput {

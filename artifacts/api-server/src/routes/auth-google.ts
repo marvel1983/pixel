@@ -139,19 +139,19 @@ router.get("/auth/google/callback", async (req, res) => {
         grant_type: "authorization_code",
       }),
     });
-    const tokenData = await tokenRes.json();
+    const tokenData = await tokenRes.json() as { access_token?: string };
     if (!tokenData.access_token) return errorRedirect("Failed to exchange code");
 
     const profileRes = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
       headers: { Authorization: `Bearer ${tokenData.access_token}` },
     });
-    const profile = await profileRes.json();
+    const profile = await profileRes.json() as { id?: string; email?: string; name?: string; given_name?: string; family_name?: string; picture?: string };
     if (!profile.id || !profile.email) return errorRedirect("Failed to get Google profile");
 
     if (mode === "link") {
-      return handleLink(req, res, profile, baseUrl);
+      return handleLink(req, res, profile as { id: string; email: string; picture?: string }, baseUrl);
     }
-    return handleLoginOrRegister(res, profile, baseUrl);
+    return handleLoginOrRegister(res, profile as { id: string; email: string; name?: string; given_name?: string; family_name?: string; picture?: string }, baseUrl);
   } catch (err) {
     logger.error({ err }, "Google OAuth callback failed");
     return errorRedirect("Google authentication failed");

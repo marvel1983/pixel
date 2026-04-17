@@ -118,7 +118,7 @@ router.patch("/admin/customers/:id/role", requireAuth, requireAdmin, requirePerm
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
   const { role } = req.body;
   if (!["CUSTOMER", "ADMIN", "SUPER_ADMIN"].includes(role)) { res.status(400).json({ error: "Invalid role" }); return; }
-  const caller = req.user as { id: number; role: string };
+  const caller = req.user as unknown as { id: number; role: string };
   if (role === "SUPER_ADMIN" && caller.role !== "SUPER_ADMIN") {
     res.status(403).json({ error: "Only Super Admins can assign the Super Admin role" }); return;
   }
@@ -171,7 +171,7 @@ router.delete("/admin/customers/:id", requireAuth, requireAdmin, requirePermissi
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
   const [target] = await db.select({ role: users.role }).from(users).where(eq(users.id, id));
   if (!target) { res.status(404).json({ error: "Not found" }); return; }
-  const caller = req.user as { id: number; role: string };
+  const caller = req.user as unknown as { id: number; role: string };
   if (target.role === "SUPER_ADMIN" && caller.role !== "SUPER_ADMIN") {
     res.status(403).json({ error: "Only Super Admins can delete a Super Admin" }); return;
   }

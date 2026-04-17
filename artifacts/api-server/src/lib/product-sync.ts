@@ -83,6 +83,8 @@ function mapProductType(
 }
 
 async function upsertProduct(mp: MetenziProduct): Promise<void> {
+  if (!mp.slug) return; // skip products without slugs
+
   const categoryId = mp.category
     ? await findOrCreateCategory(mp.category)
     : null;
@@ -96,35 +98,37 @@ async function upsertProduct(mp: MetenziProduct): Promise<void> {
   let productId: number;
 
   if (existing) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await db
       .update(products)
       .set({
         name: mp.name,
         description: mp.description,
         shortDescription: mp.shortDescription,
-        type: mapProductType(mp.type),
+        type: mapProductType(mp.type ?? "software"),
         categoryId,
         imageUrl: mp.imageUrl,
-        galleryImages: mp.galleryImages,
-        isActive: mp.isActive,
+        galleryImages: mp.galleryImages ?? null,
+        isActive: mp.isActive ?? true,
         updatedAt: new Date(),
-      })
+      } as any)
       .where(eq(products.id, existing.id));
     productId = existing.id;
   } else {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [created] = await db
       .insert(products)
       .values({
         name: mp.name,
-        slug: mp.slug,
+        slug: mp.slug!,
         description: mp.description,
         shortDescription: mp.shortDescription,
-        type: mapProductType(mp.type),
+        type: mapProductType(mp.type ?? "software"),
         categoryId,
         imageUrl: mp.imageUrl,
-        galleryImages: mp.galleryImages,
-        isActive: mp.isActive,
-      })
+        galleryImages: mp.galleryImages ?? null,
+        isActive: mp.isActive ?? true,
+      } as any)
       .returning({ id: products.id });
     productId = created.id;
   }
@@ -136,9 +140,11 @@ async function upsertProduct(mp: MetenziProduct): Promise<void> {
   }
 }
 
+type MetenziVariant = NonNullable<MetenziProduct["variants"]>[number];
+
 async function upsertVariant(
   productId: number,
-  v: MetenziProduct["variants"][0],
+  v: MetenziVariant,
 ): Promise<void> {
   const [existing] = await db
     .select()

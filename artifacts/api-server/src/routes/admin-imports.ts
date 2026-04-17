@@ -37,7 +37,7 @@ router.get("/admin/imports", ...auth, async (_req, res) => {
 
 /** Get single import job + its errors */
 router.get("/admin/imports/:id", ...auth, async (req, res) => {
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(req.params.id as string, 10);
   if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
 
   const [job] = await db
@@ -128,7 +128,7 @@ router.post("/admin/imports", ...auth, async (req, res) => {
 
 /** Delete an import job (only completed/failed) */
 router.delete("/admin/imports/:id", ...auth, async (req, res) => {
-  const id = parseInt(req.params.id, 10);
+  const id = parseInt(req.params.id as string, 10);
   if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
 
   const [job] = await db.select({ status: userImportJobs.status }).from(userImportJobs).where(eq(userImportJobs.id, id)).limit(1);

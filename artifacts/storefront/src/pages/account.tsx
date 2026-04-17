@@ -29,6 +29,7 @@ import { LoyaltyDashboard } from "@/components/account/loyalty-dashboard";
 import { SupportTab } from "@/components/account/support-tab";
 import { WalletTab } from "@/components/account/wallet-tab";
 import { useWalletBalance } from "@/hooks/use-wallet-balance";
+import { OrderDetail } from "@/components/orders/order-detail";
 
 function ProfileStoreCreditCard() {
   const { t } = useTranslation();
@@ -655,9 +656,11 @@ function AccountWishlistTab() {
 
 function AccountOrdersTab() {
   const { t } = useTranslation();
-  const { token } = useAuthStore();
+  const { token, user } = useAuthStore();
   const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedOrder, setSelectedOrder] = useState<Record<string, unknown> | null>(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -679,7 +682,36 @@ function AccountOrdersTab() {
     load();
   }, [token]);
 
+  async function openOrder(orderNumber: string) {
+    setLoadingDetail(true);
+    try {
+      const baseUrl = import.meta.env.VITE_API_URL ?? "/api";
+      const email = user?.email ?? "";
+      const res = await fetch(`${baseUrl}/orders/${orderNumber}?email=${encodeURIComponent(email)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        credentials: "include",
+      });
+      if (res.ok) setSelectedOrder(await res.json());
+    } catch {
+    } finally {
+      setLoadingDetail(false);
+    }
+  }
+
   if (loading) return <Card><CardContent className="py-8 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></CardContent></Card>;
+
+  if (selectedOrder) return (
+    <div>
+      <Button variant="ghost" size="sm" onClick={() => setSelectedOrder(null)} className="mb-4">
+        &larr; {t("accountPage.backToOrders")}
+      </Button>
+      <OrderDetail
+        order={(selectedOrder as any).order}
+        items={(selectedOrder as any).items}
+        licenseKeys={(selectedOrder as any).licenseKeys}
+      />
+    </div>
+  );
 
   if (orders.length === 0) return (
     <Card><CardContent className="py-12 text-center text-muted-foreground">
@@ -691,9 +723,14 @@ function AccountOrdersTab() {
   return (
     <Card>
       <CardContent className="p-0">
+        {loadingDetail && <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin" /></div>}
         <div className="divide-y">
           {orders.map((o) => (
-            <a key={o.orderNumber} href="/order-lookup" className="flex items-center justify-between p-4 hover:bg-muted/50 transition">
+            <button
+              key={o.orderNumber}
+              onClick={() => openOrder(o.orderNumber)}
+              className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition text-left"
+            >
               <div>
                 <p className="font-medium">{o.orderNumber}</p>
                 <p className="text-sm text-muted-foreground">
@@ -704,7 +741,7 @@ function AccountOrdersTab() {
                 <p className="font-medium">${o.totalUsd}</p>
                 <p className="text-xs text-muted-foreground">{new Date(o.createdAt).toLocaleDateString()}</p>
               </div>
-            </a>
+            </button>
           ))}
         </div>
       </CardContent>

@@ -7,11 +7,11 @@ import { OrderTimeline } from "./order-timeline";
 
 interface OrderItem {
   id: number;
-  variantId: number;
-  productId: number;
+  variantId?: number;
+  productId?: number;
   productName: string;
   variantName: string;
-  imageUrl: string | null;
+  imageUrl?: string | null;
   priceUsd: string;
   quantity: number;
 }

@@ -220,7 +220,7 @@ router.post("/admin/metenzi/mappings", ...guard, async (req, res) => {
 
 // ── DELETE /admin/metenzi/mappings/:id ───────────────────────────────────────
 router.delete("/admin/metenzi/mappings/:id", ...guard, async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id as string);
   if (!Number.isInteger(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   await db.delete(metenziProductMappings).where(eq(metenziProductMappings.id, id));
   res.json({ success: true });
@@ -228,7 +228,7 @@ router.delete("/admin/metenzi/mappings/:id", ...guard, async (req, res) => {
 
 // ── PATCH /admin/metenzi/mappings/:id ────────────────────────────────────────
 router.patch("/admin/metenzi/mappings/:id", ...guard, async (req, res) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params.id as string);
   if (!Number.isInteger(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 
   const updates: Record<string, unknown> = { updatedAt: new Date() };
@@ -346,7 +346,7 @@ router.post("/admin/metenzi/import", ...guard, async (req, res) => {
   const mp = catRes.products.find((p) => p.id === metenziProductId);
   if (!mp) { res.status(404).json({ error: "Metenzi product not found" }); return; }
 
-  const f = new Set(fields);
+  const f = new Set<string>(fields);
   const include = (field: string) => f.has(field);
 
   // Download image if requested

@@ -80,7 +80,7 @@ async function claimJob(queueName: string): Promise<ClaimedRow | null> {
     )
     RETURNING id, queue, name, payload, attempts, max_attempts
   `);
-  const rows = (result as { rows: ClaimedRow[] }).rows;
+  const rows = (result as unknown as { rows: ClaimedRow[] }).rows;
   return rows.length > 0 ? rows[0] : null;
 }
 

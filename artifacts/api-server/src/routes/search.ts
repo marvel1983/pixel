@@ -122,7 +122,8 @@ router.get("/search", async (req: Request, res: Response) => {
   const variantFilters = [];
   if (plat) {
     const platforms = plat.split(",").filter(Boolean);
-    if (platforms.length > 0) variantFilters.push(inArray(productVariants.platform, platforms));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (platforms.length > 0) variantFilters.push(inArray(productVariants.platform, platforms as any));
   }
   if (min !== undefined) variantFilters.push(sql`COALESCE(${productVariants.priceOverrideUsd}, ${productVariants.priceUsd}) >= ${String(min)}`);
   if (max !== undefined) variantFilters.push(sql`COALESCE(${productVariants.priceOverrideUsd}, ${productVariants.priceUsd}) <= ${String(max)}`);

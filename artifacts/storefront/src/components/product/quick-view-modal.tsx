@@ -34,7 +34,7 @@ export function QuickViewModal({ product, open, onClose }: QuickViewModalProps) 
   const flashSalePrice = resolvedFlashPrice ?? null;
 
   const [added, setAdded] = useState(false);
-  const addedTimer = useRef<ReturnType<typeof setTimeout>>();
+  const addedTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // Close on Escape key
   useEffect(() => {

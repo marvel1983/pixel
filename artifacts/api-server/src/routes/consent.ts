@@ -27,7 +27,7 @@ router.post("/consent/log", optionalAuth, async (req, res) => {
   try {
     const { necessary, analytics, marketing, preferences, consentAction } = req.body;
     if (!consentAction || typeof consentAction !== "string" || !VALID_ACTIONS.includes(consentAction)) {
-      return res.status(400).json({ error: "Invalid consentAction" });
+      res.status(400).json({ error: "Invalid consentAction" }); return;
     }
 
     const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.ip || "unknown";

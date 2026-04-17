@@ -18,7 +18,7 @@ const defaults = {
 router.get("/social-proof/config", async (_req, res) => {
   const rows = await db.select().from(siteSettings).limit(1);
   const s = rows[0];
-  if (!s) return res.json(defaults);
+  if (!s) { res.json(defaults); return; }
   res.json({
     viewersEnabled: s.spViewersEnabled ?? defaults.viewersEnabled,
     viewersMin: s.spViewersMin ?? defaults.viewersMin,
@@ -37,7 +37,7 @@ router.get("/social-proof/config", async (_req, res) => {
 router.post("/social-proof/view", async (req, res) => {
   const { productId, sessionId } = req.body;
   const pid = Number(productId);
-  if (!pid || pid <= 0 || !Number.isInteger(pid)) return res.status(400).json({ error: "valid productId required" });
+  if (!pid || pid <= 0 || !Number.isInteger(pid)) { res.status(400).json({ error: "valid productId required" }); return; }
   const sid = typeof sessionId === "string" ? sessionId.slice(0, 100) : null;
   await db.insert(socialProofEvents).values({ productId: pid, eventType: "VIEW", sessionId: sid });
   res.json({ ok: true });
@@ -46,10 +46,10 @@ router.post("/social-proof/view", async (req, res) => {
 router.post("/social-proof/batch", async (req, res) => {
   const { productIds, sessionId } = req.body;
   if (!Array.isArray(productIds) || productIds.length === 0) {
-    return res.json({ viewers: {}, sold: {} });
+    res.json({ viewers: {}, sold: {} }); return;
   }
   const ids = [...new Set(productIds.map(Number).filter((n) => Number.isInteger(n) && n > 0))];
-  if (ids.length === 0) return res.json({ viewers: {}, sold: {} });
+  if (ids.length === 0) { res.json({ viewers: {}, sold: {} }); return; }
 
   const sid = typeof sessionId === "string" ? sessionId.slice(0, 100) : null;
   if (sid) {
@@ -86,7 +86,7 @@ router.post("/social-proof/batch", async (req, res) => {
 
 router.get("/social-proof/viewers/:productId", async (req, res) => {
   const productId = Number(paramString(req.params, "productId"));
-  if (!productId || productId <= 0 || !Number.isInteger(productId)) return res.json({ viewers: 0 });
+  if (!productId || productId <= 0 || !Number.isInteger(productId)) { res.json({ viewers: 0 }); return; }
   const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
   const result = await db
     .select({ count: sql<number>`count(distinct ${socialProofEvents.sessionId})` })
@@ -103,7 +103,7 @@ router.get("/social-proof/viewers/:productId", async (req, res) => {
 
 router.get("/social-proof/sold/:productId", async (req, res) => {
   const productId = Number(paramString(req.params, "productId"));
-  if (!productId || productId <= 0 || !Number.isInteger(productId)) return res.json({ sold: 0 });
+  if (!productId || productId <= 0 || !Number.isInteger(productId)) { res.json({ sold: 0 }); return; }
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const result = await db
     .select({ count: sql<number>`count(*)` })

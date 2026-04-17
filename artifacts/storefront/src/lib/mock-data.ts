@@ -9,6 +9,7 @@ export interface MockProduct {
   variants: MockVariant[];
   isFeatured: boolean;
   isNew: boolean;
+  createdAt?: string;
   description?: string;
   warranty?: string;
   regionRestrictions?: string[];

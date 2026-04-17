@@ -208,6 +208,7 @@ function NavBadge({ count }: { count: number }) {
       return () => clearTimeout(timer);
     }
     prevCount.current = count;
+    return;
   }, [count]);
 
   useEffect(() => {

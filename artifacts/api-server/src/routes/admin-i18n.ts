@@ -32,7 +32,7 @@ router.post("/admin/locales/seed", ...auth, async (_req, res) => {
 });
 
 router.put("/admin/locales/:code", ...auth, async (req, res) => {
-  const { code } = req.params;
+  const code = paramString(req.params, "code");
   const { enabled, isDefault } = req.body;
   const [row] = await db.select().from(enabledLocales).where(eq(enabledLocales.code, code));
   if (!row) { res.status(404).json({ error: "Locale not found" }); return; }

@@ -50,7 +50,7 @@ export function ProductCard({ product, flashSalePrice: flashSalePriceProp }: Pro
     : product.isNew;
 
   const [added, setAdded] = useState(false);
-  const addedTimer = useRef<ReturnType<typeof setTimeout>>();
+  const addedTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [heartPulse, setHeartPulse] = useState(false);
   const [quickViewOpen, setQuickViewOpen] = useState(false);
   const isWishlisted = wishlistIds.includes(product.id);

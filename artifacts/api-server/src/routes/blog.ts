@@ -21,7 +21,7 @@ router.get("/blog/posts", async (req, res) => {
     const conditions = [eq(blogPosts.isPublished, true)];
     if (category) {
       const cat = await db.select().from(blogCategories).where(eq(blogCategories.slug, category)).limit(1);
-      if (!cat.length) return res.json({ posts: [], total: 0, page, totalPages: 0 });
+      if (!cat.length) { res.json({ posts: [], total: 0, page, totalPages: 0 }); return; }
       conditions.push(eq(blogPosts.categoryId, cat[0].id));
     }
     if (tag) {
@@ -74,7 +74,7 @@ router.get("/blog/posts/:slug", async (req, res) => {
       .where(and(eq(blogPosts.slug, paramString(req.params, "slug")), eq(blogPosts.isPublished, true)))
       .limit(1);
 
-    if (!rows.length) return res.status(404).json({ error: "Post not found" });
+    if (!rows.length) { res.status(404).json({ error: "Post not found" }); return; }
 
     await db.update(blogPosts).set({ viewCount: sql`${blogPosts.viewCount} + 1` })
       .where(eq(blogPosts.slug, paramString(req.params, "slug")));

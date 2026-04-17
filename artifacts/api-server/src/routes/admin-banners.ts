@@ -26,7 +26,8 @@ router.get("/admin/banners/:id", requireAuth, requireAdmin, requirePermission("m
 router.post("/admin/banners", requireAuth, requireAdmin, requirePermission("manageContent"), async (req, res) => {
   const data = parseBannerBody(req.body);
   if (!data) { res.status(400).json({ error: "Title is required" }); return; }
-  const [banner] = await db.insert(banners).values(data).returning();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [banner] = await db.insert(banners).values(data as any).returning();
   res.json({ banner });
 });
 
@@ -35,7 +36,8 @@ router.put("/admin/banners/:id", requireAuth, requireAdmin, requirePermission("m
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
   const data = parseBannerBody(req.body);
   if (!data) { res.status(400).json({ error: "Title is required" }); return; }
-  await db.update(banners).set({ ...data, updatedAt: new Date() }).where(eq(banners.id, id));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await db.update(banners).set({ ...data, updatedAt: new Date() } as any).where(eq(banners.id, id));
   const [updated] = await db.select().from(banners).where(eq(banners.id, id));
   if (!updated) { res.status(404).json({ error: "Not found" }); return; }
   res.json({ banner: updated });

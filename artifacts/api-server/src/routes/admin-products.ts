@@ -127,7 +127,7 @@ router.post("/admin/products/sync", requireAuth, requireAdmin, requirePermission
     return;
   }
   try {
-    const result = await syncProducts(config);
+    const result = await syncProducts();
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: "Sync failed" });

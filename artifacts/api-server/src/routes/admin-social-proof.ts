@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import { db } from "@workspace/db";
 import { siteSettings } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
@@ -8,10 +8,10 @@ import { requirePermission } from "../middleware/permissions";
 const router = Router();
 const auth = [requireAuth, requireAdmin, requirePermission("manageSettings")];
 
-router.get("/admin/social-proof", auth, async (_req, res) => {
+router.get("/admin/social-proof", auth, async (_req: Request, res: Response) => {
   const rows = await db.select().from(siteSettings).limit(1);
   const s = rows[0];
-  if (!s) return res.json({});
+  if (!s) { res.json({}); return; }
   res.json({
     spViewersEnabled: s.spViewersEnabled,
     spViewersMin: s.spViewersMin,
@@ -27,9 +27,9 @@ router.get("/admin/social-proof", auth, async (_req, res) => {
   });
 });
 
-router.put("/admin/social-proof", auth, async (req, res) => {
+router.put("/admin/social-proof", auth, async (req: Request, res: Response) => {
   const rows = await db.select().from(siteSettings).limit(1);
-  if (!rows.length) return res.status(404).json({ error: "No settings" });
+  if (!rows.length) { res.status(404).json({ error: "No settings" }); return; }
 
   const allowed = [
     "spViewersEnabled", "spViewersMin",
@@ -42,12 +42,12 @@ router.put("/admin/social-proof", auth, async (req, res) => {
   for (const key of allowed) {
     if (req.body[key] !== undefined) updates[key] = req.body[key];
   }
-  if (!Object.keys(updates).length) return res.status(400).json({ error: "No fields" });
+  if (!Object.keys(updates).length) { res.status(400).json({ error: "No fields" }); return; }
 
   const numFields = ["spViewersMin", "spSoldMin", "spToastIntervalMin", "spToastIntervalMax", "spToastMaxPerSession", "spStockLowThreshold", "spStockCriticalThreshold"];
   for (const f of numFields) {
     if (updates[f] !== undefined && (typeof updates[f] !== "number" || updates[f] < 0)) {
-      return res.status(400).json({ error: `${f} must be a non-negative number` });
+      res.status(400).json({ error: `${f} must be a non-negative number` }); return;
     }
   }
 

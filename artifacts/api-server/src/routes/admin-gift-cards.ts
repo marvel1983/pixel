@@ -37,7 +37,7 @@ router.get("/admin/gift-cards", requireAuth, requireAdmin, requirePermission("ma
     conditions.push(or(
       ilike(giftCards.code, `%${search}%`),
       ilike(giftCards.recipientEmail, `%${search}%`),
-    ));
+    )!);
   }
   const where = conditions.length ? and(...conditions) : undefined;
 

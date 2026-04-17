@@ -51,7 +51,7 @@ router.get("/admin/blog/posts", ...auth, async (req, res) => {
 router.get("/admin/blog/posts/:id", ...auth, async (req, res) => {
   try {
     const rows = await db.select().from(blogPosts).where(eq(blogPosts.id, parseInt(paramString(req.params, "id"))));
-    if (!rows.length) return res.status(404).json({ error: "Post not found" });
+    if (!rows.length) { res.status(404).json({ error: "Post not found" }); return; }
     res.json(rows[0]);
   } catch {
     res.status(500).json({ error: "Failed to fetch post" });
@@ -74,7 +74,7 @@ router.post("/admin/blog/posts", ...auth, async (req, res) => {
     res.json(post);
   } catch (err) {
     if (err instanceof Error && "constraint" in err && String((err as Record<string, unknown>).constraint).includes("slug"))
-      return res.status(400).json({ error: "Slug already exists" });
+      res.status(400).json({ error: "Slug already exists" }); return;
     res.status(500).json({ error: "Failed to create post" });
   }
 });
@@ -86,7 +86,7 @@ router.put("/admin/blog/posts/:id", ...auth, async (req, res) => {
     const isPublished = status === "published";
     const isScheduled = status === "scheduled" && scheduledAt;
     const existing = await db.select().from(blogPosts).where(eq(blogPosts.id, id));
-    if (!existing.length) return res.status(404).json({ error: "Post not found" });
+    if (!existing.length) { res.status(404).json({ error: "Post not found" }); return; }
 
     const publishedAt = isPublished && !existing[0].publishedAt ? new Date() : existing[0].publishedAt;
     const [post] = await db.update(blogPosts).set({
@@ -100,7 +100,7 @@ router.put("/admin/blog/posts/:id", ...auth, async (req, res) => {
     res.json(post);
   } catch (err) {
     if (err instanceof Error && "constraint" in err && String((err as Record<string, unknown>).constraint).includes("slug"))
-      return res.status(400).json({ error: "Slug already exists" });
+      res.status(400).json({ error: "Slug already exists" }); return;
     res.status(500).json({ error: "Failed to update post" });
   }
 });
@@ -132,7 +132,7 @@ router.post("/admin/blog/categories", ...auth, async (req, res) => {
     res.json(cat);
   } catch (err) {
     if (err instanceof Error && "constraint" in err && String((err as Record<string, unknown>).constraint).includes("slug"))
-      return res.status(400).json({ error: "Slug already exists" });
+      res.status(400).json({ error: "Slug already exists" }); return;
     res.status(500).json({ error: "Failed to create category" });
   }
 });
@@ -145,7 +145,7 @@ router.put("/admin/blog/categories/:id", ...auth, async (req, res) => {
     res.json(cat);
   } catch (err) {
     if (err instanceof Error && "constraint" in err && String((err as Record<string, unknown>).constraint).includes("slug"))
-      return res.status(400).json({ error: "Slug already exists" });
+      res.status(400).json({ error: "Slug already exists" }); return;
     res.status(500).json({ error: "Failed to update category" });
   }
 });

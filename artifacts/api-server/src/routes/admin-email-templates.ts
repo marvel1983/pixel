@@ -21,7 +21,8 @@ const DEFAULT_TEMPLATES = [
 router.get("/admin/email-templates", requireAuth, requireAdmin, requirePermission("manageContent"), async (_req, res) => {
   let templates = await db.select().from(emailTemplates).orderBy(asc(emailTemplates.id));
   if (templates.length === 0) {
-    await db.insert(emailTemplates).values(DEFAULT_TEMPLATES).onConflictDoNothing();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await db.insert(emailTemplates).values(DEFAULT_TEMPLATES as any).onConflictDoNothing();
     templates = await db.select().from(emailTemplates).orderBy(asc(emailTemplates.id));
   }
   res.json({ templates });

@@ -67,7 +67,7 @@ router.post("/newsletter/subscribe", optionalAuth, async (req, res) => {
         await enqueueEmail(email, subject, html, { type: "newsletter_confirm" });
       } else {
         const unsubUrl = `${getBaseUrl()}/newsletter/unsubscribe?token=${unsubToken}`;
-        const { subject, html } = welcomeEmail({ unsubscribeUrl: unsubUrl });
+        const { subject, html } = welcomeEmail({ unsubUrl });
         await enqueueEmail(email, subject, html, { type: "newsletter_welcome" });
       }
       res.json({ success: true, message: settings.doubleOptIn ? "Please check your email to confirm." : "Subscribed!" });

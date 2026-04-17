@@ -9,6 +9,7 @@ import {
   eq, ilike, and, sql, inArray, gt, asc, desc, count, or, type SQL,
 } from "drizzle-orm";
 import { z } from "zod";
+import { paramString } from "../lib/route-params";
 
 const router = Router();
 
@@ -113,7 +114,8 @@ router.get("/products", async (req: Request, res: Response) => {
   const variantFilters: SQL<any>[] = [];
   if (plat) {
     const platforms = plat.split(",").filter(Boolean);
-    if (platforms.length > 0) variantFilters.push(inArray(productVariants.platform, platforms));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (platforms.length > 0) variantFilters.push(inArray(productVariants.platform, platforms as any));
   }
   if (min !== undefined) variantFilters.push(sql`COALESCE(${productVariants.priceOverrideUsd}, ${productVariants.priceUsd}) >= ${String(min)}`);
   if (max !== undefined) variantFilters.push(sql`COALESCE(${productVariants.priceOverrideUsd}, ${productVariants.priceUsd}) <= ${String(max)}`);
@@ -223,7 +225,7 @@ router.get("/products", async (req: Request, res: Response) => {
 });
 
 router.get("/products/:slug", async (req: Request, res: Response) => {
-  const { slug } = req.params;
+  const slug = paramString(req.params, "slug");
 
   const rows = await db
     .select({
@@ -245,7 +247,8 @@ router.get("/products/:slug", async (req: Request, res: Response) => {
     })
     .from(products)
     .leftJoin(categories, eq(products.categoryId, categories.id))
-    .where(and(eq(products.slug, slug), eq(products.isActive, true)))
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .where(and(eq(products.slug, slug), eq(products.isActive, true)) as any)
     .limit(1);
 
   if (rows.length === 0) {

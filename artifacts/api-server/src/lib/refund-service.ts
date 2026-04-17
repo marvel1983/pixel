@@ -131,7 +131,7 @@ export async function updateOrderRefundStatus(orderId: number): Promise<void> {
 
   const orderTotal = parseFloat(order.totalUsd);
 
-  let newStatus: string;
+  let newStatus: "REFUNDED" | "PARTIALLY_REFUNDED";
   if (completedTotal >= orderTotal - 0.01) {
     newStatus = "REFUNDED";
   } else if (completedTotal > 0) {

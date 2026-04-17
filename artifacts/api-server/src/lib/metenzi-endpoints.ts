@@ -25,6 +25,19 @@ export interface MetenziProduct {
   warrantyDays: number;
   instructions: string | null;
   updatedAt: string;
+  // Optional fields that some Metenzi integrations may include
+  slug?: string;
+  type?: string;
+  galleryImages?: string[] | null;
+  isActive?: boolean;
+  variants?: Array<{
+    sku: string;
+    name: string;
+    platform: string;
+    priceUsd: number;
+    compareAtPriceUsd?: number | null;
+    stockCount: number;
+  }>;
 }
 
 export interface MetenziCatalogResponse {
