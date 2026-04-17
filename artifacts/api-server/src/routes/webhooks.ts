@@ -20,27 +20,20 @@ const router = Router();
 
 const REPLAY_WINDOW_MS = 5 * 60 * 1000;
 
-// Metenzi signature format: HMAC-SHA256(secret, timestamp + "." + METHOD + "." + path + "." + body)
-// Headers: X-Signature-Timestamp, X-Signature
+// Metenzi incoming webhook signature format: HMAC-SHA256(webhookSecret, timestamp + "." + eventType + "." + body)
+// Headers: X-Metenzi-Signature, X-Metenzi-Timestamp, X-Metenzi-Event
 function verifySignature(
   body: string,
   timestamp: string,
+  eventType: string,
   signature: string,
   secret: string,
-  method: string,
-  path: string,
 ): boolean {
   const rawSecret = secret.replace(/^whsec_/, "");
-  const rawSig = signature.replace(/^sha256=/, "");
-  const payload = `${timestamp}.${method.toUpperCase()}.${path}.${body}`;
+  const payload = `${timestamp}.${eventType}.${body}`;
   const expected = crypto.createHmac("sha256", rawSecret).update(payload).digest("hex");
   try {
-    if (rawSig.length === expected.length) {
-      return crypto.timingSafeEqual(Buffer.from(rawSig, "hex"), Buffer.from(expected, "hex"));
-    }
-    // fallback: base64
-    const expectedB64 = Buffer.from(expected, "hex").toString("base64");
-    return rawSig === expectedB64 || rawSig === Buffer.from(expected, "hex").toString("base64url");
+    return crypto.timingSafeEqual(Buffer.from(signature, "hex"), Buffer.from(expected, "hex"));
   } catch {
     return false;
   }
@@ -57,27 +50,22 @@ router.get("/webhooks/metenzi", (req, res) => {
   const challenge = req.query.challenge;
   if (typeof challenge === "string" && challenge.length > 0) {
     logger.info("Metenzi webhook verification challenge received");
-    res.json({ challenge });
+    // Metenzi expects plain text response with exactly the challenge value
+    res.setHeader("Content-Type", "text/plain");
+    res.send(challenge);
     return;
   }
   res.json({ status: "ok", message: "Metenzi webhook endpoint active" });
 });
 
 router.post("/webhooks/metenzi", async (req, res) => {
-  // Handle verification challenge (Metenzi sends this without HMAC headers)
-  const bodyChallenge = req.body?.challenge;
-  if (bodyChallenge && typeof bodyChallenge === "string") {
-    logger.info("Metenzi webhook challenge received (POST)");
-    res.json({ challenge: bodyChallenge });
-    return;
-  }
-
-  // Metenzi uses X-Signature-Timestamp (not X-Timestamp)
-  const signature = req.headers["x-signature"] as string | undefined;
-  const timestamp = (req.headers["x-signature-timestamp"] ?? req.headers["x-timestamp"]) as string | undefined;
+  // Metenzi webhook headers: X-Metenzi-Signature, X-Metenzi-Timestamp, X-Metenzi-Event
+  const signature = req.headers["x-metenzi-signature"] as string | undefined;
+  const timestamp = req.headers["x-metenzi-timestamp"] as string | undefined;
+  const eventHeader = req.headers["x-metenzi-event"] as string | undefined;
 
   if (!signature || !timestamp) {
-    logger.warn({ headers: Object.keys(req.headers) }, "Webhook missing signature headers");
+    logger.warn({ headers: Object.keys(req.headers) }, "Webhook missing Metenzi signature headers");
     res.status(401).json({ error: "Missing signature headers" });
     return;
   }
@@ -96,24 +84,23 @@ router.post("/webhooks/metenzi", async (req, res) => {
   }
 
   const rawBody = req.rawBody ?? JSON.stringify(req.body);
-  // Use dedicated webhookSecret for inbound verification; fall back to hmacSecret
   const verifySecret = config.webhookSecret ?? config.hmacSecret;
-  // Path for signature: just the pathname without query string
-  const reqPath = req.path || "/api/webhooks/metenzi";
+  // eventType for signature: use X-Metenzi-Event header or fall back to body event
+  const eventType = eventHeader ?? (req.body?.event as string) ?? "";
   let valid: boolean;
   try {
-    valid = verifySignature(rawBody, timestamp, signature, verifySecret, req.method, reqPath);
+    valid = verifySignature(rawBody, timestamp, eventType, signature, verifySecret);
   } catch {
     valid = false;
   }
 
   if (!valid) {
-    logger.warn({ sig: signature.slice(0, 20) + "…", timestamp, path: reqPath }, "Webhook signature verification failed");
+    logger.warn({ sig: signature.slice(0, 20) + "…", timestamp, eventType }, "Webhook signature verification failed");
     res.status(401).json({ error: "Invalid signature" });
     return;
   }
 
-  const event = req.body?.event;
+  const event = eventHeader ?? req.body?.event;
   const data = req.body?.data;
 
   if (!event || !data) {
