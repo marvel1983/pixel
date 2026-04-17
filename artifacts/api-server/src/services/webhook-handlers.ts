@@ -1,4 +1,4 @@
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, like } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   orders,
@@ -73,7 +73,7 @@ async function findOrderByMetenziId(metenziOrderId: string) {
       totalUsd: orders.totalUsd,
     })
     .from(orders)
-    .where(eq(orders.externalOrderId, metenziOrderId))
+    .where(like(orders.externalOrderId, `%${metenziOrderId}%`))
     .limit(1);
   if (!order) return null;
 

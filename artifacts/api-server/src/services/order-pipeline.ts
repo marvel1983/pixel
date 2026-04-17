@@ -8,6 +8,7 @@ import {
   orderStatusEnum,
   flashSaleProducts,
   metenziProductMappings,
+  productVariants,
 } from "@workspace/db/schema";
 import { processPayment } from "./payment";
 import { createGiftCardForOrder, sendGiftCardEmails, redeemGiftCards } from "./gift-card-service";
@@ -327,15 +328,59 @@ async function fulfillFromMetenzi(orderId: number, items: OrderInput["items"], _
       return false;
     }
 
-    const metenziItems = resolvedItems.map((it) => ({ variantId: it.metenziProductId, quantity: it.quantity }));
-    const metenziOrder = await metenziCreateOrder(config, metenziItems);
-    await db.update(orders).set({ externalOrderId: metenziOrder.id }).where(eq(orders.id, orderId));
-    logger.info({ orderId, metenziOrderId: metenziOrder.id, status: metenziOrder.status, keysInResponse: metenziOrder.keys?.length ?? 0 }, "Metenzi order placed");
+    // Look up current stock counts so we can split in-stock vs backorder items
+    const variantIds = [...new Set(items.map((it) => it.variantId).filter((id): id is number => !!id))];
+    const stockRows = variantIds.length
+      ? await db.select({ id: productVariants.id, stockCount: productVariants.stockCount })
+          .from(productVariants).where(inArray(productVariants.id, variantIds))
+      : [];
+    const stockByVariantId = new Map(stockRows.map((r) => [r.id, r.stockCount]));
 
-    // Metenzi often returns keys immediately (status: "paid") — process them now rather than waiting for webhook
-    if (metenziOrder.status === "paid" && (metenziOrder.keys?.length ?? 0) > 0) {
-      const { handleWebhookEvent } = await import("./webhook-handlers");
-      await handleWebhookEvent("order.fulfilled", { id: metenziOrder.id, keys: metenziOrder.keys });
+    // Build item-level quantity map from the original items array
+    const qtyByProductId = new Map<number, { total: number; variantId: number }>();
+    for (const it of items) {
+      if (it.productId) qtyByProductId.set(it.productId, { total: it.quantity, variantId: it.variantId });
+    }
+
+    const inStockItems: { variantId: string; quantity: number }[] = [];
+    const backorderItems2: { variantId: string; quantity: number }[] = [];
+
+    for (const it of resolvedItems) {
+      const variantId = qtyByProductId.get(it.pixelProductId)?.variantId;
+      const stock = variantId !== undefined ? (stockByVariantId.get(variantId) ?? it.quantity) : it.quantity;
+      const inStockQty = Math.min(it.quantity, Math.max(0, stock));
+      const boQty = it.quantity - inStockQty;
+      if (inStockQty > 0) inStockItems.push({ variantId: it.metenziProductId, quantity: inStockQty });
+      if (boQty > 0) backorderItems2.push({ variantId: it.metenziProductId, quantity: boQty });
+    }
+
+    const externalIds: string[] = [];
+    const { handleWebhookEvent } = await import("./webhook-handlers");
+
+    // Place in-stock order immediately
+    if (inStockItems.length > 0) {
+      const metenziOrder = await metenziCreateOrder(config, inStockItems);
+      externalIds.push(metenziOrder.id);
+      logger.info({ orderId, metenziOrderId: metenziOrder.id, status: metenziOrder.status, qty: inStockItems }, "Metenzi in-stock order placed");
+      if (metenziOrder.status === "paid" && (metenziOrder.keys?.length ?? 0) > 0) {
+        await handleWebhookEvent("order.fulfilled", { id: metenziOrder.id, keys: metenziOrder.keys });
+      }
+    }
+
+    // Place backorder order separately so Metenzi queues it independently
+    if (backorderItems2.length > 0) {
+      const boOrder = await metenziCreateOrder(config, backorderItems2);
+      externalIds.push(boOrder.id);
+      logger.info({ orderId, metenziOrderId: boOrder.id, qty: backorderItems2 }, "Metenzi backorder order placed");
+    }
+
+    if (externalIds.length > 0) {
+      await db.update(orders).set({ externalOrderId: externalIds.join(",") }).where(eq(orders.id, orderId));
+    }
+
+    // If the entire order was delivered in-stock, mark COMPLETED; if any backorder exists, stay PROCESSING
+    if (backorderItems2.length > 0 && inStockItems.length === 0) {
+      await db.update(orders).set({ status: "BACKORDERED", notes: "Awaiting stock from supplier", updatedAt: new Date() }).where(eq(orders.id, orderId));
     }
     return true;
   } catch (err) {
