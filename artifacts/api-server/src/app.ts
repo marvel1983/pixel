@@ -45,6 +45,19 @@ app.use(
 const ALLOWED_ORIGINS = process.env.NODE_ENV === "production"
   ? (process.env.ALLOWED_ORIGINS ?? "").split(",").map((o) => o.trim()).filter(Boolean)
   : true; // dev: allow all origins
+
+// Webhook routes must accept from any origin — they use HMAC for security, not CORS.
+// This must be registered BEFORE the restrictive cors() middleware.
+app.use((req, res, next) => {
+  if (req.path.startsWith("/api/webhooks/") || req.path === "/api/webhooks") {
+    res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "content-type, authorization, x-metenzi-signature, x-metenzi-timestamp, x-metenzi-event, stripe-signature, cko-signature");
+    if (req.method === "OPTIONS") { res.status(204).end(); return; }
+  }
+  next();
+});
+
 app.use(cors({
   origin: ALLOWED_ORIGINS,
   credentials: true,

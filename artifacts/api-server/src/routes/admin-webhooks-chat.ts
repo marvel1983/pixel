@@ -7,12 +7,16 @@ import { requirePermission } from "../middleware/permissions";
 import { getMetenziConfig } from "../lib/metenzi-config";
 import { listWebhooks, createWebhook, deleteWebhook } from "../lib/metenzi-endpoints";
 import { paramString } from "../lib/route-params";
+import { getWebhookLog } from "../lib/webhook-log";
 
 const router = Router();
 
+// Real Metenzi event names (from Metenzi API docs)
 const WEBHOOK_EVENTS = [
-  "order.created", "order.completed", "order.failed", "order.refunded",
-  "license.generated", "license.revoked", "product.updated", "stock.low",
+  "keys.delivered",
+  "backorder.fulfilled",
+  "claim.created",
+  "order.status_changed",
 ];
 
 router.get("/admin/settings/webhooks", requireAuth, requireAdmin, requirePermission("manageSettings"), async (_req, res) => {
@@ -30,8 +34,7 @@ router.post("/admin/settings/webhooks", requireAuth, requireAdmin, requirePermis
   const { url, events } = req.body;
   if (!url || typeof url !== "string") { res.status(400).json({ error: "URL required" }); return; }
   if (!Array.isArray(events) || events.length === 0) { res.status(400).json({ error: "At least one event required" }); return; }
-  const invalid = events.filter((e: string) => !WEBHOOK_EVENTS.includes(e));
-  if (invalid.length > 0) { res.status(400).json({ error: `Invalid events: ${invalid.join(", ")}` }); return; }
+  // No strict validation — pass events as-is to Metenzi
   try {
     const webhook = await createWebhook(config, url, events);
     res.json(webhook);
@@ -47,8 +50,14 @@ router.delete("/admin/settings/webhooks/:id", requireAuth, requireAdmin, require
   } catch (e) { res.status(500).json({ error: (e as Error).message }); }
 });
 
-router.get("/admin/settings/webhooks/endpoint-url", requireAuth, requireAdmin, requirePermission("manageSettings"), async (_req, res) => {
-  const baseUrl = process.env.APP_PUBLIC_URL ?? `https://${process.env.REPLIT_DEV_DOMAIN ?? "localhost"}`;
+router.get("/admin/settings/webhook-logs", requireAuth, requireAdmin, requirePermission("manageSettings"), (_req, res) => {
+  res.json({ logs: getWebhookLog() });
+});
+
+router.get("/admin/settings/webhooks/endpoint-url", requireAuth, requireAdmin, requirePermission("manageSettings"), async (req, res) => {
+  const host = (req.headers["x-forwarded-host"] ?? req.headers.host ?? "localhost") as string;
+  const proto = (req.headers["x-forwarded-proto"] ?? (host === "localhost" ? "http" : "https")) as string;
+  const baseUrl = process.env.APP_PUBLIC_URL ?? `${proto}://${host}`;
   res.json({ url: `${baseUrl}/api/webhooks/metenzi` });
 });
 

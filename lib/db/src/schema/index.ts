@@ -50,3 +50,4 @@ export * from "./price-rules";
 export * from "./product-attributes";
 export * from "./product-tags";
 export * from "./user-imports";
+export * from "./metenzi-mappings";

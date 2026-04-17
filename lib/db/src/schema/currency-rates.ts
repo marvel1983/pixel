@@ -13,7 +13,7 @@ import { z } from "zod/v4";
 export const currencyRates = pgTable("currency_rates", {
   id: serial("id").primaryKey(),
   currencyCode: varchar("currency_code", { length: 3 }).notNull().unique(),
-  symbol: varchar("symbol", { length: 5 }).notNull().default("$"),
+  symbol: varchar("symbol", { length: 5 }).notNull().default("€"),
   rateToUsd: numeric("rate_to_usd", { precision: 12, scale: 6 }).notNull(),
   enabled: boolean("enabled").notNull().default(true),
   sortOrder: integer("sort_order").notNull().default(0),

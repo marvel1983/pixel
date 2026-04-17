@@ -1,4 +1,4 @@
-import { eq, and, inArray, sql } from "drizzle-orm";
+import { eq, and, inArray, isNotNull, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   orders,
@@ -7,6 +7,7 @@ import {
   users,
   orderStatusEnum,
   flashSaleProducts,
+  metenziProductMappings,
 } from "@workspace/db/schema";
 import { processPayment } from "./payment";
 import { createGiftCardForOrder, sendGiftCardEmails, redeemGiftCards } from "./gift-card-service";
@@ -240,7 +241,7 @@ export async function executeOrderPipeline(input: OrderInput) {
     if (cardAmount > 0.01 && input.cardToken) {
       const paymentResult = await processPayment({
         amount: cardAmount.toFixed(2),
-        currency: "USD",
+        currency: "EUR",
         cardToken: input.cardToken,
         email: billing.email,
       });
@@ -296,23 +297,58 @@ async function fulfillFromMetenzi(orderId: number, items: OrderInput["items"], _
   try {
     const config = await getMetenziConfig();
     if (!config) { logger.warn({ orderId }, "Metenzi not configured, skipping fulfillment"); return false; }
-    const metenziItems = items.map((it) => ({ variantId: String(it.variantId), quantity: it.quantity }));
+
+    // Resolve Metenzi product IDs from the mapping table (product-level mapping)
+    const productIds = [...new Set(items.map((it) => it.productId).filter((id): id is number => !!id))];
+    const mappings = productIds.length
+      ? await db
+          .select({ pixelProductId: metenziProductMappings.pixelProductId, metenziProductId: metenziProductMappings.metenziProductId })
+          .from(metenziProductMappings)
+          .where(and(inArray(metenziProductMappings.pixelProductId, productIds), isNotNull(metenziProductMappings.pixelProductId)))
+      : [];
+    const mappingByProductId = new Map(
+      mappings.filter((m) => m.pixelProductId !== null).map((m) => [m.pixelProductId!, m.metenziProductId])
+    );
+
+    // Build resolved items: { metenziProductId, pixelProductId, quantity }
+    // Needed for retry payload so retries also use Metenzi IDs, not Pixel variantIds
+    const resolvedItems: { metenziProductId: string; pixelProductId: number; quantity: number }[] = [];
+    for (const it of items) {
+      const metenziId = mappingByProductId.get(it.productId);
+      if (!metenziId) {
+        logger.warn({ orderId, productId: it.productId }, "Item has no Metenzi mapping, skipping");
+        continue;
+      }
+      resolvedItems.push({ metenziProductId: metenziId, pixelProductId: it.productId, quantity: it.quantity });
+    }
+
+    if (resolvedItems.length === 0) {
+      logger.info({ orderId }, "No Metenzi-mapped items in order, skipping Metenzi fulfillment");
+      return false;
+    }
+
+    const metenziItems = resolvedItems.map((it) => ({ productId: it.metenziProductId, quantity: it.quantity }));
     const metenziOrder = await metenziCreateOrder(config, metenziItems);
     await db.update(orders).set({ externalOrderId: metenziOrder.id }).where(eq(orders.id, orderId));
-    logger.info({ orderId, metenziOrderId: metenziOrder.id }, "Metenzi order placed, awaiting fulfillment webhook");
+    logger.info({ orderId, metenziOrderId: metenziOrder.id, status: metenziOrder.status, keysInResponse: metenziOrder.keys?.length ?? 0 }, "Metenzi order placed");
+
+    // Metenzi often returns keys immediately (status: "paid") — process them now rather than waiting for webhook
+    if (metenziOrder.status === "paid" && (metenziOrder.keys?.length ?? 0) > 0) {
+      const { handleWebhookEvent } = await import("./webhook-handlers");
+      await handleWebhookEvent("order.fulfilled", { id: metenziOrder.id, keys: metenziOrder.keys });
+    }
     return true;
   } catch (err) {
     const isCircuitOpen = err instanceof CircuitOpenError;
     logger.error({ err, orderId, circuitOpen: isCircuitOpen }, "Metenzi fulfillment failed");
+    // Re-resolve for retry payload — we can't recover resolvedItems here so store productIds for retry
+    const productIds2 = [...new Set(items.map((it) => it.productId).filter((id): id is number => !!id))];
     enqueueJob({
       queue: "order-processing",
       name: "metenzi-retry-fulfillment",
       priority: 3,
       maxAttempts: 5,
-      payload: {
-        orderId,
-        items: items.map((it) => ({ variantId: it.variantId, quantity: it.quantity })),
-      },
+      payload: { orderId, productIds: productIds2 },
       scheduledAt: new Date(Date.now() + (isCircuitOpen ? 60_000 : 30_000)),
     }).catch((e) => logger.error({ e, orderId }, "Failed to enqueue fulfillment retry"));
     return false;

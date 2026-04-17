@@ -7,6 +7,7 @@ export interface MetenziClientConfig {
   baseUrl: string;
   apiKey: string;
   hmacSecret: string;
+  webhookSecret?: string;
   rateLimit?: number;
 }
 
@@ -54,13 +55,17 @@ async function sleep(ms: number): Promise<void> {
 
 function computeSignatureHeaders(
   config: MetenziClientConfig,
+  method: string,
+  path: string,
   bodyStr?: string,
 ): Record<string, string> {
-  const timestamp = Math.floor(Date.now() / 1000).toString();
-  const payloadToSign = bodyStr ?? "";
-  const signaturePayload = `${timestamp}.${payloadToSign}`;
+  // Metenzi requires milliseconds timestamp
+  const timestamp = Date.now().toString();
+  const body = bodyStr ?? "";
+  // Metenzi format: timestamp + "." + METHOD + "." + path + "." + body
+  const signaturePayload = `${timestamp}.${method.toUpperCase()}.${path}.${body}`;
   const signature = signPayload(signaturePayload, config.hmacSecret);
-  return { "X-Signature": signature, "X-Timestamp": timestamp };
+  return { "X-Signature": signature, "X-Signature-Timestamp": timestamp };
 }
 
 function parseRetryAfter(header: string | null): number | null {
@@ -88,7 +93,7 @@ async function rawMetenziRequest<T = unknown>(
     };
 
     if (isWrite) {
-      Object.assign(headers, computeSignatureHeaders(config, bodyStr));
+      Object.assign(headers, computeSignatureHeaders(config, method, path, bodyStr));
     }
 
     try {

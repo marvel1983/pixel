@@ -43,11 +43,11 @@ router.put("/admin/settings/cpp-fees", requireAuth, requireAdmin, requirePermiss
 router.get("/admin/settings/currencies", requireAuth, requireAdmin, requirePermission("manageSettings"), async (_req, res) => {
   const [s] = await db.select({ defaultCurrency: siteSettings.defaultCurrency }).from(siteSettings);
   const rates = await db.select().from(currencyRates).orderBy(currencyRates.sortOrder, currencyRates.currencyCode);
-  res.json({ defaultCurrency: s?.defaultCurrency ?? "USD", currencies: rates });
+  res.json({ defaultCurrency: s?.defaultCurrency ?? "EUR", currencies: rates });
 });
 
 router.put("/admin/settings/currencies/default", requireAuth, requireAdmin, requirePermission("manageSettings"), async (req, res) => {
-  const code = String(req.body.defaultCurrency || "USD").toUpperCase();
+  const code = String(req.body.defaultCurrency || "EUR").toUpperCase();
   if (code.length !== 3) { res.status(400).json({ error: "Invalid currency code" }); return; }
   const [currency] = await db.select().from(currencyRates).where(eq(currencyRates.currencyCode, code));
   if (!currency) { res.status(400).json({ error: "Currency not found in rates table" }); return; }
@@ -60,7 +60,7 @@ router.put("/admin/settings/currencies/default", requireAuth, requireAdmin, requ
 
 router.post("/admin/settings/currencies", requireAuth, requireAdmin, requirePermission("manageSettings"), async (req, res) => {
   const code = String(req.body.currencyCode || "").toUpperCase().trim();
-  const symbol = String(req.body.symbol || "$").trim();
+  const symbol = String(req.body.symbol || "€").trim();
   const rate = String(req.body.rateToUsd || "1");
   if (code.length !== 3) { res.status(400).json({ error: "Currency code must be 3 characters" }); return; }
   if (Number(rate) <= 0 || isNaN(Number(rate))) { res.status(400).json({ error: "Rate must be positive" }); return; }

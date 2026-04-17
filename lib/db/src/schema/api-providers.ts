@@ -18,6 +18,7 @@ export const apiProviders = pgTable("api_providers", {
   baseUrl: text("base_url").notNull(),
   apiKeyEncrypted: text("api_key_encrypted"),
   hmacSecretEncrypted: text("hmac_secret_encrypted"),
+  webhookSecretEncrypted: text("webhook_secret_encrypted"),
   isActive: boolean("is_active").notNull().default(true),
   rateLimit: integer("rate_limit").default(60),
   createdAt: timestamp("created_at").notNull().defaultNow(),

@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Plus, Trash2, Webhook, AlertCircle, CheckCircle, X, Copy } from "lucide-react";
+import { Plus, Trash2, Webhook, AlertCircle, CheckCircle, X, Copy, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuthStore } from "@/stores/auth-store";
@@ -20,6 +20,11 @@ export default function SettingsWebhooksTab() {
   const [saving, setSaving] = useState(false);
   const [endpointUrl, setEndpointUrl] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [autoRegistering, setAutoRegistering] = useState(false);
+  const [autoRegResult, setAutoRegResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [recentLogs, setRecentLogs] = useState<{ ts: string; event: string; outcome: string; status: number; error?: string }[] | null>(null);
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [logsError, setLogsError] = useState("");
   const token = useAuthStore((s) => s.token);
 
   const api = useCallback(async (path: string, opts?: RequestInit) => {
@@ -65,6 +70,18 @@ export default function SettingsWebhooksTab() {
     setConfirmDelete(null);
   };
 
+  const loadLogs = async () => {
+    setLogsLoading(true);
+    setLogsError("");
+    try {
+      const d = await api("/admin/settings/webhook-logs");
+      setRecentLogs(d.logs ?? []);
+    } catch (e) {
+      setLogsError((e as Error).message || "Failed to load logs");
+    }
+    setLogsLoading(false);
+  };
+
   if (!loaded) return <div className="text-sm text-muted-foreground p-4">Loading...</div>;
 
   if (!configured) {
@@ -81,10 +98,24 @@ export default function SettingsWebhooksTab() {
       {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 flex items-center gap-2"><AlertCircle className="h-4 w-4" /> {error}</div>}
 
       <div className="rounded-lg border bg-white p-5 space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2"><Webhook className="h-5 w-5 text-blue-600" /><h3 className="font-semibold">Registered Webhooks</h3></div>
-          <Button size="sm" onClick={openAdd}><Plus className="h-3 w-3 mr-1" /> Register Webhook</Button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button size="sm" variant="outline" disabled={autoRegistering} onClick={async () => {
+              setAutoRegistering(true); setAutoRegResult(null);
+              try {
+                await api("/webhooks/metenzi/register", { method: "POST" });
+                setAutoRegResult({ ok: true, msg: "Webhook registered successfully" });
+                await load();
+              } catch (e) { setAutoRegResult({ ok: false, msg: (e as Error).message }); }
+              setAutoRegistering(false);
+            }}><Zap className="h-3 w-3 mr-1" />{autoRegistering ? "Registering..." : "Auto-register Metenzi"}</Button>
+            <Button size="sm" onClick={openAdd}><Plus className="h-3 w-3 mr-1" /> Custom</Button>
+          </div>
         </div>
+        {autoRegResult && (
+          <p className={`text-xs ${autoRegResult.ok ? "text-green-600" : "text-red-600"}`}>{autoRegResult.msg}</p>
+        )}
         <div className="rounded-md border bg-gray-50 p-3 flex items-center gap-2 text-xs">
           <span className="text-muted-foreground">Your endpoint:</span>
           <code className="font-mono bg-white px-2 py-0.5 rounded border flex-1 truncate">{endpointUrl}</code>
@@ -128,6 +159,34 @@ export default function SettingsWebhooksTab() {
           </div>
         </div>
       )}
+
+      <div className="rounded-lg border bg-white p-5 space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-sm">Recent Incoming Events</h3>
+          <Button size="sm" variant="outline" onClick={loadLogs} disabled={logsLoading}>{logsLoading ? "Loading…" : "Refresh Logs"}</Button>
+        </div>
+        {logsError && <p className="text-xs text-red-600">{logsError}</p>}
+        {recentLogs === null ? (
+          <p className="text-xs text-muted-foreground">Click "Refresh Logs" to see recent webhook activity (resets on server restart).</p>
+        ) : recentLogs.length === 0 ? (
+          <p className="text-xs text-muted-foreground">No events received since last server restart. Place a test order and refresh.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs border-collapse">
+              <thead><tr className="bg-gray-50 text-left"><th className="px-2 py-1 border">Time</th><th className="px-2 py-1 border">Event</th><th className="px-2 py-1 border">Status</th><th className="px-2 py-1 border">Outcome</th><th className="px-2 py-1 border">Error</th></tr></thead>
+              <tbody>{recentLogs.slice(0, 20).map((l, i) => (
+                <tr key={i} className={l.outcome === "ok" ? "bg-green-50" : l.outcome === "challenge" ? "bg-blue-50" : "bg-red-50"}>
+                  <td className="px-2 py-1 border font-mono whitespace-nowrap">{new Date(l.ts).toLocaleTimeString()}</td>
+                  <td className="px-2 py-1 border font-mono">{l.event}</td>
+                  <td className="px-2 py-1 border">{l.status}</td>
+                  <td className="px-2 py-1 border">{l.outcome}</td>
+                  <td className="px-2 py-1 border text-red-600 max-w-xs truncate">{l.error ?? ""}</td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {confirmDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setConfirmDelete(null)}>

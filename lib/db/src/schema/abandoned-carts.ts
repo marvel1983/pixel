@@ -27,7 +27,7 @@ export const abandonedCarts = pgTable("abandoned_carts", {
   status: abandonedCartStatusEnum("status").notNull().default("ACTIVE"),
   cartData: jsonb("cart_data").$type<CartSnapshot>().notNull(),
   cartTotal: numeric("cart_total", { precision: 10, scale: 2 }).notNull(),
-  currency: varchar("currency", { length: 3 }).notNull().default("USD"),
+  currency: varchar("currency", { length: 3 }).notNull().default("EUR"),
   emailsSent: integer("emails_sent").notNull().default(0),
   lastEmailAt: timestamp("last_email_at"),
   recoveredAt: timestamp("recovered_at"),

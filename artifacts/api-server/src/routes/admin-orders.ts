@@ -190,6 +190,31 @@ router.post("/admin/orders/:id/resend-email", requireAuth, requireAdmin, require
   res.json({ success: true, message: "Email queued for resend" });
 });
 
+router.post("/admin/orders/:id/redeliver-keys", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
+  const id = Number(paramString(req.params, "id"));
+  if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid order ID" }); return; }
+
+  const [order] = await db.select({ id: orders.id, externalOrderId: orders.externalOrderId }).from(orders).where(eq(orders.id, id));
+  if (!order) { res.status(404).json({ error: "Order not found" }); return; }
+  if (!order.externalOrderId) { res.status(400).json({ error: "Order has no Metenzi external ID" }); return; }
+
+  const { getMetenziConfig } = await import("../lib/metenzi-config");
+  const { getOrderById } = await import("../lib/metenzi-endpoints");
+  const config = await getMetenziConfig();
+  if (!config) { res.status(400).json({ error: "Metenzi not configured" }); return; }
+
+  const metenziOrder = await getOrderById(config, order.externalOrderId);
+  if (!metenziOrder) { res.status(404).json({ error: "Metenzi order not found" }); return; }
+
+  const { handleWebhookEvent } = await import("../services/webhook-handlers");
+  await handleWebhookEvent("order.fulfilled", {
+    id: metenziOrder.id,
+    keys: metenziOrder.keys ?? [],
+  });
+
+  res.json({ success: true });
+});
+
 function buildFilters(query: Record<string, unknown>) {
   const conditions = [];
   const search = query.search as string | undefined;

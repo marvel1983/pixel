@@ -8,6 +8,7 @@ import { processSurveyEmails } from "../services/survey-service";
 import { syncCurrencyRates } from "./currency-sync";
 import { processExpiredPoints, sendExpiryWarningEmails } from "../services/loyalty-service";
 import { logger } from "./logger";
+import { metenziProductMappings } from "@workspace/db/schema";
 
 export function registerAllWorkers() {
   registerQueueWorker("email", async () => {
@@ -56,18 +57,48 @@ export function registerAllWorkers() {
   });
 
   registerWorker("order-processing", "metenzi-retry-fulfillment", async (payload) => {
-    const { orderId, items } = payload as { orderId: number; items: Array<{ variantId: number; quantity: number }> };
+    const { orderId, productIds } = payload as { orderId: number; productIds: number[] };
     const { getMetenziConfig } = await import("../lib/metenzi-config");
     const { createOrder: metenziCreateOrder } = await import("../lib/metenzi-endpoints");
+    const { db } = await import("@workspace/db");
+    const { orders, orderItems } = await import("@workspace/db/schema");
+    const { eq, inArray, isNotNull, and } = await import("drizzle-orm");
+
     const config = await getMetenziConfig();
     if (!config) { logger.warn({ orderId }, "Metenzi not configured, skipping retry"); return; }
-    const metenziItems = items.map((it) => ({ variantId: String(it.variantId), quantity: it.quantity }));
+
+    // Re-resolve Metenzi product IDs from productIds
+    const mappings = productIds.length
+      ? await db
+          .select({ pixelProductId: metenziProductMappings.pixelProductId, metenziProductId: metenziProductMappings.metenziProductId })
+          .from(metenziProductMappings)
+          .where(and(inArray(metenziProductMappings.pixelProductId, productIds), isNotNull(metenziProductMappings.pixelProductId)))
+      : [];
+    const mappingMap = new Map(mappings.filter((m) => m.pixelProductId !== null).map((m) => [m.pixelProductId!, m.metenziProductId]));
+
+    // Get order items quantities
+    const dbItems = await db.select({ variantId: orderItems.variantId, quantity: orderItems.quantity, productId: orderItems.variantId })
+      .from(orderItems).where(eq(orderItems.orderId, orderId));
+
+    const metenziItems: { productId: string; quantity: number }[] = [];
+    for (const pid of productIds) {
+      const metenziId = mappingMap.get(pid);
+      if (!metenziId) continue;
+      const qty = dbItems.reduce((s, i) => s + i.quantity, 0) || 1;
+      metenziItems.push({ productId: metenziId, quantity: qty });
+    }
+
+    if (metenziItems.length === 0) { logger.warn({ orderId }, "Retry: no Metenzi-mapped items found"); return; }
+
     const metenziOrder = await metenziCreateOrder(config, metenziItems);
-    const { db } = await import("@workspace/db");
-    const { orders } = await import("@workspace/db/schema");
-    const { eq } = await import("drizzle-orm");
     await db.update(orders).set({ externalOrderId: metenziOrder.id, status: "PROCESSING" }).where(eq(orders.id, orderId));
-    logger.info({ orderId, metenziOrderId: metenziOrder.id }, "Metenzi retry fulfillment succeeded");
+    logger.info({ orderId, metenziOrderId: metenziOrder.id, keysInResponse: metenziOrder.keys?.length ?? 0 }, "Metenzi retry fulfillment succeeded");
+
+    // Handle immediate key delivery if Metenzi already returned keys
+    if (metenziOrder.status === "paid" && (metenziOrder.keys?.length ?? 0) > 0) {
+      const { handleWebhookEvent } = await import("../services/webhook-handlers");
+      await handleWebhookEvent("order.fulfilled", { id: metenziOrder.id, keys: metenziOrder.keys });
+    }
   });
 
   registerQueueWorker("order-processing", async (payload) => {

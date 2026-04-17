@@ -8,6 +8,7 @@ import { createWebhook } from "../lib/metenzi-endpoints";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { handleWebhookEvent } from "../services/webhook-handlers";
 import { logger } from "../lib/logger";
+import { appendWebhookLog } from "../lib/webhook-log";
 import { createStripeClient } from "../lib/stripe-client";
 import { getActivePaymentConfig } from "../lib/payment-config";
 import { verifyCheckoutSignature } from "../lib/checkout-com-client";
@@ -20,52 +21,70 @@ const router = Router();
 
 const REPLAY_WINDOW_MS = 5 * 60 * 1000;
 
+// Metenzi incoming webhook signature format: HMAC-SHA256(webhookSecret, timestamp + "." + eventType + "." + body)
+// Headers: X-Metenzi-Signature, X-Metenzi-Timestamp, X-Metenzi-Event
 function verifySignature(
   body: string,
   timestamp: string,
+  eventType: string,
   signature: string,
   secret: string,
 ): boolean {
-  const payload = `${timestamp}.${body}`;
-  const expected = crypto
-    .createHmac("sha256", secret)
-    .update(payload)
-    .digest("hex");
-  return crypto.timingSafeEqual(
-    Buffer.from(signature, "hex"),
-    Buffer.from(expected, "hex"),
-  );
+  const rawSecret = secret.replace(/^whsec_/, "");
+  const payload = `${timestamp}.${eventType}.${body}`;
+  const expected = crypto.createHmac("sha256", rawSecret).update(payload).digest("hex");
+  try {
+    return crypto.timingSafeEqual(Buffer.from(signature, "hex"), Buffer.from(expected, "hex"));
+  } catch {
+    return false;
+  }
 }
 
 function isReplayAttack(timestamp: string): boolean {
   const ts = parseInt(timestamp, 10);
   if (Number.isNaN(ts)) return true;
-  const age = Math.abs(Date.now() - ts * 1000);
+  // Metenzi sends timestamp in milliseconds; if the value looks like seconds (< 1e12), convert
+  const tsMs = ts < 1e12 ? ts * 1000 : ts;
+  const age = Math.abs(Date.now() - tsMs);
   return age > REPLAY_WINDOW_MS;
 }
 
 router.get("/webhooks/metenzi", (req, res) => {
-  const challenge = req.query.challenge;
+  // Metenzi uses "metenzi_challenge" query param for verification
+  const challenge = (req.query.metenzi_challenge ?? req.query.challenge) as string | undefined;
   if (typeof challenge === "string" && challenge.length > 0) {
-    logger.info("Metenzi webhook verification challenge received");
-    res.json({ challenge });
+    logger.info({ challenge }, "Metenzi webhook verification challenge received");
+    appendWebhookLog({ direction: "in", source: "metenzi", event: "challenge", status: 200, outcome: "challenge", body: { challenge } });
+    res.type("text/plain").send(challenge);
     return;
   }
   res.json({ status: "ok", message: "Metenzi webhook endpoint active" });
 });
 
 router.post("/webhooks/metenzi", async (req, res) => {
-  const signature = req.headers["x-signature"];
-  const timestamp = req.headers["x-timestamp"];
+  // Metenzi webhook headers: X-Metenzi-Signature, X-Metenzi-Timestamp, X-Metenzi-Event
+  const signature = req.headers["x-metenzi-signature"] as string | undefined;
+  const timestamp = req.headers["x-metenzi-timestamp"] as string | undefined;
+  const eventHeader = req.headers["x-metenzi-event"] as string | undefined;
 
-  if (typeof signature !== "string" || typeof timestamp !== "string") {
-    logger.warn("Webhook missing signature headers");
+  // Capture all headers for debug logging
+  const incomingHeaders: Record<string, string> = {};
+  for (const [k, v] of Object.entries(req.headers)) {
+    if (typeof v === "string") incomingHeaders[k] = v;
+  }
+
+  logger.info({ headers: incomingHeaders, body: req.body }, "Metenzi webhook POST received");
+
+  if (!signature || !timestamp) {
+    logger.warn({ headerKeys: Object.keys(req.headers) }, "Webhook missing Metenzi signature headers");
+    appendWebhookLog({ direction: "in", source: "metenzi", event: eventHeader ?? "unknown", status: 401, outcome: "invalid_sig", headers: incomingHeaders, body: req.body, error: "Missing signature headers" });
     res.status(401).json({ error: "Missing signature headers" });
     return;
   }
 
   if (isReplayAttack(timestamp)) {
-    logger.warn({ timestamp }, "Webhook replay attack detected");
+    logger.warn({ timestamp, now: Date.now() }, "Webhook replay attack detected");
+    appendWebhookLog({ direction: "in", source: "metenzi", event: eventHeader ?? "unknown", status: 401, outcome: "replay", headers: incomingHeaders, body: req.body, error: `Timestamp ${timestamp} too old` });
     res.status(401).json({ error: "Request too old" });
     return;
   }
@@ -73,37 +92,57 @@ router.post("/webhooks/metenzi", async (req, res) => {
   const config = await getMetenziConfig();
   if (!config) {
     logger.error("Webhook received but Metenzi not configured");
+    appendWebhookLog({ direction: "in", source: "metenzi", event: eventHeader ?? "unknown", status: 503, outcome: "unknown", headers: incomingHeaders, body: req.body, error: "Metenzi not configured" });
     res.status(503).json({ error: "Webhook handler not configured" });
     return;
   }
 
   const rawBody = req.rawBody ?? JSON.stringify(req.body);
-  let valid: boolean;
-  try {
-    valid = verifySignature(rawBody, timestamp, signature, config.hmacSecret);
-  } catch {
-    valid = false;
+  const eventType = eventHeader ?? (req.body?.event as string) ?? "";
+
+  // Try webhookSecret first, then fall back to hmacSecret
+  const secrets = [config.webhookSecret, config.hmacSecret].filter(Boolean) as string[];
+  let valid = false;
+  const sigDebug: string[] = [];
+  for (const secret of secrets) {
+    try {
+      const rawSec = secret.replace(/^whsec_/, "");
+      const payload = `${timestamp}.${eventType}.${rawBody}`;
+      const expected = crypto.createHmac("sha256", rawSec).update(payload).digest("hex");
+      sigDebug.push(`tried secret[${rawSec.slice(0, 6)}…] → expected[${expected.slice(0, 12)}…] got[${signature.slice(0, 12)}…]`);
+      if (verifySignature(rawBody, timestamp, eventType, signature, secret)) {
+        valid = true;
+        break;
+      }
+    } catch (e) {
+      sigDebug.push(`error: ${(e as Error).message}`);
+    }
   }
 
   if (!valid) {
-    logger.warn("Webhook signature verification failed");
+    logger.warn({ sig: signature.slice(0, 20) + "…", timestamp, eventType, rawBodyLen: rawBody.length, sigDebug }, "Webhook signature verification failed");
+    appendWebhookLog({ direction: "in", source: "metenzi", event: eventType, status: 401, outcome: "invalid_sig", headers: incomingHeaders, body: req.body, error: `sig mismatch: ${sigDebug.join(" | ")}` });
     res.status(401).json({ error: "Invalid signature" });
     return;
   }
 
-  const event = req.body?.event;
-  const data = req.body?.data;
+  // Event and data extraction — Metenzi may send data nested under "data" or at top level
+  const event = eventHeader ?? req.body?.event ?? "";
+  const data = req.body?.data ?? req.body;
 
-  if (!event || !data) {
-    res.status(400).json({ error: "Missing event or data" });
+  if (!event) {
+    appendWebhookLog({ direction: "in", source: "metenzi", event: "", status: 400, outcome: "bad_body", headers: incomingHeaders, body: req.body, error: "Missing event" });
+    res.status(400).json({ error: "Missing event" });
     return;
   }
 
   try {
     await handleWebhookEvent(event, data);
+    appendWebhookLog({ direction: "in", source: "metenzi", event, status: 200, outcome: "ok", body: req.body });
     res.json({ received: true });
   } catch (err) {
     logger.error({ err, event }, "Webhook event handler failed");
+    appendWebhookLog({ direction: "in", source: "metenzi", event, status: 500, outcome: "handler_error", headers: incomingHeaders, body: req.body, error: (err as Error).message });
     res.status(500).json({ error: "Event processing failed" });
   }
 });
@@ -404,12 +443,12 @@ async function handleCheckoutPaymentFailed(data: Record<string, unknown>) {
 
 // ── Metenzi webhook ───────────────────────────────────────────────────────────
 
+// Real Metenzi event names (from Metenzi API docs)
 const WEBHOOK_EVENTS = [
-  "order.fulfilled",
-  "order.backorder",
-  "order.cancelled",
-  "claim.opened",
-  "claim.resolved",
+  "keys.delivered",
+  "backorder.fulfilled",
+  "claim.created",
+  "order.status_changed",
 ];
 
 router.post(
@@ -423,17 +462,36 @@ router.post(
       return;
     }
 
-    const baseUrl = process.env.APP_PUBLIC_URL ?? `https://${process.env.REPLIT_DEV_DOMAIN ?? "localhost"}`;
+    const host = (req.headers["x-forwarded-host"] ?? req.headers.host ?? "localhost") as string;
+    const proto = (req.headers["x-forwarded-proto"] ?? (host === "localhost" ? "http" : "https")) as string;
+    const baseUrl = process.env.APP_PUBLIC_URL ?? `${proto}://${host}`;
     const webhookUrl = `${baseUrl}/api/webhooks/metenzi`;
 
     try {
       const webhook = await createWebhook(config, webhookUrl, WEBHOOK_EVENTS);
-      logger.info({ webhookId: webhook.id, webhookUrl }, "Metenzi webhook registered");
-      res.json({ webhook });
+      logger.info({ webhookId: webhook.id, webhookUrl, hasSecret: !!webhook.signingSecret }, "Metenzi webhook registered");
+
+      // Auto-save signing secret if Metenzi returned it in the response
+      if (webhook.signingSecret) {
+        const { encrypt } = await import("../lib/encryption");
+        const { db } = await import("@workspace/db");
+        const { apiProviders } = await import("@workspace/db/schema");
+        const { eq } = await import("drizzle-orm");
+        const { clearMetenziConfigCache } = await import("../lib/metenzi-config");
+        const encrypted = encrypt(webhook.signingSecret);
+        await db.update(apiProviders)
+          .set({ webhookSecretEncrypted: encrypted, updatedAt: new Date() })
+          .where(eq(apiProviders.slug, "metenzi"));
+        clearMetenziConfigCache();
+        logger.info({ webhookId: webhook.id }, "Auto-saved Metenzi webhook signing secret");
+      }
+
+      res.json({ webhook, secretSaved: !!webhook.signingSecret });
     } catch (err) {
       logger.error({ err }, "Failed to register Metenzi webhook");
       const msg = err instanceof Error ? err.message : "Registration failed";
-      res.status(500).json({ error: msg });
+      const status = msg.includes("403") ? 403 : 500;
+      res.status(status).json({ error: msg });
     }
   },
 );

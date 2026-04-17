@@ -49,7 +49,7 @@ export const orders = pgTable("orders", {
   }).default("0"),
   currencyCode: varchar("currency_code", { length: 3 })
     .notNull()
-    .default("USD"),
+    .default("EUR"),
   currencyRate: numeric("currency_rate", { precision: 12, scale: 6 })
     .notNull()
     .default("1"),
