@@ -139,7 +139,7 @@ async function handleOrderFulfilled(data: FulfilledData) {
         .limit(1);
 
       if (!mapping?.pixelProductId) {
-        logger.warn({ metenziProductId: keyItem.productId, orderId: order.id }, "No Pixel mapping for key.productId — skipping");
+        logger.warn({ metenziProductId: keyItem.productId, orderId: order.id, hint: "Check metenziProductMappings table — run GET /admin/metenzi/mappings to see stored IDs" }, "No Pixel mapping for key.productId — skipping");
         continue;
       }
 
@@ -199,6 +199,19 @@ async function handleOrderFulfilled(data: FulfilledData) {
         keysToDeliver.push({ productName: dbItem.productName, variant: dbItem.variantName, licenseKey: key });
       }
     }
+  }
+
+  if (keysToDeliver.length === 0) {
+    // Webhook fired but no keys extracted — keep PROCESSING so cron poll retries
+    logger.warn({ orderId: order.id, metenziOrderId, topLevelKeyCount: topLevelKeys.length }, "keys.delivered: no keys matched mapping — keeping PROCESSING for retry");
+    await logAuditEvent("UPDATE", "order", order.id, {
+      webhookEvent: "order.fulfilled",
+      metenziOrderId,
+      keysDelivered: 0,
+      warning: "no_keys_matched",
+      topLevelKeys: topLevelKeys.map(k => ({ productId: k.productId, codeType: k.codeType })),
+    });
+    return;
   }
 
   await db
