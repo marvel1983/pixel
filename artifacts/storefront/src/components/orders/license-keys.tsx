@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Copy, Check, Key, Clock } from "lucide-react";
+import { Copy, Check, Key, Clock, CopyCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 
@@ -41,11 +41,16 @@ export function LicenseKeysDisplay({ keyGroups }: LicenseKeysDisplayProps) {
     );
   }
 
+  const allKeys = keyGroups.flatMap((g) => g.keys.map((k) => k.value));
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Key className="h-5 w-5 text-primary" />
-        <h3 className="font-semibold">Your License Keys</h3>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Key className="h-5 w-5 text-primary" />
+          <h3 className="font-semibold">Your License Keys</h3>
+        </div>
+        {allKeys.length > 1 && <CopyAllButton keys={allKeys} />}
       </div>
       {keyGroups.map((group) => (
         <div key={group.orderItemId} className="border rounded-lg p-4">
@@ -63,6 +68,29 @@ export function LicenseKeysDisplay({ keyGroups }: LicenseKeysDisplayProps) {
         </div>
       ))}
     </div>
+  );
+}
+
+function CopyAllButton({ keys }: { keys: string[] }) {
+  const [copied, setCopied] = useState(false);
+  const { toast } = useToast();
+
+  async function handleCopyAll() {
+    try {
+      await navigator.clipboard.writeText(keys.join("\n"));
+      setCopied(true);
+      toast({ title: `${keys.length} keys copied to clipboard` });
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast({ title: "Failed to copy", variant: "destructive" });
+    }
+  }
+
+  return (
+    <Button size="sm" variant="outline" onClick={handleCopyAll} className="gap-2">
+      {copied ? <CopyCheck className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+      {copied ? "Copied!" : "Copy All"}
+    </Button>
   );
 }
 

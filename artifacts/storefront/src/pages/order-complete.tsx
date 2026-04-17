@@ -126,13 +126,13 @@ export default function OrderCompletePage() {
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center mt-8">
           <Link href="/shop">
-            <Button variant="outline">
+            <Button>
               <ArrowRight className="h-4 w-4 mr-2" />
               {t("order.continueShopping")}
             </Button>
           </Link>
           <Link href="/order-lookup">
-            <Button variant="outline">{t("order.checkStatus")}</Button>
+            <Button variant="secondary">{t("order.checkStatus")}</Button>
           </Link>
         </div>
       </div>
