@@ -270,7 +270,7 @@ function CartRow({ item, format, onUpdateQuantity, onRemove }: CartRowProps) {
             </span>
           )}
           {item.regionRestrictions && item.regionRestrictions.length > 0 && (
-            <span className="inline-block ml-1 text-[10px] px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200">
+            <span className="inline-block ml-1 text-[10px] px-1.5 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700">
               {item.regionRestrictions.join(", ")}
             </span>
           )}
