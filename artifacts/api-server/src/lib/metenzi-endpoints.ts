@@ -34,11 +34,20 @@ export interface MetenziCatalogResponse {
   offset: number;
 }
 
+export interface MetenziKeyItem {
+  code: string;
+  codeType?: string;
+  status?: string;
+  productId: string;
+}
+
 export interface MetenziOrder {
   id: string;
   status: string;
   items: MetenziOrderItem[];
-  totalUsd: number;
+  keys?: MetenziKeyItem[]; // Keys at order level, present when status = "paid"
+  totalUsd?: number;
+  total?: string;
   createdAt: string;
 }
 
@@ -199,7 +208,7 @@ export async function listWebhooks(
 ): Promise<MetenziWebhook[]> {
   const res = await metenziRequest<{ webhooks: MetenziWebhook[] }>(config, {
     method: "GET",
-    path: "/api/webhooks",
+    path: "/api/public/webhooks",
   });
   if (!res.ok) {
     throw new Error(`Failed to list Metenzi webhooks: ${res.status}`);
@@ -227,7 +236,7 @@ export async function createWebhook(
 ): Promise<MetenziWebhook> {
   const res = await metenziRequest<{ webhook: MetenziWebhook }>(config, {
     method: "POST",
-    path: "/api/webhooks",
+    path: "/api/public/webhooks",
     body: { url, events },
   });
   if (!res.ok) {
@@ -242,7 +251,7 @@ export async function deleteWebhook(
 ): Promise<boolean> {
   const res = await metenziRequest(config, {
     method: "DELETE",
-    path: `/api/webhooks/${webhookId}`,
+    path: `/api/public/webhooks/${webhookId}`,
   });
   return res.ok;
 }

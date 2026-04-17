@@ -14,19 +14,26 @@ import { sendKeyDeliveryEmail } from "../lib/email";
 import { logger } from "../lib/logger";
 import { awardOrderPoints } from "./loyalty-service";
 
-interface FulfilledItem {
-  variantId: string;
-  quantity: number;
-  keys?: string[];
+// Metenzi order key (at order level, NOT inside items)
+interface MetenziKey {
+  code: string;
+  codeType?: string;
+  status?: string;
+  productId: string; // Metenzi product ID — matched via metenzi_product_mappings
 }
 
+// Actual Metenzi order payload (from webhook data or GET /api/public/orders/:id)
 interface FulfilledData {
-  orderId: string;
-  items: FulfilledItem[];
+  id?: string;      // Metenzi order ID (in direct API responses)
+  orderId?: string; // Metenzi order ID (some webhook payloads use this field)
+  keys?: MetenziKey[];   // Keys at ORDER level (not per item)
+  // Legacy/fallback — items with inline keys (old assumption, kept for safety)
+  items?: Array<{ variantId?: string; productId?: string; quantity?: number; keys?: string[] }>;
 }
 
 interface OrderEventData {
-  orderId: string;
+  id?: string;
+  orderId?: string;
   reason?: string;
 }
 
@@ -83,20 +90,21 @@ async function findOrderByMetenziId(metenziOrderId: string) {
 }
 
 async function handleOrderFulfilled(data: FulfilledData) {
-  logger.info({ metenziOrderId: data.orderId }, "Processing order.fulfilled webhook");
+  const metenziOrderId = data.id ?? data.orderId ?? "";
+  logger.info({ metenziOrderId, dataKeys: Object.keys(data) }, "Processing order.fulfilled webhook");
 
-  const order = await findOrderByMetenziId(data.orderId);
+  const order = await findOrderByMetenziId(metenziOrderId);
   if (!order) {
-    logger.warn({ metenziOrderId: data.orderId }, "No matching local order for fulfilled webhook");
+    logger.warn({ metenziOrderId }, "No matching local order for fulfilled webhook");
     await logAuditEvent("UPDATE", "order", null, {
       webhookEvent: "order.fulfilled",
-      metenziOrderId: data.orderId,
+      metenziOrderId,
       error: "no matching local order",
     });
     return;
   }
 
-  // Idempotency: check for existing keys linked to any order item OR directly to this order
+  // Idempotency: check for existing keys
   const existingOrderItems = await db
     .select({ id: orderItems.id })
     .from(orderItems)
@@ -111,47 +119,43 @@ async function handleOrderFulfilled(data: FulfilledData) {
     : [];
 
   if (existingKeys.length > 0) {
-    logger.info({ orderId: order.id }, "Webhook order.fulfilled already processed (idempotent skip)");
-    await logAuditEvent("UPDATE", "order", order.id, {
-      webhookEvent: "order.fulfilled",
-      metenziOrderId: data.orderId,
-      duplicate: true,
-    });
+    logger.info({ orderId: order.id }, "order.fulfilled already processed (idempotent skip)");
     return;
   }
 
   const keysToDeliver: { productName: string; variant: string; licenseKey: string }[] = [];
 
-  for (const item of data.items) {
-    const keys = item.keys ?? [];
-    if (keys.length === 0) continue;
+  // Primary path: Metenzi puts keys at order level — order.keys[{ code, productId }]
+  const topLevelKeys = data.keys ?? [];
 
-    // Resolve Pixel order item via metenzi_product_mappings (metenziProductId → pixelProductId → variant → orderItem)
-    const [mapping] = await db
-      .select({ pixelProductId: metenziProductMappings.pixelProductId })
-      .from(metenziProductMappings)
-      .where(eq(metenziProductMappings.metenziProductId, item.variantId))
-      .limit(1);
+  if (topLevelKeys.length > 0) {
+    for (const keyItem of topLevelKeys) {
+      if (!keyItem.code || !keyItem.productId) continue;
 
-    if (!mapping?.pixelProductId) {
-      logger.warn({ metenziProductId: item.variantId, orderId: order.id }, "No Pixel mapping for Metenzi product in webhook — skipping keys for this item");
-      continue;
-    }
+      const [mapping] = await db
+        .select({ pixelProductId: metenziProductMappings.pixelProductId })
+        .from(metenziProductMappings)
+        .where(eq(metenziProductMappings.metenziProductId, keyItem.productId))
+        .limit(1);
 
-    // Find the order item: join orderItems → productVariants to match by pixelProductId
-    const [dbItem] = await db
-      .select({ id: orderItems.id, variantId: orderItems.variantId, productName: orderItems.productName, variantName: orderItems.variantName })
-      .from(orderItems)
-      .innerJoin(productVariants, eq(orderItems.variantId, productVariants.id))
-      .where(and(eq(orderItems.orderId, order.id), eq(productVariants.productId, mapping.pixelProductId)))
-      .limit(1);
+      if (!mapping?.pixelProductId) {
+        logger.warn({ metenziProductId: keyItem.productId, orderId: order.id }, "No Pixel mapping for key.productId — skipping");
+        continue;
+      }
 
-    if (!dbItem) {
-      logger.warn({ metenziProductId: item.variantId, pixelProductId: mapping.pixelProductId, orderId: order.id }, "No matching order item found for Metenzi product");
-      continue;
-    }
+      const [dbItem] = await db
+        .select({ id: orderItems.id, variantId: orderItems.variantId, productName: orderItems.productName, variantName: orderItems.variantName })
+        .from(orderItems)
+        .innerJoin(productVariants, eq(orderItems.variantId, productVariants.id))
+        .where(and(eq(orderItems.orderId, order.id), eq(productVariants.productId, mapping.pixelProductId)))
+        .limit(1);
 
-    for (const key of keys) {
+      if (!dbItem) {
+        logger.warn({ metenziProductId: keyItem.productId, pixelProductId: mapping.pixelProductId }, "No matching order item for key");
+        continue;
+      }
+
+      const key = keyItem.code;
       const encryptedKey = encrypt(key);
       const keyMask = key.length <= 8 ? key.slice(0, 2) + "****" : key.slice(0, 4) + "****" + key.slice(-4);
       await db.insert(licenseKeys).values({
@@ -163,12 +167,37 @@ async function handleOrderFulfilled(data: FulfilledData) {
         orderItemId: dbItem.id,
         soldAt: new Date(),
       });
+      keysToDeliver.push({ productName: dbItem.productName, variant: dbItem.variantName, licenseKey: key });
+    }
+  } else {
+    // Fallback: legacy format where items have inline keys array
+    for (const item of data.items ?? []) {
+      const inlineKeys = item.keys ?? [];
+      if (inlineKeys.length === 0) continue;
+      const metenziProductId = (item.productId ?? item.variantId) as string | undefined;
+      if (!metenziProductId) continue;
 
-      keysToDeliver.push({
-        productName: dbItem.productName,
-        variant: dbItem.variantName,
-        licenseKey: key,
-      });
+      const [mapping] = await db
+        .select({ pixelProductId: metenziProductMappings.pixelProductId })
+        .from(metenziProductMappings)
+        .where(eq(metenziProductMappings.metenziProductId, metenziProductId))
+        .limit(1);
+      if (!mapping?.pixelProductId) continue;
+
+      const [dbItem] = await db
+        .select({ id: orderItems.id, variantId: orderItems.variantId, productName: orderItems.productName, variantName: orderItems.variantName })
+        .from(orderItems)
+        .innerJoin(productVariants, eq(orderItems.variantId, productVariants.id))
+        .where(and(eq(orderItems.orderId, order.id), eq(productVariants.productId, mapping.pixelProductId)))
+        .limit(1);
+      if (!dbItem) continue;
+
+      for (const key of inlineKeys) {
+        const encryptedKey = encrypt(key);
+        const keyMask = key.length <= 8 ? key.slice(0, 2) + "****" : key.slice(0, 4) + "****" + key.slice(-4);
+        await db.insert(licenseKeys).values({ variantId: dbItem.variantId, keyValue: encryptedKey, keyMask, status: "SOLD", source: "API", orderItemId: dbItem.id, soldAt: new Date() });
+        keysToDeliver.push({ productName: dbItem.productName, variant: dbItem.variantName, licenseKey: key });
+      }
     }
   }
 
@@ -196,15 +225,16 @@ async function handleOrderFulfilled(data: FulfilledData) {
 
   await logAuditEvent("UPDATE", "order", order.id, {
     webhookEvent: "order.fulfilled",
-    metenziOrderId: data.orderId,
+    metenziOrderId,
     keysDelivered: keysToDeliver.length,
   });
 }
 
 async function handleOrderBackorder(data: OrderEventData) {
-  logger.info({ metenziOrderId: data.orderId }, "Processing order.backorder webhook");
+  const metenziOrderId = data.id ?? data.orderId ?? "";
+  logger.info({ metenziOrderId }, "Processing order.backorder webhook");
 
-  const order = await findOrderByMetenziId(data.orderId);
+  const order = await findOrderByMetenziId(metenziOrderId);
   if (order) {
     await db
       .update(orders)
@@ -214,15 +244,16 @@ async function handleOrderBackorder(data: OrderEventData) {
 
   await logAuditEvent("UPDATE", "order", order?.id ?? null, {
     webhookEvent: "order.backorder",
-    metenziOrderId: data.orderId,
+    metenziOrderId,
     reason: data.reason,
   });
 }
 
 async function handleOrderCancelled(data: OrderEventData) {
-  logger.info({ metenziOrderId: data.orderId }, "Processing order.cancelled webhook");
+  const metenziOrderId = data.id ?? data.orderId ?? "";
+  logger.info({ metenziOrderId }, "Processing order.cancelled webhook");
 
-  const order = await findOrderByMetenziId(data.orderId);
+  const order = await findOrderByMetenziId(metenziOrderId);
   if (order) {
     await db
       .update(orders)
@@ -232,7 +263,7 @@ async function handleOrderCancelled(data: OrderEventData) {
 
   await logAuditEvent("UPDATE", "order", order?.id ?? null, {
     webhookEvent: "order.cancelled",
-    metenziOrderId: data.orderId,
+    metenziOrderId,
     reason: data.reason,
   });
 }
@@ -293,9 +324,9 @@ export async function handleWebhookEvent(event: string, data: unknown) {
       const d = data as Record<string, unknown>;
       const status = (d.status ?? d.currentStatus ?? "") as string;
       if (status === "cancelled" || status === "CANCELLED") {
-        await handleOrderCancelled({ orderId: d.orderId as string, reason: d.reason as string | undefined });
+        await handleOrderCancelled({ id: d.id as string, orderId: d.orderId as string, reason: d.reason as string | undefined });
       } else if (status === "backordered" || status === "BACKORDERED") {
-        await handleOrderBackorder({ orderId: d.orderId as string, reason: d.reason as string | undefined });
+        await handleOrderBackorder({ id: d.id as string, orderId: d.orderId as string, reason: d.reason as string | undefined });
       } else {
         logger.info({ event, status }, "order.status_changed with unhandled status — logged only");
         await logAuditEvent("UPDATE", "order", null, { webhookEvent: event, data, status: "unhandled_status" });

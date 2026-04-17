@@ -44,13 +44,13 @@ export async function pollMetenziFulfillment(): Promise<{ checked: number; fulfi
       if (!metenziOrder) continue;
 
       const isFulfilled = FULFILLED_STATUSES.has(metenziOrder.status?.toLowerCase() ?? "");
-      const hasKeys = metenziOrder.items?.some((i) => i.keys && i.keys.length > 0);
+      const hasKeys = (metenziOrder.keys?.length ?? 0) > 0;
 
       if (isFulfilled && hasKeys) {
         logger.info({ orderId: order.id, metenziOrderId: metenziOrder.id, status: metenziOrder.status }, "Metenzi poll: delivering keys for fulfilled order");
         await handleWebhookEvent("order.fulfilled", {
-          orderId: metenziOrder.id,
-          items: metenziOrder.items,
+          id: metenziOrder.id,
+          keys: metenziOrder.keys,
         });
         fulfilled++;
       }

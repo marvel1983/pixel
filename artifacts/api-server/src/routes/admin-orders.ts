@@ -208,12 +208,8 @@ router.post("/admin/orders/:id/redeliver-keys", requireAuth, requireAdmin, requi
 
   const { handleWebhookEvent } = await import("../services/webhook-handlers");
   await handleWebhookEvent("order.fulfilled", {
-    orderId: order.externalOrderId,
-    items: (metenziOrder.items as Array<{ variantId: string; quantity: number; keys?: string[] }>).map((it) => ({
-      variantId: it.variantId,
-      quantity: it.quantity,
-      keys: it.keys ?? [],
-    })),
+    id: metenziOrder.id,
+    keys: metenziOrder.keys ?? [],
   });
 
   res.json({ success: true });
