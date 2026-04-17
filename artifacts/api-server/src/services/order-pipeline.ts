@@ -148,16 +148,15 @@ export async function runFulfillment(
     ? await fulfillFromMetenzi(orderId, realItems, insertedItems)
     : "skip";
 
-  if (metenziResult === "skip") {
-    // No Metenzi config or no mapped products — complete immediately
+  if (metenziResult === "skip" || metenziResult === "completed") {
+    // "skip" = no Metenzi mapping; "completed" = keys delivered immediately in POST response
     await updateOrderStatus(orderId, "COMPLETED");
     await triggerOrderEmails(billing, orderNumber, orderId, items, total, input.locale);
   } else if (metenziResult === "backordered") {
     // All items have zero stock — status already set to BACKORDERED inside fulfillFromMetenzi
     await sendOrderConfirmationOnly(billing, orderNumber, orderId, items, total, input.locale);
   } else {
-    // "ok" = Metenzi order placed; "retry" = API failed, retry queued
-    // Both: stay PROCESSING until webhook delivers keys
+    // "ok" = Metenzi order placed, awaiting webhook; "retry" = API failed, retry queued
     await updateOrderStatus(orderId, "PROCESSING");
     await sendOrderConfirmationOnly(billing, orderNumber, orderId, items, total, input.locale);
   }
@@ -304,7 +303,7 @@ async function updateOrderStatus(orderId: number, status: OrderStatus) {
 // "skip"       = no Metenzi config or no mapped items — go directly to COMPLETED
 // "retry"      = Metenzi API failed — retry enqueued, keep as PROCESSING
 // "backordered" = zero stock for all items — no Metenzi order yet, status set to BACKORDERED
-type MetenziFulfillResult = "ok" | "skip" | "retry" | "backordered";
+type MetenziFulfillResult = "ok" | "completed" | "skip" | "retry" | "backordered";
 
 async function fulfillFromMetenzi(orderId: number, items: OrderInput["items"], _insertedItems: { id: number; variantId: number }[]): Promise<MetenziFulfillResult> {
   try {
@@ -424,7 +423,7 @@ async function fulfillFromMetenzi(orderId: number, items: OrderInput["items"], _
     if (keysInResponse > 0) {
       const { handleWebhookEvent } = await import("./webhook-handlers");
       await handleWebhookEvent("order.fulfilled", { id: metenziOrder.id, keys: metenziOrder.keys });
-      // handleOrderFulfilled will set PARTIALLY_DELIVERED if not all keys arrived (native partial backorder)
+      return "completed"; // keys delivered immediately — don't overwrite COMPLETED status
     }
     return "ok";
   } catch (err) {
