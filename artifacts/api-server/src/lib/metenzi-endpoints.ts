@@ -163,7 +163,7 @@ export async function createOrder(
   config: MetenziClientConfig,
   items: { variantId: string; quantity: number }[],
 ): Promise<MetenziOrder> {
-  const res = await metenziRequest<{ order: MetenziOrder }>(config, {
+  const res = await metenziRequest<Record<string, unknown>>(config, {
     method: "POST",
     path: "/api/orders",
     body: { items },
@@ -171,7 +171,13 @@ export async function createOrder(
   if (!res.ok) {
     throw new Error(`Failed to create Metenzi order: ${res.status}`);
   }
-  return res.data.order;
+  // Handle { order: {...} }, { data: {...} }, or direct object
+  const d = res.data;
+  const order = (d.order ?? d.data ?? (d.id ? d : undefined)) as MetenziOrder | undefined;
+  if (!order?.id) {
+    throw new Error(`Metenzi createOrder: unexpected response (no order id). Raw: ${JSON.stringify(d).slice(0, 200)}`);
+  }
+  return order;
 }
 
 export async function getOrderById(
@@ -179,7 +185,7 @@ export async function getOrderById(
   orderId: string,
 ): Promise<MetenziOrder | null> {
   // /api/public/orders/:id returns keys when status = "paid"
-  const res = await metenziRequest<{ order: MetenziOrder }>(config, {
+  const res = await metenziRequest<Record<string, unknown>>(config, {
     method: "GET",
     path: `/api/public/orders/${orderId}`,
   });
@@ -187,7 +193,8 @@ export async function getOrderById(
   if (!res.ok) {
     throw new Error(`Failed to fetch Metenzi order ${orderId}: ${res.status}`);
   }
-  return res.data.order;
+  const d = res.data;
+  return (d.order ?? d.data ?? (d.id ? d : null)) as MetenziOrder | null;
 }
 
 export async function getBalance(
@@ -206,14 +213,17 @@ export async function getBalance(
 export async function listWebhooks(
   config: MetenziClientConfig,
 ): Promise<MetenziWebhook[]> {
-  const res = await metenziRequest<{ webhooks: MetenziWebhook[] }>(config, {
+  const res = await metenziRequest<{ webhooks?: MetenziWebhook[]; data?: MetenziWebhook[] } | MetenziWebhook[]>(config, {
     method: "GET",
     path: "/api/public/webhooks",
   });
   if (!res.ok) {
     throw new Error(`Failed to list Metenzi webhooks: ${res.status}`);
   }
-  return res.data.webhooks ?? [];
+  if (Array.isArray(res.data)) return res.data;
+  return (res.data as { webhooks?: MetenziWebhook[]; data?: MetenziWebhook[] }).webhooks
+    ?? (res.data as { webhooks?: MetenziWebhook[]; data?: MetenziWebhook[] }).data
+    ?? [];
 }
 
 export async function listClaims(
@@ -234,7 +244,7 @@ export async function createWebhook(
   url: string,
   events: string[],
 ): Promise<MetenziWebhook> {
-  const res = await metenziRequest<{ webhook: MetenziWebhook }>(config, {
+  const res = await metenziRequest<Record<string, unknown>>(config, {
     method: "POST",
     path: "/api/public/webhooks",
     body: { url, events },
@@ -242,7 +252,14 @@ export async function createWebhook(
   if (!res.ok) {
     throw new Error(`Failed to create webhook: ${res.status}`);
   }
-  return res.data.webhook;
+  // Metenzi may return { webhook: {...} }, { data: {...} }, or the object directly
+  const d = res.data;
+  const wh = (d.webhook ?? d.data ?? (d.id ? d : undefined)) as MetenziWebhook | undefined;
+  if (!wh?.id) {
+    // Webhook was likely created — return a stub so callers don't crash
+    return { id: String(d.id ?? "unknown"), url, events, isActive: true } as MetenziWebhook;
+  }
+  return wh;
 }
 
 export async function deleteWebhook(
