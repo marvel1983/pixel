@@ -1,4 +1,4 @@
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   orders,
@@ -96,12 +96,19 @@ async function handleOrderFulfilled(data: FulfilledData) {
     return;
   }
 
-  const existingKeys = await db
-    .select({ id: licenseKeys.id })
-    .from(licenseKeys)
-    .innerJoin(orderItems, eq(licenseKeys.orderItemId, orderItems.id))
-    .where(eq(orderItems.orderId, order.id))
-    .limit(1);
+  // Idempotency: check for existing keys linked to any order item OR directly to this order
+  const existingOrderItems = await db
+    .select({ id: orderItems.id })
+    .from(orderItems)
+    .where(eq(orderItems.orderId, order.id));
+  const orderItemIds = existingOrderItems.map((i) => i.id);
+  const existingKeys = orderItemIds.length
+    ? await db
+        .select({ id: licenseKeys.id })
+        .from(licenseKeys)
+        .where(inArray(licenseKeys.orderItemId, orderItemIds))
+        .limit(1)
+    : [];
 
   if (existingKeys.length > 0) {
     logger.info({ orderId: order.id }, "Webhook order.fulfilled already processed (idempotent skip)");
@@ -127,37 +134,39 @@ async function handleOrderFulfilled(data: FulfilledData) {
       .limit(1);
 
     if (!mapping?.pixelProductId) {
-      logger.warn({ metenziProductId: item.variantId, orderId: order.id }, "No Pixel mapping for Metenzi product in webhook — storing keys without orderItem link");
+      logger.warn({ metenziProductId: item.variantId, orderId: order.id }, "No Pixel mapping for Metenzi product in webhook — skipping keys for this item");
+      continue;
     }
 
     // Find the order item: join orderItems → productVariants to match by pixelProductId
-    let dbItem: { id: number; variantId: number; productName: string; variantName: string } | undefined;
-    if (mapping?.pixelProductId) {
-      const [found] = await db
-        .select({ id: orderItems.id, variantId: orderItems.variantId, productName: orderItems.productName, variantName: orderItems.variantName })
-        .from(orderItems)
-        .innerJoin(productVariants, eq(orderItems.variantId, productVariants.id))
-        .where(and(eq(orderItems.orderId, order.id), eq(productVariants.productId, mapping.pixelProductId)))
-        .limit(1);
-      dbItem = found;
+    const [dbItem] = await db
+      .select({ id: orderItems.id, variantId: orderItems.variantId, productName: orderItems.productName, variantName: orderItems.variantName })
+      .from(orderItems)
+      .innerJoin(productVariants, eq(orderItems.variantId, productVariants.id))
+      .where(and(eq(orderItems.orderId, order.id), eq(productVariants.productId, mapping.pixelProductId)))
+      .limit(1);
+
+    if (!dbItem) {
+      logger.warn({ metenziProductId: item.variantId, pixelProductId: mapping.pixelProductId, orderId: order.id }, "No matching order item found for Metenzi product");
+      continue;
     }
 
     for (const key of keys) {
       const encryptedKey = encrypt(key);
       const keyMask = key.length <= 8 ? key.slice(0, 2) + "****" : key.slice(0, 4) + "****" + key.slice(-4);
       await db.insert(licenseKeys).values({
-        variantId: dbItem?.variantId ?? 0,
+        variantId: dbItem.variantId,
         keyValue: encryptedKey,
         keyMask,
         status: "SOLD",
         source: "API",
-        orderItemId: dbItem?.id ?? null,
+        orderItemId: dbItem.id,
         soldAt: new Date(),
       });
 
       keysToDeliver.push({
-        productName: dbItem?.productName ?? "Product",
-        variant: dbItem?.variantName ?? "Standard",
+        productName: dbItem.productName,
+        variant: dbItem.variantName,
         licenseKey: key,
       });
     }
