@@ -31,7 +31,7 @@ const itemSchema = z.object({
   variantId: z.number().int(), productId: z.number().int(),
   productName: s1, variantName: s1, imageUrl: z.string().nullish(),
   priceUsd: currencyStr, quantity: z.number().int().positive().max(99),
-  platform: z.string().optional(), bundleId: z.number().int().optional(),
+  platform: z.string().nullish(), bundleId: z.number().int().optional(),
 });
 const orderSchema = z.object({
   billing: billingSchema,
@@ -284,6 +284,7 @@ async function validateAndPriceItems(
 router.post("/orders", requireIdempotencyKey(), async (req, res) => {
   const parsed = orderSchema.safeParse(req.body);
   if (!parsed.success) {
+    logger.warn({ issues: parsed.error.issues.map(i => ({ path: i.path.join("."), message: i.message })) }, "orders schema validation failed");
     res.status(400).json({ error: "Invalid order data", details: parsed.error.flatten() }); return;
   }
   const { billing, items, coupon, cppSelected, vatNumber, total, payment, giftCards: gcInput } = parsed.data;
