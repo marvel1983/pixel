@@ -7,9 +7,11 @@ import { processPendingInvites } from "../services/trustpilot-service";
 import { processSurveyEmails } from "../services/survey-service";
 import { logger } from "./logger";
 import { syncMetenziStock } from "./metenzi-stock-sync";
+import { pollMetenziFulfillment } from "../services/metenzi-fulfillment-poll";
 
 let syncTask: ScheduledTask | null = null;
 let metenziStockTask: ScheduledTask | null = null;
+let metenziPollTask: ScheduledTask | null = null;
 let emailTask: ScheduledTask | null = null;
 let affiliateTask: ScheduledTask | null = null;
 let abandonedCartTask: ScheduledTask | null = null;
@@ -92,7 +94,19 @@ export function startCronJobs(): void {
     }
   });
 
-  logger.info("Cron jobs started (product sync 30m, email 1m, affiliate 6h, abandoned cart 15m, trustpilot 30m, survey 4h, metenzi-stock 15m)");
+  // Fallback fulfillment poll — delivers keys for PROCESSING orders if webhook didn't fire
+  metenziPollTask = cron.schedule("*/10 * * * *", async () => {
+    try {
+      const result = await pollMetenziFulfillment();
+      if (result.fulfilled > 0 || result.errors > 0) {
+        logger.info(result, "Cron: Metenzi fulfillment poll finished");
+      }
+    } catch (error) {
+      logger.error({ error }, "Cron: Metenzi fulfillment poll failed");
+    }
+  });
+
+  logger.info("Cron jobs started (product sync 30m, email 1m, affiliate 6h, abandoned cart 15m, trustpilot 30m, survey 4h, metenzi-stock 15m, metenzi-poll 10m)");
 }
 
 export function stopCronJobs(): void {
@@ -123,6 +137,10 @@ export function stopCronJobs(): void {
   if (metenziStockTask) {
     metenziStockTask.stop();
     metenziStockTask = null;
+  }
+  if (metenziPollTask) {
+    metenziPollTask.stop();
+    metenziPollTask = null;
   }
   logger.info("Cron jobs stopped");
 }

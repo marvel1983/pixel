@@ -46,6 +46,7 @@ export interface MetenziOrderItem {
   variantId: string;
   quantity: number;
   priceUsd: number;
+  keys?: string[];
 }
 
 export interface MetenziBalance {
@@ -168,9 +169,10 @@ export async function getOrderById(
   config: MetenziClientConfig,
   orderId: string,
 ): Promise<MetenziOrder | null> {
+  // /api/public/orders/:id returns keys when status = "paid"
   const res = await metenziRequest<{ order: MetenziOrder }>(config, {
     method: "GET",
-    path: `/api/orders/${orderId}`,
+    path: `/api/public/orders/${orderId}`,
   });
   if (res.status === 404) return null;
   if (!res.ok) {
