@@ -22,8 +22,9 @@ export default function SettingsWebhooksTab() {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [autoRegistering, setAutoRegistering] = useState(false);
   const [autoRegResult, setAutoRegResult] = useState<{ ok: boolean; msg: string } | null>(null);
-  const [recentLogs, setRecentLogs] = useState<{ ts: string; event: string; outcome: string; status: number; error?: string }[]>([]);
+  const [recentLogs, setRecentLogs] = useState<{ ts: string; event: string; outcome: string; status: number; error?: string }[] | null>(null);
   const [logsLoading, setLogsLoading] = useState(false);
+  const [logsError, setLogsError] = useState("");
   const token = useAuthStore((s) => s.token);
 
   const api = useCallback(async (path: string, opts?: RequestInit) => {
@@ -71,7 +72,13 @@ export default function SettingsWebhooksTab() {
 
   const loadLogs = async () => {
     setLogsLoading(true);
-    try { const d = await api("/admin/settings/webhook-logs"); setRecentLogs(d.logs ?? []); } catch { /* ignore */ }
+    setLogsError("");
+    try {
+      const d = await api("/admin/settings/webhook-logs");
+      setRecentLogs(d.logs ?? []);
+    } catch (e) {
+      setLogsError((e as Error).message || "Failed to load logs");
+    }
     setLogsLoading(false);
   };
 
@@ -158,8 +165,11 @@ export default function SettingsWebhooksTab() {
           <h3 className="font-semibold text-sm">Recent Incoming Events</h3>
           <Button size="sm" variant="outline" onClick={loadLogs} disabled={logsLoading}>{logsLoading ? "Loading…" : "Refresh Logs"}</Button>
         </div>
-        {recentLogs.length === 0 ? (
-          <p className="text-xs text-muted-foreground">Click "Refresh Logs" to see recent webhook activity (in-memory, last 50).</p>
+        {logsError && <p className="text-xs text-red-600">{logsError}</p>}
+        {recentLogs === null ? (
+          <p className="text-xs text-muted-foreground">Click "Refresh Logs" to see recent webhook activity (resets on server restart).</p>
+        ) : recentLogs.length === 0 ? (
+          <p className="text-xs text-muted-foreground">No events received since last server restart. Place a test order and refresh.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs border-collapse">
