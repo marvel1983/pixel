@@ -8,6 +8,7 @@ import {
   orderStatusEnum,
   flashSaleProducts,
   metenziProductMappings,
+  productVariants,
 } from "@workspace/db/schema";
 import { processPayment } from "./payment";
 import { createGiftCardForOrder, sendGiftCardEmails, redeemGiftCards } from "./gift-card-service";
@@ -148,12 +149,15 @@ export async function runFulfillment(
     : "skip";
 
   if (metenziResult === "skip") {
-    // No Metenzi config or no mapped products — complete immediately (digital goods fulfilled elsewhere, or test products)
+    // No Metenzi config or no mapped products — complete immediately
     await updateOrderStatus(orderId, "COMPLETED");
     await triggerOrderEmails(billing, orderNumber, orderId, items, total, input.locale);
+  } else if (metenziResult === "backordered") {
+    // All items have zero stock — status already set to BACKORDERED inside fulfillFromMetenzi
+    await sendOrderConfirmationOnly(billing, orderNumber, orderId, items, total, input.locale);
   } else {
-    // "ok" = order sent to Metenzi successfully; "retry" = API failed, retry queued
-    // Both cases: keep PROCESSING until webhook delivers keys
+    // "ok" = Metenzi order placed; "retry" = API failed, retry queued
+    // Both: stay PROCESSING until webhook delivers keys
     await updateOrderStatus(orderId, "PROCESSING");
     await sendOrderConfirmationOnly(billing, orderNumber, orderId, items, total, input.locale);
   }
@@ -296,10 +300,11 @@ async function updateOrderStatus(orderId: number, status: OrderStatus) {
     .where(eq(orders.id, orderId));
 }
 
-// "ok"    = Metenzi order created — keep as PROCESSING until webhook delivers keys
-// "skip"  = no Metenzi config or no mapped items — go directly to COMPLETED (no keys to source)
-// "retry" = Metenzi API failed — retry enqueued, keep as PROCESSING
-type MetenziFulfillResult = "ok" | "skip" | "retry";
+// "ok"         = Metenzi order created — keep as PROCESSING until webhook delivers keys
+// "skip"       = no Metenzi config or no mapped items — go directly to COMPLETED
+// "retry"      = Metenzi API failed — retry enqueued, keep as PROCESSING
+// "backordered" = zero stock for all items — no Metenzi order yet, status set to BACKORDERED
+type MetenziFulfillResult = "ok" | "skip" | "retry" | "backordered";
 
 async function fulfillFromMetenzi(orderId: number, items: OrderInput["items"], _insertedItems: { id: number; variantId: number }[]): Promise<MetenziFulfillResult> {
   try {
@@ -318,30 +323,71 @@ async function fulfillFromMetenzi(orderId: number, items: OrderInput["items"], _
       mappings.filter((m) => m.pixelProductId !== null).map((m) => [m.pixelProductId!, m.metenziProductId])
     );
 
-    // Build resolved items: { metenziProductId, pixelProductId, quantity }
-    const resolvedItems: { metenziProductId: string; pixelProductId: number; quantity: number }[] = [];
+    // Build resolved items with per-variant stock data
+    const variantIds = items.map((i) => i.variantId).filter(Boolean);
+    const stockRows = variantIds.length
+      ? await db.select({ id: productVariants.id, stockCount: productVariants.stockCount, backorderAllowed: productVariants.backorderAllowed })
+          .from(productVariants).where(inArray(productVariants.id, variantIds))
+      : [];
+    const stockByVariantId = new Map(stockRows.map((s) => [s.id, { stock: s.stockCount ?? 0, backorderAllowed: s.backorderAllowed ?? false }]));
+
+    // Aggregate per product: total requested qty, total available stock, backorder allowed
+    const byProduct = new Map<number, { metenziId: string; requestedQty: number; availableStock: number; backorderAllowed: boolean }>();
     for (const it of items) {
       const metenziId = mappingByProductId.get(it.productId);
       if (!metenziId) {
-        logger.warn({ orderId, productId: it.productId }, "Item has no Metenzi mapping — skipping this item (add mapping via Admin → Metenzi)");
+        logger.warn({ orderId, productId: it.productId }, "Item has no Metenzi mapping — skipping (add mapping via Admin → Metenzi)");
         continue;
       }
-      resolvedItems.push({ metenziProductId: metenziId, pixelProductId: it.productId, quantity: it.quantity });
+      const sv = stockByVariantId.get(it.variantId) ?? { stock: 0, backorderAllowed: false };
+      const existing = byProduct.get(it.productId);
+      if (existing) {
+        existing.requestedQty += it.quantity;
+        existing.availableStock += sv.stock;
+        existing.backorderAllowed = existing.backorderAllowed || sv.backorderAllowed;
+      } else {
+        byProduct.set(it.productId, { metenziId, requestedQty: it.quantity, availableStock: sv.stock, backorderAllowed: sv.backorderAllowed });
+      }
     }
 
-    if (resolvedItems.length === 0) {
-      logger.warn({ orderId, productIds }, "No Metenzi-mapped items in order — order will complete without keys. Add product mappings in Admin → Metenzi.");
+    if (byProduct.size === 0) {
+      logger.warn({ orderId, productIds }, "No Metenzi-mapped items — order will complete without keys. Add mappings in Admin → Metenzi.");
       return "skip";
     }
 
-    // Send the full quantity to Metenzi — it delivers in-stock keys immediately and
-    // queues any backordered portion via order.backorder + backorder.fulfilled webhooks.
-    const metenziItems = resolvedItems.map((it) => ({ productId: it.metenziProductId, quantity: it.quantity }));
-    const metenziOrder = await metenziCreateOrder(config, metenziItems);
+    // Determine what to order now vs backorder
+    // - If availableStock >= requestedQty: order full qty (Metenzi delivers all immediately)
+    // - If 0 < availableStock < requestedQty AND backorderAllowed: order full qty with allowBackorder=true
+    //   (Metenzi delivers in-stock now and queues the rest via backorder.fulfilled webhook)
+    // - If availableStock = 0: skip Metenzi order for this product — poll until stock arrives
+    const metenziItems: { productId: string; quantity: number }[] = [];
+    let anyBackordered = false;
+
+    for (const [, info] of byProduct) {
+      if (info.availableStock <= 0) {
+        anyBackordered = true;
+        logger.info({ orderId, metenziProductId: info.metenziId, requestedQty: info.requestedQty }, "Zero stock — product fully backordered, skipping Metenzi order");
+        continue;
+      }
+      // Has some or all stock — let Metenzi handle the split via allowBackorder
+      metenziItems.push({ productId: info.metenziId, quantity: info.requestedQty });
+      if (info.requestedQty > info.availableStock) anyBackordered = true;
+    }
+
+    if (metenziItems.length === 0) {
+      // All products have zero stock — set BACKORDERED and poll later
+      await db.update(orders).set({ status: "BACKORDERED", notes: "Awaiting stock from supplier", updatedAt: new Date() }).where(eq(orders.id, orderId));
+      logger.info({ orderId }, "All items have zero stock — order set to BACKORDERED, backorder poller will fulfill when stock arrives");
+      return "backordered";
+    }
+
+    // Place Metenzi order; pass allowBackorder=true so Metenzi delivers in-stock keys now
+    // and queues the shortage via backorder.fulfilled webhook (requires price_list.allow_backorder=true)
+    const metenziOrder = await metenziCreateOrder(config, metenziItems, true);
 
     // Store externalOrderId BEFORE processing inline keys so findOrderByMetenziId can match
     await db.update(orders).set({ externalOrderId: metenziOrder.id }).where(eq(orders.id, orderId));
-    logger.info({ orderId, metenziOrderId: metenziOrder.id, status: metenziOrder.status, keysInResponse: metenziOrder.keys?.length ?? 0 }, "Metenzi order placed");
+    logger.info({ orderId, metenziOrderId: metenziOrder.id, metenziStatus: metenziOrder.status, keysInResponse: metenziOrder.keys?.length ?? 0, anyBackordered }, "Metenzi order placed");
 
     // Metenzi often returns keys immediately (status: "paid") — process them now
     if (metenziOrder.status === "paid" && (metenziOrder.keys?.length ?? 0) > 0) {

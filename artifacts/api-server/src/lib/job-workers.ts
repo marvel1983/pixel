@@ -56,6 +56,11 @@ export function registerAllWorkers() {
     logger.info({ payload }, "Report generation placeholder");
   });
 
+  registerWorker("order-processing", "fulfill-backorders", async () => {
+    const { fulfillPendingBackorders } = await import("../services/backorder-service");
+    await fulfillPendingBackorders();
+  });
+
   registerWorker("order-processing", "metenzi-retry-fulfillment", async (payload) => {
     const { orderId, productIds } = payload as { orderId: number; productIds: number[] };
     const { getMetenziConfig } = await import("../lib/metenzi-config");
@@ -170,6 +175,7 @@ interface RecurringDef {
 const RECURRING: RecurringDef[] = [
   { queue: "email", name: "process-queue", intervalMs: 60_000, priority: PRIORITY.HIGH },
   { queue: "product-sync", name: "sync-all", intervalMs: 30 * 60_000, priority: PRIORITY.NORMAL },
+  { queue: "order-processing", name: "fulfill-backorders", intervalMs: 15 * 60_000, priority: PRIORITY.HIGH },
   { queue: "abandoned-cart", name: "process-carts", intervalMs: 15 * 60_000, priority: PRIORITY.NORMAL },
   { queue: "alerts", name: "trustpilot-invites", intervalMs: 30 * 60_000, priority: PRIORITY.LOW },
   { queue: "alerts", name: "survey-emails", intervalMs: 4 * 60 * 60_000, priority: PRIORITY.LOW },
