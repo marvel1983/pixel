@@ -430,4 +430,15 @@ router.get("/admin/metenzi/pixel-products-search", ...guard, async (req, res) =>
   res.json(rows);
 });
 
+// ── POST /admin/metenzi/enable-backorder ─────────────────────────────────────
+// One-shot: set backorder_allowed = true on all active variants so orders can
+// exceed current stock (fulfilled via Metenzi backorder webhooks).
+router.post("/admin/metenzi/enable-backorder", ...guard, async (_req, res) => {
+  const result = await db
+    .update(productVariants)
+    .set({ backorderAllowed: true })
+    .where(eq(productVariants.isActive, true));
+  res.json({ success: true, updated: result.rowCount ?? 0 });
+});
+
 export default router;
