@@ -76,16 +76,26 @@ export function registerAllWorkers() {
       : [];
     const mappingMap = new Map(mappings.filter((m) => m.pixelProductId !== null).map((m) => [m.pixelProductId!, m.metenziProductId]));
 
-    // Get order items quantities
-    const dbItems = await db.select({ variantId: orderItems.variantId, quantity: orderItems.quantity, productId: orderItems.variantId })
-      .from(orderItems).where(eq(orderItems.orderId, orderId));
+    // Get order items quantities (need productVariants join to get productId)
+    const { productVariants } = await import("@workspace/db/schema");
+    const dbItems = await db
+      .select({ quantity: orderItems.quantity, productId: productVariants.productId })
+      .from(orderItems)
+      .innerJoin(productVariants, eq(orderItems.variantId, productVariants.id))
+      .where(eq(orderItems.orderId, orderId));
 
-    const metenziItems: { variantId: string; quantity: number }[] = [];
+    // Sum quantities per productId
+    const qtyByProductId = new Map<number, number>();
+    for (const item of dbItems) {
+      qtyByProductId.set(item.productId, (qtyByProductId.get(item.productId) ?? 0) + item.quantity);
+    }
+
+    const metenziItems: { productId: string; quantity: number }[] = [];
     for (const pid of productIds) {
       const metenziId = mappingMap.get(pid);
       if (!metenziId) continue;
-      const qty = dbItems.reduce((s, i) => s + i.quantity, 0) || 1;
-      metenziItems.push({ variantId: metenziId, quantity: qty });
+      const qty = qtyByProductId.get(pid) ?? 1;
+      metenziItems.push({ productId: metenziId, quantity: qty });
     }
 
     if (metenziItems.length === 0) { logger.warn({ orderId }, "Retry: no Metenzi-mapped items found"); return; }

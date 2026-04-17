@@ -143,16 +143,19 @@ export async function runFulfillment(
     sendGiftCardEmails(createdCards).catch(() => {});
   }
 
-  const metenziFulfilled = insertedItems.length
+  const metenziResult = insertedItems.length
     ? await fulfillFromMetenzi(orderId, realItems, insertedItems)
-    : false;
+    : "skip";
 
-  if (metenziFulfilled) {
-    await updateOrderStatus(orderId, "PROCESSING");
-    await sendOrderConfirmationOnly(billing, orderNumber, orderId, items, total, input.locale);
-  } else {
+  if (metenziResult === "skip") {
+    // No Metenzi config or no mapped products — complete immediately (digital goods fulfilled elsewhere, or test products)
     await updateOrderStatus(orderId, "COMPLETED");
     await triggerOrderEmails(billing, orderNumber, orderId, items, total, input.locale);
+  } else {
+    // "ok" = order sent to Metenzi successfully; "retry" = API failed, retry queued
+    // Both cases: keep PROCESSING until webhook delivers keys
+    await updateOrderStatus(orderId, "PROCESSING");
+    await sendOrderConfirmationOnly(billing, orderNumber, orderId, items, total, input.locale);
   }
 
   if (input.flashVariantMap?.size) {
@@ -293,10 +296,15 @@ async function updateOrderStatus(orderId: number, status: OrderStatus) {
     .where(eq(orders.id, orderId));
 }
 
-async function fulfillFromMetenzi(orderId: number, items: OrderInput["items"], _insertedItems: { id: number; variantId: number }[]): Promise<boolean> {
+// "ok"    = Metenzi order created — keep as PROCESSING until webhook delivers keys
+// "skip"  = no Metenzi config or no mapped items — go directly to COMPLETED (no keys to source)
+// "retry" = Metenzi API failed — retry enqueued, keep as PROCESSING
+type MetenziFulfillResult = "ok" | "skip" | "retry";
+
+async function fulfillFromMetenzi(orderId: number, items: OrderInput["items"], _insertedItems: { id: number; variantId: number }[]): Promise<MetenziFulfillResult> {
   try {
     const config = await getMetenziConfig();
-    if (!config) { logger.warn({ orderId }, "Metenzi not configured, skipping fulfillment"); return false; }
+    if (!config) { logger.warn({ orderId }, "Metenzi not configured, skipping fulfillment"); return "skip"; }
 
     // Resolve Metenzi product IDs from the mapping table (product-level mapping)
     const productIds = [...new Set(items.map((it) => it.productId).filter((id): id is number => !!id))];
@@ -311,25 +319,24 @@ async function fulfillFromMetenzi(orderId: number, items: OrderInput["items"], _
     );
 
     // Build resolved items: { metenziProductId, pixelProductId, quantity }
-    // Needed for retry payload so retries also use Metenzi IDs, not Pixel variantIds
     const resolvedItems: { metenziProductId: string; pixelProductId: number; quantity: number }[] = [];
     for (const it of items) {
       const metenziId = mappingByProductId.get(it.productId);
       if (!metenziId) {
-        logger.warn({ orderId, productId: it.productId }, "Item has no Metenzi mapping, skipping");
+        logger.warn({ orderId, productId: it.productId }, "Item has no Metenzi mapping — skipping this item (add mapping via Admin → Metenzi)");
         continue;
       }
       resolvedItems.push({ metenziProductId: metenziId, pixelProductId: it.productId, quantity: it.quantity });
     }
 
     if (resolvedItems.length === 0) {
-      logger.info({ orderId }, "No Metenzi-mapped items in order, skipping Metenzi fulfillment");
-      return false;
+      logger.warn({ orderId, productIds }, "No Metenzi-mapped items in order — order will complete without keys. Add product mappings in Admin → Metenzi.");
+      return "skip";
     }
 
     // Send the full quantity to Metenzi — it delivers in-stock keys immediately and
     // queues any backordered portion via order.backorder + backorder.fulfilled webhooks.
-    const metenziItems = resolvedItems.map((it) => ({ variantId: it.metenziProductId, quantity: it.quantity }));
+    const metenziItems = resolvedItems.map((it) => ({ productId: it.metenziProductId, quantity: it.quantity }));
     const metenziOrder = await metenziCreateOrder(config, metenziItems);
 
     // Store externalOrderId BEFORE processing inline keys so findOrderByMetenziId can match
@@ -341,11 +348,10 @@ async function fulfillFromMetenzi(orderId: number, items: OrderInput["items"], _
       const { handleWebhookEvent } = await import("./webhook-handlers");
       await handleWebhookEvent("order.fulfilled", { id: metenziOrder.id, keys: metenziOrder.keys });
     }
-    return true;
+    return "ok";
   } catch (err) {
     const isCircuitOpen = err instanceof CircuitOpenError;
-    logger.error({ err, orderId, circuitOpen: isCircuitOpen }, "Metenzi fulfillment failed");
-    // Re-resolve for retry payload — we can't recover resolvedItems here so store productIds for retry
+    logger.error({ err, orderId, circuitOpen: isCircuitOpen }, "Metenzi fulfillment failed — retry enqueued, order stays PROCESSING");
     const productIds2 = [...new Set(items.map((it) => it.productId).filter((id): id is number => !!id))];
     enqueueJob({
       queue: "order-processing",
@@ -355,7 +361,7 @@ async function fulfillFromMetenzi(orderId: number, items: OrderInput["items"], _
       payload: { orderId, productIds: productIds2 },
       scheduledAt: new Date(Date.now() + (isCircuitOpen ? 60_000 : 30_000)),
     }).catch((e) => logger.error({ e, orderId }, "Failed to enqueue fulfillment retry"));
-    return false;
+    return "retry";
   }
 }
 
