@@ -39,6 +39,21 @@ router.get("/admin/metenzi/debug", ...guard, async (_req, res) => {
   res.json({ baseUrl: config.baseUrl, ok: rawRes.ok, status: rawRes.status, data: rawRes.data });
 });
 
+// ── POST /admin/metenzi/debug-order ─────────────────────────────────────────
+// Test order creation with a specific Metenzi product ID to see raw response
+router.post("/admin/metenzi/debug-order", ...guard, async (req, res) => {
+  const config = await getMetenziConfig();
+  if (!config) { res.status(503).json({ error: "Not configured" }); return; }
+  const { metenziProductId } = req.body;
+  if (!metenziProductId) { res.status(400).json({ error: "metenziProductId required" }); return; }
+  const rawRes = await metenziRequest(config, {
+    method: "POST",
+    path: "/api/public/orders",
+    body: { items: [{ variantId: metenziProductId, quantity: 1 }] },
+  });
+  res.json({ ok: rawRes.ok, status: rawRes.status, data: rawRes.data });
+});
+
 // ── GET /admin/metenzi/proxy-image ───────────────────────────────────────────
 // Proxies Metenzi product images through the server to bypass CORS/auth issues
 router.get("/admin/metenzi/proxy-image", ...guard, async (req, res) => {

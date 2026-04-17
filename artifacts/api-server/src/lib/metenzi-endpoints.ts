@@ -167,7 +167,7 @@ export async function createOrder(
 ): Promise<MetenziOrder> {
   const res = await metenziRequest<Record<string, unknown>>(config, {
     method: "POST",
-    path: "/api/orders",
+    path: "/api/public/orders",
     body: { items },
   });
   if (!res.ok) {
