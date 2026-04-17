@@ -14,6 +14,7 @@ export function CartItemsTable() {
   const items = useCartStore((s) => s.items);
   const updateQuantity = useCartStore((s) => s.updateQuantity);
   const updateItemPrice = useCartStore((s) => s.updateItemPrice);
+  const updateItemStock = useCartStore((s) => s.updateItemStock);
   const removeItem = useCartStore((s) => s.removeItem);
   const removeBundleItems = useCartStore((s) => s.removeBundleItems);
   const clearCart = useCartStore((s) => s.clearCart);
@@ -34,6 +35,7 @@ export function CartItemsTable() {
     let cancelled = false;
     const lines = useCartStore.getState().items.filter((i) => !i.bundleId && i.variantId > 0);
     (async () => {
+      // Sync prices
       for (const item of lines) {
         try {
           const r = await fetch(`${API}/variants/${item.variantId}/price?qty=${item.quantity}`);
@@ -41,15 +43,29 @@ export function CartItemsTable() {
           const d = (await r.json()) as { price?: { effectiveUnitPriceUsd?: string } };
           const next = d?.price?.effectiveUnitPriceUsd;
           if (next) updateItemPrice(item.variantId, next);
-        } catch {
-          /* ignore */
-        }
+        } catch { /* ignore */ }
+      }
+      // Sync stock / backorder info in one batch call
+      if (!cancelled && lines.length > 0) {
+        try {
+          const r = await fetch(`${API}/variants/stock-batch`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ variantIds: lines.map((i) => i.variantId) }),
+          });
+          if (r.ok && !cancelled) {
+            const d = (await r.json()) as { stock?: Record<string, { stockCount: number; backorderAllowed: boolean; backorderEta: string | null }> };
+            if (d.stock) {
+              for (const [idStr, info] of Object.entries(d.stock)) {
+                updateItemStock(Number(idStr), info);
+              }
+            }
+          }
+        } catch { /* ignore */ }
       }
     })();
-    return () => {
-      cancelled = true;
-    };
-  }, [cartPriceSyncKey, updateItemPrice]);
+    return () => { cancelled = true; };
+  }, [cartPriceSyncKey, updateItemPrice, updateItemStock]);
 
   function handleUpdateQuantity(variantId: number, qty: number, bundleId?: number) {
     updateQuantity(variantId, qty, bundleId);

@@ -34,6 +34,7 @@ interface CartState {
   removeItem: (variantId: number, bundleId?: number) => void;
   updateQuantity: (variantId: number, quantity: number, bundleId?: number) => void;
   updateItemPrice: (variantId: number, priceUsd: string) => void;
+  updateItemStock: (variantId: number, data: { stockCount: number; backorderAllowed: boolean; backorderEta: string | null }) => void;
   clearCart: () => void;
   setCoupon: (coupon: CouponData | null) => void;
   getTotal: () => number;
@@ -110,6 +111,13 @@ export const useCartStore = create<CartState>()(
         set((state) => ({
           items: state.items.map((i) =>
             i.variantId === variantId && !i.bundleId ? { ...i, priceUsd } : i,
+          ),
+        })),
+
+      updateItemStock: (variantId, data) =>
+        set((state) => ({
+          items: state.items.map((i) =>
+            i.variantId === variantId && !i.bundleId ? { ...i, ...data } : i,
           ),
         })),
 

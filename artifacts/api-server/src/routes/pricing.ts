@@ -14,11 +14,42 @@
  */
 
 import { Router } from "express";
+import { inArray } from "drizzle-orm";
+import { db } from "@workspace/db";
+import { productVariants } from "@workspace/db/schema";
 import { paramString } from "../lib/route-params";
 import { resolvePrice, resolvePriceBatch } from "../services/resolve-price";
 import { logger } from "../lib/logger";
 
 const router = Router();
+
+// ── Stock batch (for cart sync) ───────────────────────────────────────────────
+
+router.post("/variants/stock-batch", async (req, res) => {
+  const { variantIds } = req.body as { variantIds?: unknown };
+  if (!Array.isArray(variantIds) || variantIds.length === 0) {
+    res.status(400).json({ error: "variantIds must be a non-empty array" });
+    return;
+  }
+  const ids = variantIds.map(Number).filter((v) => Number.isInteger(v) && v > 0);
+  if (ids.length === 0) { res.status(400).json({ error: "No valid ids" }); return; }
+
+  const rows = await db
+    .select({
+      id: productVariants.id,
+      stockCount: productVariants.stockCount,
+      backorderAllowed: productVariants.backorderAllowed,
+      backorderEta: productVariants.backorderEta,
+    })
+    .from(productVariants)
+    .where(inArray(productVariants.id, ids));
+
+  const stock: Record<number, { stockCount: number; backorderAllowed: boolean; backorderEta: string | null }> = {};
+  for (const r of rows) {
+    stock[r.id] = { stockCount: r.stockCount, backorderAllowed: r.backorderAllowed, backorderEta: r.backorderEta ?? null };
+  }
+  res.json({ stock });
+});
 
 // ── Single variant ────────────────────────────────────────────────────────────
 

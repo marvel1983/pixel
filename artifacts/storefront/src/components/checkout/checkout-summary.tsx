@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Package, Minus, Plus } from "lucide-react";
+import { Package, Minus, Plus, Clock } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { useCartStore } from "@/stores/cart-store";
 import { useCurrencyStore, BASE_CURRENCY } from "@/stores/currency-store";
@@ -44,9 +44,12 @@ export function CheckoutSummary({ cppSelected, taxRate = 0, taxLabel = "VAT", pr
       <div className="space-y-3 max-h-64 overflow-y-auto">
         {items.map((item) => {
           const price = parseFloat(item.priceUsd);
+          const stock = item.stockCount ?? 0;
+          const backorderQty = item.backorderAllowed ? Math.max(0, item.quantity - stock) : 0;
+          const inStockQty = Math.min(item.quantity, stock);
           return (
-            <div key={`${item.bundleId ?? 's'}-${item.variantId}`} className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded bg-muted flex items-center justify-center shrink-0">
+            <div key={`${item.bundleId ?? 's'}-${item.variantId}`} className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded bg-muted flex items-center justify-center shrink-0 mt-0.5">
                 {item.imageUrl ? (
                   <img src={item.imageUrl} alt="" className="w-full h-full object-contain rounded" />
                 ) : (
@@ -70,8 +73,17 @@ export function CheckoutSummary({ cppSelected, taxRate = 0, taxLabel = "VAT", pr
                     <Plus className="h-3 w-3" />
                   </button>
                 </div>
+                {backorderQty > 0 && (
+                  <div className="flex items-center gap-1 mt-1 text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
+                    <Clock className="h-2.5 w-2.5 shrink-0" />
+                    {inStockQty > 0
+                      ? <span><b>{inStockQty}</b> in stock · <b>{backorderQty}</b> on backorder{item.backorderEta ? ` (est. ${item.backorderEta})` : ""}</span>
+                      : <span><b>{backorderQty}</b> on backorder{item.backorderEta ? ` · est. ${item.backorderEta}` : ""}</span>
+                    }
+                  </div>
+                )}
               </div>
-              <span className="text-sm font-medium">{format(price * item.quantity)}</span>
+              <span className="text-sm font-medium shrink-0">{format(price * item.quantity)}</span>
             </div>
           );
         })}
