@@ -31,7 +31,7 @@ export default function ShopPage() {
         name: v.name,
         sku: v.sku,
         platform: v.platform ?? "",
-        priceUsd: v.priceOverrideUsd ?? v.priceUsd,
+        priceUsd: v.priceUsd,
         compareAtPriceUsd: v.compareAtPriceUsd,
         stockCount: v.stockCount,
       })),

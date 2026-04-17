@@ -199,7 +199,12 @@ router.get("/products", async (req: Request, res: Response) => {
 
   const items = results.map((p) => ({
     ...p,
-    variants: variants.filter((v) => v.productId === p.id),
+    variants: variants
+      .filter((v) => v.productId === p.id)
+      .map(({ priceOverrideUsd, ...v }) => ({
+        ...v,
+        priceUsd: priceOverrideUsd ?? v.priceUsd,
+      })),
   }));
 
   const facets = await computeFacets(allMatchingIds);
@@ -258,8 +263,9 @@ router.get("/products/:slug", async (req: Request, res: Response) => {
     ...product,
     avgRating: Number(product.avgRating),
     reviewCount: Number(product.reviewCount),
-    variants: variants.map((v) => ({
+    variants: variants.map(({ priceOverrideUsd, ...v }) => ({
       ...v,
+      priceUsd: priceOverrideUsd ?? v.priceUsd,
       stockCount: Number(v.stockCount),
     })),
   });
