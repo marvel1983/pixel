@@ -104,25 +104,6 @@ async function handleOrderFulfilled(data: FulfilledData) {
     return;
   }
 
-  // Idempotency: check for existing keys
-  const existingOrderItems = await db
-    .select({ id: orderItems.id })
-    .from(orderItems)
-    .where(eq(orderItems.orderId, order.id));
-  const orderItemIds = existingOrderItems.map((i) => i.id);
-  const existingKeys = orderItemIds.length
-    ? await db
-        .select({ id: licenseKeys.id })
-        .from(licenseKeys)
-        .where(inArray(licenseKeys.orderItemId, orderItemIds))
-        .limit(1)
-    : [];
-
-  if (existingKeys.length > 0) {
-    logger.info({ orderId: order.id }, "order.fulfilled already processed (idempotent skip)");
-    return;
-  }
-
   const keysToDeliver: { productName: string; variant: string; licenseKey: string }[] = [];
 
   // Primary path: Metenzi puts keys at order level — order.keys[{ code, productId }]
@@ -158,6 +139,10 @@ async function handleOrderFulfilled(data: FulfilledData) {
       const key = keyItem.code;
       const encryptedKey = encrypt(key);
       const keyMask = key.length <= 8 ? key.slice(0, 2) + "****" : key.slice(0, 4) + "****" + key.slice(-4);
+      // Per-key idempotency: skip if this exact key was already stored
+      const [existing] = await db.select({ id: licenseKeys.id }).from(licenseKeys)
+        .where(and(eq(licenseKeys.keyValue, encryptedKey), eq(licenseKeys.orderItemId, dbItem.id))).limit(1);
+      if (existing) { logger.info({ orderId: order.id }, "Key already stored, skipping (idempotent)"); continue; }
       await db.insert(licenseKeys).values({
         variantId: dbItem.variantId,
         keyValue: encryptedKey,

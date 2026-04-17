@@ -354,13 +354,15 @@ async function fulfillFromMetenzi(orderId: number, items: OrderInput["items"], _
       if (boQty > 0) backorderItems2.push({ variantId: it.metenziProductId, quantity: boQty });
     }
 
-    const externalIds: string[] = [];
     const { handleWebhookEvent } = await import("./webhook-handlers");
 
     // Place in-stock order immediately
+    let inStockMetenziId: string | null = null;
     if (inStockItems.length > 0) {
       const metenziOrder = await metenziCreateOrder(config, inStockItems);
-      externalIds.push(metenziOrder.id);
+      inStockMetenziId = metenziOrder.id;
+      // Store externalOrderId BEFORE processing inline keys so findOrderByMetenziId can match
+      await db.update(orders).set({ externalOrderId: metenziOrder.id }).where(eq(orders.id, orderId));
       logger.info({ orderId, metenziOrderId: metenziOrder.id, status: metenziOrder.status, qty: inStockItems }, "Metenzi in-stock order placed");
       if (metenziOrder.status === "paid" && (metenziOrder.keys?.length ?? 0) > 0) {
         await handleWebhookEvent("order.fulfilled", { id: metenziOrder.id, keys: metenziOrder.keys });
@@ -370,15 +372,15 @@ async function fulfillFromMetenzi(orderId: number, items: OrderInput["items"], _
     // Place backorder order separately so Metenzi queues it independently
     if (backorderItems2.length > 0) {
       const boOrder = await metenziCreateOrder(config, backorderItems2);
-      externalIds.push(boOrder.id);
+      // Append backorder ID to externalOrderId so its webhook can match back to this order
+      const combined = inStockMetenziId ? `${inStockMetenziId},${boOrder.id}` : boOrder.id;
+      await db.update(orders)
+        .set({ externalOrderId: combined, status: "PROCESSING", updatedAt: new Date() })
+        .where(eq(orders.id, orderId));
       logger.info({ orderId, metenziOrderId: boOrder.id, qty: backorderItems2 }, "Metenzi backorder order placed");
     }
 
-    if (externalIds.length > 0) {
-      await db.update(orders).set({ externalOrderId: externalIds.join(",") }).where(eq(orders.id, orderId));
-    }
-
-    // If the entire order was delivered in-stock, mark COMPLETED; if any backorder exists, stay PROCESSING
+    // If everything is backordered (no in-stock items at all), mark order BACKORDERED
     if (backorderItems2.length > 0 && inStockItems.length === 0) {
       await db.update(orders).set({ status: "BACKORDERED", notes: "Awaiting stock from supplier", updatedAt: new Date() }).where(eq(orders.id, orderId));
     }
