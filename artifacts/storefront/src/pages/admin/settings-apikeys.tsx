@@ -6,7 +6,7 @@ import { useAuthStore } from "@/stores/auth-store";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
-interface KeyStatus { metenzi: { hasApiKey: boolean; hasSigningSecret: boolean; isActive: boolean }; checkout: { hasPublicKey: boolean; hasSecretKey: boolean; isActive: boolean }; }
+interface KeyStatus { metenzi: { hasApiKey: boolean; hasSigningSecret: boolean; hasWebhookSecret: boolean; isActive: boolean }; checkout: { hasPublicKey: boolean; hasSecretKey: boolean; isActive: boolean }; }
 
 export default function SettingsApiKeysTab() {
   const [status, setStatus] = useState<KeyStatus | null>(null);
@@ -31,7 +31,7 @@ export default function SettingsApiKeysTab() {
   const doReveal = async (provider: string, field: string) => {
     const key = `${provider}.${field}`;
     if (reveal[key] !== undefined) { setReveal((p) => { const n = { ...p }; delete n[key]; return n; }); return; }
-    const label = `${provider === "metenzi" ? "Metenzi" : "Checkout.com"} ${field === "apiKey" ? "API Key" : field === "hmacSecret" ? "Signing Secret" : field === "publicKey" ? "Public Key" : "Secret Key"}`;
+    const label = `${provider === "metenzi" ? "Metenzi" : "Checkout.com"} ${field === "apiKey" ? "API Key" : field === "hmacSecret" ? "Signing Secret" : field === "webhookSecret" ? "Webhook Signing Secret" : field === "publicKey" ? "Public Key" : "Secret Key"}`;
     setConfirmReveal({ provider, field, label });
   };
 
@@ -72,6 +72,7 @@ export default function SettingsApiKeysTab() {
       <ProviderCard title="Metenzi API" description="Product catalog and license key fulfillment">
         <KeyRow label="API Key" hasValue={status.metenzi.hasApiKey} revealKey="metenzi.apiKey" reveal={reveal} onReveal={() => doReveal("metenzi", "apiKey")} onUpdate={() => openUpdate("metenzi", "apiKey", "Metenzi API Key")} />
         <KeyRow label="Signing Secret (HMAC)" hasValue={status.metenzi.hasSigningSecret} revealKey="metenzi.hmacSecret" reveal={reveal} onReveal={() => doReveal("metenzi", "hmacSecret")} onUpdate={() => openUpdate("metenzi", "hmacSecret", "Metenzi Signing Secret")} />
+        <KeyRow label="Webhook Signing Secret (whsec)" hasValue={status.metenzi.hasWebhookSecret} revealKey="metenzi.webhookSecret" reveal={reveal} onReveal={() => doReveal("metenzi", "webhookSecret")} onUpdate={() => openUpdate("metenzi", "webhookSecret", "Metenzi Webhook Signing Secret")} />
         <div className="flex items-center gap-2 pt-2 border-t">
           <Button size="sm" variant="outline" onClick={() => testConnection("metenzi")}><Zap className="h-3 w-3 mr-1" /> Test Connection</Button>
           {testResult.metenzi && <span className={`text-xs ${testResult.metenzi.success ? "text-green-600" : "text-red-600"}`}>{testResult.metenzi.message}</span>}

@@ -7,6 +7,7 @@ export interface MetenziClientConfig {
   baseUrl: string;
   apiKey: string;
   hmacSecret: string;
+  webhookSecret?: string;
   rateLimit?: number;
 }
 

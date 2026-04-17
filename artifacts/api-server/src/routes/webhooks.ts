@@ -78,9 +78,11 @@ router.post("/webhooks/metenzi", async (req, res) => {
   }
 
   const rawBody = req.rawBody ?? JSON.stringify(req.body);
+  // Use dedicated webhookSecret for inbound verification; fall back to hmacSecret
+  const verifySecret = config.webhookSecret ?? config.hmacSecret;
   let valid: boolean;
   try {
-    valid = verifySignature(rawBody, timestamp, signature, config.hmacSecret);
+    valid = verifySignature(rawBody, timestamp, signature, verifySecret);
   } catch {
     valid = false;
   }

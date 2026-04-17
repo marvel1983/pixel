@@ -36,6 +36,7 @@ export async function getMetenziConfig(): Promise<MetenziClientConfig | null> {
       baseUrl: provider.baseUrl,
       apiKey: decrypt(provider.apiKeyEncrypted),
       hmacSecret: decrypt(provider.hmacSecretEncrypted),
+      webhookSecret: provider.webhookSecretEncrypted ? decrypt(provider.webhookSecretEncrypted) : undefined,
       rateLimit: provider.rateLimit ?? 60,
     };
     cacheTimestamp = now;
