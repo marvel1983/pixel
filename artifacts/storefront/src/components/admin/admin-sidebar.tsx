@@ -8,6 +8,7 @@ import {
   Bell, BarChart3, Truck, Flag, Ticket, MessageSquare,
   HelpCircle, ClipboardList, Wallet, Gift, Globe,
   Link2, Zap, BookOpen, ListTodo, Activity, ArrowLeft, Tag, Sliders, RefreshCw,
+  ChevronDown, ChevronRight,
   type LucideIcon,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -29,36 +30,36 @@ const sections: NavSection[] = [
   {
     title: "CATALOGUE",
     items: [
-      { label: "Products",         href: "/admin/products",        icon: Package },
-      { label: "Metenzi Catalog",  href: "/admin/metenzi-catalog", icon: RefreshCw },
-      { label: "Bundles",          href: "/admin/bundles",         icon: Package },
-      { label: "Categories",  href: "/admin/categories", icon: Tags },
-      { label: "Platforms",   href: "/admin/platforms",  icon: Layers },
-      { label: "Reviews",     href: "/admin/reviews",    icon: MessageSquare },
-      { label: "Q&A",         href: "/admin/qa",         icon: HelpCircle, badgeKey: "pendingQA" },
-      { label: "Attributes",  href: "/admin/attributes", icon: Sliders },
-      { label: "Tags",        href: "/admin/tags",        icon: Tag },
+      { label: "Products",        href: "/admin/products",        icon: Package },
+      { label: "Metenzi Catalog", href: "/admin/metenzi-catalog", icon: RefreshCw },
+      { label: "Bundles",         href: "/admin/bundles",         icon: Package },
+      { label: "Categories",      href: "/admin/categories",      icon: Tags },
+      { label: "Platforms",       href: "/admin/platforms",       icon: Layers },
+      { label: "Reviews",         href: "/admin/reviews",         icon: MessageSquare },
+      { label: "Q&A",             href: "/admin/qa",              icon: HelpCircle, badgeKey: "pendingQA" },
+      { label: "Attributes",      href: "/admin/attributes",      icon: Sliders },
+      { label: "Tags",            href: "/admin/tags",            icon: Tag },
     ],
   },
   {
     title: "SALES",
     items: [
-      { label: "Orders",             href: "/admin/orders",                  icon: ShoppingCart },
-      { label: "Transactions",       href: "/admin/transactions",            icon: Receipt },
-      { label: "Fulfillment",        href: "/admin/fulfillment",             icon: Truck },
-      { label: "Claims",             href: "/admin/claims",                  icon: Flag },
-      { label: "Refunds",            href: "/admin/refunds",                 icon: Wallet },
-      { label: "Flash Sales",        href: "/admin/flash-sales",             icon: Zap },
-      { label: "Price Rules",        href: "/admin/price-rules",             icon: Tag },
-      { label: "Discounts",          href: "/admin/discounts",               icon: Ticket },
-      { label: "Checkout Upsell",    href: "/admin/checkout-upsell",        icon: Gift },
-      { label: "Checkout Services",  href: "/admin/checkout-services",      icon: ShieldCheck },
-      { label: "Gift Cards",         href: "/admin/gift-cards",              icon: Gift },
-      { label: "Affiliates",         href: "/admin/affiliates",              icon: Link2 },
-      { label: "Affiliate Settings", href: "/admin/affiliate-settings",     icon: Settings },
-      { label: "Abandoned Carts",    href: "/admin/abandoned-carts",        icon: ShoppingCart },
-      { label: "Cart Recovery",      href: "/admin/abandoned-cart-settings",icon: Settings },
-      { label: "Quotes",             href: "/admin/quotes",                  icon: ClipboardList },
+      { label: "Orders",            href: "/admin/orders",                   icon: ShoppingCart },
+      { label: "Transactions",      href: "/admin/transactions",             icon: Receipt },
+      { label: "Fulfillment",       href: "/admin/fulfillment",              icon: Truck },
+      { label: "Claims",            href: "/admin/claims",                   icon: Flag },
+      { label: "Refunds",           href: "/admin/refunds",                  icon: Wallet },
+      { label: "Flash Sales",       href: "/admin/flash-sales",              icon: Zap },
+      { label: "Price Rules",       href: "/admin/price-rules",              icon: Tag },
+      { label: "Discounts",         href: "/admin/discounts",                icon: Ticket },
+      { label: "Checkout Upsell",   href: "/admin/checkout-upsell",         icon: Gift },
+      { label: "Checkout Services", href: "/admin/checkout-services",       icon: ShieldCheck },
+      { label: "Gift Cards",        href: "/admin/gift-cards",               icon: Gift },
+      { label: "Affiliates",        href: "/admin/affiliates",               icon: Link2 },
+      { label: "Affiliate Settings",href: "/admin/affiliate-settings",      icon: Settings },
+      { label: "Abandoned Carts",   href: "/admin/abandoned-carts",         icon: ShoppingCart },
+      { label: "Cart Recovery",     href: "/admin/abandoned-cart-settings", icon: Settings },
+      { label: "Quotes",            href: "/admin/quotes",                   icon: ClipboardList },
     ],
   },
   {
@@ -76,39 +77,79 @@ const sections: NavSection[] = [
     title: "CONTENT",
     items: [
       { label: "Homepage",        href: "/admin/homepage-sections", icon: Layout },
-      { label: "Brand Sections",  href: "/admin/brand-sections",    icon: ShoppingBag },
-      { label: "Blog Posts",      href: "/admin/blog",              icon: BookOpen },
-      { label: "Blog Categories", href: "/admin/blog/categories",   icon: Tags },
-      { label: "Pages",           href: "/admin/pages",             icon: FileText },
-      { label: "FAQ Editor",      href: "/admin/pages/faq",         icon: HelpCircle },
-      { label: "Email Templates", href: "/admin/email-templates",   icon: Mail },
-      { label: "Banners",         href: "/admin/banners",           icon: Image },
+      { label: "Brand Sections",  href: "/admin/brand-sections",   icon: ShoppingBag },
+      { label: "Blog Posts",      href: "/admin/blog",             icon: BookOpen },
+      { label: "Blog Categories", href: "/admin/blog/categories",  icon: Tags },
+      { label: "Pages",           href: "/admin/pages",            icon: FileText },
+      { label: "FAQ Editor",      href: "/admin/pages/faq",        icon: HelpCircle },
+      { label: "Email Templates", href: "/admin/email-templates",  icon: Mail },
+      { label: "Banners",         href: "/admin/banners",          icon: Image },
     ],
   },
   {
     title: "SYSTEM",
     items: [
-      { label: "Admin Users",    href: "/admin/admin-users",    icon: Shield },
-      { label: "Tax / VAT",      href: "/admin/tax-settings",   icon: Receipt },
-      { label: "Languages",      href: "/admin/i18n",           icon: Globe },
-      { label: "Settings",       href: "/admin/settings",       icon: Settings },
-      { label: "Audit Log",      href: "/admin/audit-log",      icon: ClipboardList },
-      { label: "Metenzi Balance",href: "/admin/metenzi-balance",icon: Wallet },
-      { label: "Job Queue",      href: "/admin/jobs",           icon: ListTodo },
-      { label: "System Status",  href: "/admin/system-status",  icon: Activity },
+      { label: "Admin Users",     href: "/admin/admin-users",    icon: Shield },
+      { label: "Tax / VAT",       href: "/admin/tax-settings",   icon: Receipt },
+      { label: "Languages",       href: "/admin/i18n",           icon: Globe },
+      { label: "Settings",        href: "/admin/settings",       icon: Settings },
+      { label: "Audit Log",       href: "/admin/audit-log",      icon: ClipboardList },
+      { label: "Metenzi Balance", href: "/admin/metenzi-balance",icon: Wallet },
+      { label: "Job Queue",       href: "/admin/jobs",           icon: ListTodo },
+      { label: "System Status",   href: "/admin/system-status",  icon: Activity },
     ],
   },
 ];
+
+const STORAGE_KEY = "admin-sidebar-open";
 
 function isActive(current: string, href: string) {
   if (href === "/admin") return current === "/admin";
   return current.startsWith(href);
 }
 
+function getSectionForPath(path: string): string | null {
+  for (const section of sections) {
+    if (section.items.some((item) => isActive(path, item.href))) return section.title;
+  }
+  return null;
+}
+
+function loadOpenSections(activeSection: string | null): Record<string, boolean> {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    const parsed = stored ? (JSON.parse(stored) as Record<string, boolean>) : {};
+    // Always open the active section
+    if (activeSection) parsed[activeSection] = true;
+    return parsed;
+  } catch {
+    return activeSection ? { [activeSection]: true } : {};
+  }
+}
+
 export function AdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
   const [location] = useLocation();
   const token = useAuthStore((s) => s.token);
   const [badges, setBadges] = useState<Record<string, number>>({});
+  const [open, setOpen] = useState<Record<string, boolean>>(() =>
+    loadOpenSections(getSectionForPath(location)),
+  );
+
+  // Auto-open the section containing the current route
+  useEffect(() => {
+    const active = getSectionForPath(location);
+    if (active) {
+      setOpen((prev) => {
+        if (prev[active]) return prev;
+        return { ...prev, [active]: true };
+      });
+    }
+  }, [location]);
+
+  // Persist open state
+  useEffect(() => {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(open)); } catch { /* ignore */ }
+  }, [open]);
 
   useEffect(() => {
     if (!token) return;
@@ -118,16 +159,14 @@ export function AdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
       .catch(() => {});
   }, [token]);
 
+  function toggleSection(title: string) {
+    setOpen((prev) => ({ ...prev, [title]: !prev[title] }));
+  }
+
   return (
-    <div
-      className="flex h-full flex-col"
-      style={{ background: "#13161e", borderRight: "1px solid #1f2330" }}
-    >
+    <div className="flex h-full flex-col" style={{ background: "#13161e", borderRight: "1px solid #1f2330" }}>
       {/* Logo */}
-      <div
-        className="flex h-10 items-center px-3 shrink-0"
-        style={{ borderBottom: "1px solid #1f2330" }}
-      >
+      <div className="flex h-10 items-center px-3 shrink-0" style={{ borderBottom: "1px solid #1f2330" }}>
         <Link href="/admin" className="flex items-center gap-2">
           <div
             className="flex h-6 w-6 items-center justify-center rounded text-white text-[10px] font-black"
@@ -148,48 +187,63 @@ export function AdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
       {/* Nav */}
       <ScrollArea className="flex-1">
         <nav className="px-2 py-2">
-          {sections.map((section) => (
-            <div key={section.title} className="mb-3">
-              <p
-                className="mb-1 px-2 text-[10px] font-bold tracking-widest"
-                style={{ color: "#566070" }}
-              >
-                {section.title}
-              </p>
-              {section.items.map((item) => {
-                const active = isActive(location, item.href);
-                const badge = item.badgeKey ? badges[item.badgeKey] ?? 0 : 0;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={onNavigate}
-                    className="flex items-center gap-2 rounded px-2 py-[5px] text-[12px] font-medium transition-colors mb-px"
-                    style={{
-                      background: active ? "#1e2a4a" : "transparent",
-                      color: active ? "#93c5fd" : "#d1d8e8",
-                    }}
-                    onMouseEnter={(e) => { if (!active) { e.currentTarget.style.background = "#1c2030"; e.currentTarget.style.color = "#ffffff"; } }}
-                    onMouseLeave={(e) => { if (!active) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#d1d8e8"; } }}
-                  >
-                    <item.icon
-                      className="h-3.5 w-3.5 shrink-0"
-                      style={{ color: active ? "#93c5fd" : "#7a8aaa" }}
-                    />
-                    <span className="flex-1 truncate">{item.label}</span>
-                    {badge > 0 && (
-                      <span
-                        className="flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[9px] font-bold"
-                        style={{ background: "#ef4444", color: "white" }}
-                      >
-                        {badge}
-                      </span>
-                    )}
-                  </Link>
-                );
-              })}
-            </div>
-          ))}
+          {sections.map((section) => {
+            const isOpen = open[section.title] ?? false;
+            const hasActive = section.items.some((item) => isActive(location, item.href));
+
+            return (
+              <div key={section.title} className="mb-1">
+                {/* Section header — clickable */}
+                <button
+                  onClick={() => toggleSection(section.title)}
+                  className="flex w-full items-center justify-between rounded px-2 py-[5px] mb-0.5 transition-colors"
+                  style={{ color: hasActive ? "#93c5fd" : "#566070" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = "#ffffff"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = hasActive ? "#93c5fd" : "#566070"; }}
+                >
+                  <span className="text-[10px] font-bold tracking-widest">{section.title}</span>
+                  {isOpen
+                    ? <ChevronDown className="h-3 w-3 shrink-0" />
+                    : <ChevronRight className="h-3 w-3 shrink-0" />
+                  }
+                </button>
+
+                {/* Items */}
+                {isOpen && section.items.map((item) => {
+                  const active = isActive(location, item.href);
+                  const badge = item.badgeKey ? badges[item.badgeKey] ?? 0 : 0;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={onNavigate}
+                      className="flex items-center gap-2 rounded px-2 py-[5px] text-[12px] font-medium transition-colors mb-px"
+                      style={{
+                        background: active ? "#1e2a4a" : "transparent",
+                        color: active ? "#93c5fd" : "#d1d8e8",
+                      }}
+                      onMouseEnter={(e) => { if (!active) { e.currentTarget.style.background = "#1c2030"; e.currentTarget.style.color = "#ffffff"; } }}
+                      onMouseLeave={(e) => { if (!active) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#d1d8e8"; } }}
+                    >
+                      <item.icon
+                        className="h-3.5 w-3.5 shrink-0 ml-1"
+                        style={{ color: active ? "#93c5fd" : "#7a8aaa" }}
+                      />
+                      <span className="flex-1 truncate">{item.label}</span>
+                      {badge > 0 && (
+                        <span
+                          className="flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[9px] font-bold"
+                          style={{ background: "#ef4444", color: "white" }}
+                        >
+                          {badge}
+                        </span>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            );
+          })}
         </nav>
       </ScrollArea>
 
