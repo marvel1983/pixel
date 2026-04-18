@@ -7,7 +7,10 @@ import { logger } from "../lib/logger";
 const router = Router();
 
 // Public endpoint — returns CPP and processing fee config for checkout UI
+// Must not be cached — fees can change at any time and a stale response causes total mismatch errors
 router.get("/checkout/config", async (_req, res) => {
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate");
+  res.set("Pragma", "no-cache");
   const [s] = await db.select({
     cppEnabled: siteSettings.cppEnabled,
     cppLabel: siteSettings.cppLabel,

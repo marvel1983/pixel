@@ -66,6 +66,7 @@ export default function CheckoutPage() {
   const [regionAcknowledged, setRegionAcknowledged] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"card" | "invoice">("card");
   const [checkoutConfig, setCheckoutConfig] = useState<CheckoutConfig>({ cppEnabled: false, cppLabel: "Checkout Protection Plan", cppPrice: "0.99", cppDescription: "", processingFeePercent: "0", processingFeeFixed: "0" });
+  const [configLoaded, setConfigLoaded] = useState(false);
   const user = useAuthStore((s) => s.user);
   const token = useAuthStore((s) => s.token);
   const isBusinessApproved = !!user?.businessApproved;
@@ -157,7 +158,8 @@ export default function CheckoutPage() {
     fetch(`${API}/checkout/config`)
       .then((r) => r.ok ? r.json() : null)
       .then((d: CheckoutConfig | null) => { if (d) setCheckoutConfig(d); })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setConfigLoaded(true));
   }, []);
 
   useEffect(() => {
@@ -433,12 +435,14 @@ export default function CheckoutPage() {
             <span>Secure & encrypted checkout</span>
             <Shield className="h-3.5 w-3.5 text-emerald-500" />
           </div>
-          <Button size="lg" className="w-full" disabled={submitting} onClick={handleSubmit}>
+          <Button size="lg" className="w-full" disabled={submitting || !configLoaded} onClick={handleSubmit}>
             {submitting
               ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t("checkout.processing")}</>
-              : paymentMethod === "card" && walletAmount < (getTotal())
-                ? "Continue to Payment →"
-                : t("checkout.placeOrder")}
+              : !configLoaded
+                ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Loading...</>
+                : paymentMethod === "card" && walletAmount < (getTotal())
+                  ? "Continue to Payment →"
+                  : t("checkout.placeOrder")}
           </Button>
         </div>
 
