@@ -12,12 +12,19 @@ interface Props {
 }
 
 export function FeedMappingTable({ mappings, channelFields, productAttributes, onChange }: Props) {
+  // Normalize any rows with empty feedKey (can happen when "Add Mapping Row" was clicked without selecting)
+  const normalizedMappings = mappings.map((m) =>
+    m.feedKey === "" && channelFields.length > 0 ? { ...m, feedKey: channelFields[0].key } : m,
+  );
   const update = (id: string, patch: Partial<FieldMapping>) =>
-    onChange(mappings.map((m) => (m.id === id ? { ...m, ...patch } : m)));
-  const remove = (id: string) => onChange(mappings.filter((m) => m.id !== id));
-  const add = (feedKey = "") => onChange([...mappings, { id: uid(), feedKey, sourceType: "attribute", sourceValue: productAttributes[0]?.key ?? "", prefix: "", suffix: "" }]);
+    onChange(normalizedMappings.map((m) => (m.id === id ? { ...m, ...patch } : m)));
+  const remove = (id: string) => onChange(normalizedMappings.filter((m) => m.id !== id));
+  const add = (feedKey = "") => {
+    const key = feedKey || channelFields[0]?.key || "";
+    onChange([...normalizedMappings, { id: uid(), feedKey: key, sourceType: "attribute", sourceValue: productAttributes[0]?.key ?? "", prefix: "", suffix: "" }]);
+  };
 
-  const mappedKeys = new Set(mappings.map((m) => m.feedKey));
+  const mappedKeys = new Set(normalizedMappings.map((m) => m.feedKey));
   const unmappedRequired = channelFields.filter((f) => f.required && !mappedKeys.has(f.key));
 
   const inp = "rounded border border-[#2e3340] bg-[#0c1018] px-2 py-1.5 text-[12px] text-[#dde4f0] focus:outline-none w-full";
@@ -42,7 +49,7 @@ export function FeedMappingTable({ mappings, channelFields, productAttributes, o
         </div>
       )}
 
-      {mappings.length > 0 && (
+      {normalizedMappings.length > 0 && (
         <div className="overflow-x-auto rounded border border-[#2e3340]">
           <table className="w-full text-[12px]">
             <thead>
@@ -53,7 +60,7 @@ export function FeedMappingTable({ mappings, channelFields, productAttributes, o
               </tr>
             </thead>
             <tbody>
-              {mappings.map((m, idx) => (
+              {normalizedMappings.map((m, idx) => (
                 <tr key={m.id} className={idx % 2 === 0 ? "bg-[#0c1018]" : "bg-[#0f1520]"}>
                   <td className="border-b border-[#1f2840] px-3 py-2">
                     {channelFields.length > 0 ? (

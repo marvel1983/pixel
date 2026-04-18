@@ -7,7 +7,7 @@ import {
   Bell, BarChart3, Truck, Flag, Ticket, MessageSquare,
   HelpCircle, ClipboardList, Wallet, Gift, Globe,
   Link2, Zap, BookOpen, ListTodo, Activity, ArrowLeft, Tag, Sliders, RefreshCw,
-  ChevronDown, ChevronRight, Star,
+  ChevronDown, ChevronRight, Star, Rss,
   type LucideIcon,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -40,6 +40,7 @@ const sections: NavSection[] = [
       { label: "Q&A",             href: "/admin/qa",              icon: HelpCircle, badgeKey: "pendingQA" },
       { label: "Attributes",      href: "/admin/attributes",      icon: Sliders },
       { label: "Tags",            href: "/admin/tags",            icon: Tag },
+      { label: "Product Feeds",   href: "/admin/feeds",           icon: Rss },
     ],
   },
   {
