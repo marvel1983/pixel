@@ -25,19 +25,23 @@ router.get("/admin/settings/cpp-fees", requireAuth, requireAdmin, requirePermiss
 });
 
 router.put("/admin/settings/cpp-fees", requireAuth, requireAdmin, requirePermission("manageSettings"), async (req, res) => {
-  const [existing] = await db.select({ id: siteSettings.id }).from(siteSettings);
-  const data = {
-    cppEnabled: Boolean(req.body.cppEnabled),
-    cppLabel: String(req.body.cppLabel || "Checkout Protection Plan"),
-    cppPrice: String(req.body.cppPrice || "0.99"),
-    cppDescription: String(req.body.cppDescription || ""),
-    processingFeePercent: String(req.body.processingFeePercent || "0"),
-    processingFeeFixed: String(req.body.processingFeeFixed || "0"),
-    updatedAt: new Date(),
-  };
-  if (existing) { await db.update(siteSettings).set(data).where(eq(siteSettings.id, existing.id)); }
-  else { await db.insert(siteSettings).values(data); }
-  res.json({ success: true });
+  try {
+    const [existing] = await db.select({ id: siteSettings.id }).from(siteSettings);
+    const data = {
+      cppEnabled: Boolean(req.body.cppEnabled),
+      cppLabel: String(req.body.cppLabel || "Checkout Protection Plan"),
+      cppPrice: String(req.body.cppPrice || "0.99"),
+      cppDescription: String(req.body.cppDescription || ""),
+      processingFeePercent: String(req.body.processingFeePercent || "0"),
+      processingFeeFixed: String(req.body.processingFeeFixed || "0"),
+      updatedAt: new Date(),
+    };
+    if (existing) { await db.update(siteSettings).set(data).where(eq(siteSettings.id, existing.id)); }
+    else { await db.insert(siteSettings).values(data); }
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message ?? "DB error saving CPP settings" });
+  }
 });
 
 router.get("/admin/settings/currencies", requireAuth, requireAdmin, requirePermission("manageSettings"), async (_req, res) => {

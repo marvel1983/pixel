@@ -11,6 +11,7 @@ const EXEMPT_PATHS = [
   "/api/webhooks/",
   "/api/auth/google/callback",
   "/api/survey/",
+  "/api/admin/", // Admin routes use Bearer token auth — CSRF is redundant
 ];
 
 function generateToken(): string {
