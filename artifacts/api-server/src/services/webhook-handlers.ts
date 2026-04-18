@@ -13,6 +13,10 @@ import { encrypt } from "../lib/encryption";
 import { sendKeyDeliveryEmail, enqueueEmail } from "../lib/email";
 import { logger } from "../lib/logger";
 import { awardOrderPoints } from "./loyalty-service";
+import { getMetenziConfig } from "../lib/metenzi-config";
+import { getOrderById } from "../lib/metenzi-endpoints";
+import { handleBackorderFulfilled } from "./backorder-webhook-handler";
+
 
 // Metenzi order key (at order level, NOT inside items)
 interface MetenziKey {
@@ -107,7 +111,21 @@ async function handleOrderFulfilled(data: FulfilledData) {
   const keysToDeliver: { productName: string; variant: string; licenseKey: string }[] = [];
 
   // Primary path: Metenzi puts keys at order level — order.keys[{ code, productId }]
-  const topLevelKeys = data.keys ?? [];
+  let topLevelKeys = data.keys ?? [];
+
+  // If webhook body has no keys (e.g. keys.delivered with empty keys array), fetch from Metenzi API
+  if (topLevelKeys.length === 0 && metenziOrderId) {
+    try {
+      const config = await getMetenziConfig();
+      if (config) {
+        const metenziOrder = await getOrderById(config, metenziOrderId);
+        topLevelKeys = metenziOrder?.keys ?? [];
+        logger.info({ metenziOrderId, keysFetched: topLevelKeys.length }, "Fetched keys from Metenzi API (webhook body was empty)");
+      }
+    } catch (err) {
+      logger.error({ err, metenziOrderId }, "Failed to fetch keys from Metenzi API — will retry on next poll");
+    }
+  }
 
   if (topLevelKeys.length > 0) {
     for (const keyItem of topLevelKeys) {
@@ -358,9 +376,9 @@ export async function handleWebhookEvent(event: string, data: unknown) {
     case "order.backorder":
       await handleOrderBackorder(data as OrderEventData);
       break;
-    // backorder.fulfilled = Metenzi has received stock and fulfilled the backorder — deliver keys
+    // backorder.fulfilled = Metenzi fulfilled a backorder with a NEW orderId — use product-based matching
     case "backorder.fulfilled":
-      await handleOrderFulfilled(data as FulfilledData);
+      await handleBackorderFulfilled(data as FulfilledData);
       break;
     case "order.cancelled":
       await handleOrderCancelled(data as OrderEventData);

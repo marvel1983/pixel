@@ -62,10 +62,12 @@ router.get("/webhooks/metenzi", (req, res) => {
 });
 
 router.post("/webhooks/metenzi", async (req, res) => {
-  // Metenzi webhook headers: X-Metenzi-Signature, X-Metenzi-Timestamp, X-Metenzi-Event
-  const signature = req.headers["x-metenzi-signature"] as string | undefined;
-  const timestamp = req.headers["x-metenzi-timestamp"] as string | undefined;
-  const eventHeader = req.headers["x-metenzi-event"] as string | undefined;
+  // Metenzi actual webhook headers: X-Webhook-Signature, X-Webhook-Event, X-Webhook-ID
+  // (Also accept X-Metenzi-* variants for backwards compatibility)
+  const signature = (req.headers["x-webhook-signature"] ?? req.headers["x-metenzi-signature"]) as string | undefined;
+  const eventHeader = (req.headers["x-webhook-event"] ?? req.headers["x-metenzi-event"]) as string | undefined;
+  // Timestamp is optional — Metenzi backorder webhooks do not include it
+  const timestamp = (req.headers["x-webhook-timestamp"] ?? req.headers["x-metenzi-timestamp"]) as string | undefined;
 
   // Capture all headers for debug logging
   const incomingHeaders: Record<string, string> = {};
@@ -75,14 +77,15 @@ router.post("/webhooks/metenzi", async (req, res) => {
 
   logger.info({ headers: incomingHeaders, body: req.body }, "Metenzi webhook POST received");
 
-  if (!signature || !timestamp) {
-    logger.warn({ headerKeys: Object.keys(req.headers) }, "Webhook missing Metenzi signature headers");
-    appendWebhookLog({ direction: "in", source: "metenzi", event: eventHeader ?? "unknown", status: 401, outcome: "invalid_sig", headers: incomingHeaders, body: req.body, error: "Missing signature headers" });
-    res.status(401).json({ error: "Missing signature headers" });
+  if (!signature) {
+    logger.warn({ headerKeys: Object.keys(req.headers) }, "Webhook missing signature header (checked x-webhook-signature and x-metenzi-signature)");
+    appendWebhookLog({ direction: "in", source: "metenzi", event: eventHeader ?? "unknown", status: 401, outcome: "invalid_sig", headers: incomingHeaders, body: req.body, error: "Missing signature header" });
+    res.status(401).json({ error: "Missing signature header" });
     return;
   }
 
-  if (isReplayAttack(timestamp)) {
+  // Only validate timestamp / replay window when a timestamp is actually present
+  if (timestamp && isReplayAttack(timestamp)) {
     logger.warn({ timestamp, now: Date.now() }, "Webhook replay attack detected");
     appendWebhookLog({ direction: "in", source: "metenzi", event: eventHeader ?? "unknown", status: 401, outcome: "replay", headers: incomingHeaders, body: req.body, error: `Timestamp ${timestamp} too old` });
     res.status(401).json({ error: "Request too old" });
@@ -105,18 +108,28 @@ router.post("/webhooks/metenzi", async (req, res) => {
   let valid = false;
   const sigDebug: string[] = [];
   for (const secret of secrets) {
-    try {
-      const rawSec = secret.replace(/^whsec_/, "");
-      const payload = `${timestamp}.${eventType}.${rawBody}`;
-      const expected = crypto.createHmac("sha256", rawSec).update(payload).digest("hex");
-      sigDebug.push(`tried secret[${rawSec.slice(0, 6)}…] → expected[${expected.slice(0, 12)}…] got[${signature.slice(0, 12)}…]`);
-      if (verifySignature(rawBody, timestamp, eventType, signature, secret)) {
-        valid = true;
-        break;
+    const rawSec = secret.replace(/^whsec_/, "");
+    // Try multiple signature formats — Metenzi docs are inconsistent:
+    // 1. With timestamp: HMAC(secret, timestamp + "." + event + "." + body)
+    // 2. Body only:      HMAC(secret, body)
+    // 3. Event + body:   HMAC(secret, event + "." + body)
+    const candidates: string[] = [rawBody, `${eventType}.${rawBody}`];
+    if (timestamp) candidates.unshift(`${timestamp}.${eventType}.${rawBody}`);
+    for (const payload of candidates) {
+      try {
+        const expected = crypto.createHmac("sha256", rawSec).update(payload).digest("hex");
+        sigDebug.push(`fmt[${payload.slice(0, 30)}…] → exp[${expected.slice(0, 12)}…] got[${signature.slice(0, 12)}…]`);
+        const sigBuf = Buffer.from(signature, "hex");
+        const expBuf = Buffer.from(expected, "hex");
+        if (sigBuf.length === expBuf.length && crypto.timingSafeEqual(sigBuf, expBuf)) {
+          valid = true;
+          break;
+        }
+      } catch (e) {
+        sigDebug.push(`error: ${(e as Error).message}`);
       }
-    } catch (e) {
-      sigDebug.push(`error: ${(e as Error).message}`);
     }
+    if (valid) break;
   }
 
   if (!valid) {
