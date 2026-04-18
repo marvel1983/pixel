@@ -15,5 +15,8 @@
   "devDependencies": {
     "typescript": "~5.9.2",
     "prettier": "^3.8.1"
+  },
+  "dependencies": {
+    "@swc/helpers": "^0.5.21"
   }
 }

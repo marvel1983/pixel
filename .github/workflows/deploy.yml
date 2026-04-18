@@ -90,6 +90,16 @@ jobs:
             export PATH="$PNPM_HOME:$PATH"
             pnpm install --frozen-lockfile
 
+            echo "→ Fixing @swc/helpers symlink for pdfkit/fontkit bundling..."
+            mkdir -p /var/www/pixel-storefront/node_modules/@swc
+            SWC_PATH=$(ls -d /var/www/pixel-storefront/node_modules/.pnpm/@swc+helpers@*/node_modules/@swc/helpers 2>/dev/null | head -1)
+            if [ -n "$SWC_PATH" ]; then
+              ln -sfn "$SWC_PATH" /var/www/pixel-storefront/node_modules/@swc/helpers
+              echo "✓ @swc/helpers symlink → $SWC_PATH"
+            else
+              echo "⚠ @swc/helpers not found in pnpm store — skipping symlink"
+            fi
+
             echo "→ Building storefront..."
             PORT=3000 BASE_PATH=/ NODE_ENV=production pnpm --filter @workspace/storefront run build
 
