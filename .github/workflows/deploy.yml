@@ -106,6 +106,15 @@ jobs:
             echo "→ Building API server..."
             NODE_ENV=production pnpm --filter @workspace/api-server run build
 
+            echo "→ Copying pdfkit font data into dist (required for invoice PDF)..."
+            PDFKIT_DATA=$(ls -d /var/www/pixel-storefront/node_modules/.pnpm/pdfkit@*/node_modules/pdfkit/js/data 2>/dev/null | head -1)
+            if [ -n "$PDFKIT_DATA" ]; then
+              cp -r "$PDFKIT_DATA" /var/www/pixel-storefront/artifacts/api-server/dist/data
+              echo "✓ pdfkit data copied from $PDFKIT_DATA"
+            else
+              echo "⚠ pdfkit data not found — skipping"
+            fi
+
             echo "→ Building shared libs..."
             pnpm run typecheck:libs || true
 
