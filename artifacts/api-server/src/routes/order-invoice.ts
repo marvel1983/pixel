@@ -99,6 +99,12 @@ router.get("/orders/:orderNumber/invoice.pdf", async (req, res) => {
       })),
       subtotalUsd: parseFloat(order.subtotalUsd),
       discountUsd: parseFloat(order.discountUsd ?? "0"),
+      processingFeeUsd: Math.max(0,
+        parseFloat(order.totalUsd)
+        - (parseFloat(order.subtotalUsd) - parseFloat(order.discountUsd ?? "0"))
+        - parseFloat(order.taxAmountUsd ?? "0")
+        - parseFloat(order.cppAmountUsd ?? "0"),
+      ),
       taxRate: parseFloat(order.taxRate ?? "0"),
       taxAmountUsd: parseFloat(order.taxAmountUsd ?? "0"),
       totalUsd: parseFloat(order.totalUsd),

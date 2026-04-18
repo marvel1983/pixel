@@ -32,6 +32,7 @@ export interface InvoiceData {
   items: InvoiceItem[];
   subtotalUsd: number;
   discountUsd: number;
+  processingFeeUsd?: number;
   taxRate: number;
   taxAmountUsd: number;
   totalUsd: number;
@@ -165,6 +166,7 @@ export function invoiceEmail(data: InvoiceData): { subject: string; html: string
       <table width="280" cellpadding="0" cellspacing="0" style="margin-left:auto;">
         ${row("Items Subtotal", fmt(data.subtotalUsd, currencyCode, rate))}
         ${data.discountUsd > 0 ? row("Discount", `-${fmt(data.discountUsd, currencyCode, rate)}`) : ""}
+        ${(data.processingFeeUsd ?? 0) > 0.005 ? row("Processing fee", `+${fmt(data.processingFeeUsd!, currencyCode, rate)}`) : ""}
         ${row("Tax Base", fmt(data.subtotalUsd - data.discountUsd, currencyCode, rate))}
         ${row(`VAT ${data.taxRate.toFixed(2)}%`, fmt(data.taxAmountUsd, currencyCode, rate))}
         <tr><td colspan="2"><hr style="border:none;border-top:1px solid #ccc;margin:6px 0;"></td></tr>

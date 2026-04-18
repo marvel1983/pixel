@@ -23,6 +23,7 @@
     "pdfkit": "^0.18.0",
     "pino": "^9",
     "pino-http": "^10",
+    "puppeteer": "^24.41.0",
     "stripe": "^17",
     "zod": "catalog:"
   },
