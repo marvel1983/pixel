@@ -1,9 +1,13 @@
-import { Package } from "lucide-react";
+import { Download, Package } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
 import { useCurrencyStore } from "@/stores/currency-store";
+import { useAuthStore } from "@/stores/auth-store";
 import { LicenseKeysDisplay } from "./license-keys";
 import { OrderStatusBadge } from "./order-status-badge";
 import { OrderTimeline } from "./order-timeline";
+
+const API = import.meta.env.VITE_API_URL ?? "/api";
 
 interface OrderItem {
   id: number;
@@ -30,6 +34,10 @@ interface OrderData {
   subtotalUsd: string;
   discountUsd: string;
   totalUsd: string;
+  processingFeeUsd?: string;
+  taxAmountUsd?: string;
+  taxRate?: string;
+  cppAmountUsd?: string;
   paymentMethod: string;
   createdAt: string;
 }
@@ -42,9 +50,28 @@ interface OrderDetailProps {
 
 export function OrderDetail({ order, items, licenseKeys }: OrderDetailProps) {
   const { format } = useCurrencyStore();
+  const token = useAuthStore((s) => s.token);
   const subtotal = parseFloat(order.subtotalUsd);
-  const discount = parseFloat(order.discountUsd);
+  const discount = parseFloat(order.discountUsd ?? "0");
   const total = parseFloat(order.totalUsd);
+  const processingFee = parseFloat(order.processingFeeUsd ?? "0");
+  const tax = parseFloat(order.taxAmountUsd ?? "0");
+  const taxRate = parseFloat(order.taxRate ?? "0");
+  const cpp = parseFloat(order.cppAmountUsd ?? "0");
+
+  const downloadInvoice = async () => {
+    const res = await fetch(`${API}/orders/${order.orderNumber}/invoice.pdf`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return;
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Invoice-${order.orderNumber}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="space-y-6">
@@ -58,7 +85,13 @@ export function OrderDetail({ order, items, licenseKeys }: OrderDetailProps) {
             })}
           </p>
         </div>
-        <OrderStatusBadge status={order.status} />
+        <div className="flex items-center gap-2">
+          <OrderStatusBadge status={order.status} />
+          <Button size="sm" variant="outline" onClick={() => void downloadInvoice()} className="gap-1.5">
+            <Download className="h-3.5 w-3.5" />
+            Invoice PDF
+          </Button>
+        </div>
       </div>
 
       <div className="py-2">
@@ -91,7 +124,7 @@ export function OrderDetail({ order, items, licenseKeys }: OrderDetailProps) {
       </div>
 
       <div className="flex justify-end">
-        <div className="w-64 space-y-2 text-sm">
+        <div className="w-72 space-y-2 text-sm">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Subtotal</span>
             <span>{format(subtotal)}</span>
@@ -100,6 +133,24 @@ export function OrderDetail({ order, items, licenseKeys }: OrderDetailProps) {
             <div className="flex justify-between text-green-600">
               <span>Discount</span>
               <span>-{format(discount)}</span>
+            </div>
+          )}
+          {cpp > 0 && (
+            <div className="flex justify-between text-muted-foreground">
+              <span>Protection Plan (CPP)</span>
+              <span>+{format(cpp)}</span>
+            </div>
+          )}
+          {processingFee > 0.005 && (
+            <div className="flex justify-between text-orange-600">
+              <span>Processing fee</span>
+              <span>+{format(processingFee)}</span>
+            </div>
+          )}
+          {tax > 0 && (
+            <div className="flex justify-between text-muted-foreground">
+              <span>VAT {taxRate > 0 ? `(${taxRate.toFixed(0)}%)` : ""}</span>
+              <span>+{format(tax)}</span>
             </div>
           )}
           <Separator />

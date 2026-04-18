@@ -19,6 +19,10 @@ interface OrderResponse {
     subtotalUsd: string;
     discountUsd: string;
     totalUsd: string;
+    processingFeeUsd?: string;
+    taxAmountUsd?: string;
+    taxRate?: string;
+    cppAmountUsd?: string;
     paymentMethod: string;
     createdAt: string;
   };
