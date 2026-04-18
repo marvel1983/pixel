@@ -83,8 +83,14 @@ export interface MetenziOrderItem {
 }
 
 export interface MetenziBalance {
-  balanceUsd: number;
+  balance: string;       // e.g. "-227.94"
+  balanceCents: number;
+  creditLimit: string;
+  creditLimitCents: number;
+  availableCredit: string;
+  availableCreditCents: number;
   currency: string;
+  updatedAt?: string;
 }
 
 export interface MetenziWebhook {
@@ -242,14 +248,14 @@ export async function getOrderById(
 export async function getBalance(
   config: MetenziClientConfig,
 ): Promise<MetenziBalance> {
-  const res = await metenziRequest<MetenziBalance>(config, {
+  const res = await metenziRequest<{ success: boolean; data: MetenziBalance }>(config, {
     method: "GET",
-    path: "/api/balance",
+    path: "/api/public/balance",
   });
   if (!res.ok) {
     throw new Error(`Failed to fetch Metenzi balance: ${res.status}`);
   }
-  return res.data;
+  return res.data.data;
 }
 
 export async function listWebhooks(

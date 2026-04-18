@@ -215,6 +215,46 @@ router.post("/admin/orders/:id/redeliver-keys", requireAuth, requireAdmin, requi
   res.json({ success: true });
 });
 
+// POST /admin/orders/:id/retry-fulfillment
+// Re-triggers Metenzi order creation for a PROCESSING order whose fulfillment failed
+// (e.g. insufficient Metenzi credit, API down). Safe to call multiple times — idempotent.
+router.post("/admin/orders/:id/retry-fulfillment", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
+  const id = Number(paramString(req.params, "id"));
+  if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid order ID" }); return; }
+
+  const [order] = await db
+    .select({ id: orders.id, orderNumber: orders.orderNumber, status: orders.status, notes: orders.notes, externalOrderId: orders.externalOrderId })
+    .from(orders)
+    .where(eq(orders.id, id));
+  if (!order) { res.status(404).json({ error: "Order not found" }); return; }
+  if (order.externalOrderId) { res.status(400).json({ error: "Order already has a Metenzi order ID — use redeliver-keys instead" }); return; }
+
+  // Re-enqueue the fulfillment job
+  const { enqueueJob } = await import("../lib/job-queue");
+  const items = await db
+    .select({ variantId: orderItems.variantId, quantity: orderItems.quantity, productVariants: orderItems.variantId })
+    .from(orderItems)
+    .where(eq(orderItems.orderId, id));
+
+  if (items.length === 0) { res.status(400).json({ error: "No order items found" }); return; }
+
+  const { productVariants } = await import("@workspace/db/schema");
+  const variantRows = await db.select({ id: productVariants.id, productId: productVariants.productId }).from(productVariants)
+    .where(inArray(productVariants.id, items.map((i) => i.variantId)));
+  const productIds = [...new Set(variantRows.map((v) => v.productId))];
+
+  await enqueueJob({
+    queue: "order-processing",
+    name: "metenzi-retry-fulfillment",
+    priority: 3,
+    maxAttempts: 3,
+    payload: { orderId: id, productIds },
+  });
+
+  logger.info({ orderId: id, orderNumber: order.orderNumber }, "Admin: retry fulfillment enqueued");
+  res.json({ success: true, message: `Fulfillment retry enqueued for order ${order.orderNumber}` });
+});
+
 function buildFilters(query: Record<string, unknown>) {
   const conditions = [];
   const search = query.search as string | undefined;

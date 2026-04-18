@@ -14,7 +14,13 @@ router.get("/admin/metenzi/balance", requireAuth, requireAdmin, requirePermissio
   if (!config) { res.json({ configured: false }); return; }
   try {
     const balance = await getBalance(config);
-    res.json({ configured: true, balance: balance.balanceUsd, currency: balance.currency ?? "USD" });
+    res.json({
+      configured: true,
+      balance: parseFloat(balance.balance),
+      creditLimit: parseFloat(balance.creditLimit),
+      availableCredit: parseFloat(balance.availableCredit),
+      currency: balance.currency ?? "EUR",
+    });
   } catch (e) { res.json({ configured: true, error: (e as Error).message }); }
 });
 

@@ -5,7 +5,7 @@ import { RefreshCw, DollarSign, Webhook, FileText, KeyRound, AlertTriangle } fro
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
-interface BalanceData { configured: boolean; balance?: number; currency?: string; error?: string }
+interface BalanceData { configured: boolean; balance?: number; creditLimit?: number; availableCredit?: number; currency?: string; error?: string }
 interface StatusData { configured: boolean; isActive?: boolean; lastSync?: string; webhooks?: { total: number; active: number }; claims?: { total: number; pending: number } }
 interface KeyData { lastRotated: string | null; daysSinceRotation: number | null; needsRotation?: boolean }
 
@@ -55,6 +55,18 @@ export default function MetenziBalancePage() {
         </div>
         <Button variant="outline" onClick={fetchAll} disabled={loading}><RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />Refresh</Button>
       </div>
+      {balance && !balance.error && (balance?.balance ?? 0) < 0 && (
+        <div className="rounded-lg border border-red-500/40 bg-red-900/20 px-4 py-3 flex items-start gap-3">
+          <AlertTriangle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-red-300">Metenzi account balance is negative</p>
+            <p className="text-xs text-red-400 mt-0.5">
+              New orders will fail until you top up. Available credit: {balance?.currency === "EUR" ? "€" : "$"}{(balance?.availableCredit ?? 0).toFixed(2)} of {balance?.currency === "EUR" ? "€" : "$"}{(balance?.creditLimit ?? 0).toFixed(2)} limit.
+              Log in to <a href="https://metenzi.com" target="_blank" rel="noopener" className="underline">metenzi.com</a> to add funds.
+            </p>
+          </div>
+        </div>
+      )}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {[
           {
@@ -62,7 +74,18 @@ export default function MetenziBalancePage() {
             title: "Account Balance",
             content: balance?.error
               ? <p className="text-sm text-red-400">{balance.error}</p>
-              : <p className="text-2xl font-bold text-[#dde4f0]">${(balance?.balance ?? 0).toFixed(2)} <span className="text-sm font-normal text-[#5a6a84]">{balance?.currency}</span></p>
+              : <>
+                  <p className={`text-2xl font-bold ${(balance?.balance ?? 0) < 0 ? "text-red-400" : "text-[#dde4f0]"}`}>
+                    {(balance?.balance ?? 0) < 0 ? "-" : ""}{balance?.currency === "EUR" ? "€" : "$"}{Math.abs(balance?.balance ?? 0).toFixed(2)}
+                    <span className="text-sm font-normal text-[#5a6a84] ml-1">{balance?.currency}</span>
+                  </p>
+                  {balance?.creditLimit !== undefined && (
+                    <div className="mt-2 space-y-1 text-xs text-[#5a6a84]">
+                      <div className="flex justify-between"><span>Credit limit</span><span className="text-[#dde4f0]">{balance?.currency === "EUR" ? "€" : "$"}{(balance?.creditLimit ?? 0).toFixed(2)}</span></div>
+                      <div className="flex justify-between"><span>Available</span><span className={`font-semibold ${(balance?.availableCredit ?? 0) < 50 ? "text-red-400" : "text-emerald-400"}`}>{balance?.currency === "EUR" ? "€" : "$"}{(balance?.availableCredit ?? 0).toFixed(2)}</span></div>
+                    </div>
+                  )}
+                </>
           },
           {
             icon: Webhook,

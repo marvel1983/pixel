@@ -41,6 +41,7 @@ export default function OrderDetailPage() {
   const [saving, setSaving] = useState(false);
   const [refundOpen, setRefundOpen] = useState(false);
   const [redelivering, setRedelivering] = useState(false);
+  const [retrying, setRetrying] = useState(false);
   const token = useAuthStore((s) => s.token);
 
   const reload = () => {
@@ -83,6 +84,19 @@ export default function OrderDetailPage() {
       if (!r.ok) { alert(d.error ?? "Failed"); } else { alert("Keys redelivered successfully"); reload(); }
     } catch { alert("Request failed"); }
     setRedelivering(false);
+  };
+
+  const retryFulfillment = async () => {
+    if (!confirm("Retry Metenzi fulfillment for this order? Only use this after topping up your Metenzi balance or resolving the API issue.")) return;
+    setRetrying(true);
+    try {
+      const r = await fetch(`${API}/admin/orders/${params.id}/retry-fulfillment`, {
+        method: "POST", headers: { Authorization: `Bearer ${token}` },
+      });
+      const d = await r.json();
+      if (!r.ok) { alert(d.error ?? "Failed"); } else { alert(d.message ?? "Fulfillment retry enqueued"); reload(); }
+    } catch { alert("Request failed"); }
+    setRetrying(false);
   };
 
   const saveNotes = async () => {
@@ -138,6 +152,11 @@ export default function OrderDetailPage() {
         {order.externalOrderId && (
           <ActionBtn onClick={redeliverKeys} disabled={redelivering} icon={<Key className="h-3.5 w-3.5" />} color="amber">
             {redelivering ? "Re-delivering..." : "Re-deliver Keys"}
+          </ActionBtn>
+        )}
+        {order.status === "PROCESSING" && !order.externalOrderId && (
+          <ActionBtn onClick={retryFulfillment} disabled={retrying} icon={<RotateCcw className="h-3.5 w-3.5" />} color="orange">
+            {retrying ? "Retrying..." : "Retry Fulfillment"}
           </ActionBtn>
         )}
       </div>
@@ -362,6 +381,7 @@ function ActionBtn({ onClick, disabled, icon, color, children }: {
     violet:  "border-violet-300  bg-[#7c3aed]   hover:bg-[#8b5cf6]",
     sky:     "border-sky-300     bg-[#0284c7]   hover:bg-[#0ea5e9]",
     amber:   "border-amber-300   bg-amber-600   hover:bg-amber-500",
+    orange:  "border-orange-300  bg-orange-600  hover:bg-orange-500",
   };
   return (
     <button

@@ -80,7 +80,7 @@ router.get(
       const config = await getMetenziConfig();
       if (config) {
         const balance = await getBalance(config);
-        metenziBalance = balance.balanceUsd;
+        metenziBalance = parseFloat(balance.balance);
       }
     } catch {
       metenziBalance = null;
