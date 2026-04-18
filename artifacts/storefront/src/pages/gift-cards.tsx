@@ -78,7 +78,7 @@ export default function GiftCardsPage() {
               </button>
               {isCustom && (
                 <div className="relative flex-1">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">€</span>
                   <input type="number" min="5" max="500" step="0.01" className="w-full rounded-md border pl-7 pr-3 py-2 text-sm"
                     value={custom} onChange={(e) => setCustom(e.target.value)} placeholder="5.00 - 500.00" />
                 </div>

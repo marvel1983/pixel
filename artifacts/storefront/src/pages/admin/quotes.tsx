@@ -148,7 +148,7 @@ function QuoteCard({ quote, expanded, onToggle, onUpdateStatus }: QuoteCardProps
                 <div key={i} className="flex items-center gap-2 text-sm border rounded px-3 py-1.5">
                   <span className="flex-1">{p.productName}</span>
                   <span className="font-medium">×{p.quantity}</span>
-                  <span className="text-xs text-muted-foreground">$</span>
+                  <span className="text-xs text-muted-foreground">€</span>
                   <input type="number" step="0.01" min="0" placeholder="Unit price" className="w-24 border rounded px-2 py-1 text-sm bg-background" value={pricing[p.productId] ?? ""} onChange={(e) => setPricing((prev) => ({ ...prev, [p.productId]: e.target.value }))} />
                 </div>
               ))}
