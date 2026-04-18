@@ -8,6 +8,7 @@ import { decrypt } from "../lib/encryption";
 import { paramString } from "../lib/route-params";
 import { awardOrderPoints, reverseOrderLoyaltyPoints } from "../services/loyalty-service";
 import { runFulfillment } from "../services/order-pipeline";
+import { parseFulfillmentPayload } from "./checkout-session";
 import { logger } from "../lib/logger";
 
 const router = Router();
@@ -398,18 +399,31 @@ router.post("/admin/orders/:id/release", requireAuth, requireAdmin, requirePermi
     res.status(404).json({ error: "Held order not found" }); return;
   }
 
-  const items = await db.select({
+  let items = await db.select({
     variantId: orderItems.variantId, productName: orderItems.productName,
     variantName: orderItems.variantName, priceUsd: orderItems.priceUsd,
     quantity: orderItems.quantity, bundleId: orderItems.bundleId,
   }).from(orderItems).where(eq(orderItems.orderId, orderId));
 
-  const billing = order.billingSnapshot as {
+  let billing = order.billingSnapshot as {
     firstName: string; lastName: string; email: string;
     country: string; city: string; address: string; zip: string; phone?: string;
   } | null;
 
-  if (!billing) { res.status(400).json({ error: "Order has no billing snapshot" }); return; }
+  // Stripe/Checkout.com held orders: billing and items live in notes payload (not yet in DB)
+  if (!billing || items.length === 0) {
+    const payload = parseFulfillmentPayload(order.notes);
+    if (!payload) {
+      res.status(400).json({ error: "Order has no billing snapshot and no fulfillment payload" });
+      return;
+    }
+    if (!billing) billing = payload.billing;
+    if (items.length === 0) items = payload.items.map((i) => ({
+      variantId: i.variantId, productName: i.productName,
+      variantName: i.variantName, priceUsd: i.priceUsd,
+      quantity: i.quantity, bundleId: i.bundleId ?? null,
+    }));
+  }
 
   try {
     await runFulfillment(orderId, order.orderNumber, order.paymentIntentId ?? "", {
