@@ -90,6 +90,14 @@ jobs:
             export PATH="$PNPM_HOME:$PATH"
             pnpm install --frozen-lockfile
 
+            echo "→ Installing Chrome system dependencies for puppeteer..."
+            apt-get install -y --no-install-recommends \
+              libglib2.0-0 libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 \
+              libcups2 libdrm2 libdbus-1-3 libxcb1 libxkbcommon0 \
+              libx11-6 libxcomposite1 libxdamage1 libxext6 libxfixes3 \
+              libxrandr2 libgbm1 libpango-1.0-0 libcairo2 libasound2 \
+              libatspi2.0-0 2>/dev/null || true
+
             echo "→ Fixing @swc/helpers symlink for pdfkit/fontkit bundling..."
             mkdir -p /var/www/pixel-storefront/node_modules/@swc
             SWC_PATH=$(ls -d /var/www/pixel-storefront/node_modules/.pnpm/@swc+helpers@*/node_modules/@swc/helpers 2>/dev/null | head -1)

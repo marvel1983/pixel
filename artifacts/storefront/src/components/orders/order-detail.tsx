@@ -1,4 +1,5 @@
-import { Download, Package } from "lucide-react";
+import { useState } from "react";
+import { Download, Loader2, Package } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { useCurrencyStore } from "@/stores/currency-store";
@@ -51,6 +52,8 @@ interface OrderDetailProps {
 export function OrderDetail({ order, items, licenseKeys }: OrderDetailProps) {
   const { format } = useCurrencyStore();
   const token = useAuthStore((s) => s.token);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
   const subtotal = parseFloat(order.subtotalUsd);
   const discount = parseFloat(order.discountUsd ?? "0");
   const total = parseFloat(order.totalUsd);
@@ -60,17 +63,29 @@ export function OrderDetail({ order, items, licenseKeys }: OrderDetailProps) {
   const cpp = parseFloat(order.cppAmountUsd ?? "0");
 
   const downloadInvoice = async () => {
-    const res = await fetch(`${API}/orders/${order.orderNumber}/invoice.pdf`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!res.ok) return;
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `Invoice-${order.orderNumber}.pdf`;
-    a.click();
-    URL.revokeObjectURL(url);
+    setPdfLoading(true);
+    setPdfError(null);
+    try {
+      const res = await fetch(`${API}/orders/${order.orderNumber}/invoice.pdf`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: `Server error (${res.status})` }));
+        setPdfError(err.error ?? "Failed to generate invoice");
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Invoice-${order.orderNumber}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setPdfError("Network error — please try again");
+    } finally {
+      setPdfLoading(false);
+    }
   };
 
   return (
@@ -85,12 +100,15 @@ export function OrderDetail({ order, items, licenseKeys }: OrderDetailProps) {
             })}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <OrderStatusBadge status={order.status} />
-          <Button size="sm" variant="outline" onClick={() => void downloadInvoice()} className="gap-1.5">
-            <Download className="h-3.5 w-3.5" />
-            Invoice PDF
-          </Button>
+        <div className="flex flex-col items-end gap-1">
+          <div className="flex items-center gap-2">
+            <OrderStatusBadge status={order.status} />
+            <Button size="sm" variant="outline" onClick={() => void downloadInvoice()} disabled={pdfLoading} className="gap-1.5">
+              {pdfLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+              Invoice PDF
+            </Button>
+          </div>
+          {pdfError && <p className="text-xs text-destructive">{pdfError}</p>}
         </div>
       </div>
 
