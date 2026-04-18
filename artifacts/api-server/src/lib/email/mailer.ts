@@ -70,7 +70,18 @@ export function invalidateMailerCache(): void {
   configLoadedAt = 0;
 }
 
-export async function sendEmail(to: string, subject: string, html: string): Promise<boolean> {
+export interface EmailAttachment {
+  filename: string;
+  content: Buffer;
+  contentType: string;
+}
+
+export async function sendEmail(
+  to: string,
+  subject: string,
+  html: string,
+  attachments?: EmailAttachment[],
+): Promise<boolean> {
   const mailer = await getTransporter();
   if (!mailer) return false;
 
@@ -80,6 +91,11 @@ export async function sendEmail(to: string, subject: string, html: string): Prom
       to,
       subject,
       html,
+      attachments: attachments?.map((a) => ({
+        filename: a.filename,
+        content: a.content,
+        contentType: a.contentType,
+      })),
     });
     logger.info({ to, subject }, "Email sent successfully");
     return true;

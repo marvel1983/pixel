@@ -1,6 +1,7 @@
 import { db } from "@workspace/db";
 import { siteSettings } from "@workspace/db/schema";
 import { enqueueEmail } from "./queue";
+import { sendEmail } from "./mailer";
 import {
   welcomeEmail,
   orderConfirmationEmail,
@@ -8,6 +9,7 @@ import {
   passwordResetEmail,
 } from "./templates";
 import { invoiceEmail } from "./invoice-template";
+import { generateInvoicePdf } from "./invoice-pdf";
 import type {
   OrderConfirmationData,
   KeyDeliveryData,
@@ -25,7 +27,15 @@ async function getSiteBrand(): Promise<SiteBrand> {
     .select({ siteName: siteSettings.siteName, logoUrl: siteSettings.logoUrl })
     .from(siteSettings)
     .limit(1);
-  return { siteName: rows[0]?.siteName ?? "PixelCodes", logoUrl: rows[0]?.logoUrl ?? null };
+  return { siteName: rows[0]?.siteName ?? "PixelCodes", logoUrl: resolveLogoUrl(rows[0]?.logoUrl) };
+}
+
+function resolveLogoUrl(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
+  // Relative path — prepend site URL
+  const siteUrl = (process.env.SITE_URL ?? "https://diginek.com").replace(/\/$/, "");
+  return `${siteUrl}${raw.startsWith("/") ? "" : "/"}${raw}`;
 }
 
 async function getSellerInfo() {
@@ -45,7 +55,7 @@ async function getSellerInfo() {
   const s = rows[0];
   return {
     siteName: s?.siteName ?? "PixelCodes",
-    logoUrl: s?.logoUrl ?? null,
+    logoUrl: resolveLogoUrl(s?.logoUrl),
     seller: {
       name: s?.companyName ?? s?.siteName ?? "PixelCodes",
       address: s?.companyAddress ?? null,
@@ -95,6 +105,18 @@ export async function sendInvoiceEmail(
   data: Omit<InvoiceData, "siteName" | "logoUrl" | "seller">,
 ): Promise<void> {
   const { siteName, logoUrl, seller } = await getSellerInfo();
-  const { subject, html } = invoiceEmail({ ...data, siteName, logoUrl, seller });
-  await enqueueEmail(to, subject, html, { type: "invoice", orderRef: data.invoiceNumber });
+  const invoiceData: InvoiceData = { ...data, siteName, logoUrl, seller };
+  const { subject, html } = invoiceEmail(invoiceData);
+  // Generate PDF attachment and send directly (not queued) so we can attach the PDF
+  try {
+    const pdfBuffer = await generateInvoicePdf(invoiceData);
+    await sendEmail(to, subject, html, [{
+      filename: `Invoice-INV-${data.invoiceNumber}.pdf`,
+      content: pdfBuffer,
+      contentType: "application/pdf",
+    }]);
+  } catch {
+    // Fallback: send HTML-only via queue if PDF generation fails
+    await enqueueEmail(to, subject, html, { type: "invoice", orderRef: data.invoiceNumber });
+  }
 }
