@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, Link } from "wouter";
-import { ArrowLeft, Send, CheckCircle, XCircle, Copy, Save, Clock, RotateCcw, Key, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Send, CheckCircle, XCircle, Copy, Save, Clock, RotateCcw, Key, AlertTriangle, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthStore } from "@/stores/auth-store";
@@ -16,6 +16,7 @@ interface OrderDetail {
     cppSelected: boolean; cppAmountUsd: string; couponId: number | null;
     paymentIntentId: string | null; externalOrderId: string | null;
     ipAddress: string | null; notes: string | null; createdAt: string; updatedAt: string;
+    riskScore: number | null; riskReasons: string[] | null;
   };
   items: { id: number; productName: string; variantName: string; priceUsd: string; quantity: number }[];
   licenseKeys: { orderItemId: number; id: number; keyValue: string; status: string }[];
@@ -31,6 +32,7 @@ const STATUS_COLORS: Record<string, string> = {
   FAILED:             "border-red-400     bg-red-500/40     text-red-100     font-bold",
   REFUNDED:           "border-violet-400  bg-violet-500/40  text-violet-100  font-bold",
   PARTIALLY_REFUNDED: "border-orange-400  bg-orange-500/40  text-orange-100  font-bold",
+  HELD:               "border-rose-400    bg-rose-500/40    text-rose-100    font-bold",
 };
 
 export default function OrderDetailPage() {
@@ -43,6 +45,7 @@ export default function OrderDetailPage() {
   const [redelivering, setRedelivering] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const [syncingKeys, setSyncingKeys] = useState(false);
+  const [releasing, setReleasing] = useState(false);
   const syncOrderIdRef = useRef<HTMLInputElement>(null);
   const token = useAuthStore((s) => s.token);
 
@@ -116,6 +119,27 @@ export default function OrderDetailPage() {
     setSyncingKeys(false);
   };
 
+  const releaseHeld = async () => {
+    if (!confirm("Release this order? This will run fulfillment and deliver keys to the customer.")) return;
+    setReleasing(true);
+    try {
+      const r = await fetch(`${API}/admin/orders/${params.id}/release`, {
+        method: "POST", headers: { Authorization: `Bearer ${token}` },
+      });
+      const d = await r.json();
+      if (!r.ok) { alert(d.error ?? "Release failed"); } else { reload(); }
+    } catch { alert("Request failed"); }
+    setReleasing(false);
+  };
+
+  const cancelHeld = async () => {
+    if (!confirm("Reject this order? Status will be set to FAILED. You must handle any refund manually.")) return;
+    await fetch(`${API}/admin/orders/${params.id}/cancel-hold`, {
+      method: "POST", headers: { Authorization: `Bearer ${token}` },
+    });
+    reload();
+  };
+
   const saveNotes = async () => {
     setSaving(true);
     await fetch(`${API}/admin/orders/${params.id}/notes`, {
@@ -154,12 +178,25 @@ export default function OrderDetailPage() {
 
       {/* Action buttons */}
       <div className="flex gap-2 flex-wrap">
-        <ActionBtn onClick={() => updateStatus("COMPLETED")} disabled={order.status === "COMPLETED"} icon={<CheckCircle className="h-3.5 w-3.5" />} color="emerald">
-          Mark Completed
-        </ActionBtn>
-        <ActionBtn onClick={() => updateStatus("FAILED")} disabled={order.status === "FAILED"} icon={<XCircle className="h-3.5 w-3.5" />} color="red">
-          Mark Failed
-        </ActionBtn>
+        {order.status === "HELD" ? (
+          <>
+            <ActionBtn onClick={releaseHeld} disabled={releasing} icon={<CheckCircle className="h-3.5 w-3.5" />} color="emerald">
+              {releasing ? "Releasing..." : "Release & Fulfill"}
+            </ActionBtn>
+            <ActionBtn onClick={cancelHeld} icon={<XCircle className="h-3.5 w-3.5" />} color="red">
+              Reject Order
+            </ActionBtn>
+          </>
+        ) : (
+          <>
+            <ActionBtn onClick={() => updateStatus("COMPLETED")} disabled={order.status === "COMPLETED"} icon={<CheckCircle className="h-3.5 w-3.5" />} color="emerald">
+              Mark Completed
+            </ActionBtn>
+            <ActionBtn onClick={() => updateStatus("FAILED")} disabled={order.status === "FAILED"} icon={<XCircle className="h-3.5 w-3.5" />} color="red">
+              Mark Failed
+            </ActionBtn>
+          </>
+        )}
         <ActionBtn onClick={() => setRefundOpen(true)} disabled={order.status === "REFUNDED"} icon={<RotateCcw className="h-3.5 w-3.5" />} color="violet">
           Issue Refund
         </ActionBtn>
@@ -177,6 +214,20 @@ export default function OrderDetailPage() {
           </ActionBtn>
         )}
       </div>
+
+      {order.status === "HELD" && order.riskScore != null && (
+        <div className="flex items-start gap-3 rounded border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-[13px] text-rose-200">
+          <ShieldAlert className="h-4 w-4 mt-0.5 shrink-0 text-rose-400" />
+          <div>
+            <span className="font-semibold">Risk score: {order.riskScore}</span>
+            {order.riskReasons && order.riskReasons.length > 0 && (
+              <ul className="mt-1 list-disc list-inside text-[12px] text-rose-300 space-y-0.5">
+                {order.riskReasons.map((r, i) => <li key={i}>{r}</li>)}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-4">
