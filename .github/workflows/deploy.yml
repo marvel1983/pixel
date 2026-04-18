@@ -99,9 +99,16 @@ jobs:
             echo "→ Building shared libs..."
             pnpm run typecheck:libs || true
 
-            echo "→ Pushing DB schema..."
+            echo "→ Applying safe DB schema additions..."
             set -a; source /var/www/pixel-storefront/.env; set +a
-            pnpm --filter @workspace/db run push-force
+
+            echo "→ Adding new site_settings columns (safe, idempotent)..."
+            psql "$DATABASE_URL" -c "ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS company_address VARCHAR(300);" || true
+            psql "$DATABASE_URL" -c "ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS company_city VARCHAR(120);" || true
+            psql "$DATABASE_URL" -c "ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS company_country VARCHAR(100);" || true
+            psql "$DATABASE_URL" -c "ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS company_zip VARCHAR(20);" || true
+            psql "$DATABASE_URL" -c "ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS company_tax_id VARCHAR(100);" || true
+            psql "$DATABASE_URL" -c "ALTER TABLE orders ADD COLUMN IF NOT EXISTS billing_snapshot JSONB;" || true
 
             echo "→ Enabling backorder on all active variants..."
             psql "$DATABASE_URL" -c "UPDATE product_variants SET backorder_allowed = true WHERE is_active = true;" || true

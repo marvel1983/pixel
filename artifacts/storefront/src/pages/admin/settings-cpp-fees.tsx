@@ -21,13 +21,7 @@ export default function SettingsCppFeesTab() {
 
   const api = useCallback(async (path: string, opts?: RequestInit) => {
     const r = await fetch(`${API}${path}`, { ...opts, headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", ...opts?.headers } });
-    if (!r.ok) {
-      const text = await r.text().catch(() => "(no body)");
-      let msg = text.substring(0, 300);
-      try { msg = JSON.parse(text)?.error ?? msg; } catch { /* raw text */ }
-      alert(`HTTP ${r.status}: ${msg}`);
-      return null;
-    }
+    if (!r.ok) { const e = await r.json().catch(() => ({ error: "Failed" })); alert(e.error); return null; }
     return r.json();
   }, [token]);
 
