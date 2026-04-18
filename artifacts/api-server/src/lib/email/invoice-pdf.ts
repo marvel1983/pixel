@@ -39,12 +39,12 @@ async function generateViaPuppeteer(data: InvoiceData): Promise<Buffer> {
 
 // ── pdfkit fallback ───────────────────────────────────────────────────────────
 
-const BLUE   = "#1463F3";
+const SLATE  = "#374151";
 const DARK   = "#111827";
 const MUTED  = "#6B7280";
-const LIGHT  = "#F9FAFB";
-const BORDER = "#E5E7EB";
-const ORANGE = "#EA580C";
+const LIGHT  = "#F3F4F6";
+const LIGHT2 = "#F9FAFB";
+const BORDER = "#D1D5DB";
 const WHITE  = "#FFFFFF";
 
 function money(amount: number, code: string, rate: number): string {
@@ -87,8 +87,8 @@ async function generateViaPdfkit(data: InvoiceData): Promise<Buffer> {
     const PAD = 48;
     const W = PW - PAD * 2;
 
-    // ── Blue top bar ─────────────────────────────────────────────────────────
-    doc.rect(0, 0, PW, 80).fill(BLUE);
+    // ── Top bar ──────────────────────────────────────────────────────────────
+    doc.rect(0, 0, PW, 80).fill(SLATE);
 
     // Logo or site name in white
     if (logoBuffer) {
@@ -124,7 +124,7 @@ async function generateViaPdfkit(data: InvoiceData): Promise<Buffer> {
     const half = W / 2 - 16;
 
     // section labels
-    doc.font("Helvetica-Bold").fontSize(7).fillColor(BLUE)
+    doc.font("Helvetica-Bold").fontSize(7).fillColor(MUTED)
        .text("SOLD BY", PAD, y).text("BILL TO", PAD + half + 32, y);
     y += 14;
 
@@ -143,7 +143,7 @@ async function generateViaPdfkit(data: InvoiceData): Promise<Buffer> {
 
     // ── Items table ──────────────────────────────────────────────────────────
     // Table header
-    doc.rect(PAD, y, W, 24).fill(BLUE);
+    doc.rect(PAD, y, W, 24).fill(SLATE);
     doc.font("Helvetica-Bold").fontSize(8).fillColor(WHITE);
     const cProd = PAD + 8, cQty = PAD + W * 0.55, cPrice = PAD + W * 0.67, cTax = PAD + W * 0.79, cTotal = PAD + W * 0.88;
     doc.text("PRODUCT", cProd, y + 8);
@@ -155,7 +155,7 @@ async function generateViaPdfkit(data: InvoiceData): Promise<Buffer> {
 
     const { currencyCode: cc, currencyRate: rate } = data;
     data.items.forEach((it, idx) => {
-      const bg = idx % 2 === 0 ? WHITE : LIGHT;
+      const bg = idx % 2 === 0 ? WHITE : LIGHT2;
       doc.rect(PAD, y, W, 22).fill(bg);
       const lineTotal = it.unitPriceUsd * it.quantity;
       const taxAmt = lineTotal * (data.taxRate / 100);
@@ -178,7 +178,7 @@ async function generateViaPdfkit(data: InvoiceData): Promise<Buffer> {
     const totals: Row[] = [
       ["Items Subtotal", money(data.subtotalUsd, cc, rate), false],
       ...(data.discountUsd > 0 ? [["Discount", `-${money(data.discountUsd, cc, rate)}`, false] as Row] : []),
-      ...((data.processingFeeUsd ?? 0) > 0.005 ? [["Processing fee", `+${money(data.processingFeeUsd!, cc, rate)}`, false, ORANGE] as Row] : []),
+      ...((data.processingFeeUsd ?? 0) > 0.005 ? [["Processing fee", `+${money(data.processingFeeUsd!, cc, rate)}`, false, MUTED] as Row] : []),
       ["Tax Base", money(data.subtotalUsd - data.discountUsd, cc, rate), false],
       [`VAT ${data.taxRate.toFixed(2)}%`, money(data.taxAmountUsd, cc, rate), false],
     ];
@@ -192,9 +192,9 @@ async function generateViaPdfkit(data: InvoiceData): Promise<Buffer> {
       y += 16;
     });
 
-    // Total row with blue background
+    // Total row with dark grey background
     y += 4;
-    doc.rect(boxX - 8, y - 4, boxW + 8, 28).fill(BLUE);
+    doc.rect(boxX - 8, y - 4, boxW + 8, 28).fill(SLATE);
     doc.font("Helvetica-Bold").fontSize(11).fillColor(WHITE).text("TOTAL", boxX, y + 4, { width: boxW * 0.6 });
     doc.font("Helvetica-Bold").fontSize(11).fillColor(WHITE).text(money(data.totalUsd, cc, rate), boxX + boxW * 0.6, y + 4, { width: boxW * 0.4, align: "right" });
     y += 36;
@@ -205,18 +205,18 @@ async function generateViaPdfkit(data: InvoiceData): Promise<Buffer> {
 
     // ── Notes ────────────────────────────────────────────────────────────────
     const payLabel = ({ CARD: "Card Payment", WALLET: "Wallet Payment", NET30: "Net 30 Invoice" } as Record<string, string>)[data.paymentMethod] ?? data.paymentMethod;
-    doc.rect(PAD, y, W, 28).fill(LIGHT);
-    doc.rect(PAD, y, 4, 28).fill(BLUE);
+    doc.rect(PAD, y, W, 28).fill(LIGHT2);
+    doc.rect(PAD, y, 4, 28).fill(SLATE);
     doc.font("Helvetica-Bold").fontSize(7).fillColor(MUTED).text("NOTE", PAD + 12, y + 5);
     doc.font("Helvetica").fontSize(9).fillColor(DARK).text(`Online Order — ${payLabel} (${data.invoiceNumber})`, PAD + 12, y + 15);
     y += 42;
 
     // ── Tagline ──────────────────────────────────────────────────────────────
-    doc.font("Helvetica-Oblique").fontSize(11).fillColor(BLUE)
+    doc.font("Helvetica-Oblique").fontSize(11).fillColor(MUTED)
        .text("It's a pleasure doing business with you!", PAD, y, { width: W, align: "center" });
 
     // ── Footer ───────────────────────────────────────────────────────────────
-    doc.rect(0, PH - 40, PW, 40).fill(BLUE);
+    doc.rect(0, PH - 40, PW, 40).fill(SLATE);
     doc.font("Helvetica").fontSize(8).fillColor(WHITE)
        .text(`© ${new Date().getFullYear()} ${data.siteName} · Official Purchase Invoice`, PAD, PH - 24, { width: W, align: "center" });
 
