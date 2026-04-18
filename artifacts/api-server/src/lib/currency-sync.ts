@@ -85,12 +85,22 @@ export async function syncCurrencyRates(): Promise<{ updated: number; source: st
   const rates = liveRates ?? FALLBACK_RATES;
   const source = liveRates ? "live" : "fallback";
 
-  // Only update currencies already present in our DB
+  // Ensure EUR base row always exists with rate=1.0 (upsert — safe for existing DBs)
+  await db
+    .insert(currencyRates)
+    .values({ currencyCode: "EUR", symbol: "€", rateToUsd: "1.0", enabled: true, sortOrder: 0 })
+    .onConflictDoUpdate({
+      target: currencyRates.currencyCode,
+      set: { rateToUsd: "1.0", updatedAt: new Date() },
+    });
+
+  // Only update other currencies already present in the DB
   const existing = await db.select({ currencyCode: currencyRates.currencyCode }).from(currencyRates);
   const knownCodes = new Set(existing.map((r) => r.currencyCode));
 
-  let updated = 0;
+  let updated = 1; // count the EUR upsert
   for (const [code, rate] of Object.entries(rates)) {
+    if (code === "EUR") continue; // already handled above
     if (!knownCodes.has(code)) continue;
     if (typeof rate !== "number" || !isFinite(rate) || rate <= 0) continue;
 

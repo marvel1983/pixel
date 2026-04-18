@@ -26,10 +26,12 @@ router.get("/currencies", async (_req, res) => {
   try {
     let { rates, oldestUpdatedAt } = await loadRatesFromDb();
 
-    // EUR should be ~1.0 in EUR-base system. If it's ~0.92 the DB holds old
-    // USD-based values. Sync synchronously so this response has correct rates.
+    // EUR must exist with rate ~1.0 (it is the base currency).
+    // Missing EUR row means the seed never ran it → first-time fix needed.
+    // EUR ≈ 0.92 means DB still has old USD-based rates.
+    // In both cases: sync synchronously so this response already has correct data.
     const eurRate = rates["EUR"];
-    const isWrongBase = typeof eurRate === "number" && (eurRate < 0.95 || eurRate > 1.05);
+    const isWrongBase = !eurRate || eurRate < 0.95 || eurRate > 1.05;
     if (isWrongBase) {
       try {
         await syncCurrencyRates();
