@@ -455,7 +455,7 @@ export default function CheckoutPage() {
             processingFee={calcProcessingFee(
               getTotal() - (coupon ? getTotal() * (coupon.pct / 100) : 0) - loyaltyDiscount + (cppSelected ? cppFlatPrice : 0) + servicesTotal
             )}
-            processingFeeLabel={feePercent > 0 && feeFixed > 0 ? `Processing fee (${feePercent}% + $${feeFixed.toFixed(2)})` : feePercent > 0 ? `Processing fee (${feePercent}%)` : feeFixed > 0 ? `Processing fee ($${feeFixed.toFixed(2)})` : undefined}
+            processingFeeLabel={feePercent > 0 && feeFixed > 0 ? `Processing fee (${feePercent}% + €${feeFixed.toFixed(2)})` : feePercent > 0 ? `Processing fee (${feePercent}%)` : feeFixed > 0 ? `Processing fee (€${feeFixed.toFixed(2)})` : undefined}
           />
           <ProductUpsell />
         </div>

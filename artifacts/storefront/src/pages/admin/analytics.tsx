@@ -53,7 +53,7 @@ function getDateRange(preset: Preset): { from: string; to: string } {
 }
 
 function formatUsd(value: number): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "EUR" }).format(value);
 }
 
 const presets: { key: Preset; label: string }[] = [

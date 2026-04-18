@@ -57,7 +57,7 @@ export default function SettingsCurrenciesTab() {
 
   const addCurrency = async () => {
     if (!newCode.trim() || newCode.trim().length !== 3) { alert("Currency code must be 3 characters"); return; }
-    const d = await api("/admin/settings/currencies", { method: "POST", body: JSON.stringify({ currencyCode: newCode.trim(), symbol: newSymbol.trim() || "$", rateToUsd: newRate }) });
+    const d = await api("/admin/settings/currencies", { method: "POST", body: JSON.stringify({ currencyCode: newCode.trim(), symbol: newSymbol.trim() || "€", rateToUsd: newRate }) });
     if (d) { setCurrencies((p) => [...p, d]); setShowAdd(false); setNewCode(""); setNewSymbol(""); setNewRate("1"); }
   };
 

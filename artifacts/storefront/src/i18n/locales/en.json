@@ -59,7 +59,7 @@
     "cartTotals": "Cart Totals",
     "taxesNote": "Taxes calculated at checkout",
     "clearCart": "Clear cart",
-    "storeCreditAvailable": "Store credit available: ${{amount}}",
+    "storeCreditAvailable": "Store credit available: €{{amount}}",
     "storeCreditManage": "Store credit & history",
     "storeCreditCheckoutOnly": "Applied at checkout only — not deducted from your cart total here."
   },
@@ -105,11 +105,11 @@
     "apply": "Apply",
     "tryAgain": "Please try again",
     "walletPayTitle": "Pay with store credit",
-    "walletBalanceLabel": "Store credit: ${{amount}}",
+    "walletBalanceLabel": "Store credit: €{{amount}}",
     "walletManageBalanceLink": "Manage store credit",
-    "walletUseFull": "Use full balance (${{amount}})",
+    "walletUseFull": "Use full balance (€{{amount}})",
     "walletCustomAmount": "Custom amount",
-    "walletApplied": "-${{amount}} from store credit",
+    "walletApplied": "-€{{amount}} from store credit",
     "walletCoversFull": "(covers full order)",
     "walletStaleBalanceWarning": "Could not refresh your balance. The amount shown may be out of date — retry before paying, or continue if you are sure."
   },

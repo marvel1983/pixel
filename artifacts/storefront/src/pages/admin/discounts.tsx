@@ -126,7 +126,7 @@ export default function AdminDiscountsPage() {
                   <td className={`${tableCell} font-mono text-[11.5px] font-bold text-[#e8edf5]`}>{r.code}</td>
                   <td className={tableCell}>
                     <span className="inline-flex items-center rounded border border-[#3d4558] bg-[#1a1f2e] px-2 py-0.5 text-[10px] font-bold text-[#c8d0e0]">
-                      {r.discountType === "PERCENTAGE" ? "%" : "$"}
+                      {r.discountType === "PERCENTAGE" ? "%" : "€"}
                     </span>
                   </td>
                   <td className={`${tableCell} font-medium text-white`}>{r.discountType === "PERCENTAGE" ? `${r.discountValue}%` : `€${r.discountValue}`}</td>

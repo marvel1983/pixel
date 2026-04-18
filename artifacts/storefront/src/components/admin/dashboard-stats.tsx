@@ -16,7 +16,7 @@ interface DashboardStats {
 }
 
 function usd(v: number) {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(v);
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(v);
 }
 
 interface StatDef {
