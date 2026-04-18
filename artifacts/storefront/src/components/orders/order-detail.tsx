@@ -1,9 +1,13 @@
-import { Package } from "lucide-react";
+import { Download, Package } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@/components/ui/button";
 import { useCurrencyStore } from "@/stores/currency-store";
+import { useAuthStore } from "@/stores/auth-store";
 import { LicenseKeysDisplay } from "./license-keys";
 import { OrderStatusBadge } from "./order-status-badge";
 import { OrderTimeline } from "./order-timeline";
+
+const API = import.meta.env.VITE_API_URL ?? "/api";
 
 interface OrderItem {
   id: number;
@@ -42,7 +46,22 @@ interface OrderDetailProps {
 
 export function OrderDetail({ order, items, licenseKeys }: OrderDetailProps) {
   const { format } = useCurrencyStore();
+  const token = useAuthStore((s) => s.token);
   const subtotal = parseFloat(order.subtotalUsd);
+
+  const downloadInvoice = async () => {
+    const res = await fetch(`${API}/orders/${order.orderNumber}/invoice.pdf`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return;
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Invoice-${order.orderNumber}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
   const discount = parseFloat(order.discountUsd);
   const total = parseFloat(order.totalUsd);
 
@@ -58,7 +77,13 @@ export function OrderDetail({ order, items, licenseKeys }: OrderDetailProps) {
             })}
           </p>
         </div>
-        <OrderStatusBadge status={order.status} />
+        <div className="flex items-center gap-2">
+          <OrderStatusBadge status={order.status} />
+          <Button size="sm" variant="outline" onClick={() => void downloadInvoice()} className="gap-1.5">
+            <Download className="h-3.5 w-3.5" />
+            Invoice PDF
+          </Button>
+        </div>
       </div>
 
       <div className="py-2">
