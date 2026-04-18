@@ -78,6 +78,9 @@ export const siteSettings = pgTable("site_settings", {
   spStockUrgencyEnabled: boolean("sp_stock_urgency_enabled").notNull().default(true),
   spStockLowThreshold: integer("sp_stock_low_threshold").notNull().default(10),
   spStockCriticalThreshold: integer("sp_stock_critical_threshold").notNull().default(3),
+  turnstileEnabled: boolean("turnstile_enabled").notNull().default(false),
+  turnstileSiteKey: varchar("turnstile_site_key", { length: 500 }),
+  turnstileSecretKey: text("turnstile_secret_key"),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 

@@ -237,6 +237,36 @@ router.put("/admin/settings/rate-limits", requireAuth, requireAdmin, requirePerm
   res.json({ ok: true, config: getRateLimitConfig() });
 });
 
+router.get("/admin/settings/turnstile", requireAuth, requireAdmin, requirePermission("manageSettings"), async (_req, res) => {
+  const [s] = await db.select({
+    enabled: siteSettings.turnstileEnabled,
+    siteKey: siteSettings.turnstileSiteKey,
+    hasSecret: sql<boolean>`${siteSettings.turnstileSecretKey} IS NOT NULL AND ${siteSettings.turnstileSecretKey} != ''`,
+  }).from(siteSettings);
+  res.json({
+    enabled: s?.enabled ?? false,
+    siteKey: s?.siteKey ?? "",
+    hasSecret: s?.hasSecret ?? false,
+  });
+});
+
+router.put("/admin/settings/turnstile", requireAuth, requireAdmin, requirePermission("manageSettings"), async (req, res) => {
+  const { enabled, siteKey, secretKey } = req.body;
+  const update: Record<string, unknown> = { updatedAt: new Date() };
+  if (typeof enabled === "boolean") update.turnstileEnabled = enabled;
+  if (typeof siteKey === "string") update.turnstileSiteKey = siteKey;
+  if (typeof secretKey === "string" && secretKey.length > 0) {
+    update.turnstileSecretKey = encrypt(secretKey);
+  }
+  const [existing] = await db.select({ id: siteSettings.id }).from(siteSettings);
+  if (existing) {
+    await db.update(siteSettings).set(update).where(eq(siteSettings.id, existing.id));
+  } else {
+    await db.insert(siteSettings).values(update as Record<string, unknown>);
+  }
+  res.json({ ok: true });
+});
+
 // POST /admin/settings/sync-currency-rates — manual trigger
 router.post("/admin/settings/sync-currency-rates", requireAuth, requireAdmin, requirePermission("manageSettings"), async (_req, res) => {
   try {

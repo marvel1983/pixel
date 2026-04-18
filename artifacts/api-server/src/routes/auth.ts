@@ -7,6 +7,8 @@ import { db } from "@workspace/db";
 import { users, passwordResets, type User } from "@workspace/db/schema";
 import { signToken, requireAuth, type JwtPayload } from "../middleware/auth";
 import { logger } from "../lib/logger";
+import { siteSettings } from "@workspace/db/schema";
+import { decrypt } from "../lib/encryption";
 import { sendWelcomeEmail, sendPasswordResetEmail } from "../lib/email";
 import { awardWelcomeBonus } from "../services/loyalty-service";
 import crypto from "node:crypto";
@@ -33,7 +35,36 @@ const registerSchema = z.object({
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
+  turnstileToken: z.string().optional(),
 });
+
+async function getTurnstileConfig(): Promise<{ enabled: boolean; secretKey: string | null }> {
+  try {
+    const [s] = await db.select({
+      enabled: siteSettings.turnstileEnabled,
+      secretKey: siteSettings.turnstileSecretKey,
+    }).from(siteSettings).limit(1);
+    if (!s || !s.enabled) return { enabled: false, secretKey: null };
+    const secretKey = s.secretKey ? decrypt(s.secretKey) : null;
+    return { enabled: true, secretKey };
+  } catch {
+    return { enabled: false, secretKey: null };
+  }
+}
+
+async function verifyTurnstile(token: string, secretKey: string): Promise<boolean> {
+  try {
+    const res = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ secret: secretKey, response: token }),
+    });
+    const data = await res.json() as { success: boolean };
+    return data.success === true;
+  } catch {
+    return false;
+  }
+}
 
 const updateProfileSchema = z.object({
   firstName: z.string().min(1).max(100).optional(),
@@ -173,7 +204,20 @@ router.post("/auth/login", authLoginLimit, async (req, res) => {
     return;
   }
 
-  const { email, password } = parsed.data;
+  const { email, password, turnstileToken } = parsed.data;
+
+  const turnstileCfg = await getTurnstileConfig();
+  if (turnstileCfg.enabled && turnstileCfg.secretKey) {
+    if (!turnstileToken) {
+      res.status(400).json({ error: "Security check required" });
+      return;
+    }
+    const ok = await verifyTurnstile(turnstileToken, turnstileCfg.secretKey);
+    if (!ok) {
+      res.status(403).json({ error: "Security check failed. Please try again." });
+      return;
+    }
+  }
 
   const [user] = await db
     .select()
@@ -214,6 +258,19 @@ router.post("/auth/login", authLoginLimit, async (req, res) => {
   res.cookie("token", token, COOKIE_OPTS);
   logger.info({ userId: user.id }, "User logged in");
   res.json({ user: sanitizeUser(user), token });
+});
+
+router.get("/auth/turnstile-config", async (_req, res) => {
+  try {
+    const [s] = await db.select({
+      enabled: siteSettings.turnstileEnabled,
+      siteKey: siteSettings.turnstileSiteKey,
+    }).from(siteSettings).limit(1);
+    const enabled = s?.enabled ?? false;
+    res.json({ enabled, siteKey: enabled ? (s?.siteKey ?? null) : null });
+  } catch {
+    res.json({ enabled: false, siteKey: null });
+  }
 });
 
 router.post("/auth/logout", (_req, res) => {

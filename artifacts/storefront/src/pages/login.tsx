@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocation, Link } from "wouter";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,13 @@ import { LogIn, Eye, EyeOff, Loader2 } from "lucide-react";
 import { GoogleButton } from "@/components/auth/google-button";
 import { setSeoMeta, clearSeoMeta } from "@/lib/seo";
 
+declare global {
+  interface Window {
+    turnstile?: { render: (el: HTMLElement, opts: Record<string, unknown>) => string; reset: (id: string) => void };
+    onTurnstileLoad?: () => void;
+  }
+}
+
 export default function LoginPage() {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
@@ -21,6 +28,42 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileSiteKey, setTurnstileSiteKey] = useState<string | null>(null);
+  const turnstileRef = useRef<HTMLDivElement>(null);
+  const widgetIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const API = import.meta.env.VITE_API_URL ?? "/api";
+    fetch(`${API}/auth/turnstile-config`)
+      .then((r) => r.json())
+      .then((d: { enabled: boolean; siteKey: string | null }) => {
+        if (d.enabled && d.siteKey) setTurnstileSiteKey(d.siteKey);
+      })
+      .catch(() => {/* ignore */});
+  }, []);
+
+  const renderTurnstile = useCallback(() => {
+    if (!turnstileSiteKey || !turnstileRef.current || !window.turnstile) return;
+    widgetIdRef.current = window.turnstile.render(turnstileRef.current, {
+      sitekey: turnstileSiteKey,
+      callback: (token: string) => setTurnstileToken(token),
+      "expired-callback": () => setTurnstileToken(null),
+      "error-callback": () => setTurnstileToken(null),
+      theme: "light",
+    });
+  }, [turnstileSiteKey]);
+
+  useEffect(() => {
+    if (!turnstileSiteKey) return;
+    if (window.turnstile) { renderTurnstile(); return; }
+    window.onTurnstileLoad = renderTurnstile;
+    const script = document.createElement("script");
+    script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoad";
+    script.async = true;
+    document.head.appendChild(script);
+    return () => { document.head.removeChild(script); };
+  }, [turnstileSiteKey, renderTurnstile]);
 
   useEffect(() => {
     setSeoMeta({ title: t("seo.loginTitle"), description: t("seo.loginDescription") });
@@ -38,6 +81,10 @@ export default function LoginPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (turnstileSiteKey && !turnstileToken) {
+      toast({ title: "Please complete the security check", variant: "destructive" });
+      return;
+    }
     setLoading(true);
 
     try {
@@ -45,7 +92,7 @@ export default function LoginPage() {
       const res = await apiFetch("/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, turnstileToken }),
       });
 
       const data = await res.json();
@@ -61,6 +108,11 @@ export default function LoginPage() {
         description: err instanceof Error ? err.message : t("checkout.tryAgain"),
         variant: "destructive",
       });
+      // Reset turnstile so user can try again
+      if (widgetIdRef.current && window.turnstile) {
+        window.turnstile.reset(widgetIdRef.current);
+        setTurnstileToken(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -118,7 +170,11 @@ export default function LoginPage() {
                 </Link>
               </div>
 
-              <Button type="submit" className="w-full" disabled={loading}>
+              {turnstileSiteKey && (
+                <div ref={turnstileRef} className="flex justify-center" />
+              )}
+
+              <Button type="submit" className="w-full" disabled={loading || (!!turnstileSiteKey && !turnstileToken)}>
                 {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                 {t("auth.signIn")}
               </Button>
