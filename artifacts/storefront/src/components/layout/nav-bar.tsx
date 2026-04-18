@@ -51,12 +51,12 @@ export function NavBar() {
 
   return (
     <>
-      <nav className="w-full bg-primary text-primary-foreground shadow-[0_4px_16px_rgba(0,69,127,0.2)]">
+      <nav className="w-full bg-[hsl(221_83%_53%)] text-white shadow-[0_4px_16px_rgba(0,69,127,0.2)]">
         <div className="container mx-auto px-4 flex items-center h-12">
           <Button
             variant="ghost"
             size="icon"
-            className="lg:hidden text-primary-foreground mr-2"
+            className="lg:hidden text-white mr-2"
             onClick={() => setMobileOpen(true)}
           >
             <Menu className="h-5 w-5" />
@@ -65,7 +65,7 @@ export function NavBar() {
           <div className="relative hidden lg:block">
             <Button
               variant="ghost"
-              className="text-primary-foreground gap-2 font-semibold"
+              className="text-white gap-2 font-semibold"
               onClick={() => setCatOpen(!catOpen)}
             >
               <LayoutGrid className="h-4 w-4" />
@@ -83,7 +83,7 @@ export function NavBar() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-primary-foreground/90 hover:text-primary-foreground"
+                  className="text-white/90 hover:text-white"
                 >
                   {t(link.key)}
                 </Button>
@@ -100,7 +100,7 @@ export function NavBar() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="relative text-primary-foreground"
+                className="relative text-white"
               >
                 <GitCompareArrows className="h-5 w-5" />
                 {compareCount > 0 && <NavBadge count={compareCount} />}
@@ -111,7 +111,7 @@ export function NavBar() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="relative text-primary-foreground"
+                className="relative text-white"
               >
                 <Heart className="h-5 w-5" />
                 {wishCount > 0 && <NavBadge count={wishCount} />}
@@ -122,7 +122,7 @@ export function NavBar() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="relative text-primary-foreground"
+                className="relative text-white"
               >
                 <ShoppingCart className="h-5 w-5" />
                 {itemCount > 0 && <NavBadge count={itemCount} />}
@@ -148,7 +148,7 @@ function UserMenu() {
   if (!user) {
     return (
       <Link href="/login">
-        <Button variant="ghost" size="icon" className="text-primary-foreground">
+        <Button variant="ghost" size="icon" className="text-white">
           <User className="h-5 w-5" />
         </Button>
       </Link>
@@ -158,7 +158,7 @@ function UserMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="text-primary-foreground">
+        <Button variant="ghost" size="icon" className="text-white">
           <User className="h-5 w-5" />
         </Button>
       </DropdownMenuTrigger>
