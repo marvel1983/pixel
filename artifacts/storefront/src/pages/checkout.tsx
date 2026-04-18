@@ -15,7 +15,6 @@ import { GuestAccount } from "@/components/checkout/guest-account";
 import { CheckoutSummary } from "@/components/checkout/checkout-summary";
 import { ProductUpsell } from "@/components/checkout/product-upsell";
 import { validateBilling } from "@/lib/checkout-validation";
-import { getCppAmount } from "@/components/checkout/cpp-section";
 import { EmptyCart } from "@/components/cart/empty-cart";
 import { GiftCardInput, type AppliedGiftCard } from "@/components/checkout/gift-card-input";
 import { LoyaltyRedeem } from "@/components/checkout/loyalty-redeem";
@@ -34,6 +33,7 @@ const INITIAL_BILLING: BillingData = {
 };
 
 interface TaxInfo { taxRate: number; taxLabel: string; exempt: boolean; b2bEnabled: boolean; priceDisplay: string }
+interface CheckoutConfig { cppEnabled: boolean; cppLabel: string; cppPrice: string; cppDescription: string; processingFeePercent: string; processingFeeFixed: string; }
 
 export default function CheckoutPage() {
   const { t, i18n } = useTranslation();
@@ -65,6 +65,7 @@ export default function CheckoutPage() {
   const [newsletterOptIn, setNewsletterOptIn] = useState(false);
   const [regionAcknowledged, setRegionAcknowledged] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"card" | "invoice">("card");
+  const [checkoutConfig, setCheckoutConfig] = useState<CheckoutConfig>({ cppEnabled: false, cppLabel: "Checkout Protection Plan", cppPrice: "0.99", cppDescription: "", processingFeePercent: "0", processingFeeFixed: "0" });
   const user = useAuthStore((s) => s.user);
   const token = useAuthStore((s) => s.token);
   const isBusinessApproved = !!user?.businessApproved;
@@ -153,6 +154,13 @@ export default function CheckoutPage() {
   }, [billing.country, billing.vatNumber]);
 
   useEffect(() => {
+    fetch(`${API}/checkout/config`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((d: CheckoutConfig | null) => { if (d) setCheckoutConfig(d); })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
     if (!billing.email || !billing.email.includes("@") || items.length === 0) return;
     const total = getTotal();
     const itemKey = items.map((i) => `${i.variantId}:${i.quantity}`).join(",");
@@ -180,6 +188,13 @@ export default function CheckoutPage() {
   const servicesTotal = Array.from(servicePrices.entries())
     .filter(([id]) => selectedServiceIds.includes(id))
     .reduce((s, [, p]) => s + p, 0);
+
+  const cppFlatPrice = Number(checkoutConfig.cppPrice) || 0;
+  const feePercent = Number(checkoutConfig.processingFeePercent) || 0;
+  const feeFixed = Number(checkoutConfig.processingFeeFixed) || 0;
+  function calcProcessingFee(feeBase: number) {
+    return Math.round((feeBase * feePercent / 100 + feeFixed) * 100) / 100;
+  }
 
   function handleServiceToggle(id: number, price: number) {
     setSelectedServiceIds((prev) =>
@@ -213,8 +228,10 @@ export default function CheckoutPage() {
 
     const subtotal = getTotal();
     const discount = coupon ? subtotal * (coupon.pct / 100) : 0;
-    const cpp = cppSelected ? getCppAmount(subtotal) : 0;
-    const beforeTax = subtotal - discount - loyaltyDiscount + cpp + servicesTotal;
+    const cpp = cppSelected ? cppFlatPrice : 0;
+    const feeBase = subtotal - discount - loyaltyDiscount + cpp + servicesTotal;
+    const processingFeeAmt = calcProcessingFee(feeBase);
+    const beforeTax = feeBase + processingFeeAmt;
     const isInclusive = taxInfo.priceDisplay === "inclusive";
     const taxAmount = taxInfo.taxRate > 0
       ? isInclusive
@@ -339,7 +356,9 @@ export default function CheckoutPage() {
           <CheckoutRegionBlock items={items} customerCountry={billing.country} acknowledged={regionAcknowledged} onAcknowledge={setRegionAcknowledged} />
           <Separator />
           {!token && <><GuestAccount onPasswordChange={setGuestPassword} /><Separator /></>}
-          <CppSection selected={cppSelected} onToggle={setCppSelected} subtotal={getTotal()} />
+          {checkoutConfig.cppEnabled && (
+            <CppSection selected={cppSelected} onToggle={setCppSelected} cppPrice={cppFlatPrice} cppLabel={checkoutConfig.cppLabel} cppDescription={checkoutConfig.cppDescription} />
+          )}
           <Separator />
           <CheckoutServices selectedIds={selectedServiceIds} onToggle={handleServiceToggle} />
           <Separator />
@@ -348,7 +367,9 @@ export default function CheckoutPage() {
             remainingTotal={(() => {
               const s = getTotal();
               const d = coupon ? s * (coupon.pct / 100) : 0;
-              const beforeTax = s - d - loyaltyDiscount + (cppSelected ? getCppAmount(s) : 0) + servicesTotal;
+              const base = s - d - loyaltyDiscount + (cppSelected ? cppFlatPrice : 0) + servicesTotal;
+              const pf = calcProcessingFee(base);
+              const beforeTax = base + pf;
               const tr = taxInfo.taxRate || 0;
               const tax = taxInfo.priceDisplay === "inclusive" ? 0 : Math.round(beforeTax * (tr / 100) * 100) / 100;
               return Math.max(0, beforeTax + tax - appliedGiftCards.reduce((a, c) => a + c.applied, 0));
@@ -362,7 +383,9 @@ export default function CheckoutPage() {
           />
           <WalletPayment orderTotal={(() => {
             const s = getTotal(); const d = coupon ? s * (coupon.pct / 100) : 0;
-            const bt = s - d - loyaltyDiscount + (cppSelected ? getCppAmount(s) : 0) + servicesTotal;
+            const base = s - d - loyaltyDiscount + (cppSelected ? cppFlatPrice : 0) + servicesTotal;
+            const pf = calcProcessingFee(base);
+            const bt = base + pf;
             const tr = taxInfo.taxRate || 0;
             const tax = taxInfo.priceDisplay === "inclusive" ? 0 : Math.round(bt * (tr / 100) * 100) / 100;
             return Math.max(0, bt + tax - appliedGiftCards.reduce((a, c) => a + c.applied, 0));
@@ -420,7 +443,20 @@ export default function CheckoutPage() {
         </div>
 
         <div className="min-w-0 space-y-4 rounded-lg bg-background lg:sticky lg:top-24 lg:z-10 lg:self-start lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto lg:overscroll-y-contain lg:pr-1">
-          <CheckoutSummary cppSelected={cppSelected} taxRate={taxInfo.taxRate} taxLabel={taxInfo.taxLabel} priceDisplay={taxInfo.priceDisplay} gcDeduction={appliedGiftCards.reduce((s, c) => s + c.applied, 0)} loyaltyDiscount={loyaltyDiscount} servicesTotal={servicesTotal} />
+          <CheckoutSummary
+            cppSelected={cppSelected}
+            cppPrice={cppFlatPrice}
+            taxRate={taxInfo.taxRate}
+            taxLabel={taxInfo.taxLabel}
+            priceDisplay={taxInfo.priceDisplay}
+            gcDeduction={appliedGiftCards.reduce((s, c) => s + c.applied, 0)}
+            loyaltyDiscount={loyaltyDiscount}
+            servicesTotal={servicesTotal}
+            processingFee={calcProcessingFee(
+              getTotal() - (coupon ? getTotal() * (coupon.pct / 100) : 0) - loyaltyDiscount + (cppSelected ? cppFlatPrice : 0) + servicesTotal
+            )}
+            processingFeeLabel={feePercent > 0 && feeFixed > 0 ? `Processing fee (${feePercent}% + $${feeFixed.toFixed(2)})` : feePercent > 0 ? `Processing fee (${feePercent}%)` : feeFixed > 0 ? `Processing fee ($${feeFixed.toFixed(2)})` : undefined}
+          />
           <ProductUpsell />
         </div>
       </div>

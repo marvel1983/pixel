@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { inArray, eq, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { productVariants, taxSettings, taxRates, checkoutServices, users } from "@workspace/db/schema";
+import { productVariants, taxSettings, taxRates, checkoutServices, users, siteSettings } from "@workspace/db/schema";
 import { executeOrderPipeline } from "../services/order-pipeline";
 import { validateCouponServerSide } from "../services/coupon-service";
 import { validateGiftCards, loadGiftCardBalances } from "../services/gift-card-service";
@@ -49,7 +49,7 @@ const orderSchema = z.object({
   locale: z.string().max(10).optional(),
 });
 
-const CPP_RATE = 0.05;
+// CPP_RATE retained for legacy reference only — actual amount now comes from siteSettings.cppPrice
 const generateOrderNumber = () => `PC-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
 // ── Shared return type ────────────────────────────────────────────────────────
@@ -386,8 +386,17 @@ router.post("/orders", requireIdempotencyKey(), async (req, res) => {
     validatedServices = enabledServices.map((s) => ({ id: s.id, name: s.name, priceUsd: s.priceUsd }));
     servicesAmount = enabledServices.reduce((s, svc) => s + parseFloat(svc.priceUsd), 0);
   }
+  const [feeSettings] = await db.select({
+    cppPrice: siteSettings.cppPrice,
+    processingFeePercent: siteSettings.processingFeePercent,
+    processingFeeFixed: siteSettings.processingFeeFixed,
+  }).from(siteSettings);
   const discountAmount = couponDiscount + loyaltyDisc;
-  const cppAmount = cppSelected ? Math.round(subtotal * CPP_RATE * 100) / 100 : 0;
+  const cppAmount = cppSelected ? (Number(feeSettings?.cppPrice) || 0) : 0;
+  const feeBase = subtotal - discountAmount + cppAmount + servicesAmount;
+  const processingFee = Math.round(
+    (feeBase * (Number(feeSettings?.processingFeePercent) || 0) / 100 + (Number(feeSettings?.processingFeeFixed) || 0)) * 100,
+  ) / 100;
 
   let taxRate = 0;
   let taxAmount = 0;
@@ -400,7 +409,7 @@ router.post("/orders", requireIdempotencyKey(), async (req, res) => {
       const country = billing.country.toUpperCase();
       const [cr] = await db.select().from(taxRates).where(eq(taxRates.countryCode, country));
       if (cr?.isEnabled) taxRate = parseFloat(cr.rate);
-      const beforeTax = subtotal - discountAmount + cppAmount + servicesAmount;
+      const beforeTax = feeBase + processingFee;
       if (taxConfig.priceDisplay === "inclusive") {
         taxAmount = Math.round((beforeTax - beforeTax / (1 + taxRate / 100)) * 100) / 100;
       } else {
@@ -411,8 +420,8 @@ router.post("/orders", requireIdempotencyKey(), async (req, res) => {
 
   const isInclusive = taxConfig?.priceDisplay === "inclusive";
   const preGcTotal = isInclusive
-    ? subtotal - discountAmount + cppAmount + servicesAmount
-    : subtotal - discountAmount + cppAmount + servicesAmount + taxAmount;
+    ? feeBase + processingFee
+    : feeBase + processingFee + taxAmount;
   const gcDeduction = serverGiftCards.reduce((s, c) => s + c.amount, 0);
   if (gcDeduction > preGcTotal + 0.01) {
     res.status(400).json({ error: "Gift card amount exceeds order total" });

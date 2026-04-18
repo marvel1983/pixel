@@ -4,19 +4,20 @@ import { Separator } from "@/components/ui/separator";
 import { useCartStore } from "@/stores/cart-store";
 import { useCurrencyStore, BASE_CURRENCY } from "@/stores/currency-store";
 import { useLoyaltyStore } from "@/stores/loyalty-store";
-import { getCppAmount } from "./cpp-section";
-
 interface CheckoutSummaryProps {
   cppSelected: boolean;
+  cppPrice?: number;
   taxRate?: number;
   taxLabel?: string;
   priceDisplay?: string;
   gcDeduction?: number;
   loyaltyDiscount?: number;
   servicesTotal?: number;
+  processingFee?: number;
+  processingFeeLabel?: string;
 }
 
-export function CheckoutSummary({ cppSelected, taxRate = 0, taxLabel = "VAT", priceDisplay = "exclusive", gcDeduction = 0, loyaltyDiscount = 0, servicesTotal = 0 }: CheckoutSummaryProps) {
+export function CheckoutSummary({ cppSelected, cppPrice = 0, taxRate = 0, taxLabel = "VAT", priceDisplay = "exclusive", gcDeduction = 0, loyaltyDiscount = 0, servicesTotal = 0, processingFee = 0, processingFeeLabel }: CheckoutSummaryProps) {
   const loyaltyConfig = useLoyaltyStore((s) => s.config);
   const items = useCartStore((s) => s.items);
   const coupon = useCartStore((s) => s.coupon);
@@ -26,8 +27,8 @@ export function CheckoutSummary({ cppSelected, taxRate = 0, taxLabel = "VAT", pr
 
   const subtotal = getTotal();
   const discountAmount = coupon ? subtotal * (coupon.pct / 100) : 0;
-  const cppAmount = cppSelected ? getCppAmount(subtotal) : 0;
-  const beforeTax = subtotal - discountAmount - loyaltyDiscount + cppAmount + servicesTotal;
+  const cppAmount = cppSelected ? cppPrice : 0;
+  const beforeTax = subtotal - discountAmount - loyaltyDiscount + cppAmount + servicesTotal + processingFee;
   const isInclusive = priceDisplay === "inclusive";
   const taxAmount = taxRate > 0
     ? isInclusive
@@ -122,6 +123,13 @@ export function CheckoutSummary({ cppSelected, taxRate = 0, taxLabel = "VAT", pr
           <div className="flex justify-between">
             <span className="text-muted-foreground">Add-on Services</span>
             <span>{format(servicesTotal)}</span>
+          </div>
+        )}
+
+        {processingFee > 0 && (
+          <div className="flex justify-between text-orange-600">
+            <span>{processingFeeLabel ?? "Processing fee"}</span>
+            <span>+{format(processingFee)}</span>
           </div>
         )}
 
