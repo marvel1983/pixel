@@ -1,8 +1,12 @@
 /**
  * Automatic exchange-rate sync.
  *
+ * Rates are stored relative to EUR (the base currency).
+ * i.e. rateToUsd column = "how many of this currency per 1 EUR".
+ *   EUR → 1.0, USD → ~1.09, GBP → ~0.86
+ *
  * Uses the free Open Exchange Rates API (no key required):
- *   https://open.er-api.com/v6/latest/USD
+ *   https://open.er-api.com/v6/latest/EUR
  *
  * If OPEN_EXCHANGE_RATES_KEY is set in env, uses openexchangerates.org
  * for hourly updates (free tier = 1 000 req/mo).
@@ -15,16 +19,18 @@ import { currencyRates } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 import { logger } from "./logger";
 
+// Fallback rates relative to EUR (1 EUR = X currency)
 const FALLBACK_RATES: Record<string, number> = {
-  EUR: 0.92,
-  GBP: 0.79,
-  PLN: 4.02,
-  CZK: 23.5,
-  HUF: 365,
-  CAD: 1.36,
-  AUD: 1.53,
-  BRL: 5.05,
-  TRY: 32.5,
+  EUR: 1.0,
+  USD: 1.09,
+  GBP: 0.86,
+  PLN: 4.37,
+  CZK: 25.3,
+  HUF: 395,
+  CAD: 1.47,
+  AUD: 1.65,
+  BRL: 5.48,
+  TRY: 35.2,
 };
 
 async function fetchLiveRates(): Promise<Record<string, number> | null> {
@@ -35,15 +41,15 @@ async function fetchLiveRates(): Promise<Record<string, number> | null> {
     let parseRates: (body: unknown) => Record<string, number> | null;
 
     if (key) {
-      // openexchangerates.org – free tier, needs API key
-      url = `https://openexchangerates.org/api/latest.json?app_id=${key}&base=USD`;
+      // openexchangerates.org – free tier, needs API key; base=EUR
+      url = `https://openexchangerates.org/api/latest.json?app_id=${key}&base=EUR`;
       parseRates = (body: unknown) => {
         const b = body as { rates?: Record<string, number> };
         return b?.rates ?? null;
       };
     } else {
-      // open.er-api.com – truly free, no key, updated every 24 h
-      url = "https://open.er-api.com/v6/latest/USD";
+      // open.er-api.com – truly free, no key, updated every 24 h; base=EUR
+      url = "https://open.er-api.com/v6/latest/EUR";
       parseRates = (body: unknown) => {
         const b = body as { result?: string; rates?: Record<string, number> };
         if (b?.result !== "success") return null;

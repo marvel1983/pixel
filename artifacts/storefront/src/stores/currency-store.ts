@@ -42,6 +42,8 @@ interface CurrencyState {
   code: CurrencyCode;
   rates: Record<string, number>;
   lastFetched: number | null;
+  /** True once the user has manually picked a currency — prevents admin default from overriding */
+  explicit: boolean;
   /** Reactive: new reference every time code or rates change — triggers re-renders */
   format: (baseAmount: number) => string;
   setCode: (code: CurrencyCode) => void;
@@ -58,11 +60,12 @@ export const useCurrencyStore = create<CurrencyState>()(
       code: BASE_CURRENCY as CurrencyCode,
       rates: {},
       lastFetched: null,
+      explicit: false,
       format: buildFormat(BASE_CURRENCY as CurrencyCode, {}),
 
       setCode: (code) => {
         const { rates } = get();
-        set({ code, format: buildFormat(code, rates) });
+        set({ code, explicit: true, format: buildFormat(code, rates) });
       },
 
       setRates: (rates) => {
@@ -79,15 +82,21 @@ export const useCurrencyStore = create<CurrencyState>()(
       },
 
       fetchRates: async () => {
-        const { lastFetched, rates } = get();
+        const { lastFetched, rates, explicit } = get();
         const hasRates = Object.keys(rates).length > 0;
         if (hasRates && lastFetched && Date.now() - lastFetched < RATE_CACHE_MS) return;
         try {
           const baseUrl = import.meta.env.VITE_API_URL ?? "/api";
           const res = await fetch(`${baseUrl}/currencies`);
           if (res.ok) {
-            const data = await res.json();
+            const data = await res.json() as { base?: string; rates: Record<string, number> };
             get().setRates(data.rates);
+            // Apply admin's default currency for visitors who haven't explicitly chosen one
+            if (!explicit && data.base) {
+              const base = data.base as CurrencyCode;
+              const { rates: newRates } = get();
+              set({ code: base, format: buildFormat(base, newRates) });
+            }
           }
         } catch {
           // keep cached rates on failure
@@ -98,7 +107,7 @@ export const useCurrencyStore = create<CurrencyState>()(
       name: "pixelcodes-currency",
       // Don't persist `format` (it's a function — not serialisable).
       // Rebuild it from persisted code+rates on rehydration.
-      partialize: (s) => ({ code: s.code, rates: s.rates, lastFetched: s.lastFetched }),
+      partialize: (s) => ({ code: s.code, rates: s.rates, lastFetched: s.lastFetched, explicit: s.explicit }),
       onRehydrateStorage: () => (state) => {
         if (state) {
           state.format = buildFormat(state.code, state.rates);

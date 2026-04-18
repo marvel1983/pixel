@@ -14,7 +14,7 @@ interface Currency { id: number; currencyCode: string; symbol: string; rateToUsd
 
 export default function SettingsCurrenciesTab() {
   const [currencies, setCurrencies] = useState<Currency[]>([]);
-  const [defaultCurrency, setDefaultCurrency] = useState("USD");
+  const [defaultCurrency, setDefaultCurrency] = useState("EUR");
   const [showAdd, setShowAdd] = useState(false);
   const [newCode, setNewCode] = useState("");
   const [newSymbol, setNewSymbol] = useState("");
@@ -102,7 +102,7 @@ export default function SettingsCurrenciesTab() {
             <div className="grid grid-cols-3 gap-3">
               <div><label className="block text-xs font-medium mb-1">Code</label><input className={ic} maxLength={3} value={newCode} onChange={(e) => setNewCode(e.target.value.toUpperCase())} placeholder="EUR" /></div>
               <div><label className="block text-xs font-medium mb-1">Symbol</label><input className={ic} maxLength={5} value={newSymbol} onChange={(e) => setNewSymbol(e.target.value)} placeholder="€" /></div>
-              <div><label className="block text-xs font-medium mb-1">Rate to USD</label><input type="number" step="0.000001" min="0" className={ic} value={newRate} onChange={(e) => setNewRate(e.target.value)} /></div>
+              <div><label className="block text-xs font-medium mb-1">Rate vs EUR</label><input type="number" step="0.000001" min="0" className={ic} value={newRate} onChange={(e) => setNewRate(e.target.value)} /></div>
             </div>
             <div className="flex gap-2"><Button size="sm" onClick={addCurrency}>Add</Button><Button size="sm" variant="outline" onClick={() => setShowAdd(false)}>Cancel</Button></div>
           </div>
@@ -113,7 +113,7 @@ export default function SettingsCurrenciesTab() {
             <div className="border rounded-md overflow-hidden">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b">
-                  <tr><th className="w-8"></th><th className="text-left px-4 py-2 font-medium">Code</th><th className="text-left px-4 py-2 font-medium">Symbol</th><th className="text-left px-4 py-2 font-medium">Rate to USD</th><th className="text-center px-4 py-2 font-medium">Status</th><th className="text-right px-4 py-2 font-medium">Actions</th></tr>
+                  <tr><th className="w-8"></th><th className="text-left px-4 py-2 font-medium">Code</th><th className="text-left px-4 py-2 font-medium">Symbol</th><th className="text-left px-4 py-2 font-medium">Rate vs EUR</th><th className="text-center px-4 py-2 font-medium">Status</th><th className="text-right px-4 py-2 font-medium">Actions</th></tr>
                 </thead>
                 <tbody>
                   {currencies.map((c) => <CurrencyRow key={c.id} currency={c} onUpdateField={updateField} onSave={saveRow} onToggle={toggleEnabled} onDelete={deleteCurrency} />)}
