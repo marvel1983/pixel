@@ -152,6 +152,10 @@ overrides:
 importers:
 
   .:
+    dependencies:
+      '@swc/helpers':
+        specifier: ^0.5.21
+        version: 0.5.21
     devDependencies:
       prettier:
         specifier: ^3.8.1
