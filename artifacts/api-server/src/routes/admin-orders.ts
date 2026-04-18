@@ -399,37 +399,53 @@ router.post("/admin/orders/:id/release", requireAuth, requireAdmin, requirePermi
     res.status(404).json({ error: "Held order not found" }); return;
   }
 
-  let items = await db.select({
-    variantId: orderItems.variantId, productName: orderItems.productName,
-    variantName: orderItems.variantName, priceUsd: orderItems.priceUsd,
-    quantity: orderItems.quantity, bundleId: orderItems.bundleId,
-  }).from(orderItems).where(eq(orderItems.orderId, orderId));
+  type ReleaseItem = { variantId: number; productId: number; productName: string; variantName: string; priceUsd: string; quantity: number; bundleId: number | null };
 
+  let items: ReleaseItem[] = [];
   let billing = order.billingSnapshot as {
     firstName: string; lastName: string; email: string;
     country: string; city: string; address: string; zip: string; phone?: string;
   } | null;
 
-  // Stripe/Checkout.com held orders: billing and items live in notes payload (not yet in DB)
-  if (!billing || items.length === 0) {
-    const payload = parseFulfillmentPayload(order.notes);
-    if (!payload) {
-      res.status(400).json({ error: "Order has no billing snapshot and no fulfillment payload" });
-      return;
-    }
+  // Always try the notes payload first for held card-payment orders (order_items not yet written)
+  const payload = parseFulfillmentPayload(order.notes);
+  if (payload) {
     if (!billing) billing = payload.billing;
-    if (items.length === 0) items = payload.items.map((i) => ({
-      variantId: i.variantId, productName: i.productName,
-      variantName: i.variantName, priceUsd: i.priceUsd,
-      quantity: i.quantity, bundleId: i.bundleId ?? null,
+    items = payload.items.map((i) => ({
+      variantId: i.variantId, productId: i.productId,
+      productName: i.productName, variantName: i.variantName,
+      priceUsd: i.priceUsd, quantity: i.quantity, bundleId: i.bundleId ?? null,
     }));
+  }
+
+  // Fall back to DB order_items (direct/wallet orders that were held)
+  if (items.length === 0) {
+    const dbItems = await db.select({
+      variantId: orderItems.variantId, productName: orderItems.productName,
+      variantName: orderItems.variantName, priceUsd: orderItems.priceUsd,
+      quantity: orderItems.quantity, bundleId: orderItems.bundleId,
+    }).from(orderItems).where(eq(orderItems.orderId, orderId));
+    items = dbItems.map((i) => ({
+      variantId: i.variantId, productId: 0,
+      productName: i.productName, variantName: i.variantName,
+      priceUsd: i.priceUsd, quantity: i.quantity, bundleId: i.bundleId ?? null,
+    }));
+  }
+
+  if (!billing) {
+    res.status(400).json({ error: "Order has no billing snapshot and no fulfillment payload" });
+    return;
+  }
+  if (items.length === 0) {
+    res.status(400).json({ error: "No items found for this order" });
+    return;
   }
 
   try {
     await runFulfillment(orderId, order.orderNumber, order.paymentIntentId ?? "", {
       billing: { ...billing, phone: billing.phone ?? "" },
       items: items.map((i) => ({
-        variantId: i.variantId, productId: 0,
+        variantId: i.variantId, productId: i.productId,
         productName: i.productName, variantName: i.variantName,
         priceUsd: i.priceUsd, quantity: i.quantity,
         bundleId: i.bundleId ?? undefined,
