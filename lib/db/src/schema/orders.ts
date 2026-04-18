@@ -8,6 +8,7 @@ import {
   timestamp,
   numeric,
   pgEnum,
+  jsonb,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -63,6 +64,11 @@ export const orders = pgTable("orders", {
   couponId: integer("coupon_id").references(() => coupons.id),
   paymentIntentId: varchar("payment_intent_id", { length: 255 }),
   externalOrderId: varchar("external_order_id", { length: 255 }),
+  billingSnapshot: jsonb("billing_snapshot").$type<{
+    firstName: string; lastName: string; email: string;
+    country: string; city: string; address: string; zip: string;
+    phone?: string; vatNumber?: string;
+  }>(),
   ipAddress: varchar("ip_address", { length: 45 }),
   userAgent: text("user_agent"),
   notes: text("notes"),

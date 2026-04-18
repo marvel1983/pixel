@@ -5,6 +5,7 @@ export {
   sendOrderConfirmationEmail,
   sendKeyDeliveryEmail,
   sendPasswordResetEmail,
+  sendInvoiceEmail,
 } from "./send-emails";
 export {
   welcomeEmail,

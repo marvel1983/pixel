@@ -23,6 +23,11 @@ export const siteSettings = pgTable("site_settings", {
   fromEmail: varchar("from_email", { length: 255 }),
   phone: varchar("phone", { length: 50 }),
   companyName: varchar("company_name", { length: 200 }),
+  companyAddress: varchar("company_address", { length: 300 }),
+  companyCity: varchar("company_city", { length: 120 }),
+  companyCountry: varchar("company_country", { length: 100 }),
+  companyZip: varchar("company_zip", { length: 20 }),
+  companyTaxId: varchar("company_tax_id", { length: 100 }),
   tagline: text("tagline"),
   copyright: text("copyright"),
   socialLinks: jsonb("social_links")

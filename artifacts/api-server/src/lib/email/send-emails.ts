@@ -7,11 +7,13 @@ import {
   keyDeliveryEmail,
   passwordResetEmail,
 } from "./templates";
+import { invoiceEmail } from "./invoice-template";
 import type {
   OrderConfirmationData,
   KeyDeliveryData,
   PasswordResetData,
 } from "./templates";
+import type { InvoiceData } from "./invoice-template";
 
 interface SiteBrand {
   siteName: string;
@@ -24,6 +26,35 @@ async function getSiteBrand(): Promise<SiteBrand> {
     .from(siteSettings)
     .limit(1);
   return { siteName: rows[0]?.siteName ?? "PixelCodes", logoUrl: rows[0]?.logoUrl ?? null };
+}
+
+async function getSellerInfo() {
+  const rows = await db
+    .select({
+      siteName: siteSettings.siteName,
+      logoUrl: siteSettings.logoUrl,
+      companyName: siteSettings.companyName,
+      companyAddress: siteSettings.companyAddress,
+      companyCity: siteSettings.companyCity,
+      companyCountry: siteSettings.companyCountry,
+      companyTaxId: siteSettings.companyTaxId,
+      contactEmail: siteSettings.contactEmail,
+    })
+    .from(siteSettings)
+    .limit(1);
+  const s = rows[0];
+  return {
+    siteName: s?.siteName ?? "PixelCodes",
+    logoUrl: s?.logoUrl ?? null,
+    seller: {
+      name: s?.companyName ?? s?.siteName ?? "PixelCodes",
+      address: s?.companyAddress ?? null,
+      city: s?.companyCity ?? null,
+      country: s?.companyCountry ?? null,
+      taxId: s?.companyTaxId ?? null,
+      email: s?.contactEmail ?? null,
+    },
+  };
 }
 
 export async function sendWelcomeEmail(to: string, firstName: string, locale?: string): Promise<void> {
@@ -57,4 +88,13 @@ export async function sendPasswordResetEmail(
   const brand = await getSiteBrand();
   const { subject, html } = passwordResetEmail({ ...data, ...brand });
   await enqueueEmail(to, subject, html, { type: "password_reset" });
+}
+
+export async function sendInvoiceEmail(
+  to: string,
+  data: Omit<InvoiceData, "siteName" | "logoUrl" | "seller">,
+): Promise<void> {
+  const { siteName, logoUrl, seller } = await getSellerInfo();
+  const { subject, html } = invoiceEmail({ ...data, siteName, logoUrl, seller });
+  await enqueueEmail(to, subject, html, { type: "invoice", orderRef: data.invoiceNumber });
 }

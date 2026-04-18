@@ -1,9 +1,9 @@
 import { eq } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { orderItems, licenseKeys } from "@workspace/db/schema";
+import { orderItems, licenseKeys, orders } from "@workspace/db/schema";
 import { decrypt } from "../lib/encryption";
 import { logger } from "../lib/logger";
-import { sendOrderConfirmationEmail, sendKeyDeliveryEmail } from "../lib/email";
+import { sendOrderConfirmationEmail, sendKeyDeliveryEmail, sendInvoiceEmail } from "../lib/email";
 
 interface BillingInfo {
   email: string;
@@ -13,6 +13,8 @@ interface BillingInfo {
   city: string;
   address: string;
   zip: string;
+  phone?: string;
+  vatNumber?: string;
 }
 
 interface ItemInfo {
@@ -32,6 +34,62 @@ function buildEmailItems(items: ItemInfo[]) {
   }));
 }
 
+async function sendOrderInvoice(
+  billing: BillingInfo,
+  orderNumber: string,
+  orderId: number,
+  items: ItemInfo[],
+) {
+  try {
+    const [order] = await db
+      .select({
+        subtotalUsd: orders.subtotalUsd,
+        discountUsd: orders.discountUsd,
+        totalUsd: orders.totalUsd,
+        taxRate: orders.taxRate,
+        taxAmountUsd: orders.taxAmountUsd,
+        currencyCode: orders.currencyCode,
+        currencyRate: orders.currencyRate,
+        paymentMethod: orders.paymentMethod,
+        vatNumber: orders.vatNumber,
+      })
+      .from(orders)
+      .where(eq(orders.id, orderId))
+      .limit(1);
+    if (!order) return;
+
+    await sendInvoiceEmail(billing.email, {
+      invoiceNumber: orderNumber,
+      invoiceDate: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }),
+      buyer: {
+        firstName: billing.firstName,
+        lastName: billing.lastName,
+        email: billing.email,
+        address: billing.address || null,
+        city: billing.city || null,
+        country: billing.country || null,
+        vatNumber: billing.vatNumber ?? order.vatNumber ?? null,
+      },
+      items: items.map((it) => ({
+        name: it.productName,
+        variant: it.variantName,
+        quantity: it.quantity,
+        unitPriceUsd: parseFloat(it.priceUsd),
+      })),
+      subtotalUsd: parseFloat(order.subtotalUsd),
+      discountUsd: parseFloat(order.discountUsd),
+      taxRate: parseFloat(order.taxRate),
+      taxAmountUsd: parseFloat(order.taxAmountUsd),
+      totalUsd: parseFloat(order.totalUsd),
+      currencyCode: order.currencyCode,
+      currencyRate: parseFloat(order.currencyRate),
+      paymentMethod: order.paymentMethod ?? "CARD",
+    });
+  } catch (err) {
+    logger.error({ err, orderNumber }, "Failed to send invoice email (non-fatal)");
+  }
+}
+
 export async function sendOrderConfirmationOnly(
   billing: BillingInfo,
   orderNumber: string,
@@ -49,6 +107,7 @@ export async function sendOrderConfirmationOnly(
       customerName: billing.firstName,
       locale,
     });
+    await sendOrderInvoice(billing, orderNumber, orderId, items);
   } catch (err) {
     logger.error({ err, orderNumber }, "Failed to enqueue confirmation email (non-fatal)");
   }
@@ -71,6 +130,7 @@ export async function triggerOrderEmails(
       customerName: billing.firstName,
       locale,
     });
+    await sendOrderInvoice(billing, orderNumber, orderId, items);
 
     const deliveredKeys = await db
       .select({

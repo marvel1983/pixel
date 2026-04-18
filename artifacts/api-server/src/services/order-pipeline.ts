@@ -82,7 +82,19 @@ export async function runFulfillment(
 ): Promise<void> {
   const { billing, items } = input;
 
-  await db.update(orders).set({ paymentIntentId }).where(eq(orders.id, orderId));
+  await db.update(orders).set({
+    paymentIntentId,
+    billingSnapshot: {
+      firstName: billing.firstName,
+      lastName: billing.lastName,
+      email: billing.email,
+      country: billing.country,
+      city: billing.city,
+      address: billing.address,
+      zip: billing.zip,
+      phone: (billing as { phone?: string }).phone ?? undefined,
+    },
+  }).where(eq(orders.id, orderId));
 
   if (input.guestPasswordHash) await createGuestAccountFromHash(billing, input.guestPasswordHash);
   else if (input.guestPassword) await createGuestAccount(billing, input.guestPassword);
