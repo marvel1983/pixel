@@ -101,7 +101,7 @@ jobs:
 
             echo "→ Pushing DB schema..."
             set -a; source /var/www/pixel-storefront/.env; set +a
-            pnpm --filter @workspace/db run push
+            pnpm --filter @workspace/db run push-force
 
             echo "→ Enabling backorder on all active variants..."
             psql "$DATABASE_URL" -c "UPDATE product_variants SET backorder_allowed = true WHERE is_active = true;" || true

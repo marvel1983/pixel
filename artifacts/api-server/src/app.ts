@@ -1,4 +1,4 @@
-import express, { type Express, type Request } from "express";
+import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
@@ -91,5 +91,12 @@ function categoryRateLimit(req: express.Request, res: express.Response, next: ex
 }
 
 app.use("/api", categoryRateLimit, csrfProtection, referralTracking, maintenanceMiddleware, router);
+
+// Global error handler — must have 4 params for Express to treat it as an error handler
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+  logger.error({ err }, "Unhandled route error");
+  res.status(500).json({ error: err.message || "Internal server error" });
+});
 
 export default app;

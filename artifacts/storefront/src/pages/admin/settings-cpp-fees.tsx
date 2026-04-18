@@ -29,7 +29,7 @@ export default function SettingsCppFeesTab() {
 
   const set = (key: keyof CppFees, val: unknown) => setForm((p) => ({ ...p, [key]: val }));
 
-  const save = async () => { setSaving(true); await api("/admin/settings/cpp-fees", { method: "PUT", body: JSON.stringify(form) }); setSaving(false); alert("Saved!"); };
+  const save = async () => { setSaving(true); const ok = await api("/admin/settings/cpp-fees", { method: "PUT", body: JSON.stringify(form) }); setSaving(false); if (ok) alert("Saved!"); };
 
   const examplePrice = 49.99;
   const feePercent = Number(form.processingFeePercent) || 0;
