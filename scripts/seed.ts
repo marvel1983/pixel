@@ -130,8 +130,9 @@ async function seed() {
     rateLimit: 60,
   });
 
-  // Rates are relative to EUR base (1 EUR = X of that currency)
+  // Rates are relative to EUR base (1 EUR = X of that currency). EUR=1.0 is the anchor.
   await db.insert(currencyRates).values([
+    { currencyCode: "EUR", symbol: "€",  rateToUsd: "1.00",   sortOrder: 0 },
     { currencyCode: "USD", symbol: "$",  rateToUsd: "1.08",   sortOrder: 1 },
     { currencyCode: "GBP", symbol: "£",  rateToUsd: "0.86",   sortOrder: 2 },
     { currencyCode: "PLN", symbol: "zł", rateToUsd: "4.30",   sortOrder: 3 },

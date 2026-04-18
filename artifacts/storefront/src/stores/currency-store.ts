@@ -84,9 +84,15 @@ export const useCurrencyStore = create<CurrencyState>()(
       fetchRates: async () => {
         const { lastFetched, rates, explicit } = get();
         const hasRates = Object.keys(rates).length > 0;
-        // If cached EUR rate is not ~1.0, the store still holds old USD-based rates → force re-fetch
+        // Detect stale/wrong-base cached rates:
+        //  • EUR present but not ~1.0  → old USD-based data (EUR was ~0.92)
+        //  • EUR absent AND USD ≤ 1.01 → stripped EUR + USD-based USD rate (USD should be ~1.08 in EUR-base)
         const cachedEur = rates["EUR"];
-        const isWrongBase = hasRates && typeof cachedEur === "number" && (cachedEur < 0.95 || cachedEur > 1.05);
+        const cachedUsd = rates["USD"];
+        const isWrongBase = hasRates && (
+          (typeof cachedEur === "number" && (cachedEur < 0.95 || cachedEur > 1.05)) ||
+          (cachedEur === undefined && typeof cachedUsd === "number" && cachedUsd <= 1.01)
+        );
         if (!isWrongBase && hasRates && lastFetched && Date.now() - lastFetched < RATE_CACHE_MS) return;
         try {
           const baseUrl = import.meta.env.VITE_API_URL ?? "/api";
