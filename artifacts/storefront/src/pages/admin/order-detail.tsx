@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, Link } from "wouter";
-import { ArrowLeft, Send, CheckCircle, XCircle, Copy, Save, Clock, RotateCcw, Key } from "lucide-react";
+import { ArrowLeft, Send, CheckCircle, XCircle, Copy, Save, Clock, RotateCcw, Key, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthStore } from "@/stores/auth-store";
@@ -42,6 +42,8 @@ export default function OrderDetailPage() {
   const [refundOpen, setRefundOpen] = useState(false);
   const [redelivering, setRedelivering] = useState(false);
   const [retrying, setRetrying] = useState(false);
+  const [syncingKeys, setSyncingKeys] = useState(false);
+  const syncOrderIdRef = useRef<HTMLInputElement>(null);
   const token = useAuthStore((s) => s.token);
 
   const reload = () => {
@@ -97,6 +99,21 @@ export default function OrderDetailPage() {
       if (!r.ok) { alert(d.error ?? "Failed"); } else { alert(d.message ?? "Fulfillment retry enqueued"); reload(); }
     } catch { alert("Request failed"); }
     setRetrying(false);
+  };
+
+  const syncBackorderKeys = async () => {
+    const metenziOrderId = syncOrderIdRef.current?.value.trim() || undefined;
+    setSyncingKeys(true);
+    try {
+      const r = await fetch(`${API}/admin/orders/${params.id}/sync-backorder-keys`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ metenziOrderId }),
+      });
+      const d = await r.json();
+      if (!r.ok) { alert(d.error ?? "Failed"); } else { alert(d.message); reload(); }
+    } catch { alert("Request failed"); }
+    setSyncingKeys(false);
   };
 
   const saveNotes = async () => {
@@ -210,30 +227,67 @@ export default function OrderDetailPage() {
 
           {/* License Keys */}
           <Card title="License Keys">
-            {licenseKeys.length === 0 ? (
-              <p className="text-[12.5px] text-[#4a5a74]">No license keys assigned.</p>
-            ) : (
-              <div className="space-y-3">
-                {items.map((item) => {
-                  const itemKeys = licenseKeys.filter((k) => k.orderItemId === item.id);
-                  if (itemKeys.length === 0) return null;
-                  return (
-                    <div key={item.id}>
-                      <p className="text-[11px] font-bold uppercase tracking-wider text-[#5b9fd4] mb-1.5">{item.productName} — {item.variantName}</p>
-                      {itemKeys.map((k) => (
-                        <div key={k.id} className="flex items-center gap-2 rounded border border-[#2e3340] bg-[#212530] px-3 py-2 mb-1.5">
-                          <code className="flex-1 text-[12px] font-mono text-[#dde4f0] tracking-wide">{k.keyValue}</code>
-                          <span className="rounded border border-emerald-400/50 bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-bold text-emerald-200 uppercase">{k.status}</span>
-                          <button onClick={() => navigator.clipboard.writeText(k.keyValue)} className="rounded p-1 text-[#5b9fd4] hover:bg-[#1e3a5f] hover:text-white transition-colors">
-                            <Copy className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      ))}
+            {(() => {
+              const totalExpected = items.reduce((s, i) => s + i.quantity, 0);
+              const totalDelivered = licenseKeys.length;
+              const missing = totalExpected - totalDelivered;
+              return (
+                <>
+                  {missing > 0 && (
+                    <div className="mb-3 rounded border border-amber-500/40 bg-amber-900/20 px-3 py-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />
+                        <p className="text-[12.5px] font-semibold text-amber-300">
+                          {missing} key{missing > 1 ? "s" : ""} missing — {totalDelivered} of {totalExpected} delivered
+                        </p>
+                      </div>
+                      <p className="text-[11.5px] text-amber-400/80 mb-2">
+                        If the key has been assigned on Metenzi, enter that order ID below and click Sync.
+                      </p>
+                      <div className="flex gap-2">
+                        <input
+                          ref={syncOrderIdRef}
+                          defaultValue={order.externalOrderId ?? ""}
+                          placeholder="Metenzi order ID (e.g. 7aba34d0-...)"
+                          className="flex-1 rounded border border-[#1e3a5f] bg-[#0a1828] px-2.5 py-1.5 text-[12px] font-mono text-[#dde4f0] placeholder:text-[#3d5070] focus:border-amber-500/60 focus:outline-none"
+                        />
+                        <button
+                          onClick={syncBackorderKeys}
+                          disabled={syncingKeys}
+                          className="rounded border border-amber-400 bg-amber-600/30 px-3 py-1.5 text-[12px] font-semibold text-amber-200 hover:bg-amber-600/50 disabled:opacity-40 transition-colors whitespace-nowrap"
+                        >
+                          {syncingKeys ? "Syncing..." : "Sync Keys"}
+                        </button>
+                      </div>
                     </div>
-                  );
-                })}
-              </div>
-            )}
+                  )}
+                  {licenseKeys.length === 0 ? (
+                    <p className="text-[12.5px] text-[#4a5a74]">No license keys assigned.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {items.map((item) => {
+                        const itemKeys = licenseKeys.filter((k) => k.orderItemId === item.id);
+                        if (itemKeys.length === 0) return null;
+                        return (
+                          <div key={item.id}>
+                            <p className="text-[11px] font-bold uppercase tracking-wider text-[#5b9fd4] mb-1.5">{item.productName} — {item.variantName}</p>
+                            {itemKeys.map((k) => (
+                              <div key={k.id} className="flex items-center gap-2 rounded border border-[#2e3340] bg-[#212530] px-3 py-2 mb-1.5">
+                                <code className="flex-1 text-[12px] font-mono text-[#dde4f0] tracking-wide">{k.keyValue}</code>
+                                <span className="rounded border border-emerald-400/50 bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-bold text-emerald-200 uppercase">{k.status}</span>
+                                <button onClick={() => navigator.clipboard.writeText(k.keyValue)} className="rounded p-1 text-[#5b9fd4] hover:bg-[#1e3a5f] hover:text-white transition-colors">
+                                  <Copy className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </Card>
 
           {/* Admin Notes */}

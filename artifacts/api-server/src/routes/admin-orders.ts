@@ -182,6 +182,94 @@ router.patch("/admin/orders/:id/notes", requireAuth, requireAdmin, requirePermis
   res.json({ success: true });
 });
 
+// POST /admin/orders/:id/sync-backorder-keys
+// Fetches a Metenzi order (by stored externalOrderId or a supplied override) and assigns any
+// missing keys to this order. Works regardless of order status — useful when a key was assigned
+// on Metenzi but the webhook was never received or processed.
+router.post("/admin/orders/:id/sync-backorder-keys", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
+  const id = Number(paramString(req.params, "id"));
+  if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid order ID" }); return; }
+
+  const [order] = await db
+    .select({ id: orders.id, orderNumber: orders.orderNumber, status: orders.status, externalOrderId: orders.externalOrderId, userId: orders.userId, totalUsd: orders.totalUsd })
+    .from(orders).where(eq(orders.id, id));
+  if (!order) { res.status(404).json({ error: "Order not found" }); return; }
+
+  const overrideId = typeof req.body.metenziOrderId === "string" ? req.body.metenziOrderId.trim() : null;
+  const metenziOrderId = overrideId || order.externalOrderId;
+  if (!metenziOrderId) { res.status(400).json({ error: "No Metenzi order ID — provide metenziOrderId in request body" }); return; }
+
+  const { getMetenziConfig } = await import("../lib/metenzi-config");
+  const { getOrderById } = await import("../lib/metenzi-endpoints");
+  const { metenziProductMappings, productVariants } = await import("@workspace/db/schema");
+  const { encrypt } = await import("../lib/encryption");
+
+  const config = await getMetenziConfig();
+  if (!config) { res.status(400).json({ error: "Metenzi not configured" }); return; }
+
+  const metenziOrder = await getOrderById(config, metenziOrderId);
+  if (!metenziOrder) { res.status(404).json({ error: `Metenzi order ${metenziOrderId} not found` }); return; }
+
+  const metenziKeys = metenziOrder.keys ?? [];
+  if (metenziKeys.length === 0) { res.json({ keysAdded: 0, message: "Metenzi order has no keys yet" }); return; }
+
+  // Load local order items and already-delivered keys
+  const items = await db.select({ id: orderItems.id, variantId: orderItems.variantId, productName: orderItems.productName, variantName: orderItems.variantName, quantity: orderItems.quantity })
+    .from(orderItems).where(eq(orderItems.orderId, id));
+  const itemIds = items.map((i) => i.id);
+  const existingKeys = itemIds.length > 0
+    ? await db.select({ id: licenseKeys.id, orderItemId: licenseKeys.orderItemId }).from(licenseKeys).where(inArray(licenseKeys.orderItemId, itemIds))
+    : [];
+
+  const deliveredByItem: Record<number, number> = {};
+  for (const k of existingKeys) deliveredByItem[k.orderItemId!] = (deliveredByItem[k.orderItemId!] ?? 0) + 1;
+
+  let keysAdded = 0;
+  for (const mk of metenziKeys) {
+    if (!mk.code || !mk.productId) continue;
+
+    const [mapping] = await db.select({ pixelProductId: metenziProductMappings.pixelProductId })
+      .from(metenziProductMappings).where(eq(metenziProductMappings.metenziProductId, mk.productId)).limit(1);
+    if (!mapping?.pixelProductId) continue;
+
+    const [dbItem] = await db.select({ id: orderItems.id, variantId: orderItems.variantId, productName: orderItems.productName, variantName: orderItems.variantName, quantity: orderItems.quantity })
+      .from(orderItems).innerJoin(productVariants, eq(orderItems.variantId, productVariants.id))
+      .where(and(eq(orderItems.orderId, id), eq(productVariants.productId, mapping.pixelProductId))).limit(1);
+    if (!dbItem) continue;
+
+    const alreadyDelivered = deliveredByItem[dbItem.id] ?? 0;
+    if (alreadyDelivered >= dbItem.quantity) continue; // already has all keys for this item
+
+    const encryptedKey = encrypt(mk.code);
+    const [dupe] = await db.select({ id: licenseKeys.id }).from(licenseKeys)
+      .where(and(eq(licenseKeys.keyValue, encryptedKey), eq(licenseKeys.orderItemId, dbItem.id))).limit(1);
+    if (dupe) continue;
+
+    const keyMask = mk.code.length <= 8 ? mk.code.slice(0, 2) + "****" : mk.code.slice(0, 4) + "****" + mk.code.slice(-4);
+    await db.insert(licenseKeys).values({ variantId: dbItem.variantId, keyValue: encryptedKey, keyMask, status: "SOLD", source: "API", orderItemId: dbItem.id, soldAt: new Date() });
+    deliveredByItem[dbItem.id] = alreadyDelivered + 1;
+    keysAdded++;
+  }
+
+  // Re-check and update order status
+  const totalExpected = items.reduce((s, i) => s + i.quantity, 0);
+  const totalDelivered = (itemIds.length > 0
+    ? await db.select({ id: licenseKeys.id }).from(licenseKeys).where(inArray(licenseKeys.orderItemId, itemIds))
+    : []).length;
+
+  if (keysAdded > 0) {
+    const newStatus = totalDelivered >= totalExpected ? "COMPLETED" : "PARTIALLY_DELIVERED";
+    await db.update(orders).set({ status: newStatus, updatedAt: new Date() }).where(eq(orders.id, id));
+    if (newStatus === "COMPLETED" && order.userId) {
+      const { awardOrderPoints } = await import("../services/loyalty-service");
+      awardOrderPoints(order.userId, id, parseFloat(order.totalUsd)).catch(() => {});
+    }
+    logger.info({ orderId: id, orderNumber: order.orderNumber, keysAdded, metenziOrderId }, "Admin: sync-backorder-keys added keys");
+  }
+
+  res.json({ keysAdded, totalDelivered, totalExpected, message: keysAdded > 0 ? `${keysAdded} key(s) added` : "No new keys found" });
+});
+
 router.post("/admin/orders/:id/resend-email", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
   const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid order ID" }); return; }
