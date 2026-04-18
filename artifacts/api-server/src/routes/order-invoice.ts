@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { eq, and } from "drizzle-orm";
+import { eq, and, or } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { orders, orderItems, siteSettings } from "@workspace/db/schema";
+import { orders, orderItems, siteSettings, users } from "@workspace/db/schema";
 import { verifyToken } from "../middleware/auth";
 import { generateInvoicePdf } from "../lib/email/invoice-pdf";
 import type { InvoiceData } from "../lib/email/invoice-template";
@@ -31,10 +31,17 @@ router.get("/orders/:orderNumber/invoice.pdf", async (req, res) => {
   const { orderNumber } = req.params;
 
   try {
+    // Look up user's email so we can also match guest orders stored by email
+    const [userRow] = await db.select({ email: users.email }).from(users).where(eq(users.id, userId)).limit(1);
+    const userEmail = userRow?.email ?? "";
+
     const [order] = await db
       .select()
       .from(orders)
-      .where(and(eq(orders.orderNumber, orderNumber), eq(orders.userId, userId)))
+      .where(and(
+        eq(orders.orderNumber, orderNumber),
+        or(eq(orders.userId, userId), eq(orders.guestEmail, userEmail)),
+      ))
       .limit(1);
 
     if (!order) { res.status(404).json({ error: "Order not found" }); return; }

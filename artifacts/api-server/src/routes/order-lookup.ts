@@ -72,6 +72,13 @@ async function fetchOrderWithKeys(orderId: number) {
 }
 
 function formatOrderResponse(order: Order) {
+  const subtotal = parseFloat(order.subtotalUsd);
+  const discount = parseFloat(order.discountUsd ?? "0");
+  const total = parseFloat(order.totalUsd);
+  const tax = parseFloat(order.taxAmountUsd ?? "0");
+  const cpp = parseFloat(order.cppAmountUsd ?? "0");
+  // Processing fee is not stored; derive it from totals
+  const processingFeeUsd = Math.max(0, total - (subtotal - discount) - tax - cpp).toFixed(2);
   return {
     id: order.id,
     orderNumber: order.orderNumber,
@@ -79,6 +86,10 @@ function formatOrderResponse(order: Order) {
     subtotalUsd: order.subtotalUsd,
     discountUsd: order.discountUsd,
     totalUsd: order.totalUsd,
+    processingFeeUsd,
+    taxRate: order.taxRate,
+    taxAmountUsd: order.taxAmountUsd,
+    cppAmountUsd: order.cppAmountUsd,
     paymentMethod: order.paymentMethod,
     createdAt: order.createdAt,
   };

@@ -34,6 +34,10 @@ interface OrderData {
   subtotalUsd: string;
   discountUsd: string;
   totalUsd: string;
+  processingFeeUsd?: string;
+  taxAmountUsd?: string;
+  taxRate?: string;
+  cppAmountUsd?: string;
   paymentMethod: string;
   createdAt: string;
 }
@@ -48,6 +52,12 @@ export function OrderDetail({ order, items, licenseKeys }: OrderDetailProps) {
   const { format } = useCurrencyStore();
   const token = useAuthStore((s) => s.token);
   const subtotal = parseFloat(order.subtotalUsd);
+  const discount = parseFloat(order.discountUsd ?? "0");
+  const total = parseFloat(order.totalUsd);
+  const processingFee = parseFloat(order.processingFeeUsd ?? "0");
+  const tax = parseFloat(order.taxAmountUsd ?? "0");
+  const taxRate = parseFloat(order.taxRate ?? "0");
+  const cpp = parseFloat(order.cppAmountUsd ?? "0");
 
   const downloadInvoice = async () => {
     const res = await fetch(`${API}/orders/${order.orderNumber}/invoice.pdf`, {
@@ -62,8 +72,6 @@ export function OrderDetail({ order, items, licenseKeys }: OrderDetailProps) {
     a.click();
     URL.revokeObjectURL(url);
   };
-  const discount = parseFloat(order.discountUsd);
-  const total = parseFloat(order.totalUsd);
 
   return (
     <div className="space-y-6">
@@ -116,7 +124,7 @@ export function OrderDetail({ order, items, licenseKeys }: OrderDetailProps) {
       </div>
 
       <div className="flex justify-end">
-        <div className="w-64 space-y-2 text-sm">
+        <div className="w-72 space-y-2 text-sm">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Subtotal</span>
             <span>{format(subtotal)}</span>
@@ -125,6 +133,24 @@ export function OrderDetail({ order, items, licenseKeys }: OrderDetailProps) {
             <div className="flex justify-between text-green-600">
               <span>Discount</span>
               <span>-{format(discount)}</span>
+            </div>
+          )}
+          {cpp > 0 && (
+            <div className="flex justify-between text-muted-foreground">
+              <span>Protection Plan (CPP)</span>
+              <span>+{format(cpp)}</span>
+            </div>
+          )}
+          {processingFee > 0.005 && (
+            <div className="flex justify-between text-orange-600">
+              <span>Processing fee</span>
+              <span>+{format(processingFee)}</span>
+            </div>
+          )}
+          {tax > 0 && (
+            <div className="flex justify-between text-muted-foreground">
+              <span>VAT {taxRate > 0 ? `(${taxRate.toFixed(0)}%)` : ""}</span>
+              <span>+{format(tax)}</span>
             </div>
           )}
           <Separator />
