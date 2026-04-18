@@ -159,7 +159,7 @@ export default function AdminProductsPage() {
   };
 
   const minPrice = (v: Variant[]) =>
-    v.length > 0 ? `$${Math.min(...v.map((x) => Number(x.priceUsd))).toFixed(2)}` : "—";
+    v.length > 0 ? `€${Math.min(...v.map((x) => Number(x.priceUsd))).toFixed(2)}` : "—";
   const totalStock = (v: Variant[]) => v.reduce((s, x) => s + x.stockCount, 0);
 
   return (

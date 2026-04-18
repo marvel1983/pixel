@@ -191,7 +191,7 @@ export default function AdminSupportDetailPage() {
         {order && (
           <DarkCard title="Linked Order">
             <p className="font-mono text-[#dde4f0]">{order.orderNumber}</p>
-            <p className="text-[#dde4f0] text-sm">${order.totalUsd} — <Badge variant="secondary">{order.status}</Badge></p>
+            <p className="text-[#dde4f0] text-sm">€{order.totalUsd} — <Badge variant="secondary">{order.status}</Badge></p>
           </DarkCard>
         )}
         {data.timeline.length > 0 && (

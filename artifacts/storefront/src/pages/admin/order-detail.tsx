@@ -182,9 +182,9 @@ export default function OrderDetailPage() {
                     <tr key={item.id} className={idx % 2 === 0 ? "bg-[#0c1018]" : "bg-[#0f1520]"}>
                       <td className="border-b border-[#1f2840] px-3 py-2 text-[#dde4f0] font-medium">{item.productName}</td>
                       <td className="border-b border-[#1f2840] px-3 py-2 text-[#8fa0bb]">{item.variantName}</td>
-                      <td className="border-b border-[#1f2840] px-3 py-2 text-right font-mono tabular-nums text-[#dde4f0]">${item.priceUsd}</td>
+                      <td className="border-b border-[#1f2840] px-3 py-2 text-right font-mono tabular-nums text-[#dde4f0]">€{item.priceUsd}</td>
                       <td className="border-b border-[#1f2840] px-3 py-2 text-center text-[#dde4f0]">{item.quantity}</td>
-                      <td className="border-b border-[#1f2840] px-3 py-2 text-right font-mono tabular-nums font-bold text-white">${(parseFloat(item.priceUsd) * item.quantity).toFixed(2)}</td>
+                      <td className="border-b border-[#1f2840] px-3 py-2 text-right font-mono tabular-nums font-bold text-white">€{(parseFloat(item.priceUsd) * item.quantity).toFixed(2)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -198,7 +198,7 @@ export default function OrderDetailPage() {
               <InfoRow label="Method" value={(order.paymentMethod ?? "—").toUpperCase()} highlight />
               <InfoRow label="Payment ID" value={order.paymentIntentId ?? "—"} mono />
               <InfoRow label="Currency" value={`${order.currencyCode} (×${order.currencyRate})`} />
-              {parseFloat(order.walletAmountUsed ?? "0") > 0 && <InfoRow label="Wallet Used" value={`$${order.walletAmountUsed}`} />}
+              {parseFloat(order.walletAmountUsed ?? "0") > 0 && <InfoRow label="Wallet Used" value={`€${order.walletAmountUsed}`} />}
             </div>
           </Card>
 
@@ -278,12 +278,12 @@ export default function OrderDetailPage() {
           {/* Order Summary */}
           <Card title="Order Summary">
             <div className="space-y-2 text-[12.5px]">
-              <SummaryRow label="Subtotal" value={`$${order.subtotalUsd}`} />
-              {parseFloat(order.discountUsd) > 0 && <SummaryRow label="Discount" value={`-$${order.discountUsd}`} valueClass="text-rose-300 font-semibold" />}
+              <SummaryRow label="Subtotal" value={`€${order.subtotalUsd}`} />
+              {parseFloat(order.discountUsd) > 0 && <SummaryRow label="Discount" value={`-€${order.discountUsd}`} valueClass="text-rose-300 font-semibold" />}
               {coupon && <SummaryRow label="Coupon" value={`${coupon.code} (${coupon.discountPercent}%)`} valueClass="text-amber-300" />}
-              {order.cppSelected && <SummaryRow label="CPP" value={`$${order.cppAmountUsd}`} valueClass="text-purple-300" />}
+              {order.cppSelected && <SummaryRow label="CPP" value={`€${order.cppAmountUsd}`} valueClass="text-purple-300" />}
               <div className="mt-2 border-t border-[#2e3340] pt-2">
-                <SummaryRow label="Total" value={`$${order.totalUsd}`} labelClass="font-bold text-white" valueClass="font-bold text-white text-[14px]" />
+                <SummaryRow label="Total" value={`€${order.totalUsd}`} labelClass="font-bold text-white" valueClass="font-bold text-white text-[14px]" />
               </div>
             </div>
           </Card>
@@ -312,7 +312,7 @@ export default function OrderDetailPage() {
                 value={order.cppSelected ? "Yes" : "No"}
                 valueClass={order.cppSelected ? "text-purple-300 font-semibold" : "text-[#4a5a74]"}
               />
-              {order.cppSelected && <SummaryRow label="Amount" value={`$${order.cppAmountUsd}`} />}
+              {order.cppSelected && <SummaryRow label="Amount" value={`€${order.cppAmountUsd}`} />}
               <p className="text-[11px] text-[#4a5a74]">{order.cppSelected ? "Customer Protection Program active" : "Not enrolled"}</p>
             </div>
           </Card>

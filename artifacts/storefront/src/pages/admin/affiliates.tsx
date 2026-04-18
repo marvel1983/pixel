@@ -78,7 +78,7 @@ export default function AdminAffiliatesPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed");
-      toast({ title: "Payout Marked", description: `$${data.paidAmount} paid` });
+      toast({ title: "Payout Marked", description: `€${data.paidAmount} paid` });
       load();
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -145,10 +145,10 @@ export default function AdminAffiliatesPage() {
                       <span>Rate: <strong className="text-[#dde4f0]">{a.profile.commissionRate}%</strong></span>
                       <span>Clicks: <strong className="text-[#dde4f0]">{a.profile.totalClicks}</strong></span>
                       <span>Orders: <strong className="text-[#dde4f0]">{a.profile.totalOrders}</strong></span>
-                      <span>Earned: <strong className="text-emerald-300">${a.profile.totalEarned}</strong></span>
-                      <span>Paid: <strong className="text-sky-300">${a.profile.totalPaid}</strong></span>
+                      <span>Earned: <strong className="text-emerald-300">€{a.profile.totalEarned}</strong></span>
+                      <span>Paid: <strong className="text-sky-300">€{a.profile.totalPaid}</strong></span>
                       {parseFloat(a.profile.pendingBalance) > 0 && (
-                        <span>Pending: <strong className="text-amber-300">${a.profile.pendingBalance}</strong></span>
+                        <span>Pending: <strong className="text-amber-300">€{a.profile.pendingBalance}</strong></span>
                       )}
                     </div>
                     {a.profile.promotionMethod && (

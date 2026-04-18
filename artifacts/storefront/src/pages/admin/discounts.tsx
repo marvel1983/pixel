@@ -78,7 +78,7 @@ export default function AdminDiscountsPage() {
       <div className="grid grid-cols-3 gap-3">
         <StatCard label="Total Codes" value={stats.totalCodes} accent="border-l-[#8fa0bb]" icon={<Ticket className="h-5 w-5 text-[#8fa0bb]" />} />
         <StatCard label="Active" value={stats.activeCodes} accent="border-l-emerald-500" icon={<span className="h-3 w-3 rounded-full bg-emerald-500 inline-block" />} />
-        <StatCard label="Total Discount Given" value={`$${stats.totalDiscountGiven.toFixed(2)}`} accent="border-l-sky-500" icon={<BarChart3 className="h-5 w-5 text-sky-400" />} />
+        <StatCard label="Total Discount Given" value={`€${stats.totalDiscountGiven.toFixed(2)}`} accent="border-l-sky-500" icon={<BarChart3 className="h-5 w-5 text-sky-400" />} />
       </div>
 
       <div className="flex flex-wrap items-end gap-2.5 rounded-md border border-[#2d3344] bg-[#161a24] p-2.5">
@@ -129,8 +129,8 @@ export default function AdminDiscountsPage() {
                       {r.discountType === "PERCENTAGE" ? "%" : "$"}
                     </span>
                   </td>
-                  <td className={`${tableCell} font-medium text-white`}>{r.discountType === "PERCENTAGE" ? `${r.discountValue}%` : `$${r.discountValue}`}</td>
-                  <td className={`${tableCell} text-[#8fa0bb]`}>{r.minOrderUsd ? `$${r.minOrderUsd}` : "—"}</td>
+                  <td className={`${tableCell} font-medium text-white`}>{r.discountType === "PERCENTAGE" ? `${r.discountValue}%` : `€${r.discountValue}`}</td>
+                  <td className={`${tableCell} text-[#8fa0bb]`}>{r.minOrderUsd ? `€${r.minOrderUsd}` : "—"}</td>
                   <td className={tableCell}><UsageBar used={r.usedCount} limit={r.usageLimit} /></td>
                   <td className={tableCell}>
                     <button onClick={() => toggleStatus(r.id)} className={`inline-flex items-center rounded border px-2 py-0.5 text-[10px] font-medium cursor-pointer transition-opacity hover:opacity-80 ${r.isActive ? "border-emerald-600 bg-emerald-500/20 text-emerald-200" : "border-[#3d4558] bg-[#1a1f2e] text-[#8fa0bb]"}`}>

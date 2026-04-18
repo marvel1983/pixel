@@ -170,7 +170,7 @@ export default function AdminOrdersPage() {
         <span className="text-[#e8edf5]">{total} orders</span>
         <span>
           Revenue:{" "}
-          <strong className="tabular-nums text-white">${parseFloat(revenue).toLocaleString("en", { minimumFractionDigits: 2 })}</strong>
+          <strong className="tabular-nums text-white">€{parseFloat(revenue).toLocaleString("en", { minimumFractionDigits: 2 })}</strong>
         </span>
         {selected.size > 0 && (
           <div className="ml-auto flex flex-wrap items-center gap-2">
@@ -235,10 +235,10 @@ export default function AdminOrdersPage() {
                     {r.items.map((i) => `${i.productName} ×${i.quantity}`).join(", ") || "—"}
                   </td>
                   <td className="border-b border-r border-[#252d40] px-2.5 py-[5px] align-middle leading-none text-right font-mono tabular-nums text-[13px] font-bold text-white">
-                    ${r.totalUsd}
+                    €{r.totalUsd}
                   </td>
                   <td className={`border-b border-r border-[#1f2840] px-2.5 py-[5px] align-middle leading-none text-right font-mono tabular-nums text-[12px] ${parseFloat(r.discountUsd) > 0 ? "text-rose-300 font-bold" : "text-[#2e3850]"}`}>
-                    {parseFloat(r.discountUsd) > 0 ? `-$${r.discountUsd}` : "—"}
+                    {parseFloat(r.discountUsd) > 0 ? `-€${r.discountUsd}` : "—"}
                   </td>
                   <td className={`${tableCell} text-center`}>
                     {r.cppSelected ? (

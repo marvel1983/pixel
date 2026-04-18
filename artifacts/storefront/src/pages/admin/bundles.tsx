@@ -179,7 +179,7 @@ export default function AdminBundlesPage() {
                   </div>
                 </td>
                 <td className="px-3 py-[6px] text-[12.5px] text-[#dde4f0] border-b border-[#1f2840]"><Badge variant="secondary">{b.items.length} products</Badge></td>
-                <td className="px-3 py-[6px] text-[12.5px] text-[#dde4f0] border-b border-[#1f2840] font-medium">${b.bundlePriceUsd}</td>
+                <td className="px-3 py-[6px] text-[12.5px] text-[#dde4f0] border-b border-[#1f2840] font-medium">€{b.bundlePriceUsd}</td>
                 <td className="px-3 py-[6px] text-[12.5px] text-[#dde4f0] border-b border-[#1f2840]">
                   <div className="flex gap-1">
                     {b.isActive ? <Badge className="bg-green-100 text-green-800">Active</Badge> : <Badge variant="secondary">Draft</Badge>}
@@ -212,7 +212,7 @@ export default function AdminBundlesPage() {
                   <p className="text-xs text-[#5a6a84]">Orders</p>
                 </div>
                 <div className="rounded-lg border border-[#2e3340] bg-[#0f1117] p-3 text-center">
-                  <p className="text-2xl font-bold text-[#dde4f0]">${analytics.revenue}</p>
+                  <p className="text-2xl font-bold text-[#dde4f0]">€{analytics.revenue}</p>
                   <p className="text-xs text-[#5a6a84]">Revenue</p>
                 </div>
               </div>
@@ -261,7 +261,7 @@ function BundleDialog({ open, onOpenChange, editing, setEditing, saving, onSave,
           {selectedIds.length >= 2 && bundlePrice > 0 && (
             <div className="p-3 bg-green-950/30 border border-green-800 rounded text-sm flex items-center gap-2">
               <Tag className="h-4 w-4 text-green-400" />
-              <span className="text-green-300">Bundle: <strong>{selectedIds.length} products</strong> at <strong>${bundlePrice.toFixed(2)}</strong>. Savings auto-calculated from individual product prices on storefront.</span>
+              <span className="text-green-300">Bundle: <strong>{selectedIds.length} products</strong> at <strong>€{bundlePrice.toFixed(2)}</strong>. Savings auto-calculated from individual product prices on storefront.</span>
             </div>
           )}
           <div><label className={labelCls}>Short Description</label><input className={inputCls} value={editing.shortDescription ?? ""} onChange={(e) => upd("shortDescription", e.target.value)} /></div>

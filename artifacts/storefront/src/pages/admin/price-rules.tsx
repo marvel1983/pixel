@@ -261,11 +261,11 @@ export default function AdminPriceRulesPage() {
               <div className="flex gap-6">
                 <div>
                   <span className="text-muted-foreground text-xs">Base price</span>
-                  <p className="font-mono">${simResult.basePriceUsd}</p>
+                  <p className="font-mono">€{simResult.basePriceUsd}</p>
                 </div>
                 <div>
                   <span className="text-muted-foreground text-xs">Effective price</span>
-                  <p className="font-mono text-green-400 font-bold">${simResult.effectiveUnitPriceUsd}</p>
+                  <p className="font-mono text-green-400 font-bold">€{simResult.effectiveUnitPriceUsd}</p>
                 </div>
                 {simResult.isFlashSale && (
                   <div>
@@ -281,7 +281,7 @@ export default function AdminPriceRulesPage() {
                       <Badge variant="outline" className="text-[10px] shrink-0">{entry.type}</Badge>
                       <span className="text-muted-foreground">{entry.label}</span>
                       {parseFloat(entry.savedUsd) > 0 && (
-                        <span className="text-green-400 ml-auto shrink-0">−${entry.savedUsd}</span>
+                        <span className="text-green-400 ml-auto shrink-0">−€{entry.savedUsd}</span>
                       )}
                     </div>
                   ))}
@@ -473,7 +473,7 @@ export default function AdminPriceRulesPage() {
                       </Badge>
                     </td>
                     <td className="px-3 py-3 font-mono font-bold text-green-400">
-                      {r.ruleType === "PERCENTAGE_OFF" ? `${r.value}%` : `$${r.value}`}
+                      {r.ruleType === "PERCENTAGE_OFF" ? `${r.value}%` : `€${r.value}`}
                     </td>
                     <td className="px-3 py-3 text-center">
                       <span className="inline-block rounded bg-white/10 px-2 py-0.5 text-xs font-mono">{r.priority}</span>

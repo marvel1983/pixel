@@ -23,7 +23,7 @@ const fieldLabel: React.CSSProperties = {
 function DollarInput({ style, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { style?: React.CSSProperties }) {
   return (
     <div style={{ position: "relative" }}>
-      <span style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", fontSize: 11, color: "#566070" }}>$</span>
+      <span style={{ position: "absolute", left: 8, top: "50%", transform: "translateY(-50%)", fontSize: 11, color: "#566070" }}>€</span>
       <input type="number" style={{ ...style, paddingLeft: 18 }} {...props} />
     </div>
   );
