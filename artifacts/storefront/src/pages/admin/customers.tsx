@@ -145,7 +145,7 @@ export default function AdminCustomersPage() {
                     </span>
                   </td>
                   <td className={`${tableCell} text-right font-mono tabular-nums text-[#dde4f0]`}>{r.orderCount}</td>
-                  <td className={`${tableCell} text-right font-mono tabular-nums text-[13px] font-semibold text-white`}>${parseFloat(r.totalSpent).toFixed(2)}</td>
+                  <td className={`${tableCell} text-right font-mono tabular-nums text-[13px] font-semibold text-white`}>€{parseFloat(r.totalSpent).toFixed(2)}</td>
                   <td className={`${tableCell} text-[#8fa0bb]`}>{r.lastOrder ? new Date(r.lastOrder).toLocaleDateString() : "—"}</td>
                   <td className={`${tableCell} text-center`}>
                     {r.marketingConsent

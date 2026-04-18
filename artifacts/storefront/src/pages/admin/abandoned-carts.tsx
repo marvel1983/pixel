@@ -104,7 +104,7 @@ export default function AdminAbandonedCartsPage() {
             { icon: ShoppingCart, label: "Total Carts", value: stats.total },
             { icon: Mail, label: "Active", value: stats.active },
             { icon: TrendingUp, label: "Recovered", value: `${stats.recovered} (${stats.recoveryRate}%)` },
-            { icon: DollarSign, label: "Revenue Recovered", value: `$${stats.recoveredRevenue}` },
+            { icon: DollarSign, label: "Revenue Recovered", value: `€${stats.recoveredRevenue}` },
           ].map((s) => (
             <div key={s.label} className="rounded-lg border border-[#2e3340] bg-[#181c24]" style={{boxShadow:"0 2px 8px rgba(0,0,0,0.35)"}}>
               <div className="pt-4 px-4 pb-3 flex items-center gap-3">

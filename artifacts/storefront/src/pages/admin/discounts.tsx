@@ -78,7 +78,7 @@ export default function AdminDiscountsPage() {
       <div className="grid grid-cols-3 gap-3">
         <StatCard label="Total Codes" value={stats.totalCodes} accent="border-l-[#8fa0bb]" icon={<Ticket className="h-5 w-5 text-[#8fa0bb]" />} />
         <StatCard label="Active" value={stats.activeCodes} accent="border-l-emerald-500" icon={<span className="h-3 w-3 rounded-full bg-emerald-500 inline-block" />} />
-        <StatCard label="Total Discount Given" value={`$${stats.totalDiscountGiven.toFixed(2)}`} accent="border-l-sky-500" icon={<BarChart3 className="h-5 w-5 text-sky-400" />} />
+        <StatCard label="Total Discount Given" value={`€${stats.totalDiscountGiven.toFixed(2)}`} accent="border-l-sky-500" icon={<BarChart3 className="h-5 w-5 text-sky-400" />} />
       </div>
 
       <div className="flex flex-wrap items-end gap-2.5 rounded-md border border-[#2d3344] bg-[#161a24] p-2.5">

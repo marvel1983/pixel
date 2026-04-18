@@ -117,8 +117,8 @@ export default function AdminGiftCardsPage() {
                 <tr key={c.id} className={`transition-colors duration-75 ${idx % 2 === 0 ? "bg-[#0c1018] hover:bg-[#111825]" : "bg-[#0f1520] hover:bg-[#141e2e]"}`}>
                   <td className={`${tableCell} font-mono text-[11px] text-[#dde4f0]`}>{c.code}</td>
                   <td className={`${tableCell} text-[#8fa0bb]`}>{c.recipientEmail ?? "—"}</td>
-                  <td className={`${tableCell} text-right font-mono tabular-nums text-[#dde4f0]`}>${c.initialAmountUsd}</td>
-                  <td className={`${tableCell} text-right font-mono tabular-nums font-semibold text-white`}>${c.balanceUsd}</td>
+                  <td className={`${tableCell} text-right font-mono tabular-nums text-[#dde4f0]`}>€{c.initialAmountUsd}</td>
+                  <td className={`${tableCell} text-right font-mono tabular-nums font-semibold text-white`}>€{c.balanceUsd}</td>
                   <td className={tableCell}>
                     <span className={`inline-flex items-center rounded border px-2 py-0.5 text-[10px] font-medium ${STATUS_BADGE[c.status] ?? "border-[#3d4558] bg-[#1a1f2e] text-[#c8d0e0]"}`}>{c.status}</span>
                   </td>
@@ -218,8 +218,8 @@ function RedemptionsModal({ id, redemptions, onClose }: { id: number | null; red
                   <span className="text-[11px] text-[#8fa0bb] ml-2">{new Date(r.createdAt).toLocaleDateString()}</span>
                 </div>
                 <div className="text-right">
-                  <span className="font-mono font-semibold text-red-300">-${r.amountUsd}</span>
-                  <span className="text-[11px] text-[#8fa0bb] ml-2">${r.balanceBefore} → ${r.balanceAfter}</span>
+                  <span className="font-mono font-semibold text-red-300">-€{r.amountUsd}</span>
+                  <span className="text-[11px] text-[#8fa0bb] ml-2">€{r.balanceBefore} → €{r.balanceAfter}</span>
                 </div>
               </div>
             ))}

@@ -161,7 +161,7 @@ export default function CustomerDetailPage() {
                 <tbody>{customerOrders.map((o) => (
                   <tr key={o.id} className="border-b last:border-0 hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/admin/orders/${o.id}`)}>
                     <td className="px-3 py-2 font-mono text-xs text-blue-600">{o.orderNumber}</td>
-                    <td className="px-3 py-2 text-right font-mono text-xs font-semibold">${o.totalUsd}</td>
+                    <td className="px-3 py-2 text-right font-mono text-xs font-semibold">€{o.totalUsd}</td>
                     <td className="px-3 py-2"><span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[o.status] ?? "bg-gray-100"}`}>{o.status}</span></td>
                     <td className="px-3 py-2 text-xs text-muted-foreground">{new Date(o.createdAt).toLocaleDateString()}</td>
                   </tr>
@@ -185,10 +185,10 @@ export default function CustomerDetailPage() {
         <div className="space-y-4">
           <Section title="Stats">
             <div className="space-y-3 text-sm">
-              <div className="flex justify-between"><span className="text-muted-foreground">Total Spent</span><span className="font-bold">${parseFloat(stats.totalSpent).toFixed(2)}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Total Spent</span><span className="font-bold">€{parseFloat(stats.totalSpent).toFixed(2)}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Orders</span><span className="font-bold">{stats.orderCount}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Avg Rating</span><span className="font-bold">{stats.avgRating > 0 ? stats.avgRating.toFixed(1) : "—"}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Avg Order Value</span><span className="font-bold">{stats.orderCount > 0 ? `$${(parseFloat(stats.totalSpent) / stats.orderCount).toFixed(2)}` : "—"}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Avg Order Value</span><span className="font-bold">{stats.orderCount > 0 ? `€${(parseFloat(stats.totalSpent) / stats.orderCount).toFixed(2)}` : "—"}</span></div>
             </div>
           </Section>
 

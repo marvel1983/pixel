@@ -55,7 +55,7 @@ export default function DiscountUsagePage() {
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="sm" onClick={() => navigate("/admin/discounts")}><ArrowLeft className="h-4 w-4" /></Button>
         <h1 className="text-2xl font-bold">Usage Report: <span className="font-mono">{discount?.code}</span></h1>
-        <Badge variant="outline">{discount?.discountType === "PERCENTAGE" ? `${discount?.discountValue}%` : `$${discount?.discountValue}`}</Badge>
+        <Badge variant="outline">{discount?.discountType === "PERCENTAGE" ? `${discount?.discountValue}%` : `€${discount?.discountValue}`}</Badge>
       </div>
 
       <div className="grid grid-cols-3 gap-3">

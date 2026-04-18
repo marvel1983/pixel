@@ -184,10 +184,10 @@ export default function DiscountFormPage() {
           <div className="sticky top-4 rounded-lg border bg-white p-4 space-y-3">
             <h3 className="font-semibold text-sm">Live Preview</h3>
             <div className="text-xs space-y-2 text-muted-foreground">
-              <div className="flex justify-between"><span>Order subtotal:</span><span>$100.00</span></div>
-              <div className="flex justify-between text-green-600 font-medium"><span>Discount ({form.code || "CODE"}):</span><span>-${previewDiscount.toFixed(2)}</span></div>
-              <div className="border-t pt-2 flex justify-between font-bold text-foreground"><span>Total:</span><span>${(100 - previewDiscount).toFixed(2)}</span></div>
-              {form.minOrderUsd && Number(form.minOrderUsd) > 100 && <p className="text-orange-500 text-xs">⚠ Min order ${ form.minOrderUsd} not met</p>}
+              <div className="flex justify-between"><span>Order subtotal:</span><span>€100.00</span></div>
+              <div className="flex justify-between text-green-600 font-medium"><span>Discount ({form.code || "CODE"}):</span><span>-€{previewDiscount.toFixed(2)}</span></div>
+              <div className="border-t pt-2 flex justify-between font-bold text-foreground"><span>Total:</span><span>€{(100 - previewDiscount).toFixed(2)}</span></div>
+              {form.minOrderUsd && Number(form.minOrderUsd) > 100 && <p className="text-orange-500 text-xs">⚠ Min order €{form.minOrderUsd} not met</p>}
             </div>
           </div>
         </div>
