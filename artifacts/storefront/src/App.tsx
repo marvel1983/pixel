@@ -173,6 +173,15 @@ function AppInitEffect() {
   const token = useAuthStore((s) => s.token);
   useEffect(() => {
     useThemeStore.getState().init();
+    // If visitor arrives via a feed link with ?currency=USD, honour it before fetching rates
+    const urlCurrency = new URLSearchParams(window.location.search).get("currency");
+    if (urlCurrency) {
+      const store = useCurrencyStore.getState();
+      const valid = ["USD","EUR","GBP","PLN","CZK","HUF","CAD","AUD","BRL","TRY"];
+      if (valid.includes(urlCurrency.toUpperCase())) {
+        store.setCode(urlCurrency.toUpperCase() as Parameters<typeof store.setCode>[0]);
+      }
+    }
     useCurrencyStore.getState().fetchRates();
     useFlashSaleStore.getState().load();
     useLoyaltyStore.getState().load();

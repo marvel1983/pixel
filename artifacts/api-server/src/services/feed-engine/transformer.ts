@@ -10,9 +10,19 @@ function formatPrice(amount: number, currency: string): string {
   return `${amount.toFixed(2)} ${currency}`;
 }
 
-// Strip HTML tags for description fields
+// Strip HTML tags and style/script block contents for description fields
 function stripHtml(html: string): string {
-  return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  return html
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 // Enrich raw DB row with derived fields used in mappings
@@ -33,7 +43,7 @@ export function enrichProduct(
       : "",
     availability: stock > 0 ? "in stock" : "out of stock",
     condition: "new",
-    slug: `${storeUrl}/product/${row.slug ?? ""}`,
+    slug: `${storeUrl}/product/${row.slug ?? ""}?currency=${cfg.targetCurrency}`,
     description: row.description ? stripHtml(String(row.description)) : "",
     // Raw price in target currency as a number (used by filter evaluator)
     _priceConverted: convertPrice(priceUsd, cfg),

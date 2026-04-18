@@ -17,7 +17,7 @@ const CURRENCIES = ["USD", "EUR", "GBP", "CAD", "AUD", "JPY", "CHF", "SEK", "NOK
 export default function FeedEditPage() {
   const params = useParams<{ id: string }>();
   const [, navigate] = useLocation();
-  const isNew = params.id === "new";
+  const isNew = !params.id || params.id === "new";
   const [feed, setFeed] = useState<Partial<Feed>>({ name: "", channelType: "google_shopping", format: "xml", refreshInterval: "daily", includeVariations: false, storeUrl: "", fieldMappings: [], filterRules: { id: "root", type: "group", condition: "AND", rules: [] }, currencyConfig: { baseCurrency: "USD", targetCurrency: "USD", exchangeRate: 1, taxOffset: 0, rateMode: "manual" } });
   const [meta, setMeta] = useState<FeedMeta | null>(null);
   const [tab, setTab] = useState<Tab>("settings");
@@ -35,25 +35,43 @@ export default function FeedEditPage() {
     }
   }, [params.id]);
 
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
   const save = async () => {
     setSaving(true);
+    setSaveError(null);
+    setSaveSuccess(false);
     try {
       if (isNew) {
         const r = await fetch(`${API}/admin/feeds`, { method: "POST", headers: h, body: JSON.stringify(feed) });
         const d = await r.json();
+        if (!r.ok) { setSaveError(d.error ?? `Error ${r.status}`); return; }
         if (d.feed) navigate(`/admin/feeds/${d.feed.id}`);
       } else {
-        await fetch(`${API}/admin/feeds/${params.id}`, { method: "PUT", headers: h, body: JSON.stringify(feed) });
+        const r = await fetch(`${API}/admin/feeds/${params.id}`, { method: "PUT", headers: h, body: JSON.stringify(feed) });
+        const d = await r.json();
+        if (!r.ok) { setSaveError(d.error ?? `Error ${r.status}`); return; }
+        if (d.feed) setFeed(d.feed);
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 3000);
       }
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Network error");
     } finally { setSaving(false); }
   };
 
   const generate = async () => {
-    if (!feed.id) return;
+    if (!feed.id) { alert("Save the feed first before generating."); return; }
     setGenerating(true);
-    await fetch(`${API}/admin/feeds/${feed.id}/generate`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
-    setGenerating(false);
-    alert("Feed generation started. Refresh in a few seconds to see the result.");
+    try {
+      const r = await fetch(`${API}/admin/feeds/${feed.id}/generate`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
+      const d = await r.json();
+      if (!r.ok) { alert(`Generation failed: ${d.error ?? r.status}`); return; }
+      alert("Feed generation started. Check back in a few seconds.");
+    } catch (e) {
+      alert(`Network error: ${e instanceof Error ? e.message : String(e)}`);
+    } finally { setGenerating(false); }
   };
 
   const runPreview = async () => {
@@ -185,6 +203,8 @@ export default function FeedEditPage() {
         </div>
       )}
 
+      {saveError && <div className="rounded border border-red-500/40 bg-red-900/20 px-3 py-2 text-[12px] text-red-300">{saveError}</div>}
+      {saveSuccess && <div className="rounded border border-emerald-500/40 bg-emerald-900/20 px-3 py-2 text-[12px] text-emerald-300">Saved successfully.</div>}
       <div className="flex gap-2">
         <button onClick={save} disabled={saving} className="flex items-center gap-1.5 rounded border border-sky-500 bg-sky-600 px-4 py-2 text-[13px] font-semibold text-white hover:bg-sky-500 disabled:opacity-50 transition-colors"><Save className="h-4 w-4" />{saving ? "Saving..." : "Save"}</button>
         {!isNew && <button onClick={generate} disabled={generating} className="flex items-center gap-1.5 rounded border border-emerald-500 bg-emerald-600/30 px-4 py-2 text-[13px] font-semibold text-emerald-300 hover:bg-emerald-600/50 disabled:opacity-50 transition-colors"><Play className="h-4 w-4" />{generating ? "Starting..." : "Generate Now"}</button>}

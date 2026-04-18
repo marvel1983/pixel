@@ -125,7 +125,6 @@ export default function AdminRoot() {
           <Route path="/admin/affiliates" component={AdminAffiliatesPage} />
           <Route path="/admin/affiliate-settings" component={AffiliateSettingsPage} />
           <Route path="/admin/qa" component={AdminQAPage} />
-          <Route path="/admin/feeds/new" component={FeedEditPage} />
           <Route path="/admin/feeds/:id" component={FeedEditPage} />
           <Route path="/admin/feeds" component={FeedsListPage} />
           <Route path="/admin/attributes" component={AdminAttributesPage} />
