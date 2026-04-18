@@ -26,14 +26,22 @@ router.get("/currencies", async (_req, res) => {
       }
     }
 
-    // Lazy background refresh if rates are stale
-    const isStale = !oldestUpdatedAt || Date.now() - oldestUpdatedAt.getTime() > STALE_THRESHOLD_MS;
+    // Detect stale USD-based rates: EUR should be ~1.0 in EUR-base system.
+    // If EUR is ~0.92 the DB still holds old USD-based values → force re-sync.
+    const eurRate = rates["EUR"];
+    const isWrongBase = typeof eurRate === "number" && (eurRate < 0.95 || eurRate > 1.05);
+    const isStale = isWrongBase || !oldestUpdatedAt || Date.now() - oldestUpdatedAt.getTime() > STALE_THRESHOLD_MS;
+
     if (isStale && !syncInProgress) {
       syncInProgress = true;
       syncCurrencyRates()
         .catch((err) => logger.error({ err }, "Background currency sync failed"))
         .finally(() => { syncInProgress = false; });
     }
+
+    // EUR is the base — always 1.0, never needs conversion; strip it from response
+    // so the frontend doesn't accidentally use a stale EUR rate instead of 1.
+    delete rates["EUR"];
 
     res.json({ base: "EUR", rates });
   } catch (err) {
