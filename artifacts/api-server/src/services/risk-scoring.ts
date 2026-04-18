@@ -54,6 +54,13 @@ export async function scoreOrder(input: RiskInput): Promise<RiskResult> {
 
   if (!cfg.enabled) return { score: 0, hold: false, reasons: [] };
 
+  // --- Absolute hold: order total >= minOrderHoldAmount ---
+  if (cfg.minOrderHoldAmount > 0 && input.totalUsd >= cfg.minOrderHoldAmount) {
+    const reasons = [`Order total €${input.totalUsd.toFixed(2)} meets minimum hold amount (€${cfg.minOrderHoldAmount})`];
+    logger.warn({ totalUsd: input.totalUsd, minOrderHoldAmount: cfg.minOrderHoldAmount, email: input.guestEmail }, "Order auto-held by minimum amount rule");
+    return { score: 100, hold: true, reasons };
+  }
+
   try {
     // --- Signal 1: New account placing first or high-value order ---
     if (input.userId) {

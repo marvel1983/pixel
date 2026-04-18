@@ -278,6 +278,7 @@ router.put("/admin/settings/risk-scoring", requireAuth, requireAdmin, requirePer
   const cfg: RiskScoringConfig = {
     enabled: typeof body.enabled === "boolean" ? body.enabled : DEFAULT_RISK_CONFIG.enabled,
     holdThreshold: Number(body.holdThreshold) || DEFAULT_RISK_CONFIG.holdThreshold,
+    minOrderHoldAmount: Number(body.minOrderHoldAmount) ?? DEFAULT_RISK_CONFIG.minOrderHoldAmount,
     newAccountHighValueScore: Number(body.newAccountHighValueScore) || DEFAULT_RISK_CONFIG.newAccountHighValueScore,
     newAccountHighValueMin: Number(body.newAccountHighValueMin) || DEFAULT_RISK_CONFIG.newAccountHighValueMin,
     newAccountBaseScore: Number(body.newAccountBaseScore) || DEFAULT_RISK_CONFIG.newAccountBaseScore,

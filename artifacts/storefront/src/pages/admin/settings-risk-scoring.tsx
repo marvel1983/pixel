@@ -13,6 +13,7 @@ const subLabelCls = "text-[11px] text-[#5a6a84]";
 interface RiskConfig {
   enabled: boolean;
   holdThreshold: number;
+  minOrderHoldAmount: number;
   newAccountHighValueScore: number;
   newAccountHighValueMin: number;
   newAccountBaseScore: number;
@@ -31,6 +32,7 @@ interface RiskConfig {
 const DEFAULTS: RiskConfig = {
   enabled: true,
   holdThreshold: 60,
+  minOrderHoldAmount: 0,
   newAccountHighValueScore: 40,
   newAccountHighValueMin: 50,
   newAccountBaseScore: 15,
@@ -138,6 +140,13 @@ export default function SettingsRiskScoringTab() {
           value={cfg.holdThreshold}
           onChange={(v) => set("holdThreshold", v)}
           suffix="pts"
+        />
+        <NumRow
+          label="Minimum Order Hold Amount"
+          sub="Any order ≥ this value is auto-held regardless of score. Set to 0 to disable."
+          value={cfg.minOrderHoldAmount}
+          onChange={(v) => set("minOrderHoldAmount", v)}
+          suffix="€"
         />
       </DarkCard>
 

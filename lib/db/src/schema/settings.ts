@@ -15,6 +15,7 @@ import { z } from "zod/v4";
 export interface RiskScoringConfig {
   enabled: boolean;
   holdThreshold: number;
+  minOrderHoldAmount: number; // 0 = disabled; any order >= this value is auto-held
   newAccountHighValueScore: number;
   newAccountHighValueMin: number;
   newAccountBaseScore: number;
@@ -33,6 +34,7 @@ export interface RiskScoringConfig {
 export const DEFAULT_RISK_CONFIG: RiskScoringConfig = {
   enabled: true,
   holdThreshold: 60,
+  minOrderHoldAmount: 0,
   newAccountHighValueScore: 40,
   newAccountHighValueMin: 50,
   newAccountBaseScore: 15,
