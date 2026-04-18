@@ -1,5 +1,6 @@
 import cron, { type ScheduledTask } from "node-cron";
 import { syncProducts } from "./product-sync";
+import { scheduledFeedRun } from "../services/feed-scheduler";
 import { processEmailQueue } from "./email";
 import { approveHeldCommissions } from "../services/affiliate-service";
 import { processAbandonedCarts } from "../services/abandoned-cart-service";
@@ -17,6 +18,7 @@ let affiliateTask: ScheduledTask | null = null;
 let abandonedCartTask: ScheduledTask | null = null;
 let trustpilotTask: ScheduledTask | null = null;
 let surveyTask: ScheduledTask | null = null;
+let feedTask: ScheduledTask | null = null;
 
 export function startCronJobs(): void {
   if (syncTask) return;
@@ -113,7 +115,16 @@ export function startCronJobs(): void {
     }
   });
 
-  logger.info("Cron jobs started (product sync 30m, email 1m, affiliate 6h, abandoned cart 15m, trustpilot 30m, survey 4h, metenzi-stock 15m, metenzi-poll 10m)");
+  // Feed scheduler — checks hourly feeds every hour, daily feeds once per day
+  feedTask = cron.schedule("0 * * * *", async () => {
+    try {
+      await scheduledFeedRun();
+    } catch (error) {
+      logger.error({ error }, "Cron: feed scheduler failed");
+    }
+  });
+
+  logger.info("Cron jobs started (product sync 30m, email 1m, affiliate 6h, abandoned cart 15m, trustpilot 30m, survey 4h, metenzi-stock 15m, metenzi-poll 10m, feeds 1h)");
 }
 
 export function stopCronJobs(): void {
@@ -148,6 +159,10 @@ export function stopCronJobs(): void {
   if (metenziPollTask) {
     metenziPollTask.stop();
     metenziPollTask = null;
+  }
+  if (feedTask) {
+    feedTask.stop();
+    feedTask = null;
   }
   logger.info("Cron jobs stopped");
 }

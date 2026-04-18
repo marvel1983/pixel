@@ -61,6 +61,8 @@ import AdminAttributesPage from "./attributes";
 import AdminTagsManagerPage from "./tags-manager";
 import LoyaltyEventsPage from "./loyalty-events";
 import LoyaltyBulkPage from "./loyalty-bulk";
+import FeedsListPage from "./feeds-list";
+import FeedEditPage from "./feed-edit";
 
 function AdminPlaceholder({ title }: { title: string }) {
   return (
@@ -123,6 +125,9 @@ export default function AdminRoot() {
           <Route path="/admin/affiliates" component={AdminAffiliatesPage} />
           <Route path="/admin/affiliate-settings" component={AffiliateSettingsPage} />
           <Route path="/admin/qa" component={AdminQAPage} />
+          <Route path="/admin/feeds/new" component={FeedEditPage} />
+          <Route path="/admin/feeds/:id" component={FeedEditPage} />
+          <Route path="/admin/feeds" component={FeedsListPage} />
           <Route path="/admin/attributes" component={AdminAttributesPage} />
           <Route path="/admin/tags" component={AdminTagsManagerPage} />
           <Route path="/admin/newsletter" component={AdminNewsletterPage} />

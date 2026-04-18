@@ -38,6 +38,7 @@ import adminQaRouter from "./admin-qa";
 import adminNewsletterRouter from "./admin-newsletter";
 import adminFlashSalesRouter from "./admin-flash-sales";
 import adminLoyaltyRouter from "./admin-loyalty";
+import adminFeedsRouter from "./admin-feeds";
 import adminBundlesRouter from "./admin-bundles";
 import adminSupportRouter from "./admin-support";
 import supportTicketsRouter from "./support-tickets";
@@ -173,6 +174,7 @@ router.use(adminTagsRouter);
 router.use(adminUploadRouter);
 router.use(adminImportsRouter);
 router.use(adminMetenziCatalogRouter);
+router.use(adminFeedsRouter);
 router.use(productsRouter);
 
 export default router;
