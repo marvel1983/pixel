@@ -13,6 +13,8 @@ import { createStripeClient } from "../lib/stripe-client";
 import { getActivePaymentConfig } from "../lib/payment-config";
 import { verifyCheckoutSignature } from "../lib/checkout-com-client";
 import { runFulfillment } from "../services/order-pipeline";
+import { scoreOrder } from "../services/risk-scoring";
+import { sendOrderConfirmationOnly } from "../services/order-emails";
 import { creditWallet } from "../services/wallet-service";
 import { restorePoints } from "../services/loyalty-service";
 import { parseFulfillmentPayload } from "./checkout-session";
@@ -238,6 +240,30 @@ async function handleStripeSessionCompleted(session: import("stripe").Stripe.Che
     return;
   }
 
+  // Risk scoring — runs after payment is confirmed
+  const risk = await scoreOrder({
+    userId: order.userId ?? undefined,
+    guestEmail: payload.billing.email,
+    billingCountry: payload.billing.country,
+    totalUsd: payload.total,
+    items: payload.items.map((i) => ({ variantId: i.variantId, quantity: i.quantity })),
+    clientIp: payload.clientIp ?? "",
+  });
+
+  if (risk.hold) {
+    await db.update(orders).set({
+      status: "HELD",
+      riskHold: true,
+      riskScore: risk.score,
+      riskReasons: risk.reasons,
+      notes: null,
+      updatedAt: new Date(),
+    }).where(eq(orders.id, orderId));
+    sendOrderConfirmationOnly(payload.billing, orderNumber || order.orderNumber, orderId, payload.items, payload.total, payload.locale).catch(() => {});
+    logger.warn({ orderId, score: risk.score, reasons: risk.reasons }, "Stripe: order held for risk review");
+    return;
+  }
+
   try {
     await runFulfillment(
       orderId,
@@ -391,6 +417,30 @@ async function handleCheckoutPaymentApproved(data: Record<string, unknown>) {
   const payload = parseFulfillmentPayload(order.notes);
   if (!payload) {
     logger.error({ orderId }, "Checkout.com payment_approved: no fulfillment payload in order notes");
+    return;
+  }
+
+  // Risk scoring — runs after payment is confirmed
+  const risk = await scoreOrder({
+    userId: order.userId ?? undefined,
+    guestEmail: payload.billing.email,
+    billingCountry: payload.billing.country,
+    totalUsd: payload.total,
+    items: payload.items.map((i) => ({ variantId: i.variantId, quantity: i.quantity })),
+    clientIp: payload.clientIp ?? "",
+  });
+
+  if (risk.hold) {
+    await db.update(orders).set({
+      status: "HELD",
+      riskHold: true,
+      riskScore: risk.score,
+      riskReasons: risk.reasons,
+      notes: null,
+      updatedAt: new Date(),
+    }).where(eq(orders.id, orderId));
+    sendOrderConfirmationOnly(payload.billing, orderNumber || order.orderNumber, orderId, payload.items, payload.total, payload.locale).catch(() => {});
+    logger.warn({ orderId, score: risk.score, reasons: risk.reasons }, "Checkout.com: order held for risk review");
     return;
   }
 

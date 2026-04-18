@@ -87,6 +87,7 @@ interface StripeFulfillmentPayload {
   guestPasswordHash: string | undefined;
   locale: string | undefined;
   total: number;
+  clientIp: string;
 }
 
 export function serializeFulfillmentPayload(payload: StripeFulfillmentPayload): string {
@@ -407,6 +408,7 @@ router.post("/checkout/session", requireIdempotencyKey(), async (req, res) => {
         : undefined,
       locale: userLocale,
       total: computedTotal,
+      clientIp: (req.headers["x-forwarded-for"] as string || req.socket.remoteAddress || "").split(",")[0].trim(),
     };
     await db.update(orders)
       .set({ notes: serializeFulfillmentPayload(payload) })
