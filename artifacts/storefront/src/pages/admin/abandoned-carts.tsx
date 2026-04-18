@@ -142,7 +142,7 @@ export default function AdminAbandonedCartsPage() {
                       {statusBadge(c.status)}
                     </div>
                     <div className="flex gap-3 text-xs text-[#5a6a84] flex-wrap">
-                      <span>Total: <strong className="text-[#dde4f0]">${c.cartTotal}</strong></span>
+                      <span>Total: <strong className="text-[#dde4f0]">€{c.cartTotal}</strong></span>
                       <span>Items: {c.cartData.items.length}</span>
                       <span>Emails: {c.emailsSent}/3</span>
                       {c.couponCode && <span>Coupon: <strong className="text-[#dde4f0]">{c.couponCode}</strong></span>}

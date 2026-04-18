@@ -116,7 +116,7 @@ export default function AdminCheckoutServicesPage() {
                 </div>
                 <p className="text-sm text-muted-foreground truncate">{svc.shortDescription}</p>
               </div>
-              <span className="font-semibold">${svc.priceUsd}</span>
+              <span className="font-semibold">€{svc.priceUsd}</span>
               <div className="flex items-center gap-1">
                 <Button variant="ghost" size="sm" onClick={() => toggleEnabled(svc)} title={svc.enabled ? "Disable" : "Enable"}>
                   {svc.enabled ? <ToggleRight className="h-4 w-4 text-green-600" /> : <ToggleLeft className="h-4 w-4" />}

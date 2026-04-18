@@ -129,8 +129,8 @@ export default function AdminDiscountsPage() {
                       {r.discountType === "PERCENTAGE" ? "%" : "$"}
                     </span>
                   </td>
-                  <td className={`${tableCell} font-medium text-white`}>{r.discountType === "PERCENTAGE" ? `${r.discountValue}%` : `$${r.discountValue}`}</td>
-                  <td className={`${tableCell} text-[#8fa0bb]`}>{r.minOrderUsd ? `$${r.minOrderUsd}` : "—"}</td>
+                  <td className={`${tableCell} font-medium text-white`}>{r.discountType === "PERCENTAGE" ? `${r.discountValue}%` : `€${r.discountValue}`}</td>
+                  <td className={`${tableCell} text-[#8fa0bb]`}>{r.minOrderUsd ? `€${r.minOrderUsd}` : "—"}</td>
                   <td className={tableCell}><UsageBar used={r.usedCount} limit={r.usageLimit} /></td>
                   <td className={tableCell}>
                     <button onClick={() => toggleStatus(r.id)} className={`inline-flex items-center rounded border px-2 py-0.5 text-[10px] font-medium cursor-pointer transition-opacity hover:opacity-80 ${r.isActive ? "border-emerald-600 bg-emerald-500/20 text-emerald-200" : "border-[#3d4558] bg-[#1a1f2e] text-[#8fa0bb]"}`}>

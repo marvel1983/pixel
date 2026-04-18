@@ -65,11 +65,11 @@ export default function DiscountUsagePage() {
         </div>
         <div className="rounded-lg border bg-white p-4 flex items-center gap-3">
           <DollarSign className="h-5 w-5 text-green-500" />
-          <div><p className="text-2xl font-bold">${stats.totalDiscounted.toFixed(2)}</p><p className="text-xs text-muted-foreground">Total Discounted</p></div>
+          <div><p className="text-2xl font-bold">€{stats.totalDiscounted.toFixed(2)}</p><p className="text-xs text-muted-foreground">Total Discounted</p></div>
         </div>
         <div className="rounded-lg border bg-white p-4 flex items-center gap-3">
           <BarChart3 className="h-5 w-5 text-purple-500" />
-          <div><p className="text-2xl font-bold">${stats.totalRevenue.toFixed(2)}</p><p className="text-xs text-muted-foreground">Revenue from Code</p></div>
+          <div><p className="text-2xl font-bold">€{stats.totalRevenue.toFixed(2)}</p><p className="text-xs text-muted-foreground">Revenue from Code</p></div>
         </div>
       </div>
 
@@ -104,7 +104,7 @@ export default function DiscountUsagePage() {
               <tr key={o.id} className="border-b last:border-0 hover:bg-gray-50">
                 <td className="px-3 py-3 font-mono text-xs text-blue-600 cursor-pointer" onClick={() => navigate(`/admin/orders/${o.id}`)}>{o.orderNumber}</td>
                 <td className="px-3 py-3 text-xs">{o.email}</td>
-                <td className="px-3 py-3 text-xs">${o.totalUsd}</td>
+                <td className="px-3 py-3 text-xs">€{o.totalUsd}</td>
                 <td className="px-3 py-3 text-xs text-green-600">-${o.discountUsd}</td>
                 <td className="px-3 py-3 text-xs text-muted-foreground">{new Date(o.createdAt).toLocaleDateString()}</td>
               </tr>

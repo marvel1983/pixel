@@ -84,7 +84,9 @@ export const useCurrencyStore = create<CurrencyState>()(
       fetchRates: async () => {
         const { lastFetched, rates, explicit } = get();
         const hasRates = Object.keys(rates).length > 0;
-        if (hasRates && lastFetched && Date.now() - lastFetched < RATE_CACHE_MS) return;
+        // If EUR is present in cached rates the store still holds old USD-based data → force re-fetch
+        const isWrongBase = hasRates && typeof rates["EUR"] === "number";
+        if (!isWrongBase && hasRates && lastFetched && Date.now() - lastFetched < RATE_CACHE_MS) return;
         try {
           const baseUrl = import.meta.env.VITE_API_URL ?? "/api";
           const res = await fetch(`${baseUrl}/currencies`);

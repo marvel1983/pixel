@@ -126,7 +126,7 @@ function FlashSaleAnalytics({ id, name, token, onBack }: AnalyticsProps) {
         </div>
         <div className="rounded-lg border border-[#2e3340] bg-[#181c24] p-4 text-center">
           <p className="text-[11px] text-[#8fa0bb] uppercase tracking-wider mb-1">Total Revenue</p>
-          <p className="text-2xl font-bold text-white">${totalRevenue.toFixed(2)}</p>
+          <p className="text-2xl font-bold text-white">€{totalRevenue.toFixed(2)}</p>
         </div>
       </div>
       {loading ? <Loader2 className="h-6 w-6 animate-spin mx-auto text-[#8fa0bb]" /> : products.length === 0 ? (
@@ -155,11 +155,11 @@ function FlashSaleAnalytics({ id, name, token, onBack }: AnalyticsProps) {
                       {p.productName}
                       <br /><span className="text-[11px] text-[#8fa0bb]">{p.variantName}</span>
                     </td>
-                    <td className={`${tableCell} text-red-300 font-medium`}>${p.salePriceUsd}</td>
-                    <td className={`${tableCell} text-[#8fa0bb] line-through`}>${p.originalPriceUsd}</td>
+                    <td className={`${tableCell} text-red-300 font-medium`}>€{p.salePriceUsd}</td>
+                    <td className={`${tableCell} text-[#8fa0bb] line-through`}>€{p.originalPriceUsd}</td>
                     <td className={`${tableCell} font-medium text-white`}>{p.soldCount}</td>
                     <td className={`${tableCell} text-[#8fa0bb]`}>{p.soldCount}/{p.maxQuantity}</td>
-                    <td className={`${tableCell} font-medium text-white border-r-0`}>${parseFloat(p.revenue || "0").toFixed(2)}</td>
+                    <td className={`${tableCell} font-medium text-white border-r-0`}>€{parseFloat(p.revenue || "0").toFixed(2)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -284,7 +284,7 @@ function FlashSaleForm({ id, token, onDone }: FormProps) {
             <select className="w-full h-9 rounded border border-[#3d4558] bg-[#0f1117] px-2 text-sm text-[#e8edf5]" onChange={(e) => { addProduct(parseInt(e.target.value)); e.target.value = ""; }}>
               <option value="">Add product variant...</option>
               {variants.filter((v) => !saleProducts.some((sp) => sp.variantId === v.variantId)).map((v) => (
-                <option key={v.variantId} value={v.variantId}>{v.productName} — {v.variantName} (${v.priceUsd})</option>
+                <option key={v.variantId} value={v.variantId}>{v.productName} — {v.variantName} (€{v.priceUsd})</option>
               ))}
             </select>
             <div className="space-y-2 max-h-[320px] overflow-y-auto">
