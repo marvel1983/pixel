@@ -283,7 +283,10 @@ router.post("/checkout/session", requireIdempotencyKey(), async (req, res) => {
     cppPrice: siteSettings.cppPrice,
     processingFeePercent: siteSettings.processingFeePercent,
     processingFeeFixed: siteSettings.processingFeeFixed,
+    defaultCurrency: siteSettings.defaultCurrency,
   }).from(siteSettings);
+  // Stripe/Checkout.com currency follows the admin default (lowercase for Stripe)
+  const chargeCurrency = (feeSettings?.defaultCurrency ?? "EUR").toLowerCase();
   const discountAmount = couponDiscount + loyaltyDisc;
   const cppAmount = cppSelected ? (Number(feeSettings?.cppPrice) || 0) : 0;
   const feeBase = subtotal - discountAmount + cppAmount + servicesAmount;
@@ -434,7 +437,7 @@ router.post("/checkout/session", requireIdempotencyKey(), async (req, res) => {
           customer_email: billing.email,
           line_items: [{
             price_data: {
-              currency: "usd",
+              currency: chargeCurrency,
               product_data: { name: description },
               unit_amount: Math.round(cardTotal * 100),
             },
@@ -456,7 +459,7 @@ router.post("/checkout/session", requireIdempotencyKey(), async (req, res) => {
           { secretKey: paymentConfig.secretKey, mode: paymentConfig.mode },
           {
             amountCents: Math.round(cardTotal * 100),
-            currency: "USD",
+            currency: chargeCurrency.toUpperCase(),
             reference: orderNumber,
             description,
             customerEmail: billing.email,
