@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import { verifyToken } from "./auth";
 
 interface RateLimitEntry {
   count: number;
@@ -47,10 +48,11 @@ interface RateLimitOptions {
   windowMs: number;
   max: number;
   name: string;
+  keyFn?: (req: Request) => string;
 }
 
 export function rateLimit(options: RateLimitOptions) {
-  const { windowMs, max, name } = options;
+  const { windowMs, max, name, keyFn } = options;
   const store = getStore(name);
 
   return (req: Request, res: Response, next: NextFunction) => {
@@ -59,7 +61,7 @@ export function rateLimit(options: RateLimitOptions) {
       return;
     }
 
-    const key = getClientKey(req);
+    const key = keyFn ? keyFn(req) : getClientKey(req);
     const now = Date.now();
     let entry = store.get(key);
 
@@ -143,3 +145,35 @@ export const adminLimit = dynamicLimit("admin", "admin");
 
 /** Strict limit for guest order lookup — prevents license key enumeration */
 export const orderLookupLimit = rateLimit({ name: "order-lookup", windowMs: 15 * 60_000, max: 10 });
+
+/**
+ * Checkout / order creation: max 5 orders per 10 minutes.
+ * Keyed by userId when the request carries a valid JWT, otherwise by IP.
+ * This prevents order-flooding attacks regardless of whether the attacker
+ * uses different sessions or rotates cookies.
+ */
+function checkoutKeyFn(req: Request): string {
+  const auth = req.headers.authorization;
+  if (auth?.startsWith("Bearer ")) {
+    try {
+      const payload = verifyToken(auth.slice(7));
+      if (payload?.userId) return `uid:${payload.userId}`;
+    } catch { /* fall through to IP */ }
+  }
+  // Also check cookie-based JWT used by the storefront
+  const cookieToken = req.cookies?.token;
+  if (cookieToken) {
+    try {
+      const payload = verifyToken(cookieToken);
+      if (payload?.userId) return `uid:${payload.userId}`;
+    } catch { /* fall through to IP */ }
+  }
+  return `ip:${getClientKey(req)}`;
+}
+
+export const checkoutLimit = rateLimit({
+  name: "checkout",
+  windowMs: 10 * 60_000, // 10 minutes
+  max: 5,                 // 5 orders per window
+  keyFn: checkoutKeyFn,
+});

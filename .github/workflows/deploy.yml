@@ -135,10 +135,19 @@ jobs:
             echo "→ Adding PARTIALLY_DELIVERED to order_status enum..."
             psql "$DATABASE_URL" -c "ALTER TYPE order_status ADD VALUE IF NOT EXISTS 'PARTIALLY_DELIVERED';" || true
 
+            echo "→ Adding risk hold columns to orders..."
+            psql "$DATABASE_URL" -c "ALTER TABLE orders ADD COLUMN IF NOT EXISTS risk_hold BOOLEAN NOT NULL DEFAULT false;" || true
+            psql "$DATABASE_URL" -c "ALTER TABLE orders ADD COLUMN IF NOT EXISTS risk_score INTEGER;" || true
+            psql "$DATABASE_URL" -c "ALTER TABLE orders ADD COLUMN IF NOT EXISTS risk_reasons JSONB;" || true
+            psql "$DATABASE_URL" -c "ALTER TYPE order_status ADD VALUE IF NOT EXISTS 'HELD';" || true
+
             echo "→ Adding Turnstile columns to site_settings..."
             psql "$DATABASE_URL" -c "ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS turnstile_enabled BOOLEAN NOT NULL DEFAULT false;" || true
             psql "$DATABASE_URL" -c "ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS turnstile_site_key VARCHAR(500);" || true
             psql "$DATABASE_URL" -c "ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS turnstile_secret_key TEXT;" || true
+
+            echo "→ Adding risk_config column to site_settings..."
+            psql "$DATABASE_URL" -c "ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS risk_config JSONB;" || true
 
             echo "→ Reloading PM2..."
             set -a; source /var/www/pixel-storefront/.env; set +a

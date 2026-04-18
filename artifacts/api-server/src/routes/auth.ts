@@ -9,6 +9,7 @@ import { signToken, requireAuth, type JwtPayload } from "../middleware/auth";
 import { logger } from "../lib/logger";
 import { siteSettings } from "@workspace/db/schema";
 import { decrypt } from "../lib/encryption";
+import { isDisposableEmail } from "../lib/disposable-emails";
 import { sendWelcomeEmail, sendPasswordResetEmail } from "../lib/email";
 import { awardWelcomeBonus } from "../services/loyalty-service";
 import crypto from "node:crypto";
@@ -35,7 +36,7 @@ const registerSchema = z.object({
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
-  turnstileToken: z.string().optional(),
+  turnstileToken: z.string().nullish(),
 });
 
 async function getTurnstileConfig(): Promise<{ enabled: boolean; secretKey: string | null }> {
@@ -131,6 +132,11 @@ router.post("/auth/register", authRegisterLimit, async (req, res) => {
     billingVatNumber,
     billingPhone,
   } = parsed.data;
+
+  if (isDisposableEmail(email)) {
+    res.status(400).json({ error: "Disposable email addresses are not allowed. Please use a permanent email." });
+    return;
+  }
 
   const existing = await db
     .select({ id: users.id })

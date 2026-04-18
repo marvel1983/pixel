@@ -12,6 +12,7 @@ const SettingsNotificationsTab = lazy(() => import("./settings-notifications"));
 const SettingsSeoTrackingTab = lazy(() => import("./settings-seo-tracking"));
 const SettingsGoogleTab = lazy(() => import("./settings-google"));
 const SettingsTurnstileTab = lazy(() => import("./settings-turnstile"));
+const SettingsRiskScoringTab = lazy(() => import("./settings-risk-scoring"));
 const SettingsLoyaltyTab = lazy(() => import("./settings-loyalty"));
 const SettingsTrustpilotTab = lazy(() => import("./settings-trustpilot"));
 const SettingsSocialProofTab = lazy(() => import("./settings-social-proof"));
@@ -35,6 +36,7 @@ const tabs = [
   { key: "live-chat", label: "Live Chat" },
   { key: "google-oauth", label: "Google OAuth" },
   { key: "turnstile", label: "Turnstile" },
+  { key: "risk-scoring", label: "Risk Scoring" },
 ] as const;
 
 export default function AdminSettingsPage() {
@@ -72,6 +74,7 @@ export default function AdminSettingsPage() {
         {activeTab === "social-proof" && <SettingsSocialProofTab />}
         {activeTab === "google-oauth" && <SettingsGoogleTab />}
         {activeTab === "turnstile" && <SettingsTurnstileTab />}
+        {activeTab === "risk-scoring" && <SettingsRiskScoringTab />}
       </Suspense>
     </div>
   );

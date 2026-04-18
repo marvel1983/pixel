@@ -16,6 +16,7 @@ import { logger } from "../lib/logger";
 import { getLoyaltyConfig, getOrCreateAccount, pointsToDiscount } from "../services/loyalty-service";
 import { getWalletBalance } from "../services/wallet-service";
 import { requireIdempotencyKey } from "../middleware/idempotency";
+import { checkoutLimit } from "../middleware/rate-limit";
 
 const router = Router();
 
@@ -281,7 +282,7 @@ async function validateAndPriceItems(
   return validateAndPriceItemsLegacy(items);
 }
 
-router.post("/orders", requireIdempotencyKey(), async (req, res) => {
+router.post("/orders", checkoutLimit, requireIdempotencyKey(), async (req, res) => {
   const parsed = orderSchema.safeParse(req.body);
   if (!parsed.success) {
     logger.warn({ issues: parsed.error.issues.map(i => ({ path: i.path.join("."), message: i.message })) }, "orders schema validation failed");
@@ -483,6 +484,7 @@ router.post("/orders", requireIdempotencyKey(), async (req, res) => {
       userId,
       services: validatedServices.length > 0 ? validatedServices : undefined,
       locale: userLocale,
+      clientIp: req.ip ?? (req.headers["x-real-ip"] as string) ?? "",
     });
 
     res.status(201).json({ orderNumber: result.orderNumber, status: result.status, message: "Order placed successfully" });

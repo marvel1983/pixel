@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { siteSettings, currencyRates, emailQueue } from "@workspace/db/schema";
+import { siteSettings, currencyRates, emailQueue, DEFAULT_RISK_CONFIG, type RiskScoringConfig } from "@workspace/db/schema";
 import { eq, sql, desc } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
@@ -263,6 +263,40 @@ router.put("/admin/settings/turnstile", requireAuth, requireAdmin, requirePermis
     await db.update(siteSettings).set(update).where(eq(siteSettings.id, existing.id));
   } else {
     await db.insert(siteSettings).values(update as Record<string, unknown>);
+  }
+  res.json({ ok: true });
+});
+
+router.get("/admin/settings/risk-scoring", requireAuth, requireAdmin, requirePermission("manageSettings"), async (_req, res) => {
+  const [s] = await db.select({ riskConfig: siteSettings.riskConfig }).from(siteSettings).limit(1);
+  const cfg = s?.riskConfig ? { ...DEFAULT_RISK_CONFIG, ...s.riskConfig } : DEFAULT_RISK_CONFIG;
+  res.json(cfg);
+});
+
+router.put("/admin/settings/risk-scoring", requireAuth, requireAdmin, requirePermission("manageSettings"), async (req, res) => {
+  const body = req.body as Partial<RiskScoringConfig>;
+  const cfg: RiskScoringConfig = {
+    enabled: typeof body.enabled === "boolean" ? body.enabled : DEFAULT_RISK_CONFIG.enabled,
+    holdThreshold: Number(body.holdThreshold) || DEFAULT_RISK_CONFIG.holdThreshold,
+    newAccountHighValueScore: Number(body.newAccountHighValueScore) || DEFAULT_RISK_CONFIG.newAccountHighValueScore,
+    newAccountHighValueMin: Number(body.newAccountHighValueMin) || DEFAULT_RISK_CONFIG.newAccountHighValueMin,
+    newAccountBaseScore: Number(body.newAccountBaseScore) || DEFAULT_RISK_CONFIG.newAccountBaseScore,
+    firstOrderScore: Number(body.firstOrderScore) || DEFAULT_RISK_CONFIG.firstOrderScore,
+    bulkQtyHighScore: Number(body.bulkQtyHighScore) || DEFAULT_RISK_CONFIG.bulkQtyHighScore,
+    bulkQtyHighMin: Number(body.bulkQtyHighMin) || DEFAULT_RISK_CONFIG.bulkQtyHighMin,
+    bulkQtyLowScore: Number(body.bulkQtyLowScore) || DEFAULT_RISK_CONFIG.bulkQtyLowScore,
+    bulkQtyLowMin: Number(body.bulkQtyLowMin) || DEFAULT_RISK_CONFIG.bulkQtyLowMin,
+    geoMismatchScore: Number(body.geoMismatchScore) || DEFAULT_RISK_CONFIG.geoMismatchScore,
+    guestHighValueScore: Number(body.guestHighValueScore) || DEFAULT_RISK_CONFIG.guestHighValueScore,
+    guestHighValueMin: Number(body.guestHighValueMin) || DEFAULT_RISK_CONFIG.guestHighValueMin,
+    highOrderValueScore: Number(body.highOrderValueScore) || DEFAULT_RISK_CONFIG.highOrderValueScore,
+    highOrderValueMin: Number(body.highOrderValueMin) || DEFAULT_RISK_CONFIG.highOrderValueMin,
+  };
+  const [existing] = await db.select({ id: siteSettings.id }).from(siteSettings);
+  if (existing) {
+    await db.update(siteSettings).set({ riskConfig: cfg, updatedAt: new Date() }).where(eq(siteSettings.id, existing.id));
+  } else {
+    await db.insert(siteSettings).values({ riskConfig: cfg });
   }
   res.json({ ok: true });
 });

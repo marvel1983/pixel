@@ -25,6 +25,7 @@ export const orderStatusEnum = pgEnum("order_status", [
   "FAILED",
   "REFUNDED",
   "PARTIALLY_REFUNDED",
+  "HELD",
 ]);
 
 export const paymentMethodEnum = pgEnum("payment_method", [
@@ -72,6 +73,9 @@ export const orders = pgTable("orders", {
   ipAddress: varchar("ip_address", { length: 45 }),
   userAgent: text("user_agent"),
   notes: text("notes"),
+  riskHold: boolean("risk_hold").notNull().default(false),
+  riskScore: integer("risk_score"),
+  riskReasons: jsonb("risk_reasons").$type<string[]>(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

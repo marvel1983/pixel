@@ -24,6 +24,7 @@ import { CircuitOpenError } from "../lib/circuit-breaker";
 import { sendOrderConfirmationOnly, triggerOrderEmails } from "./order-emails";
 import { scheduleTrustpilotInvite } from "./trustpilot-service";
 import { recordPurchaseEvents } from "./social-proof-service";
+import { scoreOrder } from "./risk-scoring";
 import bcrypt from "bcryptjs";
 
 type OrderStatus = (typeof orderStatusEnum.enumValues)[number];
@@ -52,6 +53,7 @@ interface OrderInput {
   paymentMethod?: "card" | "net30";
   services?: Array<{ id: number; name: string; priceUsd: string }>;
   locale?: string;
+  clientIp?: string;
 }
 
 export interface FulfillmentInput {
@@ -269,6 +271,29 @@ export async function executeOrderPipeline(input: OrderInput) {
       paymentIntentId = paymentResult.paymentIntentId;
     } else if (walletDebited) {
       paymentIntentId = `wallet_${Date.now()}`;
+    }
+
+    // Risk scoring — runs after payment is captured so funds are held regardless
+    const risk = await scoreOrder({
+      userId: input.userId,
+      guestEmail: billing.email,
+      billingCountry: billing.country,
+      totalUsd: total,
+      items: items.map((i) => ({ variantId: i.variantId, quantity: i.quantity })),
+      clientIp: input.clientIp ?? "",
+    });
+
+    if (risk.hold) {
+      await db.update(orders).set({
+        status: "HELD",
+        riskHold: true,
+        riskScore: risk.score,
+        riskReasons: risk.reasons,
+        updatedAt: new Date(),
+      }).where(eq(orders.id, order.id));
+      await sendOrderConfirmationOnly(billing, orderNumber, order.id, items, total, input.locale);
+      logger.warn({ orderNumber, score: risk.score, reasons: risk.reasons }, "Order held for risk review");
+      return { orderNumber, status: "HELD" };
     }
 
     await runFulfillment(order.id, orderNumber, paymentIntentId, {

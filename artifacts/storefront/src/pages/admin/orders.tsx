@@ -1,9 +1,10 @@
 import { useEffect, useState, useCallback } from "react";
 import { Link } from "wouter";
-import { Search, Download, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Download, ChevronLeft, ChevronRight, ShieldAlert, CheckCircle2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthStore } from "@/stores/auth-store";
+import { useToast } from "@/hooks/use-toast";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -15,6 +16,13 @@ interface OrderRow {
   items: { productName: string; quantity: number }[]; itemCount: number;
 }
 
+interface HeldOrder {
+  id: number; orderNumber: string; guestEmail: string | null;
+  totalUsd: string; riskScore: number | null; riskReasons: string[] | null;
+  ipAddress: string | null; createdAt: string;
+  billingSnapshot: { country?: string; firstName?: string; lastName?: string } | null;
+}
+
 const STATUS_COLORS: Record<string, string> = {
   PENDING:            "border-amber-400   bg-amber-500/40   text-amber-100   font-bold",
   PROCESSING:         "border-sky-400     bg-sky-500/40     text-sky-100     font-bold",
@@ -22,6 +30,7 @@ const STATUS_COLORS: Record<string, string> = {
   FAILED:             "border-red-400     bg-red-500/40     text-red-100     font-bold",
   REFUNDED:           "border-violet-400  bg-violet-500/40  text-violet-100  font-bold",
   PARTIALLY_REFUNDED: "border-orange-400  bg-orange-500/40  text-orange-100  font-bold",
+  HELD:               "border-rose-400    bg-rose-500/40    text-rose-100    font-bold",
 };
 
 const tableCell = "border-b border-r border-[#1f2840] px-2.5 py-[5px] align-middle text-[12.5px] leading-none text-[#dde4f0]";
@@ -40,7 +49,11 @@ export default function AdminOrdersPage() {
   const [hasCoupon, setHasCoupon] = useState(false);
   const [hasCpp, setHasCpp] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [heldOrders, setHeldOrders] = useState<HeldOrder[]>([]);
+  const [showHeld, setShowHeld] = useState(false);
+  const [heldLoading, setHeldLoading] = useState(false);
   const token = useAuthStore((s) => s.token);
+  const { toast } = useToast();
   const limit = 25;
 
   const fetchOrders = useCallback(() => {
@@ -61,6 +74,31 @@ export default function AdminOrdersPage() {
   }, [token, page, search, status, from, to, hasCoupon, hasCpp]);
 
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
+
+  const fetchHeld = useCallback(() => {
+    setHeldLoading(true);
+    fetch(`${API}/admin/orders/held`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((d) => setHeldOrders(d.orders ?? []))
+      .catch(() => {})
+      .finally(() => setHeldLoading(false));
+  }, [token]);
+
+  useEffect(() => { if (showHeld) fetchHeld(); }, [showHeld, fetchHeld]);
+
+  const releaseHeld = async (id: number) => {
+    if (!confirm("Release this order and deliver the keys?")) return;
+    const r = await fetch(`${API}/admin/orders/${id}/release`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
+    if (r.ok) { toast({ title: "Order released — keys delivered" }); fetchHeld(); fetchOrders(); }
+    else { const d = await r.json(); toast({ title: "Failed to release", description: d.error, variant: "destructive" }); }
+  };
+
+  const cancelHeld = async (id: number) => {
+    if (!confirm("Cancel this order? The payment will NOT be automatically refunded — handle that in your payment dashboard.")) return;
+    const r = await fetch(`${API}/admin/orders/${id}/cancel-hold`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
+    if (r.ok) { toast({ title: "Order cancelled" }); fetchHeld(); }
+    else { toast({ title: "Failed to cancel", variant: "destructive" }); }
+  };
 
   const handleBulk = async (bulkStatus: string) => {
     if (selected.size === 0 || !confirm(`Mark ${selected.size} orders as ${bulkStatus}?`)) return;
@@ -103,6 +141,56 @@ export default function AdminOrdersPage() {
 
   return (
     <div className="space-y-3 text-[#e8edf5]">
+      {/* Held Orders Panel */}
+      <div className="rounded-lg border border-rose-500/30 bg-[#1a0f0f]">
+        <button
+          onClick={() => setShowHeld((v) => !v)}
+          className="w-full flex items-center gap-2 px-4 py-3 text-left"
+        >
+          <ShieldAlert className="h-4 w-4 text-rose-400 shrink-0" />
+          <span className="text-[13px] font-bold text-rose-300">Risk Hold Queue</span>
+          {heldOrders.length > 0 && !showHeld && (
+            <span className="ml-2 rounded-full bg-rose-500 px-2 py-0.5 text-[11px] font-bold text-white">{heldOrders.length}</span>
+          )}
+          <span className="ml-auto text-[11px] text-rose-500">{showHeld ? "▲ hide" : "▼ show"}</span>
+        </button>
+        {showHeld && (
+          <div className="border-t border-rose-500/20 px-4 pb-4 pt-3 space-y-3">
+            {heldLoading && <p className="text-[12px] text-[#5a6a84]">Loading…</p>}
+            {!heldLoading && heldOrders.length === 0 && (
+              <p className="text-[12px] text-[#5a6a84]">No orders currently held for review.</p>
+            )}
+            {heldOrders.map((o) => (
+              <div key={o.id} className="rounded border border-rose-500/20 bg-[#200f0f] p-3 space-y-2">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <Link href={`/admin/orders/${o.id}`} className="text-[13px] font-bold text-rose-200 hover:underline">#{o.orderNumber}</Link>
+                  <span className="text-[12px] text-[#dde4f0]">{o.guestEmail}</span>
+                  <span className="text-[12px] font-bold text-rose-300">€{o.totalUsd}</span>
+                  <span className="text-[11px] text-[#5a6a84]">{new Date(o.createdAt).toLocaleString()}</span>
+                  <span className="text-[11px] text-[#5a6a84]">IP: {o.ipAddress ?? "—"} | Billing: {o.billingSnapshot?.country ?? "—"}</span>
+                  <span className="ml-auto text-[12px] font-bold text-rose-400">Risk score: {o.riskScore ?? 0}</span>
+                </div>
+                {o.riskReasons && o.riskReasons.length > 0 && (
+                  <ul className="space-y-0.5 pl-2">
+                    {o.riskReasons.map((r, i) => (
+                      <li key={i} className="text-[11.5px] text-rose-300 before:content-['•'] before:mr-1.5">{r}</li>
+                    ))}
+                  </ul>
+                )}
+                <div className="flex gap-2 pt-1">
+                  <button onClick={() => releaseHeld(o.id)} className="flex items-center gap-1.5 rounded border border-emerald-500/50 bg-emerald-900/30 px-3 py-1 text-[11.5px] font-semibold text-emerald-300 hover:bg-emerald-900/60 transition-colors">
+                    <CheckCircle2 className="h-3.5 w-3.5" /> Release — deliver keys
+                  </button>
+                  <button onClick={() => cancelHeld(o.id)} className="flex items-center gap-1.5 rounded border border-red-500/50 bg-red-900/30 px-3 py-1 text-[11.5px] font-semibold text-red-300 hover:bg-red-900/60 transition-colors">
+                    <XCircle className="h-3.5 w-3.5" /> Cancel order
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-bold tracking-tight text-white">Orders</h1>
         <Button size="sm" variant="outline" className="border-[#3d4558] bg-[#1a1f2e] text-[#e8edf5] hover:bg-[#252a38]" onClick={exportCSV}>

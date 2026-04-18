@@ -7,6 +7,7 @@ import { requirePermission } from "../middleware/permissions";
 import { decrypt } from "../lib/encryption";
 import { paramString } from "../lib/route-params";
 import { awardOrderPoints, reverseOrderLoyaltyPoints } from "../services/loyalty-service";
+import { runFulfillment } from "../services/order-pipeline";
 import { logger } from "../lib/logger";
 
 const router = Router();
@@ -367,5 +368,86 @@ function buildFilters(query: Record<string, unknown>) {
 function safeDecrypt(value: string): string {
   try { return decrypt(value); } catch { return value; }
 }
+
+// GET /admin/orders/held — list orders currently held for risk review
+router.get("/admin/orders/held", requireAuth, requireAdmin, requirePermission("manageOrders"), async (_req, res) => {
+  const held = await db.select({
+    id: orders.id,
+    orderNumber: orders.orderNumber,
+    guestEmail: orders.guestEmail,
+    totalUsd: orders.totalUsd,
+    riskScore: orders.riskScore,
+    riskReasons: orders.riskReasons,
+    ipAddress: orders.ipAddress,
+    createdAt: orders.createdAt,
+    paymentIntentId: orders.paymentIntentId,
+    billingSnapshot: orders.billingSnapshot,
+  }).from(orders)
+    .where(eq(orders.status, "HELD"))
+    .orderBy(desc(orders.createdAt));
+  res.json({ orders: held });
+});
+
+// POST /admin/orders/:id/release — approve a held order and deliver keys
+router.post("/admin/orders/:id/release", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
+  const orderId = parseInt(req.params.id, 10);
+  if (!orderId) { res.status(400).json({ error: "Invalid order id" }); return; }
+
+  const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
+  if (!order || order.status !== "HELD") {
+    res.status(404).json({ error: "Held order not found" }); return;
+  }
+
+  const items = await db.select({
+    variantId: orderItems.variantId, productName: orderItems.productName,
+    variantName: orderItems.variantName, priceUsd: orderItems.priceUsd,
+    quantity: orderItems.quantity, bundleId: orderItems.bundleId,
+  }).from(orderItems).where(eq(orderItems.orderId, orderId));
+
+  const billing = order.billingSnapshot as {
+    firstName: string; lastName: string; email: string;
+    country: string; city: string; address: string; zip: string; phone?: string;
+  } | null;
+
+  if (!billing) { res.status(400).json({ error: "Order has no billing snapshot" }); return; }
+
+  try {
+    await runFulfillment(orderId, order.orderNumber, order.paymentIntentId ?? "", {
+      billing: { ...billing, phone: billing.phone ?? "" },
+      items: items.map((i) => ({
+        variantId: i.variantId, productId: 0,
+        productName: i.productName, variantName: i.variantName,
+        priceUsd: i.priceUsd, quantity: i.quantity,
+        bundleId: i.bundleId ?? undefined,
+      })),
+      userId: order.userId ?? undefined,
+    }, parseFloat(order.totalUsd));
+
+    await db.update(orders).set({ riskHold: false, updatedAt: new Date() }).where(eq(orders.id, orderId));
+    logger.info({ orderId, orderNumber: order.orderNumber }, "Held order released by admin");
+    res.json({ ok: true });
+  } catch (err) {
+    logger.error({ err, orderId }, "Failed to release held order");
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+// POST /admin/orders/:id/cancel-hold — reject a held order (mark failed; admin handles refund manually)
+router.post("/admin/orders/:id/cancel-hold", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
+  const orderId = parseInt(req.params.id, 10);
+  if (!orderId) { res.status(400).json({ error: "Invalid order id" }); return; }
+
+  const [order] = await db.select({ status: orders.status, orderNumber: orders.orderNumber })
+    .from(orders).where(eq(orders.id, orderId)).limit(1);
+  if (!order || order.status !== "HELD") {
+    res.status(404).json({ error: "Held order not found" }); return;
+  }
+
+  await db.update(orders).set({ status: "FAILED", riskHold: false, updatedAt: new Date() })
+    .where(eq(orders.id, orderId));
+
+  logger.info({ orderId, orderNumber: order.orderNumber }, "Held order cancelled by admin");
+  res.json({ ok: true });
+});
 
 export default router;

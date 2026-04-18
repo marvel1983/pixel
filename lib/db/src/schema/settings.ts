@@ -12,6 +12,42 @@ import {
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
+export interface RiskScoringConfig {
+  enabled: boolean;
+  holdThreshold: number;
+  newAccountHighValueScore: number;
+  newAccountHighValueMin: number;
+  newAccountBaseScore: number;
+  firstOrderScore: number;
+  bulkQtyHighScore: number;
+  bulkQtyHighMin: number;
+  bulkQtyLowScore: number;
+  bulkQtyLowMin: number;
+  geoMismatchScore: number;
+  guestHighValueScore: number;
+  guestHighValueMin: number;
+  highOrderValueScore: number;
+  highOrderValueMin: number;
+}
+
+export const DEFAULT_RISK_CONFIG: RiskScoringConfig = {
+  enabled: true,
+  holdThreshold: 60,
+  newAccountHighValueScore: 40,
+  newAccountHighValueMin: 50,
+  newAccountBaseScore: 15,
+  firstOrderScore: 10,
+  bulkQtyHighScore: 35,
+  bulkQtyHighMin: 5,
+  bulkQtyLowScore: 15,
+  bulkQtyLowMin: 3,
+  geoMismatchScore: 30,
+  guestHighValueScore: 20,
+  guestHighValueMin: 80,
+  highOrderValueScore: 20,
+  highOrderValueMin: 200,
+};
+
 export const siteSettings = pgTable("site_settings", {
   id: serial("id").primaryKey(),
   siteName: varchar("site_name", { length: 200 }).notNull().default("PixelCodes"),
@@ -81,6 +117,7 @@ export const siteSettings = pgTable("site_settings", {
   turnstileEnabled: boolean("turnstile_enabled").notNull().default(false),
   turnstileSiteKey: varchar("turnstile_site_key", { length: 500 }),
   turnstileSecretKey: text("turnstile_secret_key"),
+  riskConfig: jsonb("risk_config").$type<RiskScoringConfig>(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
