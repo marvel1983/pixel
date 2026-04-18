@@ -106,7 +106,7 @@ export function WalletPayment({ orderTotal, onWalletChange }: Props) {
               {usePartial && (
                 <Input type="number" min="0.01" max={Math.min(balance, orderTotal)}
                   step="0.01" value={customAmount} onChange={(e) => setCustomAmount(e.target.value)}
-                  className="w-28 h-8" placeholder="$0.00" />
+                  className="w-28 h-8" placeholder="€0.00" />
               )}
             </div>
             {walletApplied > 0 && (

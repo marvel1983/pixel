@@ -58,7 +58,7 @@
     "continueShopping": "Pokračovat v nákupu",
     "cartTotals": "Celkem v košíku",
     "taxesNote": "Daně vypočítány u pokladny",
-    "storeCreditAvailable": "Dostupný obchodní kredit: {{amount}} $",
+    "storeCreditAvailable": "Dostupný obchodní kredit: {{amount}}  €",
     "storeCreditManage": "Obchodní kredit a historie",
     "storeCreditCheckoutOnly": "Uplatní se jen u pokladny — košík zůstává bez odečtu kreditu."
   },
@@ -104,11 +104,11 @@
     "apply": "Použít",
     "tryAgain": "Zkuste to prosím znovu",
     "walletPayTitle": "Zaplatit obchodním kreditem",
-    "walletBalanceLabel": "Obchodní kredit: {{amount}} $",
+    "walletBalanceLabel": "Obchodní kredit: {{amount}}  €",
     "walletManageBalanceLink": "Spravovat obchodní kredit",
-    "walletUseFull": "Použít celý zůstatek ({{amount}} $)",
+    "walletUseFull": "Použít celý zůstatek ({{amount}}  €)",
     "walletCustomAmount": "Vlastní částka",
-    "walletApplied": "-{{amount}} $ z obchodního kreditu",
+    "walletApplied": "-{{amount}} € z obchodního kreditu",
     "walletCoversFull": "(pokryje celou objednávku)",
     "walletStaleBalanceWarning": "Nepodařilo se obnovit zůstatek. Zobrazená částka nemusí být aktuální — před platbou zkuste znovu načíst, nebo pokračujte, pokud jste si jisti."
   },

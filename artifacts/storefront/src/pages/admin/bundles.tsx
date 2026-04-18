@@ -255,7 +255,7 @@ function BundleDialog({ open, onOpenChange, editing, setEditing, saving, onSave,
             <div><label className={labelCls}>Slug</label><input className={inputCls} value={editing.slug} onChange={(e) => upd("slug", e.target.value)} /></div>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <div><label className={labelCls}>Bundle Price (USD)</label><input className={inputCls} type="number" step="0.01" value={editing.bundlePriceUsd} onChange={(e) => upd("bundlePriceUsd", e.target.value)} /></div>
+            <div><label className={labelCls}>Bundle Price (EUR)</label><input className={inputCls} type="number" step="0.01" value={editing.bundlePriceUsd} onChange={(e) => upd("bundlePriceUsd", e.target.value)} /></div>
             <div><label className={labelCls}>Sort Order</label><input className={inputCls} type="number" value={editing.sortOrder} onChange={(e) => upd("sortOrder", parseInt(e.target.value) || 0)} /></div>
           </div>
           {selectedIds.length >= 2 && bundlePrice > 0 && (

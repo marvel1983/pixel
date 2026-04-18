@@ -184,7 +184,7 @@ export default function ProductEditPage() {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 90px 90px 70px", gap: 6 }}>
                   <div><label style={s.lbl}>Name</label><input style={s.inp} placeholder="e.g. Standard Key" value={newV.name} onChange={(e) => setNewV((v) => ({ ...v, name: e.target.value }))} /></div>
                   <div><label style={s.lbl}>SKU</label><input style={s.inp} placeholder="e.g. MS-OFF-2024" value={newV.sku} onChange={(e) => setNewV((v) => ({ ...v, sku: e.target.value }))} /></div>
-                  <div><label style={s.lbl}>Price (USD)</label><input style={s.inp} type="number" placeholder="0.00" value={newV.priceUsd} onChange={(e) => setNewV((v) => ({ ...v, priceUsd: e.target.value }))} /></div>
+                  <div><label style={s.lbl}>Price (EUR)</label><input style={s.inp} type="number" placeholder="0.00" value={newV.priceUsd} onChange={(e) => setNewV((v) => ({ ...v, priceUsd: e.target.value }))} /></div>
                   <div><label style={s.lbl}>Compare At</label><input style={s.inp} type="number" placeholder="0.00" value={newV.compareAtPriceUsd} onChange={(e) => setNewV((v) => ({ ...v, compareAtPriceUsd: e.target.value }))} /></div>
                   <div><label style={s.lbl}>Stock</label><input style={s.inp} type="number" placeholder="0" value={newV.stockCount} onChange={(e) => setNewV((v) => ({ ...v, stockCount: e.target.value }))} /></div>
                 </div>

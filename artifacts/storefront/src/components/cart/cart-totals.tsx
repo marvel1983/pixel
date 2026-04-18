@@ -80,7 +80,7 @@ export function CartTotals() {
             <span className="font-bold text-base">{t("cart.total")}</span>
             <div className="text-right">
               <span className="font-extrabold text-xl text-foreground">{format(total)}</span>
-              <p className="text-[10px] text-muted-foreground">USD</p>
+              <p className="text-[10px] text-muted-foreground">EUR</p>
             </div>
           </div>
 

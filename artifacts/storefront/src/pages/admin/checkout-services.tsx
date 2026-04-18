@@ -151,7 +151,7 @@ export default function AdminCheckoutServicesPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-sm font-medium">Price (USD)</label>
+                  <label className="text-sm font-medium">Price (EUR)</label>
                   <Input type="number" step="0.01" min="0" value={editing.priceUsd || ""} onChange={(e) => setEditing({ ...editing, priceUsd: e.target.value })} />
                 </div>
                 <div>

@@ -51,7 +51,7 @@ export default function SettingsCppFeesTab() {
         {form.cppEnabled && (
           <div className="space-y-3 pl-6 border-l-2 border-blue-200">
             <Field label="Label"><input className={ic} value={form.cppLabel} onChange={(e) => set("cppLabel", e.target.value)} /></Field>
-            <Field label="Price (USD)"><input type="number" step="0.01" min="0" className={ic} value={form.cppPrice} onChange={(e) => set("cppPrice", e.target.value)} /></Field>
+            <Field label="Price (EUR)"><input type="number" step="0.01" min="0" className={ic} value={form.cppPrice} onChange={(e) => set("cppPrice", e.target.value)} /></Field>
             <Field label="Description"><textarea className={`${ic} min-h-[60px] resize-y`} value={form.cppDescription} onChange={(e) => set("cppDescription", e.target.value)} /></Field>
           </div>
         )}
@@ -62,18 +62,18 @@ export default function SettingsCppFeesTab() {
         <p className="text-xs text-muted-foreground">Fees applied to every order at checkout. Set both to 0 for no processing fee.</p>
         <div className="grid grid-cols-2 gap-4">
           <Field label="Fee Percentage (%)"><input type="number" step="0.01" min="0" max="100" className={ic} value={form.processingFeePercent} onChange={(e) => set("processingFeePercent", e.target.value)} /></Field>
-          <Field label="Fixed Fee (USD)"><input type="number" step="0.01" min="0" className={ic} value={form.processingFeeFixed} onChange={(e) => set("processingFeeFixed", e.target.value)} /></Field>
+          <Field label="Fixed Fee (EUR)"><input type="number" step="0.01" min="0" className={ic} value={form.processingFeeFixed} onChange={(e) => set("processingFeeFixed", e.target.value)} /></Field>
         </div>
       </div>
 
       <div className="rounded-lg border bg-blue-50 border-blue-200 p-5 space-y-3">
         <div className="flex items-center gap-2"><Calculator className="h-5 w-5 text-blue-600" /><h3 className="font-semibold text-blue-800">Live Fee Calculator</h3></div>
-        <p className="text-xs text-blue-700">Example checkout with a ${examplePrice.toFixed(2)} product</p>
+        <p className="text-xs text-blue-700">Example checkout with a €{examplePrice.toFixed(2)} product</p>
         <div className="bg-white rounded-md p-4 space-y-2 text-sm">
-          <div className="flex justify-between"><span>Product subtotal</span><span className="font-mono">${examplePrice.toFixed(2)}</span></div>
-          {form.cppEnabled && <div className="flex justify-between text-blue-600"><span>CPP ({form.cppLabel})</span><span className="font-mono">+${cppAmount.toFixed(2)}</span></div>}
-          {processingFee > 0 && <div className="flex justify-between text-orange-600"><span>Processing fee ({feePercent}% + ${feeFixed.toFixed(2)})</span><span className="font-mono">+${processingFee.toFixed(2)}</span></div>}
-          <div className="flex justify-between font-bold pt-2 border-t"><span>Total</span><span className="font-mono">${total.toFixed(2)}</span></div>
+          <div className="flex justify-between"><span>Product subtotal</span><span className="font-mono">€{examplePrice.toFixed(2)}</span></div>
+          {form.cppEnabled && <div className="flex justify-between text-blue-600"><span>CPP ({form.cppLabel})</span><span className="font-mono">+€{cppAmount.toFixed(2)}</span></div>}
+          {processingFee > 0 && <div className="flex justify-between text-orange-600"><span>Processing fee ({feePercent}% + €{feeFixed.toFixed(2)})</span><span className="font-mono">+€{processingFee.toFixed(2)}</span></div>}
+          <div className="flex justify-between font-bold pt-2 border-t"><span>Total</span><span className="font-mono">€{total.toFixed(2)}</span></div>
         </div>
       </div>
 

@@ -58,7 +58,7 @@
     "continueShopping": "Kontynuuj zakupy",
     "cartTotals": "Podsumowanie koszyka",
     "taxesNote": "Podatki naliczane przy kasie",
-    "storeCreditAvailable": "Dostępny kredyt sklepu: {{amount}} $",
+    "storeCreditAvailable": "Dostępny kredyt sklepu: {{amount}}  €",
     "storeCreditManage": "Kredyt sklepu i historia",
     "storeCreditCheckoutOnly": "Użycie tylko przy kasie — koszyk nie odejmuje kredytu automatycznie."
   },
@@ -104,11 +104,11 @@
     "apply": "Zastosuj",
     "tryAgain": "Spróbuj ponownie",
     "walletPayTitle": "Zapłać kredytem sklepu",
-    "walletBalanceLabel": "Kredyt sklepu: {{amount}} $",
+    "walletBalanceLabel": "Kredyt sklepu: {{amount}}  €",
     "walletManageBalanceLink": "Zarządzaj kredytem sklepu",
-    "walletUseFull": "Użyj całego salda ({{amount}} $)",
+    "walletUseFull": "Użyj całego salda ({{amount}}  €)",
     "walletCustomAmount": "Własna kwota",
-    "walletApplied": "-{{amount}} $ z kredytu sklepu",
+    "walletApplied": "-{{amount}} € z kredytu sklepu",
     "walletCoversFull": "(pokrywa całe zamówienie)",
     "walletStaleBalanceWarning": "Nie udało się odświeżyć salda. Kwota może być nieaktualna — odśwież przed płatnością lub kontynuuj, jeśli jesteś pewien."
   },
