@@ -247,13 +247,6 @@
 
 @import "./elevate.css";
 
-/* ── Navbar: no button outlines on any theme ─────────────────── */
-nav button,
-.dark nav button {
-  border-color: transparent !important;
-  box-shadow: none !important;
-  outline: none !important;
-}
 
 /* ── Admin dark theme overrides ──────────────────────────────
    Applied via .dark class on AdminLayout wrapper.
