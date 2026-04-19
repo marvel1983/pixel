@@ -435,7 +435,7 @@ export default function CheckoutPage() {
             <span>Secure & encrypted checkout</span>
             <Shield className="h-3.5 w-3.5 text-emerald-500" />
           </div>
-          <Button size="lg" className="w-full" disabled={submitting || !configLoaded} onClick={handleSubmit}>
+          <Button size="lg" className="w-full max-w-sm mx-auto block" disabled={submitting || !configLoaded} onClick={handleSubmit}>
             {submitting
               ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t("checkout.processing")}</>
               : !configLoaded

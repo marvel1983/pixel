@@ -79,15 +79,17 @@ export function LoyaltyRedeem({ subtotal, onRedeemChange }: LoyaltyRedeemProps) 
   }
 
   return (
-    <Card className="border-yellow-200 bg-yellow-50/50">
-      <CardContent className="pt-4 space-y-3">
+    <Card className="border-border bg-card">
+      <CardContent className="pt-4 space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Star className="h-4 w-4 text-yellow-500" />
-            <span className="text-sm font-medium">Use Loyalty Points</span>
+            <div className="h-7 w-7 rounded-full bg-amber-100 dark:bg-amber-950/60 flex items-center justify-center">
+              <Star className="h-3.5 w-3.5 text-amber-500" />
+            </div>
+            <span className="text-sm font-semibold">Use Loyalty Points</span>
           </div>
-          <span className="text-sm text-muted-foreground">
-            Balance: {account.pointsBalance.toLocaleString()} pts
+          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+            {account.pointsBalance.toLocaleString()} pts available
           </span>
         </div>
 
@@ -108,13 +110,13 @@ export function LoyaltyRedeem({ subtotal, onRedeemChange }: LoyaltyRedeemProps) 
             min={0}
             max={maxPoints}
           />
-          <span className="text-sm text-muted-foreground">pts</span>
+          <span className="text-xs text-muted-foreground">pts</span>
           {pointsToUse > 0 && (
             <>
-              <span className="text-sm font-medium text-green-600 ml-auto">
-                -${discount.toFixed(2)}
+              <span className="text-sm font-semibold text-green-600 dark:text-green-400 ml-auto">
+                −€{discount.toFixed(2)}
               </span>
-              <Button variant="ghost" size="sm" onClick={handleClear} className="h-7 text-xs">
+              <Button variant="ghost" size="sm" onClick={handleClear} className="h-7 text-xs text-muted-foreground">
                 Clear
               </Button>
             </>
@@ -122,7 +124,7 @@ export function LoyaltyRedeem({ subtotal, onRedeemChange }: LoyaltyRedeemProps) 
         </div>
 
         {pointsToUse > 0 && pointsToUse < minRedeem && (
-          <p className="text-xs text-red-600">Minimum {minRedeem} points to redeem</p>
+          <p className="text-xs text-destructive">Minimum {minRedeem} points to redeem</p>
         )}
       </CardContent>
     </Card>

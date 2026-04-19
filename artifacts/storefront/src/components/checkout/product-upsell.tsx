@@ -151,7 +151,6 @@ export function ProductUpsell() {
           </div>
           <Button
             size="sm"
-            variant="outline"
             className="h-8 text-xs shrink-0"
             onClick={() => {
               addItem({
@@ -195,7 +194,6 @@ export function ProductUpsell() {
             </div>
             <Button
               size="sm"
-              variant="outline"
               className="h-7 text-xs"
               onClick={() => {
                 addItem({
