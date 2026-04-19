@@ -421,25 +421,28 @@ export default function CheckoutPage() {
           <Separator />
           <CheckoutServices selectedIds={selectedServiceIds} onToggle={handleServiceToggle} />
           <Separator />
-          <GiftCardInput
-            appliedCards={appliedGiftCards}
-            remainingTotal={(() => {
-              const s = getTotal();
-              const d = coupon ? s * (coupon.pct / 100) : 0;
-              const base = s - d - loyaltyDiscount + (cppSelected ? cppFlatPrice : 0) + servicesTotal;
-              const pf = calcProcessingFee(base);
-              const beforeTax = base + pf;
-              const tr = taxInfo.taxRate || 0;
-              const tax = taxInfo.priceDisplay === "inclusive" ? 0 : Math.round(beforeTax * (tr / 100) * 100) / 100;
-              return Math.max(0, beforeTax + tax - appliedGiftCards.reduce((a, c) => a + c.applied, 0));
-            })()}
-            onApply={(c) => setAppliedGiftCards((p) => [...p, c])}
-            onRemove={(code) => setAppliedGiftCards((p) => p.filter((c) => c.code !== code))}
-          />
-          <LoyaltyRedeem
-            subtotal={getTotal()}
-            onRedeemChange={(pts, disc) => { setLoyaltyPoints(pts); setLoyaltyDiscount(disc); }}
-          />
+          {/* ─── Gift card + Loyalty points row ────────────── */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+            <GiftCardInput
+              appliedCards={appliedGiftCards}
+              remainingTotal={(() => {
+                const s = getTotal();
+                const d = coupon ? s * (coupon.pct / 100) : 0;
+                const base = s - d - loyaltyDiscount + (cppSelected ? cppFlatPrice : 0) + servicesTotal;
+                const pf = calcProcessingFee(base);
+                const beforeTax = base + pf;
+                const tr = taxInfo.taxRate || 0;
+                const tax = taxInfo.priceDisplay === "inclusive" ? 0 : Math.round(beforeTax * (tr / 100) * 100) / 100;
+                return Math.max(0, beforeTax + tax - appliedGiftCards.reduce((a, c) => a + c.applied, 0));
+              })()}
+              onApply={(c) => setAppliedGiftCards((p) => [...p, c])}
+              onRemove={(code) => setAppliedGiftCards((p) => p.filter((c) => c.code !== code))}
+            />
+            <LoyaltyRedeem
+              subtotal={getTotal()}
+              onRedeemChange={(pts, disc) => { setLoyaltyPoints(pts); setLoyaltyDiscount(disc); }}
+            />
+          </div>
           {/* ─── Payment methods row ────────────────────────── */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {/* Store credit */}
