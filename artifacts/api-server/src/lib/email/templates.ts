@@ -133,7 +133,7 @@ export function keyDeliveryEmail(data: KeyDeliveryData): { subject: string; html
 <div style="background:#1a1a2e;padding:14px 18px;border-radius:6px;border:1px solid #333;">
 <code style="font-family:'Courier New',Courier,monospace;font-size:15px;color:#00d4aa;letter-spacing:0.5px;word-break:break-all;">${k.licenseKey}</code>
 </div>
-${k.instructions ? `<div style="margin-top:10px;background:#f0f4ff;padding:12px 16px;border-radius:6px;border-left:3px solid #3b82f6;"><p style="margin:0 0 4px;font-size:12px;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:0.5px;">How to activate</p><p style="margin:0;font-size:13px;color:#374151;line-height:1.6;white-space:pre-wrap;">${k.instructions}</p></div>` : ""}
+${k.instructions ? `<div style="margin-top:10px;background:#f0f4ff;padding:12px 16px;border-radius:6px;border-left:3px solid #3b82f6;"><p style="margin:0 0 8px;font-size:12px;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:0.5px;">How to activate</p><div style="font-size:13px;color:#374151;line-height:1.6;">${k.instructions}</div></div>` : ""}
 </div>`,
     )
     .join("");
