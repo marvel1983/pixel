@@ -133,7 +133,7 @@ export function ProductCard({ product, flashSalePrice: flashSalePriceProp }: Pro
           {/* Clip only the image so discount / NEW badges are not cut off by overflow-hidden */}
           <div className="absolute inset-0 overflow-hidden rounded-t-lg bg-gradient-to-br from-muted to-muted/50">
             {product.imageUrl ? (
-              <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
+              <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" loading="lazy" decoding="async" />
             ) : (
               <div className="flex h-full w-full items-center justify-center">
                 <Package className="h-12 w-12 text-muted-foreground/30" />

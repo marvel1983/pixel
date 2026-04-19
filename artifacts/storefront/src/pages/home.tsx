@@ -123,17 +123,31 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    // Fetch all product data in parallel
-    const categoryFetches = CATEGORY_TABS.map(({ categorySlug }) =>
-      fetchProducts({ cat: categorySlug }).then((items) => [categorySlug, items] as const)
-    );
-    const featuredFetch = fetchProducts({ featured: "1" });
-
-    Promise.all([featuredFetch, ...categoryFetches]).then(([featured, ...catResults]) => {
-      const byCategory: Record<string, MockProduct[]> = {};
-      for (const [slug, items] of catResults) byCategory[slug] = items;
-      setHp({ featured, byCategory });
+    // Fetch first category + featured immediately (visible on load)
+    const firstSlug = CATEGORY_TABS[0].categorySlug;
+    Promise.all([
+      fetchProducts({ featured: "1" }),
+      fetchProducts({ cat: firstSlug }),
+    ]).then(([featured, firstItems]) => {
+      setHp({ featured, byCategory: { [firstSlug]: firstItems } });
     }).catch(() => {});
+
+    // Fetch remaining categories after initial render settles
+    const id = setTimeout(() => {
+      Promise.all(
+        CATEGORY_TABS.slice(1).map(({ categorySlug }) =>
+          fetchProducts({ cat: categorySlug }).then((items) => [categorySlug, items] as const)
+        )
+      ).then((catResults) => {
+        setHp((prev) => {
+          const byCategory = { ...prev.byCategory };
+          for (const [slug, items] of catResults) byCategory[slug] = items;
+          return { ...prev, byCategory };
+        });
+      }).catch(() => {});
+    }, 800);
+
+    return () => clearTimeout(id);
   }, []);
 
   function renderSection(type: string): ReactNode {
