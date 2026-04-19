@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useLocation, Link } from "wouter";
-import { Menu, Bell, ChevronDown, LogOut, User, ExternalLink, ShoppingBag, MessageSquare, CheckCheck } from "lucide-react";
+import { Menu, Bell, ChevronDown, LogOut, User, ExternalLink, ShoppingBag, MessageSquare, CheckCheck, X } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent,
   DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
@@ -57,15 +57,31 @@ export function AdminTopbar({ onMenuClick }: { onMenuClick: () => void }) {
   const token = useAuthStore((s) => s.token);
   const [pendingOrders, setPendingOrders] = useState<NotifOrder[]>([]);
   const [openTickets, setOpenTickets] = useState<NotifTicket[]>([]);
+  const [dismissed, setDismissed] = useState<Set<string>>(() => {
+    try { return new Set(JSON.parse(localStorage.getItem("admin-notif-dismissed") ?? "[]")); }
+    catch { return new Set(); }
+  });
   const [open, setOpen] = useState(false);
   const crumbs = getBreadcrumbs(location);
-  const notifCount = pendingOrders.length + openTickets.length;
+
+  const dismiss = useCallback((key: string) => {
+    setDismissed((prev) => {
+      const next = new Set(prev);
+      next.add(key);
+      localStorage.setItem("admin-notif-dismissed", JSON.stringify([...next]));
+      return next;
+    });
+  }, []);
+
+  const visibleOrders = pendingOrders.filter((o) => !dismissed.has(`order-${o.id}`));
+  const visibleTickets = openTickets.filter((t) => !dismissed.has(`ticket-${t.ticketNumber}`));
+  const notifCount = visibleOrders.length + visibleTickets.length;
 
   useEffect(() => {
     if (!token) return;
     const h = { Authorization: `Bearer ${token}` };
     Promise.all([
-      fetch(`${API_URL}/admin/orders?status=pending&limit=10`, { headers: h }).then((r) => r.ok ? r.json() : null),
+      fetch(`${API_URL}/admin/orders?status=PENDING&limit=10`, { headers: h }).then((r) => r.ok ? r.json() : null),
       fetch(`${API_URL}/admin/support/tickets?status=OPEN&limit=10`, { headers: h }).then((r) => r.ok ? r.json() : null),
     ]).then(([od, td]) => {
       setPendingOrders(od?.orders ?? []);
@@ -160,49 +176,71 @@ export function AdminTopbar({ onMenuClick }: { onMenuClick: () => void }) {
               {notifCount === 0 && <span className="text-[11px]" style={{ color: "#4a5568" }}>All clear</span>}
             </div>
             <div className="max-h-80 overflow-y-auto">
-              {pendingOrders.length > 0 && (
+              {visibleOrders.length > 0 && (
                 <div>
                   <div className="px-4 pt-2.5 pb-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: "#4a5568" }}>
-                    Pending Orders ({pendingOrders.length})
+                    Pending Orders ({visibleOrders.length})
                   </div>
-                  {pendingOrders.map((o) => (
-                    <button
-                      key={o.id}
-                      className="w-full flex items-center gap-3 px-4 py-2 text-left transition-colors"
-                      style={{ background: "transparent" }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = "#1f2330"}
-                      onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
-                      onClick={() => { setLocation(`/admin/orders?id=${o.id}`); setOpen(false); }}
-                    >
-                      <ShoppingBag className="h-3.5 w-3.5 shrink-0" style={{ color: "#f59e0b" }} />
-                      <div className="min-w-0">
-                        <div className="text-xs font-medium truncate" style={{ color: "#e2e8f0" }}>Order #{o.orderNumber}</div>
-                        <div className="text-[11px]" style={{ color: "#4a5568" }}>${parseFloat(o.totalUsd).toFixed(2)}</div>
-                      </div>
-                    </button>
+                  {visibleOrders.map((o) => (
+                    <div key={o.id} className="flex items-center group">
+                      <button
+                        className="flex-1 flex items-center gap-3 px-4 py-2 text-left transition-colors"
+                        style={{ background: "transparent" }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = "#1f2330"}
+                        onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                        onClick={() => { setLocation(`/admin/orders?id=${o.id}`); setOpen(false); }}
+                      >
+                        <ShoppingBag className="h-3.5 w-3.5 shrink-0" style={{ color: "#f59e0b" }} />
+                        <div className="min-w-0">
+                          <div className="text-xs font-medium truncate" style={{ color: "#e2e8f0" }}>Order #{o.orderNumber}</div>
+                          <div className="text-[11px]" style={{ color: "#4a5568" }}>${parseFloat(o.totalUsd).toFixed(2)}</div>
+                        </div>
+                      </button>
+                      <button
+                        className="px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                        style={{ color: "#4a5568" }}
+                        onMouseEnter={(e) => e.currentTarget.style.color = "#e2e8f0"}
+                        onMouseLeave={(e) => e.currentTarget.style.color = "#4a5568"}
+                        onClick={() => dismiss(`order-${o.id}`)}
+                        title="Dismiss"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
                   ))}
                 </div>
               )}
-              {openTickets.length > 0 && (
+              {visibleTickets.length > 0 && (
                 <div>
                   <div className="px-4 pt-2.5 pb-1 text-[10px] font-semibold uppercase tracking-wider" style={{ color: "#4a5568" }}>
-                    Open Tickets ({openTickets.length})
+                    Open Tickets ({visibleTickets.length})
                   </div>
-                  {openTickets.map((t) => (
-                    <button
-                      key={t.id}
-                      className="w-full flex items-center gap-3 px-4 py-2 text-left transition-colors"
-                      style={{ background: "transparent" }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = "#1f2330"}
-                      onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
-                      onClick={() => { setLocation(`/admin/support?ticket=${t.ticketNumber}`); setOpen(false); }}
-                    >
-                      <MessageSquare className="h-3.5 w-3.5 shrink-0" style={{ color: "#60a5fa" }} />
-                      <div className="min-w-0">
-                        <div className="text-xs font-medium truncate" style={{ color: "#e2e8f0" }}>{t.subject}</div>
-                        <div className="text-[11px]" style={{ color: "#4a5568" }}>#{t.ticketNumber} · {t.priority}</div>
-                      </div>
-                    </button>
+                  {visibleTickets.map((t) => (
+                    <div key={t.id} className="flex items-center group">
+                      <button
+                        className="flex-1 flex items-center gap-3 px-4 py-2 text-left transition-colors"
+                        style={{ background: "transparent" }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = "#1f2330"}
+                        onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                        onClick={() => { setLocation(`/admin/support?ticket=${t.ticketNumber}`); setOpen(false); }}
+                      >
+                        <MessageSquare className="h-3.5 w-3.5 shrink-0" style={{ color: "#60a5fa" }} />
+                        <div className="min-w-0">
+                          <div className="text-xs font-medium truncate" style={{ color: "#e2e8f0" }}>{t.subject}</div>
+                          <div className="text-[11px]" style={{ color: "#4a5568" }}>#{t.ticketNumber} · {t.priority}</div>
+                        </div>
+                      </button>
+                      <button
+                        className="px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                        style={{ color: "#4a5568" }}
+                        onMouseEnter={(e) => e.currentTarget.style.color = "#e2e8f0"}
+                        onMouseLeave={(e) => e.currentTarget.style.color = "#4a5568"}
+                        onClick={() => dismiss(`ticket-${t.ticketNumber}`)}
+                        title="Dismiss"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
                   ))}
                 </div>
               )}
@@ -223,6 +261,20 @@ export function AdminTopbar({ onMenuClick }: { onMenuClick: () => void }) {
               >
                 View all orders →
               </button>
+              {notifCount > 0 && (
+                <button
+                  className="text-[11px] transition-colors"
+                  style={{ color: "#4a5568" }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = "#8b94a8"}
+                  onMouseLeave={(e) => e.currentTarget.style.color = "#4a5568"}
+                  onClick={() => {
+                    visibleOrders.forEach((o) => dismiss(`order-${o.id}`));
+                    visibleTickets.forEach((t) => dismiss(`ticket-${t.ticketNumber}`));
+                  }}
+                >
+                  Dismiss all
+                </button>
+              )}
               <button
                 className="text-[11px] transition-colors ml-auto"
                 style={{ color: "#4a5568" }}
