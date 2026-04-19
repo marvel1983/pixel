@@ -26,6 +26,7 @@ const SYNC_FIELDS = [
   { key: "shortDescription", label: "Short Desc" },
   { key: "sku",              label: "SKU" },
   { key: "stock",            label: "Stock" },
+  { key: "instructions",     label: "Instructions" },
 ] as const;
 type SyncFieldKey = typeof SYNC_FIELDS[number]["key"];
 
@@ -63,7 +64,7 @@ export default function MetenziCatalogPage() {
   const [syncedResult, setSyncedResult]   = useState<string[]>([]);
   const [showImport, setShowImport]   = useState(false);
   const [importFields, setImportFields] = useState<Set<SyncFieldKey>>(
-    new Set(["name","image","b2bPrice","retailPrice","description","shortDescription","sku","stock"] as SyncFieldKey[])
+    new Set(["name","image","b2bPrice","retailPrice","description","shortDescription","sku","stock","instructions"] as SyncFieldKey[])
   );
   const [importLoading, setImportLoading] = useState(false);
 

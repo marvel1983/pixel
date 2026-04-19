@@ -242,7 +242,7 @@ router.patch("/admin/metenzi/mappings/:id", ...guard, async (req, res) => {
 // ── POST /admin/metenzi/sync-field ───────────────────────────────────────────
 const syncFieldSchema = z.object({
   mappingId:      z.number().int().positive(),
-  fields:         z.array(z.enum(["name","image","b2bPrice","retailPrice","description","shortDescription","sku","stock"])),
+  fields:         z.array(z.enum(["name","image","b2bPrice","retailPrice","description","shortDescription","sku","stock","instructions"])),
 });
 
 router.post("/admin/metenzi/sync-field", ...guard, async (req, res) => {
@@ -278,7 +278,7 @@ router.post("/admin/metenzi/sync-field", ...guard, async (req, res) => {
     .limit(1);
 
   const synced: string[] = [];
-  const productCols: { name?: string; description?: string; shortDescription?: string; imageUrl?: string; updatedAt?: Date } = {};
+  const productCols: { name?: string; description?: string; shortDescription?: string; imageUrl?: string; activationInstructions?: string | null; updatedAt?: Date } = {};
   const variantCols: { sku?: string; priceUsd?: string; b2bPriceUsd?: string; stockCount?: number; updatedAt?: Date } = {};
 
   for (const field of fields) {
@@ -290,6 +290,7 @@ router.post("/admin/metenzi/sync-field", ...guard, async (req, res) => {
       case "retailPrice":      variantCols.priceUsd = mp.retailPrice;         synced.push("retailPrice");      break;
       case "sku":              variantCols.sku = mp.sku;                      synced.push("sku");              break;
       case "stock":            variantCols.stockCount = mp.stock;             synced.push("stock");            break;
+      case "instructions":    productCols.activationInstructions = mp.instructions ?? null; synced.push("instructions"); break;
       case "image":
         if (!mp.imageUrl) { res.status(422).json({ error: "Metenzi product has no imageUrl" }); return; }
         try {
@@ -321,7 +322,7 @@ router.post("/admin/metenzi/sync-field", ...guard, async (req, res) => {
 // ── POST /admin/metenzi/import ───────────────────────────────────────────────
 const importSchema = z.object({
   metenziProductId: z.string().min(1),
-  fields: z.array(z.enum(["name","image","b2bPrice","retailPrice","description","shortDescription","sku","stock","category","platform"])),
+  fields: z.array(z.enum(["name","image","b2bPrice","retailPrice","description","shortDescription","sku","stock","category","platform","instructions"])),
   pixelCategoryId: z.number().int().positive().optional(),
 });
 
@@ -373,10 +374,11 @@ router.post("/admin/metenzi/import", ...guard, async (req, res) => {
     .values({
       name:             include("name")             ? mp.name             : mp.id,
       slug,
-      description:      include("description")      ? mp.description      : null,
-      shortDescription: include("shortDescription") ? mp.shortDescription : null,
-      imageUrl:         include("image")            ? imageUrl            : null,
-      categoryId:       include("category") && pixelCategoryId ? pixelCategoryId : null,
+      description:             include("description")      ? mp.description      : null,
+      shortDescription:        include("shortDescription") ? mp.shortDescription : null,
+      imageUrl:                include("image")            ? imageUrl            : null,
+      activationInstructions:  include("instructions")     ? (mp.instructions ?? null) : null,
+      categoryId:              include("category") && pixelCategoryId ? pixelCategoryId : null,
       isActive: true,
     })
     .returning({ id: products.id, name: products.name, slug: products.slug });
