@@ -5,12 +5,14 @@ import { runAllChecks, type DependencyCheck } from "./health-checks";
 import { logger } from "./logger";
 
 const lastKnownStatus = new Map<string, "up" | "down">();
+// Tracks consecutive failures per service — alert only fires after ALERT_THRESHOLD consecutive downs
+const consecutiveFailures = new Map<string, number>();
+const ALERT_THRESHOLD = 2;
 
 export async function runHealthMonitorCycle(): Promise<void> {
   const checks = await runAllChecks();
   for (const check of checks) {
     const prev = lastKnownStatus.get(check.name);
-    lastKnownStatus.set(check.name, check.status);
 
     await db.insert(healthIncidents).values({
       service: check.name,
@@ -19,10 +21,25 @@ export async function runHealthMonitorCycle(): Promise<void> {
       error: check.error ?? null,
     });
 
-    if (prev && prev !== check.status) {
-      logger.warn({ service: check.name, from: prev, to: check.status }, "Health status changed");
-      if (check.status === "down") {
+    if (check.status === "down") {
+      const failures = (consecutiveFailures.get(check.name) ?? 0) + 1;
+      consecutiveFailures.set(check.name, failures);
+
+      if (failures === ALERT_THRESHOLD) {
+        // Only alert on exactly the threshold hit to avoid repeated alerts
+        lastKnownStatus.set(check.name, "down");
+        logger.warn({ service: check.name, failures }, "Health alert: service down after consecutive failures");
         await sendHealthAlert(check);
+      } else if (failures < ALERT_THRESHOLD) {
+        logger.warn({ service: check.name, failures, threshold: ALERT_THRESHOLD }, "Health check failed (below alert threshold)");
+      }
+    } else {
+      const wasDown = consecutiveFailures.get(check.name) ?? 0;
+      consecutiveFailures.set(check.name, 0);
+      lastKnownStatus.set(check.name, "up");
+
+      if (prev === "down" || wasDown >= ALERT_THRESHOLD) {
+        logger.info({ service: check.name }, "Health status recovered");
       }
     }
   }
