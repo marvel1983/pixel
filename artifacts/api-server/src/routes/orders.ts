@@ -431,6 +431,18 @@ router.post("/orders", checkoutLimit, requireIdempotencyKey(), async (req, res) 
   const computedTotal = Math.max(0, preGcTotal - gcDeduction);
 
   if (Math.abs(computedTotal - parseFloat(total)) > 0.02) {
+    logger.warn({
+      clientTotal: total,
+      serverTotal: computedTotal.toFixed(4),
+      subtotal: subtotal.toFixed(4),
+      feeBase: feeBase.toFixed(4),
+      processingFee: processingFee.toFixed(4),
+      taxAmount: taxAmount.toFixed(4),
+      gcDeduction: gcDeduction.toFixed(4),
+      discountAmount: discountAmount.toFixed(4),
+      cppAmount: cppAmount.toFixed(4),
+      items: items.map(i => ({ variantId: i.variantId, priceUsd: i.priceUsd, qty: i.quantity })),
+    }, "orders: total mismatch");
     res.status(400).json({ error: "Total mismatch. Please refresh and try again." });
     return;
   }
