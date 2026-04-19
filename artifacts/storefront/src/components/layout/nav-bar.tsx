@@ -51,7 +51,7 @@ export function NavBar() {
 
   return (
     <>
-      <nav className="w-full bg-primary text-white shadow-[0_4px_16px_rgba(0,69,127,0.2)] [&_button]:border-transparent [&_button]:shadow-none">
+      <nav className="w-full bg-primary text-white shadow-[0_4px_16px_rgba(0,69,127,0.2)]">
         <div className="container mx-auto px-4 flex items-center h-12">
           <Button
             variant="ghost"

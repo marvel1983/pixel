@@ -247,6 +247,12 @@
 
 @import "./elevate.css";
 
+/* ── Navbar: no button outlines on any theme ─────────────────── */
+nav button {
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
 /* ── Admin dark theme overrides ──────────────────────────────
    Applied via .dark class on AdminLayout wrapper.
    Forces legible white/light text on all admin sub-pages.
