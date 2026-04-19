@@ -90,6 +90,23 @@ interface StripeFulfillmentPayload {
   clientIp: string;
 }
 
+export interface ProcessingFeeTier { minAmount: number; feePercent: number; feeFixed: number }
+
+/** Pick the applicable tier (highest minAmount that is <= feeBase), fall back to flat fee. */
+export function applyProcessingFee(
+  feeBase: number,
+  tiers: ProcessingFeeTier[] | null | undefined,
+  flatPercent: number,
+  flatFixed: number,
+): number {
+  if (tiers && tiers.length > 0) {
+    const sorted = [...tiers].sort((a, b) => b.minAmount - a.minAmount);
+    const tier = sorted.find((t) => feeBase >= t.minAmount) ?? sorted[sorted.length - 1];
+    return Math.round((feeBase * tier.feePercent / 100 + tier.feeFixed) * 100) / 100;
+  }
+  return Math.round((feeBase * flatPercent / 100 + flatFixed) * 100) / 100;
+}
+
 export function serializeFulfillmentPayload(payload: StripeFulfillmentPayload): string {
   return `__stripe_payload:${JSON.stringify(payload)}`;
 }
@@ -284,6 +301,7 @@ router.post("/checkout/session", requireIdempotencyKey(), async (req, res) => {
     cppPrice: siteSettings.cppPrice,
     processingFeePercent: siteSettings.processingFeePercent,
     processingFeeFixed: siteSettings.processingFeeFixed,
+    processingFeeTiers: siteSettings.processingFeeTiers,
     defaultCurrency: siteSettings.defaultCurrency,
   }).from(siteSettings);
   // Stripe/Checkout.com currency follows the admin default (lowercase for Stripe)
@@ -291,9 +309,12 @@ router.post("/checkout/session", requireIdempotencyKey(), async (req, res) => {
   const discountAmount = couponDiscount + loyaltyDisc;
   const cppAmount = cppSelected ? (Number(feeSettings?.cppPrice) || 0) : 0;
   const feeBase = subtotal - discountAmount + cppAmount + servicesAmount;
-  const processingFee = Math.round(
-    (feeBase * (Number(feeSettings?.processingFeePercent) || 0) / 100 + (Number(feeSettings?.processingFeeFixed) || 0)) * 100,
-  ) / 100;
+  const processingFee = applyProcessingFee(
+    feeBase,
+    feeSettings?.processingFeeTiers,
+    Number(feeSettings?.processingFeePercent) || 0,
+    Number(feeSettings?.processingFeeFixed) || 0,
+  );
 
   let taxRate = 0, taxAmount = 0;
   const [taxConfig] = await db.select().from(taxSettings);

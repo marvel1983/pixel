@@ -21,12 +21,21 @@ router.get("/admin/settings/cpp-fees", requireAuth, requireAdmin, requirePermiss
     cppDescription: s?.cppDescription ?? "",
     processingFeePercent: s?.processingFeePercent ?? "0",
     processingFeeFixed: s?.processingFeeFixed ?? "0",
+    processingFeeTiers: s?.processingFeeTiers ?? [],
   });
 });
 
 router.put("/admin/settings/cpp-fees", requireAuth, requireAdmin, requirePermission("manageSettings"), async (req, res) => {
   try {
     const [existing] = await db.select({ id: siteSettings.id }).from(siteSettings);
+    const rawTiers = Array.isArray(req.body.processingFeeTiers) ? req.body.processingFeeTiers : [];
+    const tiers = rawTiers
+      .map((t: Record<string, unknown>) => ({
+        minAmount: Math.max(0, Number(t.minAmount) || 0),
+        feePercent: Math.max(0, Number(t.feePercent) || 0),
+        feeFixed: Math.max(0, Number(t.feeFixed) || 0),
+      }))
+      .sort((a: { minAmount: number }, b: { minAmount: number }) => a.minAmount - b.minAmount);
     const data = {
       cppEnabled: Boolean(req.body.cppEnabled),
       cppLabel: String(req.body.cppLabel || "Checkout Protection Plan"),
@@ -34,6 +43,7 @@ router.put("/admin/settings/cpp-fees", requireAuth, requireAdmin, requirePermiss
       cppDescription: String(req.body.cppDescription || ""),
       processingFeePercent: String(req.body.processingFeePercent || "0"),
       processingFeeFixed: String(req.body.processingFeeFixed || "0"),
+      processingFeeTiers: tiers.length > 0 ? tiers : null,
       updatedAt: new Date(),
     };
     if (existing) { await db.update(siteSettings).set(data).where(eq(siteSettings.id, existing.id)); }

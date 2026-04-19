@@ -18,6 +18,7 @@ router.get("/checkout/config", async (_req, res) => {
     cppDescription: siteSettings.cppDescription,
     processingFeePercent: siteSettings.processingFeePercent,
     processingFeeFixed: siteSettings.processingFeeFixed,
+    processingFeeTiers: siteSettings.processingFeeTiers,
   }).from(siteSettings);
   res.json({
     cppEnabled: s?.cppEnabled ?? false,
@@ -26,6 +27,7 @@ router.get("/checkout/config", async (_req, res) => {
     cppDescription: s?.cppDescription ?? "",
     processingFeePercent: s?.processingFeePercent ?? "0",
     processingFeeFixed: s?.processingFeeFixed ?? "0",
+    processingFeeTiers: s?.processingFeeTiers ?? [],
   });
 });
 

@@ -157,6 +157,9 @@ jobs:
             echo "→ Adding risk_config column to site_settings..."
             psql "$DATABASE_URL" -c "ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS risk_config JSONB;" || true
 
+            echo "→ Adding processing_fee_tiers column to site_settings..."
+            psql "$DATABASE_URL" -c "ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS processing_fee_tiers JSONB;" || true
+
             echo "→ Reloading PM2..."
             set -a; source /var/www/pixel-storefront/.env; set +a
             pm2 reload pixel-api --update-env

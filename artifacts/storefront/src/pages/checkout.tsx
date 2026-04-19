@@ -89,7 +89,8 @@ const INITIAL_BILLING: BillingData = {
 };
 
 interface TaxInfo { taxRate: number; taxLabel: string; exempt: boolean; b2bEnabled: boolean; priceDisplay: string }
-interface CheckoutConfig { cppEnabled: boolean; cppLabel: string; cppPrice: string; cppDescription: string; processingFeePercent: string; processingFeeFixed: string; }
+interface ProcessingFeeTier { minAmount: number; feePercent: number; feeFixed: number }
+interface CheckoutConfig { cppEnabled: boolean; cppLabel: string; cppPrice: string; cppDescription: string; processingFeePercent: string; processingFeeFixed: string; processingFeeTiers: ProcessingFeeTier[]; }
 
 export default function CheckoutPage() {
   const { t, i18n } = useTranslation();
@@ -121,7 +122,7 @@ export default function CheckoutPage() {
   const [newsletterOptIn, setNewsletterOptIn] = useState(false);
   const [regionAcknowledged, setRegionAcknowledged] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<"card" | "invoice">("card");
-  const [checkoutConfig, setCheckoutConfig] = useState<CheckoutConfig>({ cppEnabled: false, cppLabel: "Checkout Protection Plan", cppPrice: "0.99", cppDescription: "", processingFeePercent: "0", processingFeeFixed: "0" });
+  const [checkoutConfig, setCheckoutConfig] = useState<CheckoutConfig>({ cppEnabled: false, cppLabel: "Checkout Protection Plan", cppPrice: "0.99", cppDescription: "", processingFeePercent: "0", processingFeeFixed: "0", processingFeeTiers: [] });
   const [configLoaded, setConfigLoaded] = useState(false);
   const user = useAuthStore((s) => s.user);
   const token = useAuthStore((s) => s.token);
@@ -250,7 +251,13 @@ export default function CheckoutPage() {
   const cppFlatPrice = Number(checkoutConfig.cppPrice) || 0;
   const feePercent = Number(checkoutConfig.processingFeePercent) || 0;
   const feeFixed = Number(checkoutConfig.processingFeeFixed) || 0;
+  const feeTiers = checkoutConfig.processingFeeTiers ?? [];
   function calcProcessingFee(feeBase: number) {
+    if (feeTiers.length > 0) {
+      const sorted = [...feeTiers].sort((a, b) => b.minAmount - a.minAmount);
+      const tier = sorted.find((t) => feeBase >= t.minAmount) ?? sorted[sorted.length - 1];
+      return Math.round((feeBase * tier.feePercent / 100 + tier.feeFixed) * 100) / 100;
+    }
     return Math.round((feeBase * feePercent / 100 + feeFixed) * 100) / 100;
   }
 
@@ -538,7 +545,13 @@ export default function CheckoutPage() {
             processingFee={calcProcessingFee(
               getTotal() - (coupon ? getTotal() * (coupon.pct / 100) : 0) - loyaltyDiscount + (cppSelected ? cppFlatPrice : 0) + servicesTotal
             )}
-            processingFeeLabel={feePercent > 0 && feeFixed > 0 ? `Processing fee (${feePercent}% + €${feeFixed.toFixed(2)})` : feePercent > 0 ? `Processing fee (${feePercent}%)` : feeFixed > 0 ? `Processing fee (€${feeFixed.toFixed(2)})` : undefined}
+            processingFeeLabel={(() => {
+              if (feeTiers.length > 0) return "Processing fee";
+              if (feePercent > 0 && feeFixed > 0) return `Processing fee (${feePercent}% + €${feeFixed.toFixed(2)})`;
+              if (feePercent > 0) return `Processing fee (${feePercent}%)`;
+              if (feeFixed > 0) return `Processing fee (€${feeFixed.toFixed(2)})`;
+              return undefined;
+            })()}
           />
         </div>
       </div>
