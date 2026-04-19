@@ -3,7 +3,6 @@ import { Package, Plus, Search, Copy, Trash2, Pencil, Star, Tag, BarChart3 } fro
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthStore } from "@/stores/auth-store";
@@ -202,8 +201,8 @@ export default function AdminBundlesPage() {
 
       {analytics && (
         <Dialog open={!!analytics} onOpenChange={() => setAnalytics(null)}>
-          <DialogContent className="max-w-sm">
-            <DialogHeader><DialogTitle>Bundle Analytics</DialogTitle></DialogHeader>
+          <DialogContent className="max-w-sm bg-[#181c24] border-[#2e3340] text-[#dde4f0]">
+            <DialogHeader><DialogTitle className="text-[#dde4f0]">Bundle Analytics</DialogTitle></DialogHeader>
             <div className="space-y-3 py-2">
               <p className="font-medium text-[#dde4f0]">{analytics.name}</p>
               <div className="grid grid-cols-2 gap-3">
@@ -247,8 +246,8 @@ function BundleDialog({ open, onOpenChange, editing, setEditing, saving, onSave,
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>{editing.id ? "Edit" : "Create"} Bundle</DialogTitle></DialogHeader>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-[#181c24] border-[#2e3340] text-[#dde4f0]">
+        <DialogHeader><DialogTitle className="text-[#dde4f0]">{editing.id ? "Edit" : "Create"} Bundle</DialogTitle></DialogHeader>
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div><label className={labelCls}>Name</label><input className={inputCls} value={editing.name} onChange={(e) => upd("name", e.target.value)} /></div>
@@ -265,7 +264,7 @@ function BundleDialog({ open, onOpenChange, editing, setEditing, saving, onSave,
             </div>
           )}
           <div><label className={labelCls}>Short Description</label><input className={inputCls} value={editing.shortDescription ?? ""} onChange={(e) => upd("shortDescription", e.target.value)} /></div>
-          <div><label className={labelCls}>Description</label><Textarea rows={3} value={editing.description ?? ""} onChange={(e) => upd("description", e.target.value)} /></div>
+          <div><label className={labelCls}>Description</label><textarea rows={3} className={inputCls + " resize-y"} value={editing.description ?? ""} onChange={(e) => upd("description", e.target.value)} /></div>
           <div><label className={labelCls}>Image URL</label><input className={inputCls} value={editing.imageUrl ?? ""} onChange={(e) => upd("imageUrl", e.target.value)} /></div>
           <div className="grid grid-cols-2 gap-4">
             <div><label className={labelCls}>SEO Title</label><input className={inputCls} value={editing.metaTitle ?? ""} onChange={(e) => upd("metaTitle", e.target.value)} /></div>

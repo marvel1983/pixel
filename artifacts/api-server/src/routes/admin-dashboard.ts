@@ -217,7 +217,7 @@ router.post(
     }
     const result = await db
       .update(reviews)
-      .set({ isApproved: true, updatedAt: new Date() })
+      .set({ isApproved: true, status: "APPROVED", updatedAt: new Date() })
       .where(eq(reviews.id, reviewId));
     if (result.rowCount === 0) {
       res.status(404).json({ error: "Review not found" });

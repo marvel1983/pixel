@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AdminSidebar } from "./admin-sidebar";
 import { AdminTopbar } from "./admin-topbar";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -9,6 +9,11 @@ interface AdminLayoutProps {
 
 export function AdminLayout({ children }: AdminLayoutProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  useEffect(() => {
+    document.body.classList.add("dark");
+    return () => { document.body.classList.remove("dark"); };
+  }, []);
 
   return (
     <div className="dark flex h-screen overflow-hidden" style={{ background: "#0f1117", color: "#e2e8f0" }}>
