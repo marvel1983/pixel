@@ -375,6 +375,7 @@ router.post("/checkout/session", requireIdempotencyKey(), async (req, res) => {
     taxRate: taxRate.toFixed(2),
     taxAmountUsd: taxAmount.toFixed(2),
     vatNumber: vatNumber ?? null,
+    billingSnapshot: billing,
   }).returning({ id: orders.id });
 
   let loyaltyRedeemed = false;
