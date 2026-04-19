@@ -19,7 +19,8 @@ export interface ListingFilters {
 
 const PER_PAGE = 24;
 
-export function useListingFilters() {
+export function useListingFilters(opts?: { defaultSort?: string }) {
+  const defaultSort = opts?.defaultSort ?? "newest";
   const search = useSearch();
   const [, setLocation] = useLocation();
 
@@ -39,11 +40,12 @@ export function useListingFilters() {
       minPrice: parseFloat(params.get("min") ?? "0") || 0,
       maxPrice: parseFloat(params.get("max") ?? "9999") || 9999,
       inStockOnly: params.get("stock") === "1",
-      sort: params.get("sort") ?? "newest",
+      sort: params.get("sort") ?? defaultSort,
       page: parseInt(params.get("page") ?? "1", 10) || 1,
       tags: params.get("tags")?.split(",").filter(Boolean) ?? [],
       attrs,
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
 
   function setFilters(update: Partial<ListingFilters>) {
@@ -58,7 +60,7 @@ export function useListingFilters() {
     if (merged.minPrice > 0) p.set("min", merged.minPrice.toString());
     if (merged.maxPrice < 9999) p.set("max", merged.maxPrice.toString());
     if (merged.inStockOnly) p.set("stock", "1");
-    if (merged.sort !== "newest") p.set("sort", merged.sort);
+    if (merged.sort !== defaultSort) p.set("sort", merged.sort);
     if (merged.page > 1) p.set("page", merged.page.toString());
     if (merged.tags.length) p.set("tags", merged.tags.join(","));
     if (Object.keys(merged.attrs).length) p.set("attrs", JSON.stringify(merged.attrs));

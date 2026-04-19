@@ -391,17 +391,19 @@ export function HeroBanner() {
       </button>
 
       {/* Dot indicators */}
-      <div className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5">
+      <div className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2">
         {SLIDES.map((slide, i) => (
           <button
             key={slide.id}
             type="button"
             onClick={() => goTo(i)}
-            className="rounded-full transition-all duration-300"
+            className="rounded-full transition-all duration-300 hover:opacity-100"
             style={{
-              width: i === current ? 20 : 6,
-              height: 6,
-              background: i === current ? s.accent : "rgba(255,255,255,0.25)",
+              width: i === current ? 24 : 8,
+              height: 8,
+              background: i === current ? s.accent : "rgba(255,255,255,0.35)",
+              opacity: i === current ? 1 : 0.6,
+              boxShadow: i === current ? `0 0 8px ${s.accent}88` : "none",
             }}
             aria-label={`Slide ${i + 1}`}
           />

@@ -115,6 +115,7 @@ export function ReviewsSection({ productId, avgRating, reviewCount }: ReviewsSec
 }
 
 function RatingSummary({ avgRating, reviewCount }: { avgRating: number; reviewCount: number }) {
+  const hasReviews = reviewCount > 0;
   return (
     <div className="space-y-3">
       <div className="text-center">
@@ -129,31 +130,35 @@ function RatingSummary({ avgRating, reviewCount }: { avgRating: number; reviewCo
         </div>
         <p className="text-sm text-muted-foreground">{reviewCount} reviews</p>
       </div>
-      <div className="space-y-1.5">
-        {DISTRIBUTION.map((d) => (
-          <div key={d.stars} className="flex items-center gap-2 text-xs">
-            <span className="w-3">{d.stars}</span>
-            <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-            <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-              <div className="h-full bg-yellow-400 rounded-full" style={{ width: `${d.pct}%` }} />
-            </div>
-            <span className="w-8 text-right text-muted-foreground">{d.pct}%</span>
-          </div>
-        ))}
-      </div>
-      <div className="pt-2 space-y-2">
-        {SUB_RATINGS.map((sr) => (
-          <div key={sr.label} className="flex items-center justify-between text-xs">
-            <span className="text-muted-foreground">{sr.label}</span>
-            <div className="flex items-center gap-1.5">
-              <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
-                <div className="h-full bg-primary rounded-full" style={{ width: `${(sr.score / 5) * 100}%` }} />
+      {hasReviews && (
+        <>
+          <div className="space-y-1.5">
+            {DISTRIBUTION.map((d) => (
+              <div key={d.stars} className="flex items-center gap-2 text-xs">
+                <span className="w-3">{d.stars}</span>
+                <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                  <div className="h-full bg-yellow-400 rounded-full" style={{ width: `${d.pct}%` }} />
+                </div>
+                <span className="w-8 text-right text-muted-foreground">{d.pct}%</span>
               </div>
-              <span className="font-medium w-6 text-right">{sr.score}</span>
-            </div>
+            ))}
           </div>
-        ))}
-      </div>
+          <div className="pt-2 space-y-2">
+            {SUB_RATINGS.map((sr) => (
+              <div key={sr.label} className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">{sr.label}</span>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div className="h-full bg-primary rounded-full" style={{ width: `${(sr.score / 5) * 100}%` }} />
+                  </div>
+                  <span className="font-medium w-6 text-right">{sr.score}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }

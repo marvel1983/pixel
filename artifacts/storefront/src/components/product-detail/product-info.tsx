@@ -302,7 +302,7 @@ export function ProductInfo({ product }: ProductInfoProps) {
           onClick={() => toggleWishlist(product.id)}
         >
           <Heart className={`h-3.5 w-3.5 mr-1.5 ${isWishlisted ? "fill-white" : ""}`} />
-          {isWishlisted ? "In Wishlist" : "Wishlist"}
+          {isWishlisted ? "In Wishlist" : "Add to Wishlist"}
         </Button>
       </div>
 

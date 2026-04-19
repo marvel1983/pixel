@@ -162,6 +162,21 @@ router.get("/products", async (req: Request, res: Response) => {
     case "popular":
       orderClauses.push(desc(products.reviewCount));
       break;
+    case "rating-desc":
+      orderClauses.push(desc(products.avgRating), desc(products.reviewCount));
+      break;
+    case "discount-desc": {
+      const discountSub = sql`(
+        SELECT MAX(
+          CASE WHEN pv.compare_at_price_usd IS NOT NULL AND pv.compare_at_price_usd::numeric > 0
+               THEN (pv.compare_at_price_usd::numeric - COALESCE(pv.price_override_usd, pv.price_usd)::numeric) / pv.compare_at_price_usd::numeric
+               ELSE 0 END
+        )
+        FROM product_variants pv WHERE pv.product_id = products.id AND pv.is_active = true
+      )`;
+      orderClauses.push(sql`${discountSub} DESC NULLS LAST`);
+      break;
+    }
     default:
       orderClauses.push(desc(products.createdAt), desc(products.id));
   }

@@ -154,9 +154,9 @@ export default function HomePage() {
       case "BRAND_SECTIONS":
         return <ShopByBrand />;
       case "PRODUCT_SPOTLIGHT":
-        return <FeaturedSpotlight products={hp.featured} />;
+        return hp.featured.length > 0 ? <FeaturedSpotlight products={hp.featured} /> : null;
       case "NEW_ADDITIONS":
-        return <NewAdditions products={hp.featured.filter((_, i) => i < 6)} />;
+        return hp.featured.length > 0 ? <NewAdditions products={hp.featured.filter((_, i) => i < 6)} /> : null;
       case "FEATURED_BUNDLES":
         return <FeaturedBundles />;
       default:

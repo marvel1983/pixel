@@ -1,10 +1,10 @@
 import { cn } from "@/lib/utils";
 
 const STATS = [
-  { value: "50,000+", label: "Happy customers", accent: "#3b82f6" },
-  { value: "4.8★", label: "Average rating", accent: "#f59e0b" },
-  { value: "< 5 min", label: "Key delivery", accent: "#22c55e" },
-  { value: "10+ yrs", label: "Trusted seller", accent: "#a855f7" },
+  { value: "50,000+", label: "Happy customers" },
+  { value: "4.8★", label: "Average rating" },
+  { value: "< 5 min", label: "Key delivery" },
+  { value: "10+ yrs", label: "Trusted seller" },
 ];
 
 export function StatsStrip({ className }: { className?: string }) {
@@ -29,20 +29,14 @@ export function StatsStrip({ className }: { className?: string }) {
       />
 
       <div className="relative grid grid-cols-2 divide-x divide-white/10 sm:grid-cols-4">
-        {STATS.map(({ value, label, accent }, i) => (
+        {STATS.map(({ value, label }) => (
           <div
             key={label}
             className="group flex flex-col items-center justify-center gap-1 px-4 py-4 text-center transition-colors hover:bg-white/5"
           >
-            {/* accent dot */}
-            <div
-              className="mb-1 h-1 w-6 rounded-full opacity-80"
-              style={{ background: accent }}
-            />
-            <span
-              className="text-xl font-extrabold leading-none tracking-tight sm:text-2xl"
-              style={{ color: accent }}
-            >
+            {/* amber accent dot — consistent across all stats */}
+            <div className="mb-1 h-1 w-6 rounded-full bg-amber-400 opacity-80" />
+            <span className="text-xl font-extrabold leading-none tracking-tight text-white sm:text-2xl">
               {value}
             </span>
             <span className="text-[11px] font-medium text-white/55 uppercase tracking-wider">

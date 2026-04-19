@@ -128,7 +128,7 @@ export function ProductCard({ product, flashSalePrice: flashSalePriceProp }: Pro
   return (
     <>
     <Link href={`/product/${product.slug}`} onClick={() => addToRecentlyViewed(product.id)}>
-      <div className="group bg-card border border-border rounded-lg hover:shadow-md transition-shadow h-full flex flex-col">
+      <div className="group bg-card border border-border rounded-lg hover:shadow-lg hover:-translate-y-0.5 transition-[shadow,transform] duration-150 h-full flex flex-col">
         <div className="relative aspect-[4/3] shrink-0 rounded-t-lg">
           {/* Clip only the image so discount / NEW badges are not cut off by overflow-hidden */}
           <div className="absolute inset-0 overflow-hidden rounded-t-lg bg-gradient-to-br from-muted to-muted/50">

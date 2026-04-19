@@ -21,7 +21,7 @@ import OutletPage from "@/pages/outlet";
 import HotOffersPage from "@/pages/hot-offers";
 import BestSellersRedirect from "@/pages/best-sellers";
 import NewArrivalsRedirect from "@/pages/new-arrivals";
-import DealsRedirect from "@/pages/deals-redirect";
+import DealsPage from "@/pages/deals";
 import SupportHubPage from "@/pages/support-hub";
 import ProductDetailPage from "@/pages/product-detail";
 import CartPage from "@/pages/cart";
@@ -55,6 +55,7 @@ import AuthGoogleSuccessPage from "@/pages/auth-google-success";
 import { useReferralTracking } from "@/hooks/use-referral";
 import { ExitIntentPopup } from "@/components/newsletter/exit-intent-popup";
 import { PurchaseToastProvider } from "@/components/social-proof/purchase-toast";
+import { CompareBar } from "@/components/product/compare-bar";
 import BlogPage from "@/pages/blog";
 import BlogPostPage from "@/pages/blog-post";
 import BusinessPage from "@/pages/business";
@@ -101,7 +102,7 @@ function StorefrontWithMaintenance() {
         <Route path="/hot-offers" component={HotOffersPage} />
         <Route path="/best-sellers" component={BestSellersRedirect} />
         <Route path="/new-arrivals" component={NewArrivalsRedirect} />
-        <Route path="/deals" component={DealsRedirect} />
+        <Route path="/deals" component={DealsPage} />
         <Route path="/flash-sale" component={FlashSalePage} />
         <Route path="/bundles/:slug" component={BundleDetailPage} />
         <Route path="/bundles" component={BundlesPage} />
@@ -147,6 +148,7 @@ function StorefrontWithMaintenance() {
       </Switch>
       <ExitIntentPopup />
       <PurchaseToastProvider />
+      <CompareBar />
       <HreflangTags />
       <CookieBanner />
       <ConsentGatedScripts />
