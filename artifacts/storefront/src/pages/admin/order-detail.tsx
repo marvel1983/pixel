@@ -18,6 +18,11 @@ interface OrderDetail {
     ipAddress: string | null; notes: string | null; createdAt: string; updatedAt: string;
     riskScore: number | null; riskReasons: string[] | null;
   };
+  stripePaymentDetails: {
+    status: string; cardBrand?: string; cardLast4?: string;
+    cardExpMonth?: number; cardExpYear?: number; cardCountry?: string; cardFunding?: string;
+    declineCode?: string; declineMessage?: string;
+  } | null;
   items: { id: number; productName: string; variantName: string; priceUsd: string; quantity: number }[];
   licenseKeys: { orderItemId: number; id: number; keyValue: string; status: string }[];
   customer: { id: number; email: string; firstName: string | null; lastName: string | null; createdAt: string } | null;
@@ -159,7 +164,7 @@ export default function OrderDetailPage() {
   );
   if (!data) return <div className="p-12 text-center text-[#5a6a84]">Order not found</div>;
 
-  const { order, items, licenseKeys, customer, coupon, timeline } = data;
+  const { order, items, licenseKeys, customer, coupon, timeline, stripePaymentDetails } = data;
 
   return (
     <div className="space-y-4 text-[#dde4f0]">
@@ -268,6 +273,40 @@ export default function OrderDetailPage() {
               <InfoRow label="Currency" value={`${order.currencyCode} (×${order.currencyRate})`} />
               {parseFloat(order.walletAmountUsed ?? "0") > 0 && <InfoRow label="Wallet Used" value={`€${order.walletAmountUsed}`} />}
             </div>
+            {stripePaymentDetails && (
+              <div className="mt-3 pt-3 border-t border-[#2e3340] space-y-3">
+                {/* Card details */}
+                {stripePaymentDetails.cardLast4 && (
+                  <div className="flex items-center gap-3">
+                    <div className="rounded bg-[#1e2128] px-3 py-2 flex items-center gap-2.5">
+                      <span className="text-[13px] font-semibold text-[#dde4f0] capitalize">{stripePaymentDetails.cardBrand ?? "Card"}</span>
+                      <span className="font-mono text-[13px] text-[#8fa0bb]">•••• {stripePaymentDetails.cardLast4}</span>
+                      {stripePaymentDetails.cardExpMonth && stripePaymentDetails.cardExpYear && (
+                        <span className="text-[11px] text-[#5a6a84]">{String(stripePaymentDetails.cardExpMonth).padStart(2, "0")}/{stripePaymentDetails.cardExpYear}</span>
+                      )}
+                      {stripePaymentDetails.cardFunding && (
+                        <span className="text-[10px] uppercase tracking-widest text-[#5a6a84] bg-[#2a2e3a] px-1.5 py-0.5 rounded">{stripePaymentDetails.cardFunding}</span>
+                      )}
+                      {stripePaymentDetails.cardCountry && (
+                        <span className="text-[11px] text-[#5a6a84]">{stripePaymentDetails.cardCountry}</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {/* Decline info */}
+                {(stripePaymentDetails.declineCode || stripePaymentDetails.declineMessage) && (
+                  <div className="rounded border border-red-500/30 bg-red-500/10 px-3 py-2 text-[12px]">
+                    <p className="font-semibold text-red-400 mb-0.5">Payment declined</p>
+                    {stripePaymentDetails.declineCode && <p className="text-red-300">Code: <span className="font-mono">{stripePaymentDetails.declineCode}</span></p>}
+                    {stripePaymentDetails.declineMessage && <p className="text-red-300">{stripePaymentDetails.declineMessage}</p>}
+                  </div>
+                )}
+                {/* Pending state */}
+                {!stripePaymentDetails.cardLast4 && !stripePaymentDetails.declineCode && order.status === "PENDING" && (
+                  <p className="text-[12px] text-[#5a6a84]">Awaiting payment — customer has not completed checkout yet.</p>
+                )}
+              </div>
+            )}
           </Card>
 
           {order.externalOrderId && (

@@ -256,6 +256,7 @@ async function handleStripeSessionCompleted(session: import("stripe").Stripe.Che
       riskHold: true,
       riskScore: risk.score,
       riskReasons: risk.reasons,
+      paymentIntentId: paymentIntentId,
       updatedAt: new Date(),
     }).where(eq(orders.id, orderId));
     sendOrderConfirmationOnly(payload.billing, orderNumber || order.orderNumber, orderId, payload.items, payload.total, payload.locale).catch(() => {});
@@ -435,6 +436,7 @@ async function handleCheckoutPaymentApproved(data: Record<string, unknown>) {
       riskHold: true,
       riskScore: risk.score,
       riskReasons: risk.reasons,
+      paymentIntentId: paymentId,
       updatedAt: new Date(),
     }).where(eq(orders.id, orderId));
     sendOrderConfirmationOnly(payload.billing, orderNumber || order.orderNumber, orderId, payload.items, payload.total, payload.locale).catch(() => {});

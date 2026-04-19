@@ -9,6 +9,8 @@ import { paramString } from "../lib/route-params";
 import { awardOrderPoints, reverseOrderLoyaltyPoints } from "../services/loyalty-service";
 import { runFulfillment } from "../services/order-pipeline";
 import { parseFulfillmentPayload } from "./checkout-session";
+import { getActivePaymentConfig } from "../lib/payment-config";
+import { createStripeClient } from "../lib/stripe-client";
 import { logger } from "../lib/logger";
 
 const router = Router();
@@ -137,7 +139,39 @@ router.get("/admin/orders/:id", requireAuth, requireAdmin, requirePermission("ma
     ...(order.status === "FAILED" ? [{ event: "Order failed", date: order.updatedAt.toISOString() }] : []),
   ];
 
-  res.json({ order, items, licenseKeys: decryptedKeys, customer, coupon, timeline });
+  // Fetch Stripe payment details if we have a payment intent ID
+  let stripePaymentDetails: {
+    status: string; cardBrand?: string; cardLast4?: string;
+    cardExpMonth?: number; cardExpYear?: number; cardCountry?: string; cardFunding?: string;
+    declineCode?: string; declineMessage?: string;
+  } | null = null;
+
+  if (order.paymentIntentId) {
+    try {
+      const payConfig = await getActivePaymentConfig();
+      if (payConfig?.provider === "stripe" && payConfig.secretKey) {
+        const stripe = createStripeClient(payConfig.secretKey);
+        const pi = await stripe.paymentIntents.retrieve(order.paymentIntentId, { expand: ["latest_charge"] });
+        const charge = typeof pi.latest_charge === "object" && pi.latest_charge ? pi.latest_charge as import("stripe").Stripe.Charge : null;
+        const card = charge?.payment_method_details?.card;
+        stripePaymentDetails = {
+          status: pi.status,
+          cardBrand: card?.brand,
+          cardLast4: card?.last4,
+          cardExpMonth: card?.exp_month,
+          cardExpYear: card?.exp_year,
+          cardCountry: card?.country ?? undefined,
+          cardFunding: card?.funding ?? undefined,
+          declineCode: (charge?.failure_code ?? pi.last_payment_error?.decline_code) ?? undefined,
+          declineMessage: (charge?.failure_message ?? pi.last_payment_error?.message) ?? undefined,
+        };
+      }
+    } catch (err) {
+      logger.warn({ err, orderId: id }, "Could not fetch Stripe payment details (non-fatal)");
+    }
+  }
+
+  res.json({ order, items, licenseKeys: decryptedKeys, customer, coupon, timeline, stripePaymentDetails });
 });
 
 router.patch("/admin/orders/:id/status", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
