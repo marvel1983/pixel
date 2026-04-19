@@ -60,6 +60,7 @@ export const products = pgTable("products", {
   sortOrder: integer("sort_order").notNull().default(0),
   avgRating: numeric("avg_rating", { precision: 3, scale: 2 }).default("0"),
   reviewCount: integer("review_count").notNull().default(0),
+  activationInstructions: text("activation_instructions"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

@@ -1,6 +1,6 @@
 import { eq, and, inArray, sql, asc } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { orders, orderItems, licenseKeys, metenziProductMappings, productVariants, users } from "@workspace/db/schema";
+import { orders, orderItems, licenseKeys, metenziProductMappings, productVariants, products, users } from "@workspace/db/schema";
 import { getMetenziConfig } from "../lib/metenzi-config";
 import { createOrder as metenziCreateOrder } from "../lib/metenzi-endpoints";
 import { encrypt } from "../lib/encryption";
@@ -213,7 +213,7 @@ async function assignKeysToOrder(
   keyQueue: Array<{ code: string; productId: string }>,
   metenziOrderId: string,
 ): Promise<void> {
-  const deliveredKeys: { productName: string; variant: string; licenseKey: string }[] = [];
+  const deliveredKeys: { productName: string; variant: string; licenseKey: string; variantId: number }[] = [];
 
   for (const item of pendingItems) {
     if (keyQueue.length === 0) break;
@@ -241,7 +241,7 @@ async function assignKeysToOrder(
         orderItemId: item.orderItemId,
         soldAt: new Date(),
       });
-      deliveredKeys.push({ productName: item.productName, variant: item.variantName, licenseKey: key });
+      deliveredKeys.push({ productName: item.productName, variant: item.variantName, licenseKey: key, variantId: item.variantId });
     }
   }
 
@@ -277,10 +277,19 @@ async function assignKeysToOrder(
     const backorderNote = newStatus === "PARTIALLY_DELIVERED"
       ? `${totalDelivered} of ${totalExpected} key(s) delivered. The remaining ${totalExpected - totalDelivered} key(s) are on backorder and will be emailed automatically once available.`
       : undefined;
+
+    const uniqueVariantIds = [...new Set(deliveredKeys.map((k) => k.variantId))];
+    const instructionRows = uniqueVariantIds.length > 0
+      ? await db.select({ variantId: productVariants.id, instructions: products.activationInstructions })
+          .from(productVariants).leftJoin(products, eq(products.id, productVariants.productId))
+          .where(inArray(productVariants.id, uniqueVariantIds))
+      : [];
+    const instructionMap = new Map(instructionRows.map((r) => [r.variantId, r.instructions]));
+
     sendKeyDeliveryEmail(email, {
       orderRef: firstItem.orderNumber,
       customerName: "Customer",
-      keys: deliveredKeys,
+      keys: deliveredKeys.map((k) => ({ ...k, instructions: instructionMap.get(k.variantId) ?? undefined })),
       backorderNote,
     }).catch((err) => logger.error({ err, orderId }, "Failed to enqueue key delivery email from backorder"));
   }

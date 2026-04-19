@@ -1,6 +1,6 @@
 import { eq, and, inArray } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { orders, orderItems, licenseKeys, auditLog, users, metenziProductMappings, productVariants } from "@workspace/db/schema";
+import { orders, orderItems, licenseKeys, auditLog, users, metenziProductMappings, productVariants, products } from "@workspace/db/schema";
 import { encrypt } from "../lib/encryption";
 import { sendKeyDeliveryEmail } from "../lib/email";
 import { logger } from "../lib/logger";
@@ -89,7 +89,7 @@ export async function handleBackorderFulfilled(data: FulfilledData) {
       const needed = item.quantity - existingKeys.length;
       if (needed <= 0) continue;
 
-      const keysToDeliver: { productName: string; variant: string; licenseKey: string }[] = [];
+      const keysToDeliver: { productName: string; variant: string; licenseKey: string; variantId: number }[] = [];
       for (let i = 0; i < needed && keyQueue.length > 0; i++) {
         const key = keyQueue.shift()!;
         const encryptedKey = encrypt(key);
@@ -98,7 +98,7 @@ export async function handleBackorderFulfilled(data: FulfilledData) {
           .where(and(eq(licenseKeys.keyValue, encryptedKey), eq(licenseKeys.orderItemId, item.orderItemId))).limit(1);
         if (dupe) continue;
         await db.insert(licenseKeys).values({ variantId: item.variantId, keyValue: encryptedKey, keyMask, status: "SOLD", source: "API", orderItemId: item.orderItemId, soldAt: new Date() });
-        keysToDeliver.push({ productName: item.productName, variant: item.variantName, licenseKey: key });
+        keysToDeliver.push({ productName: item.productName, variant: item.variantName, licenseKey: key, variantId: item.variantId });
       }
       if (keysToDeliver.length === 0) continue;
 
@@ -128,7 +128,11 @@ export async function handleBackorderFulfilled(data: FulfilledData) {
         const backorderNote = newStatus === "PARTIALLY_DELIVERED"
           ? `${deliveredCount} of ${totalExpected} key(s) delivered. ${totalExpected - deliveredCount} key(s) still on backorder.`
           : undefined;
-        sendKeyDeliveryEmail(email, { orderRef: item.orderNumber, customerName: "Customer", keys: keysToDeliver, backorderNote })
+        const [instrRow] = await db.select({ instructions: products.activationInstructions })
+          .from(productVariants).leftJoin(products, eq(products.id, productVariants.productId))
+          .where(eq(productVariants.id, item.variantId)).limit(1);
+        const instructions = instrRow?.instructions ?? undefined;
+        sendKeyDeliveryEmail(email, { orderRef: item.orderNumber, customerName: "Customer", keys: keysToDeliver.map((k) => ({ ...k, instructions })), backorderNote })
           .catch((err) => logger.error({ err, orderId: item.orderId }, "Failed to send backorder key delivery email"));
       }
 

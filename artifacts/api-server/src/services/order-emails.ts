@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { orderItems, licenseKeys, orders } from "@workspace/db/schema";
+import { orderItems, licenseKeys, orders, productVariants, products } from "@workspace/db/schema";
 import { decrypt } from "../lib/encryption";
 import { logger } from "../lib/logger";
 import { sendOrderConfirmationEmail, sendKeyDeliveryEmail, sendInvoiceEmail } from "../lib/email";
@@ -136,9 +136,12 @@ export async function triggerOrderEmails(
       .select({
         keyValue: licenseKeys.keyValue,
         variantId: licenseKeys.variantId,
+        instructions: products.activationInstructions,
       })
       .from(licenseKeys)
       .innerJoin(orderItems, eq(licenseKeys.orderItemId, orderItems.id))
+      .leftJoin(productVariants, eq(productVariants.id, licenseKeys.variantId))
+      .leftJoin(products, eq(products.id, productVariants.productId))
       .where(eq(orderItems.orderId, orderId));
 
     if (deliveredKeys.length > 0) {
@@ -154,6 +157,7 @@ export async function triggerOrderEmails(
           productName: item?.productName ?? "Product",
           variant: item?.variantName ?? "Standard",
           licenseKey: keyVal,
+          instructions: dk.instructions ?? undefined,
         };
       });
       await sendKeyDeliveryEmail(billing.email, {

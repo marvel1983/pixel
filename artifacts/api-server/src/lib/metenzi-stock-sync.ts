@@ -1,6 +1,6 @@
 import { eq, and } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { metenziProductMappings, productVariants } from "@workspace/db/schema";
+import { metenziProductMappings, productVariants, products } from "@workspace/db/schema";
 import { getMetenziConfig } from "./metenzi-config";
 import { getProducts } from "./metenzi-endpoints";
 import { logger } from "./logger";
@@ -80,6 +80,13 @@ export async function syncMetenziStock(): Promise<StockSyncResult> {
         .update(productVariants)
         .set({ stockCount: mp.stock, backorderAllowed: true, backorderEta: eta, updatedAt: new Date() })
         .where(eq(productVariants.id, variant.id));
+
+      if (mp.instructions !== undefined) {
+        await db
+          .update(products)
+          .set({ activationInstructions: mp.instructions ?? null, updatedAt: new Date() })
+          .where(eq(products.id, mapping.pixelProductId));
+      }
 
       await db
         .update(metenziProductMappings)

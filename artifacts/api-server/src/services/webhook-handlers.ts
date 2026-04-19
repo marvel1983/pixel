@@ -8,6 +8,7 @@ import {
   users,
   metenziProductMappings,
   productVariants,
+  products,
 } from "@workspace/db/schema";
 import { encrypt } from "../lib/encryption";
 import { sendKeyDeliveryEmail, enqueueEmail } from "../lib/email";
@@ -108,7 +109,7 @@ async function handleOrderFulfilled(data: FulfilledData) {
     return;
   }
 
-  const keysToDeliver: { productName: string; variant: string; licenseKey: string }[] = [];
+  const keysToDeliver: { productName: string; variant: string; licenseKey: string; variantId: number }[] = [];
 
   // Primary path: Metenzi puts keys at order level — order.keys[{ code, productId }]
   let topLevelKeys = data.keys ?? [];
@@ -170,7 +171,7 @@ async function handleOrderFulfilled(data: FulfilledData) {
         orderItemId: dbItem.id,
         soldAt: new Date(),
       });
-      keysToDeliver.push({ productName: dbItem.productName, variant: dbItem.variantName, licenseKey: key });
+      keysToDeliver.push({ productName: dbItem.productName, variant: dbItem.variantName, licenseKey: key, variantId: dbItem.variantId });
     }
   } else {
     // Fallback: legacy format where items have inline keys array
@@ -199,7 +200,7 @@ async function handleOrderFulfilled(data: FulfilledData) {
         const encryptedKey = encrypt(key);
         const keyMask = key.length <= 8 ? key.slice(0, 2) + "****" : key.slice(0, 4) + "****" + key.slice(-4);
         await db.insert(licenseKeys).values({ variantId: dbItem.variantId, keyValue: encryptedKey, keyMask, status: "SOLD", source: "API", orderItemId: dbItem.id, soldAt: new Date() });
-        keysToDeliver.push({ productName: dbItem.productName, variant: dbItem.variantName, licenseKey: key });
+        keysToDeliver.push({ productName: dbItem.productName, variant: dbItem.variantName, licenseKey: key, variantId: dbItem.variantId });
       }
     }
   }
@@ -248,10 +249,21 @@ async function handleOrderFulfilled(data: FulfilledData) {
     const backorderNote = newStatus === "PARTIALLY_DELIVERED"
       ? `${keysToDeliver.length} of ${totalExpected} key(s) delivered. The remaining ${totalExpected - totalDelivered} key(s) are on backorder and will be emailed automatically once available.`
       : undefined;
+
+    // Fetch activation instructions for all delivered variants
+    const uniqueVariantIds = [...new Set(keysToDeliver.map((k) => k.variantId))];
+    const instructionRows = uniqueVariantIds.length > 0
+      ? await db.select({ variantId: productVariants.id, instructions: products.activationInstructions })
+          .from(productVariants)
+          .leftJoin(products, eq(products.id, productVariants.productId))
+          .where(inArray(productVariants.id, uniqueVariantIds))
+      : [];
+    const instructionMap = new Map(instructionRows.map((r) => [r.variantId, r.instructions]));
+
     sendKeyDeliveryEmail(order.email, {
       orderRef: order.orderNumber,
       customerName: "Customer",
-      keys: keysToDeliver,
+      keys: keysToDeliver.map((k) => ({ ...k, instructions: instructionMap.get(k.variantId) ?? undefined })),
       backorderNote,
     }).catch((err) =>
       logger.error({ err }, "Failed to enqueue key delivery email from webhook"),
