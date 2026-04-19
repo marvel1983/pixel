@@ -308,7 +308,7 @@ function CartRow({ item, format, onUpdateQuantity, onRemove }: CartRowProps) {
       <div className="flex justify-end">
         <button
           type="button"
-          className="h-8 w-8 flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+          className="h-8 w-8 flex items-center justify-center rounded-lg text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
           onClick={() => onRemove(item.variantId, item.bundleId)}
           title="Remove item"
         >

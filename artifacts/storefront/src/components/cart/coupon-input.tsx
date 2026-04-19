@@ -86,7 +86,7 @@ export function CouponInput() {
         <Button
           onClick={handleApply}
           disabled={loading || !code.trim()}
-          variant="outline"
+          className="bg-green-600 hover:bg-green-700 text-white border-0"
         >
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
         </Button>
