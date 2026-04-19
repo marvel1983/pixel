@@ -10,7 +10,7 @@ import {
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import { getMetenziConfig } from "../lib/metenzi-config";
-import { getCatalogPage, getProducts, type MetenziProduct } from "../lib/metenzi-endpoints";
+import { getCatalogPage, getProducts, getProductById, type MetenziProduct } from "../lib/metenzi-endpoints";
 import { downloadImageToVps } from "../lib/image-downloader";
 import { logger } from "../lib/logger";
 import { metenziRequest } from "../lib/metenzi-client";
@@ -266,8 +266,14 @@ router.post("/admin/metenzi/sync-field", ...guard, async (req, res) => {
   if (!config) { res.status(503).json({ error: "Metenzi not configured" }); return; }
 
   // Fetch fresh product data from Metenzi
-  const catRes = await getCatalogPage(config, { search: mapping.metenziSku ?? mapping.metenziProductId, limit: 5 });
-  const mp = catRes.products.find((p) => p.id === mapping.metenziProductId);
+  // Use individual endpoint when instructions is requested — catalog listing may omit it
+  let mp: MetenziProduct | null = null;
+  if (fields.includes("instructions")) {
+    mp = await getProductById(config, mapping.metenziProductId);
+  } else {
+    const catRes = await getCatalogPage(config, { search: mapping.metenziSku ?? mapping.metenziProductId, limit: 5 });
+    mp = catRes.products.find((p) => p.id === mapping.metenziProductId) ?? null;
+  }
   if (!mp) { res.status(404).json({ error: "Product not found in Metenzi" }); return; }
 
   // Fetch pixel product's variant

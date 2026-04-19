@@ -2,7 +2,7 @@ import { eq, and } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { metenziProductMappings, productVariants, products } from "@workspace/db/schema";
 import { getMetenziConfig } from "./metenzi-config";
-import { getProducts } from "./metenzi-endpoints";
+import { getProducts, getProductById } from "./metenzi-endpoints";
 import { logger } from "./logger";
 
 export interface StockSyncResult {
@@ -81,11 +81,17 @@ export async function syncMetenziStock(): Promise<StockSyncResult> {
         .set({ stockCount: mp.stock, backorderAllowed: true, backorderEta: eta, updatedAt: new Date() })
         .where(eq(productVariants.id, variant.id));
 
-      if (mp.instructions !== undefined) {
-        await db
-          .update(products)
-          .set({ activationInstructions: mp.instructions ?? null, updatedAt: new Date() })
-          .where(eq(products.id, mapping.pixelProductId));
+      // Fetch full product to get instructions (catalog listing may omit it)
+      try {
+        const full = await getProductById(config, mapping.metenziProductId);
+        if (full && full.instructions !== undefined) {
+          await db
+            .update(products)
+            .set({ activationInstructions: full.instructions ?? null, updatedAt: new Date() })
+            .where(eq(products.id, mapping.pixelProductId));
+        }
+      } catch (err) {
+        logger.warn({ err, metenziProductId: mapping.metenziProductId }, "Metenzi stock sync: failed to fetch instructions (non-fatal)");
       }
 
       await db
