@@ -53,11 +53,9 @@ router.post("/social-proof/batch", async (req, res) => {
 
   const sid = typeof sessionId === "string" ? sessionId.slice(0, 100) : null;
   if (sid) {
-    await Promise.all(
-      ids.map((pid) =>
-        db.insert(socialProofEvents).values({ productId: pid, eventType: "VIEW", sessionId: sid }).catch(() => {})
-      )
-    );
+    await db.insert(socialProofEvents)
+      .values(ids.map((pid) => ({ productId: pid, eventType: "VIEW" as const, sessionId: sid })))
+      .catch(() => {});
   }
 
   const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
