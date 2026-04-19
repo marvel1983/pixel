@@ -7,6 +7,7 @@ export interface ProductData {
   keyFeatures: string[]; systemRequirements: Record<string, string>;
   relatedProductIds: number[]; crossSellProductIds: number[];
   regionRestrictions: string[]; platformType: string | null;
+  activationInstructions: string | null;
 }
 
 export interface VariantData {

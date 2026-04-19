@@ -291,6 +291,7 @@ router.put("/admin/products/:id", requireAuth, requireAdmin, requirePermission("
       regionRestrictions: body.regionRestrictions ?? [],
       platformType: body.platformType || null,
       sortOrder: body.sortOrder,
+      activationInstructions: body.activationInstructions ?? null,
       updatedAt: new Date(),
     })
     .where(eq(products.id, id));

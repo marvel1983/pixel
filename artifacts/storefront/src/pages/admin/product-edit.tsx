@@ -49,7 +49,7 @@ export default function ProductEditPage() {
       fetch(`${API_URL}/admin/attributes`, { headers: authHdr }).then((r) => r.json()).catch(() => []),
       fetch(`${API_URL}/admin/products/${productId}/attributes`, { headers: authHdr }).then((r) => r.json()).catch(() => []),
     ]).then(async ([d, tagsData, productTagsData, attrsData, productAttrsData]) => {
-      setProduct({ ...d.product, keyFeatures: d.product.keyFeatures ?? [], systemRequirements: d.product.systemRequirements ?? {}, relatedProductIds: d.product.relatedProductIds ?? [], crossSellProductIds: d.product.crossSellProductIds ?? [] });
+      setProduct({ ...d.product, keyFeatures: d.product.keyFeatures ?? [], systemRequirements: d.product.systemRequirements ?? {}, relatedProductIds: d.product.relatedProductIds ?? [], crossSellProductIds: d.product.crossSellProductIds ?? [], activationInstructions: d.product.activationInstructions ?? null });
       setVariants(d.variants);
       setCats(d.categories);
       setAllProducts(d.allProducts ?? []);
@@ -168,6 +168,18 @@ export default function ProductEditPage() {
           <div style={s.card}>
             <p style={s.secTitle}>Description</p>
             <RichTextEditor content={product.description ?? ""} onChange={(html) => upd("description", html)} placeholder="Write product description…" />
+          </div>
+
+          {/* Activation Instructions */}
+          <div style={s.card}>
+            <p style={s.secTitle}>Activation Instructions</p>
+            <p style={{ fontSize: 10, color: "#566070", marginBottom: 6, marginTop: -4 }}>Shown to customers in the key delivery email. Auto-synced from Metenzi — manual edits will be overwritten on next stock sync.</p>
+            <textarea
+              style={{ ...s.inp, resize: "vertical", minHeight: 80, fontFamily: "inherit", lineHeight: 1.5 }}
+              value={product.activationInstructions ?? ""}
+              onChange={(e) => upd("activationInstructions", e.target.value || null)}
+              placeholder="e.g. 1. Go to store.steampowered.com&#10;2. Click 'Add a Game' → 'Activate a Product on Steam'&#10;3. Enter your key and follow the prompts"
+            />
           </div>
 
           {/* Pricing & Variants */}
