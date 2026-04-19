@@ -212,11 +212,31 @@ export default function CheckoutPage() {
   }, [billing.country, billing.vatNumber]);
 
   useEffect(() => {
-    fetch(`${API}/checkout/config`)
-      .then((r) => r.ok ? r.json() : null)
-      .then((d: CheckoutConfig | null) => { if (d) setCheckoutConfig(d); })
-      .catch(() => {})
-      .finally(() => setConfigLoaded(true));
+    let attempts = 0;
+    const load = () => {
+      fetch(`${API}/checkout/config`)
+        .then((r) => r.ok ? r.json() : null)
+        .then((d: CheckoutConfig | null) => {
+          if (d) {
+            setCheckoutConfig(d);
+            setConfigLoaded(true);
+          } else if (attempts < 3) {
+            attempts++;
+            setTimeout(load, 1500);
+          } else {
+            setConfigLoaded(true); // unblock after 3 failed attempts; fee will be 0 — server will reject with mismatch
+          }
+        })
+        .catch(() => {
+          if (attempts < 3) {
+            attempts++;
+            setTimeout(load, 1500);
+          } else {
+            setConfigLoaded(true);
+          }
+        });
+    };
+    load();
   }, []);
 
   useEffect(() => {
