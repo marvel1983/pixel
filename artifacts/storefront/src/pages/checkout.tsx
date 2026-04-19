@@ -3,7 +3,6 @@ import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { Loader2, Lock, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { useCartStore } from "@/stores/cart-store";
 import { useAuthStore } from "@/stores/auth-store";
 import { useToast } from "@/hooks/use-toast";
@@ -413,14 +412,11 @@ export default function CheckoutPage() {
         <div className="space-y-6">
           <BillingForm data={billing} errors={billingErrors} onChange={handleBillingChange} showVatField={taxInfo.b2bEnabled} />
           <CheckoutRegionBlock items={items} customerCountry={billing.country} acknowledged={regionAcknowledged} onAcknowledge={setRegionAcknowledged} />
-          <Separator />
-          {!token && <><GuestAccount onPasswordChange={setGuestPassword} /><Separator /></>}
+          {!token && <GuestAccount onPasswordChange={setGuestPassword} />}
           {checkoutConfig.cppEnabled && (
             <CppSection selected={cppSelected} onToggle={setCppSelected} cppPrice={cppFlatPrice} cppLabel={checkoutConfig.cppLabel} cppDescription={checkoutConfig.cppDescription} />
           )}
-          <Separator />
           <CheckoutServices selectedIds={selectedServiceIds} onToggle={handleServiceToggle} />
-          <Separator />
           {/* ─── Upsell offers ─────────────────────────────── */}
           <ProductUpsell />
           {/* ─── Gift card / Loyalty / Wallet / Card payment ── */}
