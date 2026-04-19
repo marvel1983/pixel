@@ -200,6 +200,75 @@ For multi-step tasks, state a brief plan with explicit verify steps before start
 ## Design Constraints
 
 - All source files must remain **under 300 lines**.
-- **Light mode** is the default theme (dark mode is a future task — do not add it now).
+- **Light mode** is the default theme. Dark mode exists but primary colour is locked to `hsl(208 74% 46%)` in both modes.
 - Product grid is **6 items per row** (k4g.com-inspired compact layout).
-- Primary color: **blue** (HSL 221 83% 53%).
+- Primary color: **blue** `hsl(208 74% 46%)` — defined in `index.css` `.dark` block too.
+- Ghost buttons use `border-0` (not `border-transparent`) to avoid dark-mode admin CSS override.
+- Nav buttons have 3D raised effect via `index.css` `nav button` rules.
+
+## File Map
+
+> Use this before Glob/Read to find files directly. Full map: `.claude/commands/project-overview.md`
+
+### Storefront — key files
+
+| File | Purpose |
+|---|---|
+| `storefront/src/index.css` | Global CSS, CSS vars (`--primary`), dark mode, nav 3D effect |
+| `storefront/src/elevate.css` | Hover/active elevation effects |
+| `storefront/src/App.tsx` | Router — all page routes |
+| `storefront/src/components/layout/top-bar.tsx` | Header: logo (3D hover), search bar |
+| `storefront/src/components/layout/nav-bar.tsx` | Blue nav: categories, links, icons |
+| `storefront/src/components/layout/footer.tsx` | Footer |
+| `storefront/src/components/layout/currency-selector.tsx` | EUR/USD picker |
+| `storefront/src/components/layout/theme-toggle.tsx` | Dark/light toggle |
+| `storefront/src/components/ui/button.tsx` | Button variants (ghost=border-0) |
+| `storefront/src/components/cart/cart-items-table.tsx` | Cart items, red trash icon |
+| `storefront/src/components/cart/coupon-input.tsx` | Coupon input, green Apply button |
+| `storefront/src/components/cart/cart-totals.tsx` | Subtotal/total display |
+| `storefront/src/components/checkout/checkout-summary.tsx` | Order summary sidebar |
+| `storefront/src/components/checkout/loyalty-redeem.tsx` | Loyalty points slider |
+| `storefront/src/components/checkout/product-upsell.tsx` | Upsell add-to-order offers |
+| `storefront/src/components/orders/order-detail.tsx` | Order detail + PDF invoice download |
+| `storefront/src/components/orders/order-status-badge.tsx` | Status badge |
+| `storefront/src/pages/checkout.tsx` | Checkout page (billing, payment, button) |
+| `storefront/src/pages/cart.tsx` | Cart page |
+| `storefront/src/stores/cart-store.ts` | Zustand: cart items/totals |
+| `storefront/src/stores/auth-store.ts` | Zustand: user/token |
+| `storefront/src/stores/currency-store.ts` | Zustand: currency + format() |
+
+### API Server — key files
+
+| File | Purpose |
+|---|---|
+| `api-server/src/app.ts` | Express setup, middleware chain |
+| `api-server/src/routes/orders.ts` | POST /orders — order creation |
+| `api-server/src/routes/order-lookup.ts` | GET /account/orders, GET /orders/:id |
+| `api-server/src/routes/order-invoice.ts` | GET /orders/:id/invoice.pdf |
+| `api-server/src/routes/admin-settings-extra.ts` | CPP, fees, currencies, SMTP config |
+| `api-server/src/routes/index.ts` | All router registrations |
+| `api-server/src/lib/email/invoice-template.ts` | Invoice HTML email (InvoiceData interface) |
+| `api-server/src/lib/email/invoice-pdf.ts` | PDF: puppeteer primary, pdfkit fallback (grey design) |
+| `api-server/src/services/order-pipeline.ts` | Full order workflow: payment → fulfillment |
+| `api-server/src/services/resolve-price.ts` | Final price calc: discounts, volume, tax |
+| `api-server/src/middleware/auth.ts` | JWT validation, requireAuth/requireAdmin |
+| `api-server/src/middleware/rate-limit.ts` | IP-based rate limiting |
+
+### DB Schema — key tables
+
+| File | Purpose |
+|---|---|
+| `lib/db/src/schema/orders.ts` | orders table (status, total, billing_snapshot) |
+| `lib/db/src/schema/settings.ts` | site_settings (name, logo, CPP, fees, turnstile) |
+| `lib/db/src/schema/products.ts` | products + product_variants |
+| `lib/db/src/schema/license-keys.ts` | Encrypted license keys |
+| `lib/db/src/schema/users.ts` | Customer accounts |
+| `lib/db/src/schema/wallet.ts` | Account balance ledger |
+| `lib/db/src/schema/loyalty.ts` | Points + tier |
+
+### Deploy & Config
+
+| File | Purpose |
+|---|---|
+| `.github/workflows/deploy.yml` | CI/CD: push main → build → VPS → PM2 reload |
+| `CLAUDE.md` | This file |
