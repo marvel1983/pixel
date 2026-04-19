@@ -103,6 +103,19 @@ router.get("/admin/products", requireAuth, requireAdmin, requirePermission("mana
   });
 });
 
+router.get("/admin/platforms/stats", requireAuth, requireAdmin, requirePermission("manageProducts"), async (_req, res) => {
+  const rows = await db
+    .select({
+      platform: productVariants.platform,
+      variantCount: count(productVariants.id),
+      productCount: sql<number>`count(distinct ${productVariants.productId})`,
+    })
+    .from(productVariants)
+    .where(sql`${productVariants.platform} IS NOT NULL`)
+    .groupBy(productVariants.platform);
+  res.json({ stats: rows });
+});
+
 router.post("/admin/products/bulk", requireAuth, requireAdmin, requirePermission("manageProducts"), async (req, res) => {
   const { ids, action } = req.body as { ids: number[]; action: string };
   if (!Array.isArray(ids) || ids.length === 0) {

@@ -45,6 +45,7 @@ import AdminQAPage from "./qa";
 import AdminNewsletterPage from "./newsletter";
 import AdminFlashSalesPage from "./flash-sales";
 import AdminBundlesPage from "./bundles";
+import AdminPlatformsPage from "./platforms";
 import AdminSupportPage from "./support";
 import AdminSupportDetailPage from "./support-detail";
 import AdminCheckoutServicesPage from "./checkout-services";
@@ -93,9 +94,7 @@ export default function AdminRoot() {
           <Route path="/admin/products/:id" component={ProductEditPage} />
           <Route path="/admin/products" component={AdminProductsPage} />
           <Route path="/admin/categories" component={AdminCategoriesPage} />
-          <Route path="/admin/platforms">
-            <AdminPlaceholder title="Platforms" />
-          </Route>
+          <Route path="/admin/platforms" component={AdminPlatformsPage} />
           <Route path="/admin/orders/:id" component={OrderDetailPage} />
           <Route path="/admin/orders" component={AdminOrdersPage} />
           <Route path="/admin/transactions">
