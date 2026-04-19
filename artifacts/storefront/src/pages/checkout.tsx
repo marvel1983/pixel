@@ -421,7 +421,9 @@ export default function CheckoutPage() {
           <Separator />
           <CheckoutServices selectedIds={selectedServiceIds} onToggle={handleServiceToggle} />
           <Separator />
-          {/* ─── Gift card + Loyalty points row ────────────── */}
+          {/* ─── Upsell offers ─────────────────────────────── */}
+          <ProductUpsell />
+          {/* ─── Gift card / Loyalty / Wallet / Card payment ── */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
             <GiftCardInput
               appliedCards={appliedGiftCards}
@@ -438,24 +440,6 @@ export default function CheckoutPage() {
               onApply={(c) => setAppliedGiftCards((p) => [...p, c])}
               onRemove={(code) => setAppliedGiftCards((p) => p.filter((c) => c.code !== code))}
             />
-            <LoyaltyRedeem
-              subtotal={getTotal()}
-              onRedeemChange={(pts, disc) => { setLoyaltyPoints(pts); setLoyaltyDiscount(disc); }}
-            />
-          </div>
-          {/* ─── Payment methods row ────────────────────────── */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {/* Store credit */}
-            <WalletPayment orderTotal={(() => {
-              const s = getTotal(); const d = coupon ? s * (coupon.pct / 100) : 0;
-              const base = s - d - loyaltyDiscount + (cppSelected ? cppFlatPrice : 0) + servicesTotal;
-              const pf = calcProcessingFee(base);
-              const bt = base + pf;
-              const tr = taxInfo.taxRate || 0;
-              const tax = taxInfo.priceDisplay === "inclusive" ? 0 : Math.round(bt * (tr / 100) * 100) / 100;
-              return Math.max(0, bt + tax - appliedGiftCards.reduce((a, c) => a + c.applied, 0));
-            })()} onWalletChange={setWalletAmount} />
-
             {/* Card payment */}
             {paymentMethod === "card" && (
               <div
@@ -465,14 +449,12 @@ export default function CheckoutPage() {
                   borderColor: "#ffffff15",
                 }}
               >
-                {/* subtle glow */}
                 <div
                   className="absolute inset-0 pointer-events-none"
                   style={{ background: "radial-gradient(ellipse 70% 50% at 80% 50%, #3b82f615, transparent)" }}
                 />
                 <div className="relative p-4 flex flex-col h-full">
                   <div className="flex items-center gap-3 mb-3">
-                    {/* Custom card icon */}
                     <div className="w-10 h-10 shrink-0">
                       <CardPaymentIcon />
                     </div>
@@ -486,7 +468,6 @@ export default function CheckoutPage() {
                   <p className="text-xs text-white/55 mb-3 leading-relaxed">
                     Redirected to Stripe's encrypted payment page. Your card details are never stored on our servers.
                   </p>
-                  {/* Card brand icons */}
                   <div className="flex items-center gap-2 mt-auto">
                     <VisaIcon />
                     <MastercardIcon />
@@ -495,6 +476,19 @@ export default function CheckoutPage() {
                 </div>
               </div>
             )}
+            <LoyaltyRedeem
+              subtotal={getTotal()}
+              onRedeemChange={(pts, disc) => { setLoyaltyPoints(pts); setLoyaltyDiscount(disc); }}
+            />
+            <WalletPayment orderTotal={(() => {
+              const s = getTotal(); const d = coupon ? s * (coupon.pct / 100) : 0;
+              const base = s - d - loyaltyDiscount + (cppSelected ? cppFlatPrice : 0) + servicesTotal;
+              const pf = calcProcessingFee(base);
+              const bt = base + pf;
+              const tr = taxInfo.taxRate || 0;
+              const tax = taxInfo.priceDisplay === "inclusive" ? 0 : Math.round(bt * (tr / 100) * 100) / 100;
+              return Math.max(0, bt + tax - appliedGiftCards.reduce((a, c) => a + c.applied, 0));
+            })()} onWalletChange={setWalletAmount} />
           </div>
 
           {/* B2B invoice toggle */}
@@ -550,7 +544,6 @@ export default function CheckoutPage() {
             )}
             processingFeeLabel={feePercent > 0 && feeFixed > 0 ? `Processing fee (${feePercent}% + €${feeFixed.toFixed(2)})` : feePercent > 0 ? `Processing fee (${feePercent}%)` : feeFixed > 0 ? `Processing fee (€${feeFixed.toFixed(2)})` : undefined}
           />
-          <ProductUpsell />
         </div>
       </div>
     </div>
