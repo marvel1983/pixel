@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, Link } from "wouter";
-import { ArrowLeft, Send, CheckCircle, XCircle, Copy, Save, Clock, RotateCcw, Key, AlertTriangle, ShieldAlert } from "lucide-react";
+import { ArrowLeft, Send, CheckCircle, XCircle, Copy, Save, Clock, RotateCcw, Key, AlertTriangle, ShieldAlert, BadgeCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthStore } from "@/stores/auth-store";
@@ -219,6 +219,28 @@ export default function OrderDetailPage() {
           </ActionBtn>
         )}
       </div>
+
+      {order.status === "HELD" && (
+        <div className="flex items-start gap-3 rounded border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-[13px] text-emerald-200">
+          <BadgeCheck className="h-4 w-4 mt-0.5 shrink-0 text-emerald-400" />
+          <div className="space-y-0.5 min-w-0">
+            <p className="font-semibold text-emerald-300">Payment captured — €{parseFloat(order.totalUsd).toFixed(2)}</p>
+            {stripePaymentDetails?.cardLast4 && (
+              <p className="text-[12px] text-emerald-300/80">
+                {stripePaymentDetails.cardBrand ? <span className="capitalize">{stripePaymentDetails.cardBrand}</span> : "Card"}
+                {" "}•••• {stripePaymentDetails.cardLast4}
+                {stripePaymentDetails.cardExpMonth && stripePaymentDetails.cardExpYear && (
+                  <span className="text-emerald-400/60 ml-1">{String(stripePaymentDetails.cardExpMonth).padStart(2,"0")}/{stripePaymentDetails.cardExpYear}</span>
+                )}
+                {stripePaymentDetails.cardCountry && <span className="text-emerald-400/60 ml-1">· {stripePaymentDetails.cardCountry}</span>}
+              </p>
+            )}
+            {order.paymentIntentId && (
+              <p className="text-[11px] text-emerald-400/60 font-mono truncate">ID: {order.paymentIntentId}</p>
+            )}
+          </div>
+        </div>
+      )}
 
       {order.status === "HELD" && order.riskScore != null && (
         <div className="flex items-start gap-3 rounded border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-[13px] text-rose-200">
