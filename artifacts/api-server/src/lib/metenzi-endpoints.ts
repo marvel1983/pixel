@@ -180,15 +180,18 @@ export async function getProductById(
   config: MetenziClientConfig,
   productId: string,
 ): Promise<MetenziProduct | null> {
-  const res = await metenziRequest<{ product: MetenziProduct }>(config, {
+  // Try public individual endpoint first, fall back to catalog search
+  const res = await metenziRequest<{ product?: MetenziProduct; data?: MetenziProduct }>(config, {
     method: "GET",
-    path: `/api/products/${productId}`,
+    path: `/api/public/products/${productId}`,
   });
   if (res.status === 404) return null;
   if (!res.ok) {
-    throw new Error(`Failed to fetch Metenzi product ${productId}: ${res.status}`);
+    // Fall back: search catalog and find by id
+    const all = await getProducts(config);
+    return all.find((p) => p.id === productId) ?? null;
   }
-  return res.data.product;
+  return (res.data.product ?? res.data.data) ?? null;
 }
 
 export async function createOrder(
