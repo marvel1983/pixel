@@ -26,6 +26,7 @@ interface KeyGroup {
   productName: string;
   variantName: string;
   quantity: number;
+  instructions?: string | null;
   keys: { id: number; value: string; status: string }[];
 }
 

@@ -14,6 +14,7 @@ interface KeyGroup {
   productName: string;
   variantName: string;
   quantity: number;
+  instructions?: string | null;
   keys: LicenseKey[];
 }
 
@@ -64,6 +65,15 @@ export function LicenseKeysDisplay({ keyGroups }: LicenseKeysDisplayProps) {
             </div>
           ) : (
             <p className="text-xs text-amber-600 italic">Key pending delivery...</p>
+          )}
+          {group.instructions && group.keys.length > 0 && (
+            <div className="mt-3 rounded-md border-l-4 border-blue-400 bg-blue-50 dark:bg-blue-950/40 dark:border-blue-600 px-4 py-3">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-blue-700 dark:text-blue-400 mb-1.5">How to activate</p>
+              <div
+                className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed [&_a]:underline [&_a]:text-blue-600 [&_ol]:list-decimal [&_ol]:pl-4 [&_ul]:list-disc [&_ul]:pl-4 [&_li]:mt-0.5"
+                dangerouslySetInnerHTML={{ __html: group.instructions }}
+              />
+            </div>
           )}
         </div>
       ))}

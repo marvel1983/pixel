@@ -30,6 +30,7 @@ async function fetchOrderWithKeys(orderId: number) {
       quantity: orderItems.quantity,
       productId: productVariants.productId,
       imageUrl: products.imageUrl,
+      activationInstructions: products.activationInstructions,
     })
     .from(orderItems)
     .leftJoin(productVariants, eq(orderItems.variantId, productVariants.id))
@@ -47,6 +48,7 @@ async function fetchOrderWithKeys(orderId: number) {
         productName: item.productName,
         variantName: item.variantName,
         quantity: item.quantity,
+        instructions: item.activationInstructions ?? null,
         keys: itemKeys.map((k) => ({
           id: k.id,
           value: safeDecrypt(k.keyValue),

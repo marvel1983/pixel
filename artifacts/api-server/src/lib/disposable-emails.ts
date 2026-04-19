@@ -59,6 +59,8 @@ const DISPOSABLE_DOMAINS = new Set([
   "dumpmail.de","fakemail.net","fakemail.fr","fakemail.io",
   "fakemailgenerator.com","fakemailz.com","filzmail.de",
   "frapmail.com","freemail.ms","freundin.ru",
+  "guerrillamail.com","guerrillamail.info","guerrillamail.biz","guerrillamail.de",
+  "guerrillamail.net","guerrillamail.org","guerrillamailblock.com","grr.la","spam4.me",
   "gishpuppy.com","givmail.com","harakirimail.com",
   "hushmail.de","hulapla.de","iheartspam.org",
   "incognitomail.com","incognitomail.net","incognitomail.org",
