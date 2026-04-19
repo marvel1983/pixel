@@ -8,7 +8,7 @@ export function TopBar() {
   return (
     <div className="w-full bg-header-navy text-white">
       <div className="container mx-auto px-4 py-3.5 flex items-center gap-4">
-        <Link href="/" className="flex items-center shrink-0 transition-[transform,filter] duration-100 ease-out hover:-translate-y-0.5 hover:drop-shadow-[0_3px_3px_rgba(0,0,0,0.35)] active:translate-y-0.5 active:drop-shadow-none">
+        <Link href="/" className="flex items-center shrink-0 transition-[transform,filter] duration-100 ease-out drop-shadow-[0_2px_2px_rgba(0,0,0,0.3)] hover:-translate-y-0.5 hover:drop-shadow-[0_4px_4px_rgba(0,0,0,0.4)] active:translate-y-0.5 active:drop-shadow-none">
           <img src="/logo.png" alt="PixelCodes" className="h-9 w-auto brightness-0 invert" />
         </Link>
 
