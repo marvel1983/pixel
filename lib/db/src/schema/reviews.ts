@@ -7,6 +7,7 @@ import {
   boolean,
   timestamp,
   pgEnum,
+  index,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -42,7 +43,9 @@ export const reviews = pgTable("reviews", {
   adminReplyAt: timestamp("admin_reply_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (t) => ({
+  productIdIdx: index("reviews_product_id_idx").on(t.productId),
+}));
 
 export const insertReviewSchema = createInsertSchema(reviews).omit({
   id: true,

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { eq, and, desc, or } from "drizzle-orm";
+import { eq, and, desc, or, inArray } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { orders, orderItems, licenseKeys, productVariants, products, type Order } from "@workspace/db/schema";
 import { decrypt } from "../lib/encryption";
@@ -37,26 +37,19 @@ async function fetchOrderWithKeys(orderId: number) {
     .leftJoin(products, eq(productVariants.productId, products.id))
     .where(eq(orderItems.orderId, orderId));
 
-  const allKeys = await Promise.all(
-    rows.map(async (item) => {
-      const itemKeys = await db
-        .select()
-        .from(licenseKeys)
-        .where(eq(licenseKeys.orderItemId, item.id));
-      return {
-        orderItemId: item.id,
-        productName: item.productName,
-        variantName: item.variantName,
-        quantity: item.quantity,
-        instructions: item.activationInstructions ?? null,
-        keys: itemKeys.map((k) => ({
-          id: k.id,
-          value: safeDecrypt(k.keyValue),
-          status: k.status,
-        })),
-      };
-    }),
-  );
+  // Batch-fetch all license keys for all order items in one query
+  const itemIds = rows.map((r) => r.id);
+  const allKeys = itemIds.length
+    ? await db.select().from(licenseKeys).where(inArray(licenseKeys.orderItemId, itemIds))
+    : [];
+
+  const keysByItem = new Map<number, typeof allKeys>();
+  for (const k of allKeys) {
+    if (k.orderItemId == null) continue;
+    const list = keysByItem.get(k.orderItemId) ?? [];
+    list.push(k);
+    keysByItem.set(k.orderItemId, list);
+  }
 
   return {
     items: rows.map((i) => ({
@@ -69,7 +62,18 @@ async function fetchOrderWithKeys(orderId: number) {
       priceUsd: i.priceUsd,
       quantity: i.quantity,
     })),
-    licenseKeys: allKeys,
+    licenseKeys: rows.map((item) => ({
+      orderItemId: item.id,
+      productName: item.productName,
+      variantName: item.variantName,
+      quantity: item.quantity,
+      instructions: item.activationInstructions ?? null,
+      keys: (keysByItem.get(item.id) ?? []).map((k) => ({
+        id: k.id,
+        value: safeDecrypt(k.keyValue),
+        status: k.status,
+      })),
+    })),
   };
 }
 
@@ -131,47 +135,11 @@ router.post("/orders/lookup", orderLookupLimit, async (req, res) => {
   }
 });
 
-router.get("/orders/:orderNumber", orderLookupLimit, async (req, res) => {
-  const parsed = orderNumberSchema.safeParse(paramString(req.params, "orderNumber"));
-  if (!parsed.success) {
-    res.status(400).json({ error: "Invalid order number" });
-    return;
-  }
-
-  const email = req.query.email;
-  const emailParsed = emailSchema.safeParse(email);
-  if (!emailParsed.success) {
-    res.status(400).json({ error: "Email query parameter required for verification" });
-    return;
-  }
-
-  try {
-    const [order] = await db
-      .select()
-      .from(orders)
-      .where(
-        and(
-          eq(orders.orderNumber, parsed.data),
-          eq(orders.guestEmail, emailParsed.data),
-        ),
-      )
-      .limit(1);
-
-    if (!order) {
-      res.status(404).json({ error: "Order not found" });
-      return;
-    }
-
-    const details = await fetchOrderWithKeys(order.id);
-    res.json({ order: formatOrderResponse(order), ...details });
-  } catch (err) {
-    logger.error({ err }, "Order fetch failed");
-    res.status(500).json({ error: "Failed to fetch order" });
-  }
-});
-
 router.get("/account/orders", requireAuth, async (req, res) => {
   const userEmail = req.user!.email;
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const limit = 20;
+  const offset = (page - 1) * limit;
 
   try {
     const userOrders = await db
@@ -183,14 +151,25 @@ router.get("/account/orders", requireAuth, async (req, res) => {
           eq(orders.guestEmail, userEmail),
         ),
       )
-      .orderBy(desc(orders.createdAt));
+      .orderBy(desc(orders.createdAt))
+      .limit(limit)
+      .offset(offset);
 
-    const result = await Promise.all(
-      userOrders.map(async (order) => {
-        const items = await db
-          .select()
-          .from(orderItems)
-          .where(eq(orderItems.orderId, order.id));
+    // Batch-fetch all order items for the current page in one query
+    const orderIds = userOrders.map((o) => o.id);
+    const allItems = orderIds.length
+      ? await db.select({ orderId: orderItems.orderId, productName: orderItems.productName })
+          .from(orderItems).where(inArray(orderItems.orderId, orderIds))
+      : [];
+    const itemsByOrder = new Map<number, typeof allItems>();
+    for (const item of allItems) {
+      const list = itemsByOrder.get(item.orderId) ?? [];
+      list.push(item);
+      itemsByOrder.set(item.orderId, list);
+    }
+
+    const result = userOrders.map((order) => {
+        const items = itemsByOrder.get(order.id) ?? [];
         return {
           id: order.id,
           orderNumber: order.orderNumber,
@@ -201,10 +180,9 @@ router.get("/account/orders", requireAuth, async (req, res) => {
           itemCount: items.length,
           firstProduct: items[0]?.productName ?? "Unknown",
         };
-      }),
-    );
+      });
 
-    res.json({ orders: result });
+    res.json({ orders: result, page, hasMore: userOrders.length === limit });
   } catch (err) {
     logger.error({ err }, "Order history fetch failed");
     res.status(500).json({ error: "Failed to fetch orders" });

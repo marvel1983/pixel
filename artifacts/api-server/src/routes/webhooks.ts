@@ -23,6 +23,20 @@ const router = Router();
 
 const REPLAY_WINDOW_MS = 5 * 60 * 1000;
 
+// In-memory Metenzi webhook ID deduplication — 10-minute window (mirrors Checkout.com pattern)
+const seenMetenziWebhookIds = new Map<string, number>();
+const METENZI_REPLAY_WINDOW_MS = 10 * 60 * 1000;
+
+function isMetenziDuplicate(webhookId: string): boolean {
+  const now = Date.now();
+  for (const [id, ts] of seenMetenziWebhookIds) {
+    if (now - ts > METENZI_REPLAY_WINDOW_MS) seenMetenziWebhookIds.delete(id);
+  }
+  if (seenMetenziWebhookIds.has(webhookId)) return true;
+  seenMetenziWebhookIds.set(webhookId, now);
+  return false;
+}
+
 // Metenzi incoming webhook signature format: HMAC-SHA256(webhookSecret, timestamp + "." + eventType + "." + body)
 // Headers: X-Metenzi-Signature, X-Metenzi-Timestamp, X-Metenzi-Event
 function verifySignature(
@@ -70,6 +84,7 @@ router.post("/webhooks/metenzi", async (req, res) => {
   const eventHeader = (req.headers["x-webhook-event"] ?? req.headers["x-metenzi-event"]) as string | undefined;
   // Timestamp is optional — Metenzi backorder webhooks do not include it
   const timestamp = (req.headers["x-webhook-timestamp"] ?? req.headers["x-metenzi-timestamp"]) as string | undefined;
+  const webhookId = (req.headers["x-webhook-id"] ?? req.headers["x-metenzi-id"]) as string | undefined;
 
   // Capture all headers for debug logging
   const incomingHeaders: Record<string, string> = {};
@@ -138,6 +153,14 @@ router.post("/webhooks/metenzi", async (req, res) => {
     logger.warn({ sig: signature.slice(0, 20) + "…", timestamp, eventType, rawBodyLen: rawBody.length, sigDebug }, "Webhook signature verification failed");
     appendWebhookLog({ direction: "in", source: "metenzi", event: eventType, status: 401, outcome: "invalid_sig", headers: incomingHeaders, body: req.body, error: `sig mismatch: ${sigDebug.join(" | ")}` });
     res.status(401).json({ error: "Invalid signature" });
+    return;
+  }
+
+  // Deduplicate using X-Webhook-ID when present
+  if (webhookId && isMetenziDuplicate(webhookId)) {
+    logger.warn({ webhookId }, "Metenzi webhook duplicate detected — rejected");
+    appendWebhookLog({ direction: "in", source: "metenzi", event: eventHeader ?? "unknown", status: 200, outcome: "duplicate", headers: incomingHeaders, body: req.body });
+    res.json({ received: true }); // 200 so Metenzi doesn't retry
     return;
   }
 

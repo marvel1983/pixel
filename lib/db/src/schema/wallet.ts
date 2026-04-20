@@ -1,5 +1,5 @@
 import {
-  pgTable, serial, integer, timestamp, numeric, text, pgEnum,
+  pgTable, serial, integer, timestamp, numeric, text, pgEnum, index,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -28,7 +28,9 @@ export const walletTransactions = pgTable("wallet_transactions", {
   description: text("description"),
   referenceId: text("reference_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (t) => ({
+  userIdIdx: index("wallet_transactions_user_id_idx").on(t.userId),
+}));
 
 export const insertWalletTransactionSchema = createInsertSchema(walletTransactions).omit({
   id: true, createdAt: true,

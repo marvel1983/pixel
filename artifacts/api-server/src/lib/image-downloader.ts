@@ -13,11 +13,14 @@ const UPLOADS_DIR = path.resolve(process.cwd(), "uploads", "products");
 // Block requests to private/loopback/link-local addresses (SSRF prevention)
 const BLOCKED_IP_RE = /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.|0\.0\.0\.0|::1$|fc|fd)/i;
 
-async function assertHostSafe(hostname: string): Promise<void> {
+// Returns the resolved address so callers can pin it in the HTTP request,
+// preventing DNS rebinding between the safety check and the actual connection.
+async function assertHostSafe(hostname: string): Promise<string> {
   const { address } = await dnsLookup(hostname);
   if (BLOCKED_IP_RE.test(address)) {
     throw new Error(`Blocked internal address: ${address}`);
   }
+  return address;
 }
 
 const ALLOWED_CONTENT_TYPES: Record<string, string> = {
@@ -72,7 +75,8 @@ export async function downloadImageToVps(remoteUrl: string): Promise<string> {
     throw new Error(`Protocol not allowed: ${parsed.protocol}`);
   }
 
-  await assertHostSafe(parsed.hostname);
+  // Resolve the IP once and pin it in the request to prevent DNS rebinding.
+  const safeAddress = await assertHostSafe(parsed.hostname);
   await ensureUploadsDir();
 
   // Filename = SHA256 of URL (deterministic — same URL → same file, no duplicates)
@@ -88,14 +92,34 @@ export async function downloadImageToVps(remoteUrl: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const client = parsed.protocol === "https:" ? https : http;
 
-    const request = client.get(remoteUrl, { timeout: 15_000 }, (res) => {
-      // Follow one redirect
-      if (res.statusCode === 301 || res.statusCode === 302) {
-        const location = res.headers.location;
-        if (!location) { reject(new Error("Redirect with no Location")); return; }
-        downloadImageToVps(location).then(resolve).catch(reject);
-        return;
-      }
+    const request = client.get(
+      remoteUrl,
+      {
+        timeout: 15_000,
+        // Pin the pre-validated IP so the OS cannot re-resolve to an internal
+        // address between the safety check and the actual TCP connection.
+        lookup: (_hostname: string, _options: object, callback: (err: Error | null, address: string, family: number) => void) =>
+          callback(null, safeAddress, 4),
+      },
+      (res) => {
+        // Follow one redirect — re-validate the redirect target before following.
+        if (res.statusCode === 301 || res.statusCode === 302) {
+          const location = res.headers.location;
+          if (!location) { reject(new Error("Redirect with no Location")); return; }
+          let redirectHostname: string;
+          try {
+            redirectHostname = new URL(location, remoteUrl).hostname;
+          } catch {
+            reject(new Error(`Invalid redirect URL: ${location}`));
+            return;
+          }
+          // assertHostSafe re-validates that the redirect target is not internal.
+          assertHostSafe(redirectHostname)
+            .then(() => downloadImageToVps(location))
+            .then(resolve)
+            .catch(reject);
+          return;
+        }
 
       if (!res.statusCode || res.statusCode < 200 || res.statusCode >= 300) {
         reject(new Error(`HTTP ${res.statusCode} from ${remoteUrl}`));

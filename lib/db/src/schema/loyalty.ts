@@ -7,6 +7,7 @@ import {
   text,
   timestamp,
   boolean,
+  index,
 } from "drizzle-orm/pg-core";
 import { users } from "./users";
 
@@ -42,7 +43,9 @@ export const loyaltyTransactions = pgTable("loyalty_transactions", {
   expiresAt: timestamp("expires_at"),
   warningEmailSentAt: timestamp("warning_email_sent_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (t) => ({
+  accountIdIdx: index("loyalty_transactions_account_id_idx").on(t.accountId),
+}));
 
 export const loyaltySettings = pgTable("loyalty_settings", {
   id: serial("id").primaryKey(),

@@ -61,3 +61,8 @@ export function decrypt(ciphertext: string): string {
   decrypted += decipher.final("utf8");
   return decrypted;
 }
+
+/** Returns true if the ciphertext is in the legacy v1 format (hardcoded salt). */
+export function isLegacyEncryption(ciphertext: string): boolean {
+  return !ciphertext.startsWith("v2:");
+}

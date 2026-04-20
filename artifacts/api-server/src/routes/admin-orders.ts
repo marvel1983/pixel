@@ -279,31 +279,50 @@ router.post("/admin/orders/:id/sync-backorder-keys", requireAuth, requireAdmin, 
   const deliveredByItem: Record<number, number> = {};
   for (const k of existingKeys) deliveredByItem[k.orderItemId!] = (deliveredByItem[k.orderItemId!] ?? 0) + 1;
 
+  // Batch-fetch all Metenzi product mappings needed for this order in one query
+  const metenziProductIds = [...new Set(metenziKeys.map((k) => k.productId).filter(Boolean) as number[])];
+  const mappings = metenziProductIds.length
+    ? await db.select({ metenziProductId: metenziProductMappings.metenziProductId, pixelProductId: metenziProductMappings.pixelProductId })
+        .from(metenziProductMappings).where(inArray(metenziProductMappings.metenziProductId, metenziProductIds))
+    : [];
+  const mappingByMetenziId = new Map(mappings.map((m) => [m.metenziProductId, m.pixelProductId]));
+
+  // Batch-fetch all order items with their product IDs in one query
+  const itemsWithProduct = itemIds.length
+    ? await db.select({ id: orderItems.id, variantId: orderItems.variantId, quantity: orderItems.quantity, productId: productVariants.productId })
+        .from(orderItems).innerJoin(productVariants, eq(orderItems.variantId, productVariants.id))
+        .where(inArray(orderItems.id, itemIds))
+    : [];
+  const itemByProductId = new Map(itemsWithProduct.map((i) => [i.productId, i]));
+
+  // Build a set of existing encrypted key values to detect dupes without per-key queries
+  const existingKeyValues = new Set(
+    itemIds.length
+      ? (await db.select({ keyValue: licenseKeys.keyValue }).from(licenseKeys).where(inArray(licenseKeys.orderItemId, itemIds))).map((k) => k.keyValue)
+      : [],
+  );
+
+  const toInsert: Array<{ variantId: number; keyValue: string; keyMask: string; orderItemId: number }> = [];
   let keysAdded = 0;
   for (const mk of metenziKeys) {
     if (!mk.code || !mk.productId) continue;
-
-    const [mapping] = await db.select({ pixelProductId: metenziProductMappings.pixelProductId })
-      .from(metenziProductMappings).where(eq(metenziProductMappings.metenziProductId, mk.productId)).limit(1);
-    if (!mapping?.pixelProductId) continue;
-
-    const [dbItem] = await db.select({ id: orderItems.id, variantId: orderItems.variantId, productName: orderItems.productName, variantName: orderItems.variantName, quantity: orderItems.quantity })
-      .from(orderItems).innerJoin(productVariants, eq(orderItems.variantId, productVariants.id))
-      .where(and(eq(orderItems.orderId, id), eq(productVariants.productId, mapping.pixelProductId))).limit(1);
+    const pixelProductId = mappingByMetenziId.get(mk.productId);
+    if (!pixelProductId) continue;
+    const dbItem = itemByProductId.get(pixelProductId);
     if (!dbItem) continue;
-
     const alreadyDelivered = deliveredByItem[dbItem.id] ?? 0;
-    if (alreadyDelivered >= dbItem.quantity) continue; // already has all keys for this item
-
+    if (alreadyDelivered >= dbItem.quantity) continue;
     const encryptedKey = encrypt(mk.code);
-    const [dupe] = await db.select({ id: licenseKeys.id }).from(licenseKeys)
-      .where(and(eq(licenseKeys.keyValue, encryptedKey), eq(licenseKeys.orderItemId, dbItem.id))).limit(1);
-    if (dupe) continue;
-
+    if (existingKeyValues.has(encryptedKey)) continue;
+    existingKeyValues.add(encryptedKey);
     const keyMask = mk.code.length <= 8 ? mk.code.slice(0, 2) + "****" : mk.code.slice(0, 4) + "****" + mk.code.slice(-4);
-    await db.insert(licenseKeys).values({ variantId: dbItem.variantId, keyValue: encryptedKey, keyMask, status: "SOLD", source: "API", orderItemId: dbItem.id, soldAt: new Date() });
+    toInsert.push({ variantId: dbItem.variantId, keyValue: encryptedKey, keyMask, orderItemId: dbItem.id });
     deliveredByItem[dbItem.id] = alreadyDelivered + 1;
     keysAdded++;
+  }
+
+  if (toInsert.length > 0) {
+    await db.insert(licenseKeys).values(toInsert.map((k) => ({ ...k, status: "SOLD" as const, source: "API" as const, soldAt: new Date() })));
   }
 
   // Re-check and update order status

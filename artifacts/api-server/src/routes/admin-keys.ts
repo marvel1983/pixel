@@ -4,7 +4,8 @@ import { licenseKeys, productVariants, products, orderItems, orders, auditLog } 
 import { eq, desc, and, or, ilike, gte, lte, count, sql, isNull } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
-import { decrypt, encrypt } from "../lib/encryption";
+import { decrypt, encrypt, isLegacyEncryption } from "../lib/encryption";
+import { rateLimit } from "../middleware/rate-limit";
 import { paramString } from "../lib/route-params";
 import { z } from "zod/v4";
 import { logger } from "../lib/logger";
@@ -126,7 +127,14 @@ router.get("/admin/keys/products", requireAuth, requireAdmin, requirePermission(
   res.json({ products: prods });
 });
 
-router.post("/admin/keys/:id/reveal", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
+const keyRevealLimit = rateLimit({
+  name: "admin-key-reveal",
+  windowMs: 60_000,
+  max: 20,
+  keyFn: (req) => `uid:${req.user?.userId ?? req.ip}`,
+});
+
+router.post("/admin/keys/:id/reveal", requireAuth, requireAdmin, requirePermission("manageOrders"), keyRevealLimit, async (req, res) => {
   const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) {
     res.status(400).json({ error: "Invalid key ID" });
@@ -139,6 +147,18 @@ router.post("/admin/keys/:id/reveal", requireAuth, requireAdmin, requirePermissi
     return;
   }
 
+  const plaintext = safeDecrypt(key.keyValue);
+
+  // Auto-migrate v1 (hardcoded salt) to v2 (random salt per value) on first reveal
+  if (isLegacyEncryption(key.keyValue)) {
+    try {
+      const upgraded = encrypt(plaintext);
+      await db.update(licenseKeys).set({ keyValue: upgraded }).where(eq(licenseKeys.id, id));
+    } catch (err) {
+      logger.warn({ err, id }, "Failed to migrate key from v1 to v2 encryption (non-fatal)");
+    }
+  }
+
   await db.insert(auditLog).values({
     userId: req.user!.userId,
     action: "KEY_REVEAL",
@@ -148,7 +168,7 @@ router.post("/admin/keys/:id/reveal", requireAuth, requireAdmin, requirePermissi
     ipAddress: req.ip ?? null,
   });
 
-  res.json({ keyValue: safeDecrypt(key.keyValue) });
+  res.json({ keyValue: plaintext });
 });
 
 router.post("/admin/keys/:id/copy-audit", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {

@@ -56,7 +56,7 @@ export function signToken(payload: JwtPayload): string {
 }
 
 export function verifyToken(token: string): JwtPayload {
-  return jwt.verify(token, JWT_SECRET) as JwtPayload;
+  return jwt.verify(token, JWT_SECRET, { algorithms: ["HS256"] }) as JwtPayload;
 }
 
 export function requireAuth(req: Request, res: Response, next: NextFunction) {

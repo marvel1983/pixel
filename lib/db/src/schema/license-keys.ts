@@ -6,6 +6,7 @@ import {
   integer,
   timestamp,
   pgEnum,
+  index,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -39,7 +40,10 @@ export const licenseKeys = pgTable("license_keys", {
   revokedAt: timestamp("revoked_at"),
   revokeReason: text("revoke_reason"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (t) => ({
+  variantStatusIdx: index("license_keys_variant_status_idx").on(t.variantId, t.status),
+  orderItemIdIdx: index("license_keys_order_item_id_idx").on(t.orderItemId),
+}));
 
 export const insertLicenseKeySchema = createInsertSchema(licenseKeys).omit({
   id: true,
