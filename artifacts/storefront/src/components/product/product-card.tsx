@@ -267,14 +267,12 @@ export function ProductCard({ product, flashSalePrice: flashSalePriceProp }: Pro
             </Button>
             {loyaltyConfig && (
               <p
-                className="text-center text-xs font-medium leading-snug tracking-tight text-emerald-700 dark:text-emerald-400"
+                className="tabular-nums text-center text-xs font-medium leading-snug tracking-tight text-emerald-700 dark:text-emerald-400"
                 title={t("product.loyaltyEarnHint")}
               >
-                <span className="tabular-nums">
-                  {t("product.loyaltyEarnApprox", {
-                    points: Math.floor(price * loyaltyConfig.pointsPerDollar),
-                  })}
-                </span>
+                {t("product.loyaltyEarnApprox", {
+                  points: Math.floor(price * loyaltyConfig.pointsPerDollar),
+                })}
               </p>
             )}
           </div>
