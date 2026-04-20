@@ -1,6 +1,28 @@
 import { type Request, type Response, type NextFunction } from "express";
 import jwt from "jsonwebtoken";
+import { db } from "@workspace/db";
+import { users } from "@workspace/db/schema";
+import { eq } from "drizzle-orm";
 import { logger } from "../lib/logger";
+
+// Cache user isActive status for 5 minutes to avoid a DB hit on every request
+// while still blocking deactivated users quickly.
+const userStatusCache = new Map<number, { isActive: boolean; expiresAt: number }>();
+const USER_STATUS_TTL = 5 * 60 * 1000;
+
+async function isUserActive(userId: number): Promise<boolean> {
+  const cached = userStatusCache.get(userId);
+  if (cached && cached.expiresAt > Date.now()) return cached.isActive;
+  const [user] = await db.select({ isActive: users.isActive }).from(users).where(eq(users.id, userId)).limit(1);
+  const isActive = user?.isActive ?? false;
+  userStatusCache.set(userId, { isActive, expiresAt: Date.now() + USER_STATUS_TTL });
+  return isActive;
+}
+
+/** Call when an admin deactivates a user to immediately evict the cache entry. */
+export function evictUserStatusCache(userId: number): void {
+  userStatusCache.delete(userId);
+}
 
 function getJwtSecret(): string {
   // JWT_SECRET is the dedicated signing key. Falls back to ENCRYPTION_KEY for
@@ -47,13 +69,26 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
     return;
   }
 
+  let payload: JwtPayload;
   try {
-    req.user = verifyToken(token);
-    next();
+    payload = verifyToken(token);
   } catch {
     logger.warn("Invalid or expired token");
     res.status(401).json({ error: "Invalid or expired token" });
+    return;
   }
+
+  isUserActive(payload.userId).then((active) => {
+    if (!active) {
+      res.status(401).json({ error: "Account is deactivated" });
+      return;
+    }
+    req.user = payload;
+    next();
+  }).catch((err) => {
+    logger.error({ err }, "Failed to verify user status");
+    res.status(500).json({ error: "Authentication error" });
+  });
 }
 
 export function optionalAuth(req: Request, _res: Response, next: NextFunction) {

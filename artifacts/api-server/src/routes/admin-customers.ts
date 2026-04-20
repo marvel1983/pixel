@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { users, orders, wishlists, reviews, products } from "@workspace/db/schema";
 import { eq, desc, sql, and, or, ilike, gte, lte, count, sum, inArray } from "drizzle-orm";
-import { requireAuth, requireAdmin } from "../middleware/auth";
+import { requireAuth, requireAdmin, evictUserStatusCache } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
@@ -166,6 +166,7 @@ router.patch("/admin/customers/:id/toggle-active", requireAuth, requireAdmin, re
     res.status(403).json({ error: "Only Super Admins can deactivate a Super Admin" }); return;
   }
   await db.update(users).set({ isActive: !user.isActive, updatedAt: new Date() }).where(eq(users.id, id));
+  evictUserStatusCache(id);
   res.json({ isActive: !user.isActive });
 });
 
@@ -183,6 +184,7 @@ router.delete("/admin/customers/:id", requireAuth, requireAdmin, requirePermissi
     res.json({ success: true });
   } catch {
     await db.update(users).set({ isActive: false, updatedAt: new Date() }).where(eq(users.id, id));
+    evictUserStatusCache(id);
     res.json({ success: true, deactivated: true, message: "Account deactivated (has existing data)" });
   }
 });

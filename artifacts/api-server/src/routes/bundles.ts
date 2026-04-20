@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { bundles, bundleItems, products, productVariants } from "@workspace/db/schema";
-import { eq, and, asc } from "drizzle-orm";
+import { eq, and, asc, inArray } from "drizzle-orm";
 import { paramString } from "../lib/route-params";
 
 const router = Router();
@@ -66,16 +66,19 @@ router.get("/bundles/by-product/:productId", async (req, res) => {
 
   if (!rows.length) { res.json([]); return; }
 
-  const bundleIds = rows.map((r) => r.bundleId);
-  const result: Array<typeof bundles.$inferSelect & { items: Awaited<ReturnType<typeof getBundleProducts>>; individualTotal: string }> = [];
-  for (const bid of bundleIds) {
-    const [b] = await db.select().from(bundles)
-      .where(and(eq(bundles.id, bid), eq(bundles.isActive, true))).limit(1);
-    if (!b) continue;
-    const items = await getBundleProducts(b.id);
-    const individualTotal = items.reduce((s, i) => s + parseFloat(i.minPrice || "0"), 0);
-    result.push({ ...b, items, individualTotal: individualTotal.toFixed(2) });
-  }
+  const bundleIds = [...new Set(rows.map((r) => r.bundleId))];
+  const activeBundles = await db
+    .select()
+    .from(bundles)
+    .where(and(inArray(bundles.id, bundleIds), eq(bundles.isActive, true)));
+
+  const result = await Promise.all(
+    activeBundles.map(async (b) => {
+      const items = await getBundleProducts(b.id);
+      const individualTotal = items.reduce((s, i) => s + parseFloat(i.minPrice || "0"), 0);
+      return { ...b, items, individualTotal: individualTotal.toFixed(2) };
+    }),
+  );
 
   res.json(result);
 });
@@ -95,23 +98,33 @@ async function getBundleProducts(bundleId: number) {
     .where(eq(bundleItems.bundleId, bundleId))
     .orderBy(asc(bundleItems.sortOrder));
 
-  return Promise.all(
-    items.map(async (item) => {
-      const variants = await db
-        .select({
-          id: productVariants.id,
-          name: productVariants.name,
-          priceUsd: productVariants.priceUsd,
-          platform: productVariants.platform,
-        })
-        .from(productVariants)
-        .where(and(eq(productVariants.productId, item.productId), eq(productVariants.isActive, true)))
-        .orderBy(asc(productVariants.priceUsd))
-        .limit(5);
-      const minPrice = variants[0]?.priceUsd ?? "0";
-      return { ...item, variants, minPrice };
-    }),
-  );
+  if (!items.length) return [];
+
+  const productIds = items.map((i) => i.productId);
+  const allVariants = await db
+    .select({
+      id: productVariants.id,
+      productId: productVariants.productId,
+      name: productVariants.name,
+      priceUsd: productVariants.priceUsd,
+      platform: productVariants.platform,
+    })
+    .from(productVariants)
+    .where(and(inArray(productVariants.productId, productIds), eq(productVariants.isActive, true)))
+    .orderBy(asc(productVariants.priceUsd));
+
+  // Group variants by productId, keeping up to 5 cheapest per product
+  const variantsByProduct = new Map<number, typeof allVariants>();
+  for (const v of allVariants) {
+    const list = variantsByProduct.get(v.productId) ?? [];
+    if (list.length < 5) list.push(v);
+    variantsByProduct.set(v.productId, list);
+  }
+
+  return items.map((item) => {
+    const variants = variantsByProduct.get(item.productId) ?? [];
+    return { ...item, variants, minPrice: variants[0]?.priceUsd ?? "0" };
+  });
 }
 
 export default router;

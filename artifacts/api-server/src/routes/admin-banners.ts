@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { banners } from "@workspace/db/schema";
+import { banners, type InsertBanner } from "@workspace/db/schema";
 import { eq, asc, count } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
@@ -26,8 +26,7 @@ router.get("/admin/banners/:id", requireAuth, requireAdmin, requirePermission("m
 router.post("/admin/banners", requireAuth, requireAdmin, requirePermission("manageContent"), async (req, res) => {
   const data = parseBannerBody(req.body);
   if (!data) { res.status(400).json({ error: "Title is required" }); return; }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [banner] = await db.insert(banners).values(data as any).returning();
+  const [banner] = await db.insert(banners).values(data).returning();
   res.json({ banner });
 });
 
@@ -36,8 +35,7 @@ router.put("/admin/banners/:id", requireAuth, requireAdmin, requirePermission("m
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
   const data = parseBannerBody(req.body);
   if (!data) { res.status(400).json({ error: "Title is required" }); return; }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await db.update(banners).set({ ...data, updatedAt: new Date() } as any).where(eq(banners.id, id));
+  await db.update(banners).set({ ...data, updatedAt: new Date() }).where(eq(banners.id, id));
   const [updated] = await db.select().from(banners).where(eq(banners.id, id));
   if (!updated) { res.status(404).json({ error: "Not found" }); return; }
   res.json({ banner: updated });
@@ -71,15 +69,22 @@ router.post("/admin/banners/reorder", requireAuth, requireAdmin, requirePermissi
   res.json({ success: true });
 });
 
-function parseBannerBody(body: Record<string, unknown>) {
+const VALID_POSITIONS = ["TOP", "HOMEPAGE_HERO", "HOMEPAGE_MIDDLE", "SIDEBAR", "CATEGORY_TOP"] as const;
+type BannerPosition = (typeof VALID_POSITIONS)[number];
+
+function parseBannerBody(body: Record<string, unknown>): InsertBanner | null {
   const title = String(body.title ?? "").trim();
   if (!title) return null;
+  const rawPos = String(body.position ?? "");
+  const position: BannerPosition = (VALID_POSITIONS as readonly string[]).includes(rawPos)
+    ? (rawPos as BannerPosition)
+    : "HOMEPAGE_HERO";
   return {
     title,
     subtitle: body.subtitle ? String(body.subtitle) : null,
     imageUrl: body.imageUrl ? String(body.imageUrl) : null,
     linkUrl: body.linkUrl ? String(body.linkUrl) : null,
-    position: (body.position as string) || "HOMEPAGE_HERO",
+    position,
     backgroundColor: body.backgroundColor ? String(body.backgroundColor) : null,
     textColor: body.textColor ? String(body.textColor) : null,
     ctaText: body.ctaText ? String(body.ctaText) : null,
