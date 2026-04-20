@@ -1,4 +1,5 @@
 import { useState } from "react";
+import DOMPurify from "dompurify";
 import { Copy, Check, Key, Clock, CopyCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -71,7 +72,7 @@ export function LicenseKeysDisplay({ keyGroups }: LicenseKeysDisplayProps) {
               <p className="text-[11px] font-bold uppercase tracking-wide text-blue-700 dark:text-blue-400 mb-1.5">How to activate</p>
               <div
                 className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed [&_a]:underline [&_a]:text-blue-600 [&_ol]:list-decimal [&_ol]:pl-4 [&_ul]:list-disc [&_ul]:pl-4 [&_li]:mt-0.5"
-                dangerouslySetInnerHTML={{ __html: group.instructions }}
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(group.instructions) }}
               />
             </div>
           )}

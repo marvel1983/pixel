@@ -4,13 +4,21 @@ import fs from "node:fs";
 import fsp from "node:fs/promises";
 import path from "node:path";
 import crypto from "node:crypto";
+import { lookup as dnsLookup } from "node:dns/promises";
 import { logger } from "./logger";
 
 // Upload directory — relative to CWD (PM2 runs from /var/www/pixel-storefront)
 const UPLOADS_DIR = path.resolve(process.cwd(), "uploads", "products");
 
-// Allow any HTTPS host — this function is only called from admin-guarded routes
-const ALLOWED_HOSTS: string[] = [];
+// Block requests to private/loopback/link-local addresses (SSRF prevention)
+const BLOCKED_IP_RE = /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.|0\.0\.0\.0|::1$|fc|fd)/i;
+
+async function assertHostSafe(hostname: string): Promise<void> {
+  const { address } = await dnsLookup(hostname);
+  if (BLOCKED_IP_RE.test(address)) {
+    throw new Error(`Blocked internal address: ${address}`);
+  }
+}
 
 const ALLOWED_CONTENT_TYPES: Record<string, string> = {
   "image/jpeg": ".jpg",
@@ -60,14 +68,11 @@ export async function downloadImageToVps(remoteUrl: string): Promise<string> {
     throw new Error(`Invalid URL: ${remoteUrl}`);
   }
 
-  if (ALLOWED_HOSTS.length > 0 && !ALLOWED_HOSTS.includes(parsed.hostname)) {
-    throw new Error(`Host not allowed: ${parsed.hostname}`);
-  }
-
   if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
     throw new Error(`Protocol not allowed: ${parsed.protocol}`);
   }
 
+  await assertHostSafe(parsed.hostname);
   await ensureUploadsDir();
 
   // Filename = SHA256 of URL (deterministic — same URL → same file, no duplicates)

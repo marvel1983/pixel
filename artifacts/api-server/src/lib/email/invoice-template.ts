@@ -43,6 +43,11 @@ export interface InvoiceData {
   logoUrl?: string | null;
 }
 
+function esc(s: string | null | undefined): string {
+  if (!s) return "";
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
 function fmt(amountUsd: number, currencyCode: string, rate: number): string {
   const amount = amountUsd * rate;
   const symbols: Record<string, string> = { EUR: "€", USD: "$", GBP: "£" };
@@ -63,13 +68,13 @@ export function invoiceEmail(data: InvoiceData): { subject: string; html: string
 
   const logoHtml = data.logoUrl
     ? `<img src="${data.logoUrl}" alt="${data.siteName}" style="max-height:48px;max-width:160px;">`
-    : `<span style="font-size:22px;font-weight:700;color:#1a1a2e;">${data.siteName}</span>`;
+    : `<span style="font-size:22px;font-weight:700;color:#1a1a2e;">${esc(data.siteName)}</span>`;
 
   const itemRows = items.map((it) => {
     const lineTotal = it.unitPriceUsd * it.quantity;
     const taxAmt = lineTotal * (data.taxRate / 100);
     return `<tr style="border-bottom:1px solid #eee;">
-      <td style="padding:10px 8px;font-size:13px;">${it.name}${it.variant && it.variant !== it.name ? ` <span style="color:#888">(${it.variant})</span>` : ""}</td>
+      <td style="padding:10px 8px;font-size:13px;">${esc(it.name)}${it.variant && it.variant !== it.name ? ` <span style="color:#888">(${esc(it.variant)})</span>` : ""}</td>
       <td style="padding:10px 8px;text-align:center;font-size:13px;">${it.quantity}</td>
       <td style="padding:10px 8px;text-align:right;font-size:13px;">${fmt(it.unitPriceUsd, currencyCode, rate)}</td>
       <td style="padding:10px 8px;text-align:right;font-size:13px;">${data.taxRate.toFixed(2)}%</td>
@@ -117,23 +122,23 @@ export function invoiceEmail(data: InvoiceData): { subject: string; html: string
           <td style="vertical-align:top;width:50%;padding-right:20px;">
             <div style="font-size:11px;font-weight:700;color:#888;letter-spacing:1px;margin-bottom:8px;">SELLER</div>
             <div style="font-size:13px;line-height:1.7;color:#333;">
-              <b>${seller.name}</b><br>
-              ${seller.country ? `Country: ${seller.country}<br>` : ""}
-              ${seller.city ? `City: ${seller.city}<br>` : ""}
-              ${seller.address ? `${seller.address}<br>` : ""}
-              ${seller.taxId ? `Tax ID: ${seller.taxId}<br>` : ""}
-              ${seller.email ? `Email: ${seller.email}` : ""}
+              <b>${esc(seller.name)}</b><br>
+              ${seller.country ? `Country: ${esc(seller.country)}<br>` : ""}
+              ${seller.city ? `City: ${esc(seller.city)}<br>` : ""}
+              ${seller.address ? `${esc(seller.address)}<br>` : ""}
+              ${seller.taxId ? `Tax ID: ${esc(seller.taxId)}<br>` : ""}
+              ${seller.email ? `Email: ${esc(seller.email)}` : ""}
             </div>
           </td>
           <td style="vertical-align:top;width:50%;padding-left:20px;border-left:1px solid #eee;">
             <div style="font-size:11px;font-weight:700;color:#888;letter-spacing:1px;margin-bottom:8px;">BUYER</div>
             <div style="font-size:13px;line-height:1.7;color:#333;">
-              <b>${buyer.firstName} ${buyer.lastName}</b><br>
-              ${buyer.country ? `Country: ${buyer.country}<br>` : ""}
-              ${buyer.city ? `City: ${buyer.city}<br>` : ""}
-              ${buyer.address ? `${buyer.address}<br>` : ""}
-              ${buyer.vatNumber ? `VAT: ${buyer.vatNumber}<br>` : ""}
-              Email: ${buyer.email}
+              <b>${esc(buyer.firstName)} ${esc(buyer.lastName)}</b><br>
+              ${buyer.country ? `Country: ${esc(buyer.country)}<br>` : ""}
+              ${buyer.city ? `City: ${esc(buyer.city)}<br>` : ""}
+              ${buyer.address ? `${esc(buyer.address)}<br>` : ""}
+              ${buyer.vatNumber ? `VAT: ${esc(buyer.vatNumber)}<br>` : ""}
+              Email: ${esc(buyer.email)}
             </div>
           </td>
         </tr>

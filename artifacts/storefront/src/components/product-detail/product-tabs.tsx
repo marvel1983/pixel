@@ -1,4 +1,5 @@
 import { useState } from "react";
+import DOMPurify from "dompurify";
 import { CheckCircle } from "lucide-react";
 
 interface ProductTabsProps {
@@ -52,7 +53,7 @@ function DescriptionTab({ productName, description }: { productName: string; des
     return (
       <div
         className="prose prose-sm max-w-none text-muted-foreground"
-        dangerouslySetInnerHTML={{ __html: description }}
+        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(description) }}
       />
     );
   }
