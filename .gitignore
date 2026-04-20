@@ -59,5 +59,7 @@ Thumbs.db
 **/.env
 
 # Local agent / tool caches
-.claude/
+.claude/*
+!.claude/commands/
+!.claude/commands/**
 .config/
