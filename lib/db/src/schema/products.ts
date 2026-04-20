@@ -9,6 +9,7 @@ import {
   numeric,
   jsonb,
   pgEnum,
+  index,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -63,7 +64,10 @@ export const products = pgTable("products", {
   activationInstructions: text("activation_instructions"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (t) => ({
+  categoryActiveIdx: index("products_category_active_idx").on(t.categoryId, t.isActive),
+  featuredIdx: index("products_is_featured_idx").on(t.isFeatured),
+}));
 
 export const productVariants = pgTable("product_variants", {
   id: serial("id").primaryKey(),
@@ -89,7 +93,10 @@ export const productVariants = pgTable("product_variants", {
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (t) => ({
+  productIdIdx: index("product_variants_product_id_idx").on(t.productId),
+  productActiveIdx: index("product_variants_product_active_idx").on(t.productId, t.isActive),
+}));
 
 export const insertProductSchema = createInsertSchema(products).omit({
   id: true,

@@ -9,6 +9,7 @@ import {
   numeric,
   pgEnum,
   jsonb,
+  index,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -78,7 +79,11 @@ export const orders = pgTable("orders", {
   riskReasons: jsonb("risk_reasons").$type<string[]>(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (t) => ({
+  userIdIdx: index("orders_user_id_idx").on(t.userId),
+  statusIdx: index("orders_status_idx").on(t.status),
+  createdAtIdx: index("orders_created_at_idx").on(t.createdAt),
+}));
 
 export const orderItems = pgTable("order_items", {
   id: serial("id").primaryKey(),
@@ -94,7 +99,9 @@ export const orderItems = pgTable("order_items", {
   quantity: integer("quantity").notNull().default(1),
   bundleId: integer("bundle_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (t) => ({
+  orderIdIdx: index("order_items_order_id_idx").on(t.orderId),
+}));
 
 export const insertOrderSchema = createInsertSchema(orders).omit({
   id: true,
