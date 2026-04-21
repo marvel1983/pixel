@@ -62,4 +62,7 @@ Thumbs.db
 .claude/*
 !.claude/commands/
 !.claude/commands/**
+!.claude/hooks/
+!.claude/hooks/**
+!.claude/settings.json
 .config/
