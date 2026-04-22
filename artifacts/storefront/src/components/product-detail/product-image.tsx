@@ -20,11 +20,11 @@ export function ProductImage({ imageUrl, productName, additionalImages = [] }: P
 
   return (
     <>
-      <div className="space-y-3">
-        {/* Main image */}
+      <div className="flex flex-col h-full space-y-3">
+        {/* Main image — flex-1 so it fills remaining column height */}
         <div
-          className="relative border rounded-xl overflow-hidden bg-white cursor-zoom-in group"
-          style={{ aspectRatio: "1 / 1" }}
+          className="relative flex-1 min-h-[240px] border rounded-xl overflow-hidden bg-white cursor-zoom-in group"
+          style={{ aspectRatio: undefined }}
           onClick={() => setLightboxOpen(true)}
         >
           {selectedImage ? (

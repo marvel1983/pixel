@@ -125,7 +125,7 @@ export function ProductPurchaseCard({ product, selectedVariant, quantity, onQuan
 
   return (
     <>
-      <div className="border rounded-lg p-4 bg-card space-y-4">
+      <div className="border rounded-lg p-4 bg-card space-y-4 h-full">
         {/* Price display */}
         <div className="flex items-baseline gap-3 flex-wrap">
           {hasEngineDiscount ? (

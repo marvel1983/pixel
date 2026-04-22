@@ -37,7 +37,7 @@ export function ProductMeta({ product, selectedVariant, onVariantChange }: Produ
   const worksOn = WORKS_ON[platform] ?? "Windows";
 
   return (
-    <div className="border rounded-lg p-5 bg-card space-y-4">
+    <div className="border rounded-lg p-5 bg-card space-y-4 h-full">
       {/* Badges */}
       <div className="flex items-center gap-2 flex-wrap">
         {product.isNew && discount === 0 && <Badge className="bg-green-500">NEW</Badge>}

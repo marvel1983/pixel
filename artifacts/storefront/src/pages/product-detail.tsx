@@ -121,7 +121,7 @@ export default function ProductDetailPage() {
       <Breadcrumbs crumbs={breadcrumbs} />
 
       {/* 3-column grid: image | meta | purchase card */}
-      <div className="grid gap-6 lg:grid-cols-[320px_1fr_300px] lg:items-start">
+      <div className="grid gap-6 lg:grid-cols-[320px_1fr_300px] lg:items-stretch">
         <ProductImage imageUrl={product.imageUrl} productName={product.name} additionalImages={product.additionalImages} />
 
         <ProductMeta
