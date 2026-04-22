@@ -52,46 +52,75 @@ export function CrossSell({ currentProduct, relatedProducts }: CrossSellProps) {
   }
 
   return (
-    <div className="border rounded-lg p-4 bg-muted/30">
-      <h3 className="text-sm font-semibold mb-3">Frequently Bought Together</h3>
-      <div className="space-y-2">
+    <div className="rounded-xl border border-border bg-card overflow-hidden">
+      {/* Header */}
+      <div className="px-5 py-4 border-b border-border bg-muted/30">
+        <h3 className="text-sm font-bold text-foreground tracking-wide">
+          Frequently Bought Together
+        </h3>
+      </div>
+
+      {/* Items */}
+      <div className="divide-y divide-border">
         {items.map((product) => {
           const v = product.variants[0];
+          const isChecked = selected.has(product.id);
           return (
             <label
               key={product.id}
-              className="flex items-center gap-3 cursor-pointer text-sm"
+              className={`flex items-center gap-4 px-5 py-4 cursor-pointer transition-colors ${
+                isChecked ? "bg-primary/3" : "hover:bg-muted/30"
+              }`}
             >
               <Checkbox
-                checked={selected.has(product.id)}
+                checked={isChecked}
                 onCheckedChange={() => toggle(product.id)}
+                className="shrink-0"
               />
-              <div className="w-8 h-8 rounded bg-muted flex items-center justify-center shrink-0 overflow-hidden">
+              <div className="w-12 h-12 rounded-lg bg-muted border border-border flex items-center justify-center shrink-0 overflow-hidden">
                 {product.imageUrl ? (
-                  <img src={product.imageUrl} alt={product.name} className="w-full h-full object-cover" />
+                  <img
+                    src={product.imageUrl}
+                    alt={product.name}
+                    className="w-full h-full object-contain p-1"
+                  />
                 ) : (
-                  <Package className="h-4 w-4 text-muted-foreground/50" />
+                  <Package className="h-5 w-5 text-muted-foreground/40" />
                 )}
               </div>
-              <span className="flex-1 truncate">{product.name}</span>
-              <span className="font-medium">
+              <span className="flex-1 text-sm font-medium truncate text-foreground">
+                {product.name}
+              </span>
+              <span className="text-sm font-bold text-foreground shrink-0">
                 {formatPrice(parseFloat(v.priceUsd))}
               </span>
             </label>
           );
         })}
       </div>
-      {selected.size > 0 && (
-        <div className="mt-3 pt-3 border-t flex items-center justify-between">
-          <span className="text-sm font-medium">
-            Bundle total: {formatPrice(bundleTotal)}
-          </span>
-          <Button size="sm" onClick={handleAddBundle}>
-            <ShoppingCart className="h-3.5 w-3.5 mr-1.5" />
-            Add Bundle
-          </Button>
+
+      {/* Footer — always visible, button activates when items selected */}
+      <div className="px-5 py-4 border-t border-border bg-muted/20 flex items-center justify-between gap-4">
+        <div className="text-sm text-muted-foreground">
+          {selected.size > 0 ? (
+            <span>
+              Bundle total:{" "}
+              <span className="font-bold text-foreground">{formatPrice(bundleTotal)}</span>
+            </span>
+          ) : (
+            <span>Select items to bundle</span>
+          )}
         </div>
-      )}
+        <Button
+          size="sm"
+          disabled={selected.size === 0}
+          onClick={handleAddBundle}
+          className="shrink-0"
+        >
+          <ShoppingCart className="h-3.5 w-3.5 mr-1.5" />
+          Add to Cart
+        </Button>
+      </div>
     </div>
   );
 }

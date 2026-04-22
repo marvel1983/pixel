@@ -1,26 +1,61 @@
-import { Shield, Truck, RefreshCw, Headphones } from "lucide-react";
+import { ShieldCheck, Zap, RefreshCw, Headphones } from "lucide-react";
+
+const BADGES = [
+  {
+    icon: ShieldCheck,
+    label: "Secure Payment",
+    sub: "256-bit SSL encrypted",
+    accent: "#22c55e",
+    bg: "#22c55e14",
+    border: "#22c55e33",
+  },
+  {
+    icon: Zap,
+    label: "Instant Delivery",
+    sub: "Digital key via email",
+    accent: "#3b82f6",
+    bg: "#3b82f614",
+    border: "#3b82f633",
+  },
+  {
+    icon: RefreshCw,
+    label: "Money-Back",
+    sub: "30-day guarantee",
+    accent: "#f59e0b",
+    bg: "#f59e0b14",
+    border: "#f59e0b33",
+  },
+  {
+    icon: Headphones,
+    label: "24/7 Support",
+    sub: "Live chat & email",
+    accent: "#a855f7",
+    bg: "#a855f714",
+    border: "#a855f733",
+  },
+];
 
 export function TrustBadges() {
-  const badges = [
-    { icon: Shield,      label: "Secure Payment",   sub: "256-bit SSL encrypted",  iconBg: "bg-emerald-100 dark:bg-emerald-900/40", iconColor: "text-emerald-600 dark:text-emerald-400", border: "border-emerald-200 dark:border-emerald-800" },
-    { icon: Truck,       label: "Instant Delivery",  sub: "Digital key via email",  iconBg: "bg-blue-100 dark:bg-blue-900/40",     iconColor: "text-blue-600 dark:text-blue-400",     border: "border-blue-200 dark:border-blue-800"     },
-    { icon: RefreshCw,   label: "Money-Back",        sub: "30-day guarantee",       iconBg: "bg-amber-100 dark:bg-amber-900/40",   iconColor: "text-amber-600 dark:text-amber-400",   border: "border-amber-200 dark:border-amber-800"   },
-    { icon: Headphones,  label: "24/7 Support",      sub: "Live chat & email",      iconBg: "bg-violet-100 dark:bg-violet-900/40", iconColor: "text-violet-600 dark:text-violet-400", border: "border-violet-200 dark:border-violet-800" },
-  ];
-
   return (
     <div className="grid grid-cols-2 gap-3">
-      {badges.map((b) => (
+      {BADGES.map((b) => (
         <div
           key={b.label}
-          className={`flex items-center gap-2.5 p-3 rounded-lg border ${b.border} bg-white dark:bg-muted/20`}
+          className="flex items-center gap-3.5 rounded-xl border p-4 bg-card transition-shadow hover:shadow-sm"
+          style={{ borderColor: b.border }}
         >
-          <div className={`${b.iconBg} rounded-lg p-1.5 shrink-0`}>
-            <b.icon className={`h-4 w-4 ${b.iconColor}`} />
+          {/* Icon circle */}
+          <div
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full"
+            style={{ background: b.bg, border: `1.5px solid ${b.border}` }}
+          >
+            <b.icon className="h-5 w-5" style={{ color: b.accent }} strokeWidth={1.8} />
           </div>
-          <div>
-            <div className="text-xs font-semibold">{b.label}</div>
-            <div className="text-[10px] text-muted-foreground">{b.sub}</div>
+
+          {/* Text */}
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-foreground leading-tight">{b.label}</p>
+            <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">{b.sub}</p>
           </div>
         </div>
       ))}
