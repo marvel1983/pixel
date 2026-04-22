@@ -1,6 +1,6 @@
 import { useState } from "react";
 import DOMPurify from "dompurify";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 
 interface ProductTabsProps {
   productName: string;
@@ -17,23 +17,26 @@ export function ProductTabs({ productName, platform, description, keyFeatures, s
   const [activeTab, setActiveTab] = useState<Tab>("Description");
 
   return (
-    <div>
-      <div className="flex border-b">
+    <div className="rounded-xl border border-border overflow-hidden">
+      {/* Tab nav */}
+      <div className="flex border-b border-border bg-muted/40">
         {TABS.map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
+            className={`relative px-5 py-3.5 text-sm font-semibold transition-colors ${
               activeTab === tab
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
+                ? "text-primary bg-card after:absolute after:bottom-0 after:inset-x-0 after:h-0.5 after:bg-primary"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
             }`}
           >
             {tab}
           </button>
         ))}
       </div>
-      <div className="py-5">
+
+      {/* Content */}
+      <div className="p-6 bg-card min-h-[180px]">
         {activeTab === "Description" && (
           <DescriptionTab productName={productName} description={description} />
         )}
@@ -57,56 +60,69 @@ function DescriptionTab({ productName, description }: { productName: string; des
       />
     );
   }
+
+  const bullets = [
+    "Genuine license key delivered via email",
+    "Step-by-step activation instructions",
+    "24/7 customer support",
+    "Lifetime license validity",
+  ];
+
   return (
-    <div className="prose prose-sm max-w-none text-muted-foreground">
-      <p>
-        Get your genuine {productName} license key at the best price.
-        Instant digital delivery — receive your activation key within minutes of purchase.
+    <div className="space-y-4 max-w-3xl">
+      <p className="text-sm text-muted-foreground leading-relaxed">
+        Get your genuine <strong className="text-foreground">{productName}</strong> license key
+        at the best price. Instant digital delivery — receive your activation key within minutes
+        of purchase.
       </p>
-      <p>
+      <p className="text-sm text-muted-foreground leading-relaxed">
         All keys sold on PixelCodes are 100% legitimate and sourced from authorized distributors.
         Each key comes with full activation support and lifetime validity.
       </p>
-      <h4 className="text-foreground font-semibold mt-4 mb-2">What You Get</h4>
-      <ul className="list-disc pl-5 space-y-1">
-        <li>Genuine license key delivered via email</li>
-        <li>Step-by-step activation instructions</li>
-        <li>24/7 customer support</li>
-        <li>Lifetime license validity</li>
-      </ul>
+      <div>
+        <p className="text-sm font-semibold text-foreground mb-3">What You Get</p>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {bullets.map((item) => (
+            <div key={item} className="flex items-center gap-2.5 rounded-lg bg-muted/50 border border-border px-3 py-2.5">
+              <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+              <span className="text-sm text-foreground">{item}</span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
 
 function KeyFeaturesTab({ keyFeatures }: { keyFeatures?: string[] }) {
-  if (!keyFeatures || keyFeatures.length === 0) {
+  if (!keyFeatures?.length) {
     return <p className="text-sm text-muted-foreground">No key features listed for this product.</p>;
   }
   return (
-    <div className="space-y-2">
+    <div className="grid gap-2 sm:grid-cols-2">
       {keyFeatures.map((f, i) => (
-        <div key={i} className="flex items-center gap-2 text-sm">
-          <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
-          <span>{f}</span>
+        <div key={i} className="flex items-start gap-2.5 rounded-lg bg-muted/50 border border-border px-3 py-2.5">
+          <CheckCircle2 className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+          <span className="text-sm text-foreground">{f}</span>
         </div>
       ))}
     </div>
   );
 }
 
-function SystemRequirementsTab({ platform, systemRequirements }: { platform: string; systemRequirements?: Record<string, string> }) {
+function SystemRequirementsTab({ systemRequirements }: { platform: string; systemRequirements?: Record<string, string> }) {
   const entries = systemRequirements ? Object.entries(systemRequirements) : [];
 
-  if (entries.length === 0) {
+  if (!entries.length) {
     return <p className="text-sm text-muted-foreground">No system requirements specified for this product.</p>;
   }
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
+    <div className="overflow-hidden rounded-lg border border-border divide-y divide-border">
       {entries.map(([key, value]) => (
-        <div key={key} className="text-sm">
-          <span className="font-medium text-foreground">{key}:</span>{" "}
-          <span className="text-muted-foreground">{value}</span>
+        <div key={key} className="grid grid-cols-[180px_1fr] text-sm">
+          <div className="bg-muted/50 px-4 py-3 font-medium text-foreground border-r border-border">{key}</div>
+          <div className="px-4 py-3 text-muted-foreground">{value}</div>
         </div>
       ))}
     </div>
