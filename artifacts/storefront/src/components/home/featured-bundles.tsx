@@ -59,13 +59,13 @@ export function FeaturedBundles() {
           </Button>
         </Link>
       </div>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:items-stretch">
         {bundles.map((b) => {
           const savings = parseFloat(b.individualTotal) - parseFloat(b.bundlePriceUsd);
           const savingsPct = Math.round((savings / parseFloat(b.individualTotal)) * 100);
           return (
-            <Link key={b.id} href={`/bundles/${b.slug}`}>
-              <Card className="group h-full cursor-pointer overflow-hidden transition-shadow hover:shadow-lg">
+            <Link key={b.id} href={`/bundles/${b.slug}`} className="block h-full">
+              <Card className="group flex h-full flex-col cursor-pointer overflow-hidden transition-shadow hover:shadow-lg">
                 <div className="relative aspect-[3/2]">
                   <div className="absolute inset-0 flex items-center justify-center overflow-hidden bg-gradient-to-br from-primary/10 to-primary/5">
                     {b.imageUrl ? (
@@ -80,7 +80,7 @@ export function FeaturedBundles() {
                     </Badge>
                   )}
                 </div>
-                <CardContent className="space-y-2 p-3">
+                <CardContent className="flex flex-col flex-1 justify-between space-y-2 p-3">
                   <h3 className="line-clamp-1 font-semibold transition-colors group-hover:text-primary">{b.name}</h3>
                   <div className="flex flex-wrap gap-1">
                     {b.items.slice(0, 3).map((item) => (
