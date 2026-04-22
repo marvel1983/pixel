@@ -7,7 +7,7 @@ export interface WebhookLogEntry {
   source: "metenzi" | "stripe" | "checkout";
   event: string;
   status: number;
-  outcome: "ok" | "invalid_sig" | "replay" | "bad_body" | "handler_error" | "challenge" | "unknown";
+  outcome: "ok" | "invalid_sig" | "replay" | "bad_body" | "handler_error" | "challenge" | "duplicate" | "unknown";
   headers?: Record<string, string>;
   body?: unknown;
   error?: string;

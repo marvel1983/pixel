@@ -174,8 +174,8 @@ router.get("/admin/orders/:id", requireAuth, requireAdmin, requirePermission("ma
           const card = charge?.payment_method_details?.card;
           stripePaymentDetails = {
             status: pi.status,
-            cardBrand: card?.brand,
-            cardLast4: card?.last4,
+            cardBrand: card?.brand ?? undefined,
+            cardLast4: card?.last4 ?? undefined,
             cardExpMonth: card?.exp_month,
             cardExpYear: card?.exp_year,
             cardCountry: card?.country ?? undefined,
@@ -280,7 +280,7 @@ router.post("/admin/orders/:id/sync-backorder-keys", requireAuth, requireAdmin, 
   for (const k of existingKeys) deliveredByItem[k.orderItemId!] = (deliveredByItem[k.orderItemId!] ?? 0) + 1;
 
   // Batch-fetch all Metenzi product mappings needed for this order in one query
-  const metenziProductIds = [...new Set(metenziKeys.map((k) => k.productId).filter(Boolean) as number[])];
+  const metenziProductIds = [...new Set(metenziKeys.map((k) => k.productId).filter(Boolean))].map(String);
   const mappings = metenziProductIds.length
     ? await db.select({ metenziProductId: metenziProductMappings.metenziProductId, pixelProductId: metenziProductMappings.pixelProductId })
         .from(metenziProductMappings).where(inArray(metenziProductMappings.metenziProductId, metenziProductIds))
@@ -463,7 +463,7 @@ router.get("/admin/orders/held", requireAuth, requireAdmin, requirePermission("m
 
 // POST /admin/orders/:id/release — approve a held order and deliver keys
 router.post("/admin/orders/:id/release", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
-  const orderId = parseInt(req.params.id, 10);
+  const orderId = parseInt(req.params.id as string, 10);
   if (!orderId) { res.status(400).json({ error: "Invalid order id" }); return; }
 
   const [order] = await db.select().from(orders).where(eq(orders.id, orderId)).limit(1);
@@ -536,7 +536,7 @@ router.post("/admin/orders/:id/release", requireAuth, requireAdmin, requirePermi
 
 // POST /admin/orders/:id/cancel-hold — reject a held order (mark failed; admin handles refund manually)
 router.post("/admin/orders/:id/cancel-hold", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
-  const orderId = parseInt(req.params.id, 10);
+  const orderId = parseInt(req.params.id as string, 10);
   if (!orderId) { res.status(400).json({ error: "Invalid order id" }); return; }
 
   const [order] = await db.select({ status: orders.status, orderNumber: orders.orderNumber })

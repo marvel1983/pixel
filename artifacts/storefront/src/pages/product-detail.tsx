@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "wouter";
-import { MOCK_PRODUCTS, type MockProduct } from "@/lib/mock-data";
+import { MOCK_PRODUCTS, type MockProduct, type MockVariant } from "@/lib/mock-data";
 import { Breadcrumbs } from "@/components/shop/breadcrumbs";
 import { ProductImage } from "@/components/product-detail/product-image";
-import { ProductInfo } from "@/components/product-detail/product-info";
+import { ProductMeta } from "@/components/product-detail/product-meta";
+import { ProductPurchaseCard } from "@/components/product-detail/product-purchase-card";
 import { CrossSell } from "@/components/product-detail/cross-sell";
 import { TrustBadges } from "@/components/product-detail/trust-badges";
 import { SocialShare } from "@/components/product-detail/social-share";
@@ -42,7 +43,6 @@ export default function ProductDetailPage() {
 
   useEffect(() => {
     if (mockProduct) {
-      // Mock products don't need an API call
       setApiProduct(null);
       return;
     }
@@ -54,6 +54,15 @@ export default function ProductDetailPage() {
   }, [slug, mockProduct]);
 
   const product: MockProduct | undefined = mockProduct ?? (apiProduct ?? undefined);
+
+  const [selectedVariant, setSelectedVariant] = useState<MockVariant | null>(null);
+  const [quantity, setQuantity] = useState(1);
+
+  useEffect(() => {
+    if (product?.variants[0]) {
+      setSelectedVariant(product.variants[0]);
+    }
+  }, [product]);
 
   const relatedProducts = useMemo(() => {
     if (!product) return [];
@@ -82,12 +91,11 @@ export default function ProductDetailPage() {
     };
   }, [product]);
 
-  // Still loading API response
   if (!mockProduct && apiProduct === undefined) {
     return <div className="container mx-auto px-4 py-16 text-center text-muted-foreground">Loading…</div>;
   }
 
-  if (!product) {
+  if (!product || !selectedVariant) {
     return (
       <div className="container mx-auto px-4 py-16 text-center">
         <h1 className="text-2xl font-bold mb-2">Product Not Found</h1>
@@ -112,23 +120,31 @@ export default function ProductDetailPage() {
       <BreadcrumbJsonLd items={breadcrumbs} />
       <Breadcrumbs crumbs={breadcrumbs} />
 
-      <div className="grid gap-10 lg:grid-cols-[1fr_1fr] lg:items-start">
+      {/* 3-column grid: image | meta | purchase card */}
+      <div className="grid gap-6 lg:grid-cols-[320px_1fr_300px] lg:items-start">
         <ProductImage imageUrl={product.imageUrl} productName={product.name} />
 
-        <div className="space-y-5 lg:px-8">
-          <ProductInfo product={product} />
-          <SocialShare productName={product.name} />
-          <Separator />
-          <BundleCrossSell productId={product.id} />
-          <CrossSell
-            currentProduct={product}
-            relatedProducts={relatedProducts}
-          />
-          <TrustpilotBadge variant="compact" />
-          <TrustBadges />
-          <PaymentIcons />
-        </div>
+        <ProductMeta
+          product={product}
+          selectedVariant={selectedVariant}
+          onVariantChange={setSelectedVariant}
+        />
+
+        <ProductPurchaseCard
+          product={product}
+          selectedVariant={selectedVariant}
+          quantity={quantity}
+          onQuantityChange={setQuantity}
+        />
       </div>
+
+      <SocialShare productName={product.name} />
+      <Separator />
+      <BundleCrossSell productId={product.id} />
+      <CrossSell currentProduct={product} relatedProducts={relatedProducts} />
+      <TrustpilotBadge variant="compact" />
+      <TrustBadges />
+      <PaymentIcons />
 
       <ProductTabs
         productName={product.name}
