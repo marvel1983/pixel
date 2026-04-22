@@ -3,6 +3,7 @@ export interface MockProduct {
   name: string;
   slug: string;
   imageUrl: string | null;
+  additionalImages?: string[];
   categorySlug: string;
   avgRating: number;
   reviewCount: number;

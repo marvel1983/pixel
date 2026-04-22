@@ -28,7 +28,9 @@ export const MOCK_PRODUCTS: MockProduct[] = [
   },
   {
     id: 4, name: "Windows 10 Home", slug: "windows-10-home",
-    imageUrl: "/products/windows-10-home.png", categorySlug: "operating-systems",
+    imageUrl: "/products/windows-10-home.png",
+    additionalImages: ["/products/windows-10-pro.png", "/products/windows-11-home.png", "/products/windows-11-pro.png"],
+    categorySlug: "operating-systems",
     avgRating: 4.6, reviewCount: 890,
     variants: [{ id: 4, name: "Digital Key", sku: "WIN10HOME-01", platform: "WINDOWS", priceUsd: "12.99", compareAtPriceUsd: "139.99", stockCount: 700 }],
     isFeatured: false, isNew: false,

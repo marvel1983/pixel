@@ -122,7 +122,7 @@ export default function ProductDetailPage() {
 
       {/* 3-column grid: image | meta | purchase card */}
       <div className="grid gap-6 lg:grid-cols-[320px_1fr_300px] lg:items-start">
-        <ProductImage imageUrl={product.imageUrl} productName={product.name} />
+        <ProductImage imageUrl={product.imageUrl} productName={product.name} additionalImages={product.additionalImages} />
 
         <ProductMeta
           product={product}
