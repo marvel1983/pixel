@@ -163,6 +163,9 @@ jobs:
             echo "→ Adding activation_instructions column to products..."
             psql "$DATABASE_URL" -c "ALTER TABLE products ADD COLUMN IF NOT EXISTS activation_instructions TEXT;" || true
 
+            echo "→ Widening short_description to TEXT (was varchar 500)..."
+            psql "$DATABASE_URL" -c "ALTER TABLE products ALTER COLUMN short_description TYPE TEXT;" || true
+
             echo "→ Reloading PM2..."
             set -a; source /var/www/pixel-storefront/.env; set +a
             pm2 reload pixel-api --update-env
