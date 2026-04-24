@@ -349,25 +349,18 @@ router.post("/admin/metenzi/import", ...guard, async (req, res) => {
   const config = await getMetenziConfig();
   if (!config) { res.status(503).json({ error: "Metenzi not configured" }); return; }
 
-  const catRes = await getCatalogPage(config, { limit: 50 });
-  const mp = catRes.products.find((p) => p.id === metenziProductId);
+  const mp = await getProductById(config, metenziProductId);
   if (!mp) { res.status(404).json({ error: "Metenzi product not found" }); return; }
 
   const f = new Set<string>(fields);
   const include = (field: string) => f.has(field);
 
   // Download image if requested.
-  // Catalog listings often omit imageUrl — fall back to individual product endpoint if needed.
   let imageUrl: string | null = null;
   if (include("image")) {
-    let imageSource = mp.imageUrl;
-    if (!imageSource) {
-      const full = await getProductById(config, metenziProductId);
-      imageSource = full?.imageUrl ?? null;
-    }
-    if (imageSource) {
-      try { imageUrl = await downloadImageToVps(imageSource); }
-      catch (err) { logger.warn({ err, imageSource }, "Image download failed during import"); }
+    if (mp.imageUrl) {
+      try { imageUrl = await downloadImageToVps(mp.imageUrl); }
+      catch (err) { logger.warn({ err, imageSource: mp.imageUrl }, "Image download failed during import"); }
     }
   }
 
