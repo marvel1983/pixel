@@ -1,6 +1,19 @@
 import { et } from "./email-i18n";
 
 const BRAND_COLOR = "#3366FF";
+
+/** Strip HTML tags from Metenzi instructions, preserving line breaks. */
+function stripHtml(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(?:p|div|li|tr|h[1-6])>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
 const BRAND_BG = "#f8f9fa";
 
 interface LayoutOptions {
@@ -133,7 +146,7 @@ export function keyDeliveryEmail(data: KeyDeliveryData): { subject: string; html
 <div style="background:#1a1a2e;padding:14px 18px;border-radius:6px;border:1px solid #333;">
 <code style="font-family:'Courier New',Courier,monospace;font-size:15px;color:#00d4aa;letter-spacing:0.5px;word-break:break-all;">${k.licenseKey}</code>
 </div>
-${k.instructions ? `<div style="margin-top:10px;background:#f0f4ff;padding:12px 16px;border-radius:6px;border-left:3px solid #3b82f6;"><p style="margin:0 0 8px;font-size:12px;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:0.5px;">How to activate</p><div style="font-size:13px;color:#374151;line-height:1.6;">${k.instructions}</div></div>` : ""}
+${k.instructions ? `<div style="margin-top:10px;background:#f0f4ff;padding:12px 16px;border-radius:6px;border-left:3px solid #3b82f6;"><p style="margin:0 0 8px;font-size:12px;font-weight:700;color:#1e40af;text-transform:uppercase;letter-spacing:0.5px;">How to activate</p><pre style="font-size:13px;color:#374151;line-height:1.6;white-space:pre-wrap;margin:0;font-family:inherit;">${stripHtml(k.instructions)}</pre></div>` : ""}
 </div>`,
     )
     .join("");
