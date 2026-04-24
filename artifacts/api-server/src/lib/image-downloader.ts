@@ -15,12 +15,11 @@ const BLOCKED_IP_RE = /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.25
 
 // Returns the resolved address so callers can pin it in the HTTP request,
 // preventing DNS rebinding between the safety check and the actual connection.
-async function assertHostSafe(hostname: string): Promise<{ address: string; family: number }> {
-  const { address, family } = await dnsLookup(hostname);
+async function assertHostSafe(hostname: string): Promise<void> {
+  const { address } = await dnsLookup(hostname);
   if (BLOCKED_IP_RE.test(address)) {
     throw new Error(`Blocked internal address: ${address}`);
   }
-  return { address, family };
 }
 
 const ALLOWED_CONTENT_TYPES: Record<string, string> = {
@@ -76,7 +75,7 @@ export async function downloadImageToVps(remoteUrl: string): Promise<string> {
   }
 
   // Resolve the IP once and pin it in the request to prevent DNS rebinding.
-  const { address: safeAddress, family: safeFamily } = await assertHostSafe(parsed.hostname);
+  await assertHostSafe(parsed.hostname);
   await ensureUploadsDir();
 
   // Filename = SHA256 of URL (deterministic — same URL → same file, no duplicates)
@@ -96,10 +95,6 @@ export async function downloadImageToVps(remoteUrl: string): Promise<string> {
       remoteUrl,
       {
         timeout: 15_000,
-        // Pin the pre-validated IP so the OS cannot re-resolve to an internal
-        // address between the safety check and the actual TCP connection.
-        lookup: (_hostname: string, _options: object, callback: (err: Error | null, address: string, family: number) => void) =>
-          callback(null, safeAddress, safeFamily),
       },
       (res) => {
         // Follow one redirect — re-validate the redirect target before following.
