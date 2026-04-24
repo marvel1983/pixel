@@ -349,7 +349,14 @@ router.post("/admin/metenzi/import", ...guard, async (req, res) => {
   const config = await getMetenziConfig();
   if (!config) { res.status(503).json({ error: "Metenzi not configured" }); return; }
 
-  const mp = await getProductById(config, metenziProductId);
+  let mp;
+  try {
+    mp = await getProductById(config, metenziProductId);
+  } catch (err) {
+    logger.error({ err, metenziProductId }, "Failed to fetch product from Metenzi");
+    res.status(502).json({ error: "Failed to fetch product from Metenzi — try again shortly" });
+    return;
+  }
   if (!mp) { res.status(404).json({ error: "Metenzi product not found" }); return; }
 
   const f = new Set<string>(fields);
