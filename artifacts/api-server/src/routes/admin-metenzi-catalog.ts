@@ -15,16 +15,11 @@ import { downloadImageToVps } from "../lib/image-downloader";
 import { logger } from "../lib/logger";
 import { metenziRequest } from "../lib/metenzi-client";
 
-/** Sanitize HTML content for DB storage: strip <style>/<script> blocks and all control chars.
- *  Preserves structural HTML tags so the storefront can render rich descriptions. */
+/** Remove null bytes and other control chars that PostgreSQL rejects. Preserves all HTML. */
 function stripNulls(s: string | null | undefined): string | null {
   if (!s) return null;
-  return s
-    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "")   // remove embedded CSS (source of null bytes)
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "") // remove scripts
-    // eslint-disable-next-line no-control-regex
-    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")  // strip all non-printable control chars
-    .trim() || null;
+  // eslint-disable-next-line no-control-regex
+  return s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "").trim() || null;
 }
 
 /** Strip HTML entirely — used for activationInstructions (shown in plain-text emails). */
