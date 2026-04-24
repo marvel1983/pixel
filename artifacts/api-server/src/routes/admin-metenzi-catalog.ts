@@ -15,10 +15,16 @@ import { downloadImageToVps } from "../lib/image-downloader";
 import { logger } from "../lib/logger";
 import { metenziRequest } from "../lib/metenzi-client";
 
-/** Remove only null bytes from HTML content — preserves HTML formatting for storefront rendering. */
+/** Sanitize HTML content for DB storage: strip <style>/<script> blocks and all control chars.
+ *  Preserves structural HTML tags so the storefront can render rich descriptions. */
 function stripNulls(s: string | null | undefined): string | null {
   if (!s) return null;
-  return s.replace(/\x00/g, "") || null;
+  return s
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "")   // remove embedded CSS (source of null bytes)
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "") // remove scripts
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")  // strip all non-printable control chars
+    .trim() || null;
 }
 
 /** Strip HTML entirely — used for activationInstructions (shown in plain-text emails). */
@@ -311,7 +317,7 @@ router.post("/admin/metenzi/sync-field", ...guard, async (req, res) => {
     switch (field) {
       case "name":             productCols.name = mp.name;                    synced.push("name");             break;
       case "description":      productCols.description = stripNulls(mp.description);           synced.push("description");      break;
-      case "shortDescription": productCols.shortDescription = stripNulls(mp.shortDescription);  synced.push("shortDescription"); break;
+      case "shortDescription": productCols.shortDescription = stripNulls(mp.shortDescription); synced.push("shortDescription"); break;
       case "b2bPrice":         variantCols.b2bPriceUsd = mp.b2bPrice;        synced.push("b2bPrice");         break;
       case "retailPrice":      variantCols.priceUsd = mp.retailPrice;         synced.push("retailPrice");      break;
       case "sku":              variantCols.sku = mp.sku;                      synced.push("sku");              break;

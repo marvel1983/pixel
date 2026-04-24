@@ -42,7 +42,7 @@ export const products = pgTable("products", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 300 }).notNull(),
   slug: varchar("slug", { length: 300 }).notNull().unique(),
-  shortDescription: varchar("short_description", { length: 500 }),
+  shortDescription: text("short_description"),
   description: text("description"),
   type: productTypeEnum("type").notNull().default("SOFTWARE"),
   categoryId: integer("category_id").references(() => categories.id),
