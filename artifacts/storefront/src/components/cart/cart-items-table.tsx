@@ -94,7 +94,7 @@ export function CartItemsTable() {
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
       {/* Header */}
-      <div className="hidden sm:grid grid-cols-[1fr_100px_140px_100px_44px] gap-4 px-6 py-3 bg-muted/40 border-b border-border">
+      <div className="hidden sm:grid grid-cols-[1fr_100px_140px_100px_44px] gap-4 px-5 py-2.5 bg-muted/40 border-b border-border">
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("cart.product")}</span>
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center">{t("cart.price")}</span>
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center">{t("cart.quantity")}</span>
@@ -127,7 +127,7 @@ export function CartItemsTable() {
       ))}
 
       {/* Footer actions */}
-      <div className="flex items-center justify-between px-6 py-3 border-t border-border bg-muted/20">
+      <div className="flex items-center justify-between px-5 py-2.5 border-t border-border bg-muted/20">
         <Link href="/shop">
           <button className="text-sm font-medium text-primary hover:underline flex items-center gap-1">
             ← {t("cart.returnToShop")}
@@ -253,36 +253,37 @@ function CartRow({ item, format, onUpdateQuantity, onRemove }: CartRowProps) {
   const subtotal = price * item.quantity;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-[1fr_100px_140px_100px_44px] gap-4 px-6 py-5 border-t border-border items-center">
-      {/* Product */}
-      <div className="flex items-center gap-4">
-        <div className="w-16 h-16 rounded-xl border border-border bg-muted flex items-center justify-center shrink-0 overflow-hidden">
+    <div
+      className="grid gap-x-3 gap-y-3 px-4 py-4 border-t border-border items-center grid-cols-[auto_1fr_auto] [grid-template-areas:'product_product_remove'_'qty_._total'] sm:grid-cols-[1fr_100px_140px_100px_44px] sm:gap-4 sm:px-5 sm:py-3 sm:[grid-template-areas:'product_price_qty_total_remove']"
+    >
+      <div className="[grid-area:product] flex items-center gap-3 min-w-0">
+        <div className="w-14 h-14 sm:w-12 sm:h-12 rounded-xl border border-border bg-muted flex items-center justify-center shrink-0 overflow-hidden">
           {item.imageUrl
             ? <img src={item.imageUrl} alt={item.productName} className="w-full h-full object-contain" />
-            : <Package className="h-7 w-7 text-muted-foreground/30" />}
+            : <Package className="h-6 w-6 sm:h-5 sm:w-5 text-muted-foreground/30" />}
         </div>
         <div className="min-w-0">
           <p className="text-sm font-semibold text-foreground leading-snug mb-0.5">{item.productName}</p>
-          <p className="text-xs text-muted-foreground mb-1">{item.variantName}</p>
-          {item.platform && (
-            <span className="inline-block text-[10px] px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground border border-border">
-              {item.platform}
-            </span>
-          )}
-          {item.regionRestrictions && item.regionRestrictions.length > 0 && (
-            <span className="inline-block ml-1 text-[10px] px-1.5 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700">
-              {item.regionRestrictions.join(", ")}
-            </span>
-          )}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <p className="text-xs text-muted-foreground">{item.variantName}</p>
+            {item.platform && (
+              <span className="inline-block text-[10px] px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground border border-border">
+                {item.platform}
+              </span>
+            )}
+            {item.regionRestrictions && item.regionRestrictions.length > 0 && (
+              <span className="inline-block text-[10px] px-1.5 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700">
+                {item.regionRestrictions.join(", ")}
+              </span>
+            )}
+          </div>
           <BackorderNotice item={item} />
         </div>
       </div>
 
-      {/* Unit price */}
-      <div className="text-sm text-center font-medium text-foreground">{format(price)}</div>
+      <div className="[grid-area:price] hidden sm:block text-sm text-center font-medium text-foreground">{format(price)}</div>
 
-      {/* Quantity */}
-      <div className="flex items-center justify-center">
+      <div className="[grid-area:qty] flex items-center sm:justify-center">
         <div className="flex items-center rounded-lg border border-border bg-background overflow-hidden">
           <button
             className="px-3 py-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-40"
@@ -301,11 +302,12 @@ function CartRow({ item, format, onUpdateQuantity, onRemove }: CartRowProps) {
         </div>
       </div>
 
-      {/* Subtotal */}
-      <div className="text-sm text-right font-bold text-foreground">{format(subtotal)}</div>
+      <div className="[grid-area:total] text-right">
+        <span className="sm:hidden block text-[11px] text-muted-foreground">{format(price)} each</span>
+        <span className="text-base sm:text-sm font-bold text-foreground">{format(subtotal)}</span>
+      </div>
 
-      {/* Remove */}
-      <div className="flex justify-end">
+      <div className="[grid-area:remove] flex justify-end">
         <button
           type="button"
           className="h-8 w-8 flex items-center justify-center rounded-lg text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"

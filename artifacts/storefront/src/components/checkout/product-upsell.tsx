@@ -126,26 +126,28 @@ export function ProductUpsell() {
     const btnLabel = configured.checkboxLabel?.trim() || "Add";
 
     return (
-      <div className="border rounded-lg p-4 bg-blue-50/50 border-blue-200 dark:bg-blue-950/20 dark:border-blue-900">
-        <h3 className="text-sm font-semibold mb-2">Special offer</h3>
-        {configured.urgencyMessage ? (
-          <p className="text-xs text-amber-700 dark:text-amber-400 font-medium mb-3">{configured.urgencyMessage}</p>
-        ) : null}
+      <div className="border rounded-lg p-3 bg-gradient-to-br from-amber-50 to-orange-50 border-amber-300 dark:from-amber-950/30 dark:to-orange-950/20 dark:border-amber-800 shadow-sm">
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <h3 className="text-[11px] font-bold uppercase tracking-wide text-amber-900 dark:text-amber-300">Special offer</h3>
+          {configured.urgencyMessage ? (
+            <span className="text-xs text-amber-700 dark:text-amber-400 font-medium">{configured.urgencyMessage}</span>
+          ) : null}
+        </div>
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded bg-card border flex items-center justify-center shrink-0">
+          <div className="w-12 h-12 rounded bg-card border flex items-center justify-center shrink-0 overflow-hidden">
             {configured.productImage ? (
-              <img src={configured.productImage} alt="" className="w-full h-full object-contain rounded" />
+              <img src={configured.productImage} alt="" className="w-full h-full object-contain" />
             ) : (
               <Package className="h-5 w-5 text-muted-foreground/40" />
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">{configured.productName}</p>
-            <p className="text-xs text-muted-foreground">{configured.variantName}</p>
-            <div className="flex items-baseline gap-2 mt-1">
-              <span className="text-sm font-semibold">{format(parseFloat(priceStr))}</span>
+            <p className="text-sm font-semibold truncate leading-tight">{configured.productName}</p>
+            <div className="flex items-baseline gap-2 mt-0.5 text-xs">
+              <span className="text-muted-foreground truncate">{configured.variantName}</span>
+              <span className="text-sm font-bold text-foreground">{format(parseFloat(priceStr))}</span>
               {strikeStr ? (
-                <span className="text-xs text-muted-foreground line-through">{format(parseFloat(strikeStr))}</span>
+                <span className="text-muted-foreground line-through">{format(parseFloat(strikeStr))}</span>
               ) : null}
             </div>
           </div>
@@ -176,8 +178,8 @@ export function ProductUpsell() {
   if (offers.length === 0) return null;
 
   return (
-    <div className="border rounded-lg p-4 bg-blue-50/50 border-blue-200 dark:bg-blue-950/20 dark:border-blue-900">
-      <h3 className="text-sm font-semibold mb-3">Complete your order</h3>
+    <div className="border rounded-lg p-4 bg-gradient-to-br from-amber-50 to-orange-50 border-amber-300 dark:from-amber-950/30 dark:to-orange-950/20 dark:border-amber-800 shadow-sm">
+      <h3 className="text-[11px] font-bold uppercase tracking-wide text-amber-900 dark:text-amber-300 mb-3">Complete your order</h3>
       <div className="space-y-2">
         {offers.map((o) => (
           <div key={o.variantId} className="flex items-center gap-3">
