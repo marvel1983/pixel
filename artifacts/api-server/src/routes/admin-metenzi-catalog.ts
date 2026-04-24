@@ -15,7 +15,13 @@ import { downloadImageToVps } from "../lib/image-downloader";
 import { logger } from "../lib/logger";
 import { metenziRequest } from "../lib/metenzi-client";
 
-/** Strip HTML tags and null bytes from Metenzi text fields before DB insert. */
+/** Remove only null bytes from HTML content — preserves HTML formatting for storefront rendering. */
+function stripNulls(s: string | null | undefined): string | null {
+  if (!s) return null;
+  return s.replace(/\x00/g, "") || null;
+}
+
+/** Strip HTML entirely — used for activationInstructions (shown in plain-text emails). */
 function sanitizeText(html: string | null | undefined): string | null {
   if (!html) return null;
   return html
@@ -304,8 +310,8 @@ router.post("/admin/metenzi/sync-field", ...guard, async (req, res) => {
   for (const field of fields) {
     switch (field) {
       case "name":             productCols.name = mp.name;                    synced.push("name");             break;
-      case "description":      productCols.description = sanitizeText(mp.description);           synced.push("description");      break;
-      case "shortDescription": productCols.shortDescription = sanitizeText(mp.shortDescription);  synced.push("shortDescription"); break;
+      case "description":      productCols.description = stripNulls(mp.description);           synced.push("description");      break;
+      case "shortDescription": productCols.shortDescription = stripNulls(mp.shortDescription);  synced.push("shortDescription"); break;
       case "b2bPrice":         variantCols.b2bPriceUsd = mp.b2bPrice;        synced.push("b2bPrice");         break;
       case "retailPrice":      variantCols.priceUsd = mp.retailPrice;         synced.push("retailPrice");      break;
       case "sku":              variantCols.sku = mp.sku;                      synced.push("sku");              break;
@@ -402,8 +408,8 @@ router.post("/admin/metenzi/import", ...guard, async (req, res) => {
     .values({
       name:             include("name")             ? mp.name             : mp.id,
       slug,
-      description:             include("description")      ? sanitizeText(mp.description)      : null,
-      shortDescription:        include("shortDescription") ? sanitizeText(mp.shortDescription) : null,
+      description:             include("description")      ? stripNulls(mp.description)      : null,
+      shortDescription:        include("shortDescription") ? stripNulls(mp.shortDescription) : null,
       imageUrl:                include("image")            ? imageUrl            : null,
       activationInstructions:  include("instructions")     ? sanitizeText(mp.instructions)     : null,
       categoryId:              include("category") && pixelCategoryId ? pixelCategoryId : null,
