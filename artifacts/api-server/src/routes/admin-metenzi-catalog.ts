@@ -15,6 +15,20 @@ import { downloadImageToVps } from "../lib/image-downloader";
 import { logger } from "../lib/logger";
 import { metenziRequest } from "../lib/metenzi-client";
 
+/** Strip HTML tags and null bytes from Metenzi text fields before DB insert. */
+function sanitizeText(html: string | null | undefined): string | null {
+  if (!html) return null;
+  return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(?:p|div|li|tr|h[1-6])>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .replace(/\x00/g, "")
+    .replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n")
+    .trim() || null;
+}
+
 // ── Full-catalog cache (5-min TTL) ───────────────────────────────────────────
 let _cachedAll: MetenziProduct[] | null = null;
 let _cacheTs = 0;
@@ -290,13 +304,13 @@ router.post("/admin/metenzi/sync-field", ...guard, async (req, res) => {
   for (const field of fields) {
     switch (field) {
       case "name":             productCols.name = mp.name;                    synced.push("name");             break;
-      case "description":      productCols.description = mp.description;      synced.push("description");      break;
-      case "shortDescription": productCols.shortDescription = mp.shortDescription; synced.push("shortDescription"); break;
+      case "description":      productCols.description = sanitizeText(mp.description);           synced.push("description");      break;
+      case "shortDescription": productCols.shortDescription = sanitizeText(mp.shortDescription);  synced.push("shortDescription"); break;
       case "b2bPrice":         variantCols.b2bPriceUsd = mp.b2bPrice;        synced.push("b2bPrice");         break;
       case "retailPrice":      variantCols.priceUsd = mp.retailPrice;         synced.push("retailPrice");      break;
       case "sku":              variantCols.sku = mp.sku;                      synced.push("sku");              break;
       case "stock":            variantCols.stockCount = mp.stock;             synced.push("stock");            break;
-      case "instructions":    productCols.activationInstructions = mp.instructions ?? null; synced.push("instructions"); break;
+      case "instructions":    productCols.activationInstructions = sanitizeText(mp.instructions); synced.push("instructions"); break;
       case "image":
         if (!mp.imageUrl) { res.status(422).json({ error: "Metenzi product has no imageUrl" }); return; }
         try {
@@ -388,10 +402,10 @@ router.post("/admin/metenzi/import", ...guard, async (req, res) => {
     .values({
       name:             include("name")             ? mp.name             : mp.id,
       slug,
-      description:             include("description")      ? mp.description      : null,
-      shortDescription:        include("shortDescription") ? mp.shortDescription : null,
+      description:             include("description")      ? sanitizeText(mp.description)      : null,
+      shortDescription:        include("shortDescription") ? sanitizeText(mp.shortDescription) : null,
       imageUrl:                include("image")            ? imageUrl            : null,
-      activationInstructions:  include("instructions")     ? (mp.instructions ?? null) : null,
+      activationInstructions:  include("instructions")     ? sanitizeText(mp.instructions)     : null,
       categoryId:              include("category") && pixelCategoryId ? pixelCategoryId : null,
       isActive: true,
     })
