@@ -55,7 +55,7 @@ function DescriptionTab({ productName, description }: { productName: string; des
   if (description) {
     return (
       <div
-        className="prose prose-sm max-w-none text-muted-foreground"
+        className="prose prose-sm max-w-none metenzi-html"
         dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(description) }}
       />
     );

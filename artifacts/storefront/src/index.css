@@ -386,6 +386,11 @@ nav button:active {
 /* ── White text everywhere in admin dark theme ─────────────── */
 .dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 { color: #ffffff !important; }
 .dark p, .dark span, .dark td, .dark th, .dark label, .dark li { color: #e8edf5 !important; }
+/* Metenzi HTML descriptions have their own embedded <style> — don't override their colors */
+.dark .metenzi-html p,
+.dark .metenzi-html span,
+.dark .metenzi-html li,
+.dark .metenzi-html div { color: unset !important; }
 .dark .card-title { color: #d4a017 !important; }
 .dark .text-muted-foreground { color: #a0b0cc !important; }
 .dark a { color: #90b8f0 !important; }
