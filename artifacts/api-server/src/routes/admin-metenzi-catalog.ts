@@ -316,8 +316,8 @@ router.post("/admin/metenzi/sync-field", ...guard, async (req, res) => {
   for (const field of fields) {
     switch (field) {
       case "name":             productCols.name = mp.name;                    synced.push("name");             break;
-      case "description":      productCols.description = stripNulls(mp.description);           synced.push("description");      break;
-      case "shortDescription": productCols.shortDescription = stripNulls(mp.shortDescription); synced.push("shortDescription"); break;
+      case "description":      productCols.description = stripNulls(mp.description) ?? undefined;           synced.push("description");      break;
+      case "shortDescription": productCols.shortDescription = stripNulls(mp.shortDescription) ?? undefined; synced.push("shortDescription"); break;
       case "b2bPrice":         variantCols.b2bPriceUsd = mp.b2bPrice;        synced.push("b2bPrice");         break;
       case "retailPrice":      variantCols.priceUsd = mp.retailPrice;         synced.push("retailPrice");      break;
       case "sku":              variantCols.sku = mp.sku;                      synced.push("sku");              break;

@@ -17,6 +17,8 @@ export interface MockProduct {
   platformType?: string | null;
   keyFeatures?: string[];
   systemRequirements?: Record<string, string>;
+  tags?: Array<{ id: number; name: string; slug: string; colorHex: string | null }>;
+  productAttributes?: Array<{ attrName: string; attrSlug: string; optValue: string | null }>;
 }
 
 export interface MockVariant {

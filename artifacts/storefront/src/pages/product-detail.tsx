@@ -152,6 +152,7 @@ export default function ProductDetailPage() {
         description={product.description}
         keyFeatures={product.keyFeatures}
         systemRequirements={product.systemRequirements}
+        productAttributes={product.productAttributes}
       />
 
       <Separator />

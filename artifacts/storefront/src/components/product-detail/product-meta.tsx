@@ -12,6 +12,8 @@ interface ProductMetaProps {
   onVariantChange: (v: MockVariant) => void;
 }
 
+type Tag = { id: number; name: string; slug: string; colorHex: string | null };
+
 const PLATFORM_LABEL: Record<string, string> = {
   STEAM: "Steam",
   WINDOWS: "Windows",
@@ -46,6 +48,21 @@ export function ProductMeta({ product, selectedVariant, onVariantChange }: Produ
 
       {/* Title */}
       <h1 className="text-2xl font-bold text-foreground leading-tight">{product.name}</h1>
+
+      {/* Tags */}
+      {product.tags && product.tags.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {product.tags.map((tag: Tag) => (
+            <span
+              key={tag.id}
+              className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium text-white"
+              style={{ backgroundColor: tag.colorHex ?? "#3b82f6" }}
+            >
+              {tag.name}
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* Ratings */}
       <div className="flex items-center gap-2">

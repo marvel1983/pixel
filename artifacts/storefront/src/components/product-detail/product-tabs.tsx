@@ -2,18 +2,23 @@ import { useState } from "react";
 import DOMPurify from "dompurify";
 import { CheckCircle2 } from "lucide-react";
 
+type ProductAttribute = { attrName: string; attrSlug: string; optValue: string | null };
+
 interface ProductTabsProps {
   productName: string;
   platform: string;
   description?: string | null;
   keyFeatures?: string[];
   systemRequirements?: Record<string, string>;
+  productAttributes?: ProductAttribute[];
 }
 
-const TABS = ["Description", "Key Features", "System Requirements"] as const;
-type Tab = (typeof TABS)[number];
+const ALL_TABS = ["Description", "Key Features", "System Requirements", "Product Details"] as const;
+type Tab = (typeof ALL_TABS)[number];
 
-export function ProductTabs({ productName, platform, description, keyFeatures, systemRequirements }: ProductTabsProps) {
+export function ProductTabs({ productName, platform, description, keyFeatures, systemRequirements, productAttributes }: ProductTabsProps) {
+  const hasDetails = productAttributes && productAttributes.length > 0;
+  const TABS = hasDetails ? ALL_TABS : ALL_TABS.slice(0, 3) as unknown as typeof ALL_TABS;
   const [activeTab, setActiveTab] = useState<Tab>("Description");
 
   return (
@@ -45,6 +50,9 @@ export function ProductTabs({ productName, platform, description, keyFeatures, s
         )}
         {activeTab === "System Requirements" && (
           <SystemRequirementsTab platform={platform} systemRequirements={systemRequirements} />
+        )}
+        {activeTab === "Product Details" && (
+          <ProductDetailsTab productAttributes={productAttributes} />
         )}
       </div>
     </div>
@@ -104,6 +112,22 @@ function KeyFeaturesTab({ keyFeatures }: { keyFeatures?: string[] }) {
         <div key={i} className="flex items-start gap-2.5 rounded-lg bg-muted/50 border border-border px-3 py-2.5">
           <CheckCircle2 className="h-4 w-4 text-primary shrink-0 mt-0.5" />
           <span className="text-sm text-foreground">{f}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ProductDetailsTab({ productAttributes }: { productAttributes?: ProductAttribute[] }) {
+  if (!productAttributes?.length) {
+    return <p className="text-sm text-muted-foreground">No product details available.</p>;
+  }
+  return (
+    <div className="overflow-hidden rounded-lg border border-border divide-y divide-border">
+      {productAttributes.map((a) => (
+        <div key={a.attrSlug} className="grid grid-cols-[180px_1fr] text-sm">
+          <div className="bg-muted/50 px-4 py-3 font-medium text-foreground border-r border-border">{a.attrName}</div>
+          <div className="px-4 py-3 text-muted-foreground">{a.optValue ?? "—"}</div>
         </div>
       ))}
     </div>

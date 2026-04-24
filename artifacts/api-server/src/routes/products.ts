@@ -277,8 +277,8 @@ router.get("/products/:slug", async (req: Request, res: Response) => {
 
   const product = rows[0];
 
-  const variants = await db
-    .select({
+  const [variants, productTagRows, productAttrRows] = await Promise.all([
+    db.select({
       id: productVariants.id,
       name: productVariants.name,
       sku: productVariants.sku,
@@ -289,9 +289,24 @@ router.get("/products/:slug", async (req: Request, res: Response) => {
       stockCount: productVariants.stockCount,
       backorderAllowed: productVariants.backorderAllowed,
       backorderEta: productVariants.backorderEta,
+    }).from(productVariants).where(and(eq(productVariants.productId, product.id), eq(productVariants.isActive, true))),
+
+    db.select({ id: tags.id, name: tags.name, slug: tags.slug, colorHex: tags.colorHex })
+      .from(productTags)
+      .innerJoin(tags, eq(productTags.tagId, tags.id))
+      .where(eq(productTags.productId, product.id)),
+
+    db.select({
+      attrName: attributeDefinitions.name,
+      attrSlug: attributeDefinitions.slug,
+      optValue: attributeOptions.value,
     })
-    .from(productVariants)
-    .where(and(eq(productVariants.productId, product.id), eq(productVariants.isActive, true)));
+      .from(productAttributes)
+      .innerJoin(attributeDefinitions, eq(productAttributes.attributeId, attributeDefinitions.id))
+      .leftJoin(attributeOptions, eq(productAttributes.optionId, attributeOptions.id))
+      .where(eq(productAttributes.productId, product.id))
+      .orderBy(asc(attributeDefinitions.sortOrder)),
+  ]);
 
   res.json({
     ...product,
@@ -302,6 +317,8 @@ router.get("/products/:slug", async (req: Request, res: Response) => {
       priceUsd: priceOverrideUsd ?? v.priceUsd,
       stockCount: Number(v.stockCount),
     })),
+    tags: productTagRows,
+    productAttributes: productAttrRows,
   });
 });
 
