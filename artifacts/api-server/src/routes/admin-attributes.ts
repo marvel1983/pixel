@@ -164,7 +164,7 @@ router.get("/admin/products/:id/attributes", requireAuth, requireAdmin, async (r
     .leftJoin(attributeOptions, eq(productAttributes.optionId, attributeOptions.id))
     .where(eq(productAttributes.productId, productId))
     .orderBy(asc(attributeDefinitions.sortOrder));
-  res.json({ values });
+  res.json({ attributes: values });
 });
 
 // PUT /admin/products/:id/attributes — bulk upsert (delete + insert in transaction)
