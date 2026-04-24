@@ -356,11 +356,19 @@ router.post("/admin/metenzi/import", ...guard, async (req, res) => {
   const f = new Set<string>(fields);
   const include = (field: string) => f.has(field);
 
-  // Download image if requested
+  // Download image if requested.
+  // Catalog listings often omit imageUrl — fall back to individual product endpoint if needed.
   let imageUrl: string | null = null;
-  if (include("image") && mp.imageUrl) {
-    try { imageUrl = await downloadImageToVps(mp.imageUrl); }
-    catch (err) { logger.warn({ err, imageUrl: mp.imageUrl }, "Image download failed during import"); }
+  if (include("image")) {
+    let imageSource = mp.imageUrl;
+    if (!imageSource) {
+      const full = await getProductById(config, metenziProductId);
+      imageSource = full?.imageUrl ?? null;
+    }
+    if (imageSource) {
+      try { imageUrl = await downloadImageToVps(imageSource); }
+      catch (err) { logger.warn({ err, imageSource }, "Image download failed during import"); }
+    }
   }
 
   // Generate slug from name
