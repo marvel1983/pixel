@@ -56,7 +56,7 @@ export function ProductMeta({ product, selectedVariant, onVariantChange }: Produ
             <span
               key={tag.id}
               className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium text-white"
-              style={{ backgroundColor: tag.colorHex ?? "#3b82f6" }}
+              style={{ backgroundColor: tag.colorHex || "#3b82f6" }}
             >
               {tag.name}
             </span>
