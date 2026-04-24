@@ -6,6 +6,11 @@ import {
   metenziProductMappings,
   products,
   productVariants,
+  tags,
+  productTags,
+  attributeDefinitions,
+  attributeOptions,
+  productAttributes,
 } from "@workspace/db/schema";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
@@ -263,7 +268,7 @@ router.patch("/admin/metenzi/mappings/:id", ...guard, async (req, res) => {
 // ── POST /admin/metenzi/sync-field ───────────────────────────────────────────
 const syncFieldSchema = z.object({
   mappingId:      z.number().int().positive(),
-  fields:         z.array(z.enum(["name","image","b2bPrice","retailPrice","description","shortDescription","sku","stock","instructions"])),
+  fields:         z.array(z.enum(["name","image","b2bPrice","retailPrice","description","shortDescription","sku","stock","instructions","tags","attributes"])),
 });
 
 router.post("/admin/metenzi/sync-field", ...guard, async (req, res) => {
@@ -318,6 +323,10 @@ router.post("/admin/metenzi/sync-field", ...guard, async (req, res) => {
       case "sku":              variantCols.sku = mp.sku;                      synced.push("sku");              break;
       case "stock":            variantCols.stockCount = mp.stock;             synced.push("stock");            break;
       case "instructions":    productCols.activationInstructions = sanitizeText(mp.instructions); synced.push("instructions"); break;
+      case "tags":
+      case "attributes":
+        // handled together after the loop
+        break;
       case "image":
         if (!mp.imageUrl) { res.status(422).json({ error: "Metenzi product has no imageUrl" }); return; }
         try {
@@ -339,6 +348,11 @@ router.post("/admin/metenzi/sync-field", ...guard, async (req, res) => {
     await db.update(productVariants).set({ ...variantCols, updatedAt: new Date() }).where(eq(productVariants.id, variant.id));
   }
 
+  if (fields.includes("tags") || fields.includes("attributes")) {
+    try { await syncTagsAndAttributes(mapping.pixelProductId!, mp); synced.push(...fields.filter(f => f === "tags" || f === "attributes")); }
+    catch (err) { logger.warn({ err }, "Tags/attributes sync failed in sync-field"); }
+  }
+
   await db.update(metenziProductMappings)
     .set({ lastSyncedAt: new Date(), updatedAt: new Date() })
     .where(eq(metenziProductMappings.id, mappingId));
@@ -346,10 +360,58 @@ router.post("/admin/metenzi/sync-field", ...guard, async (req, res) => {
   res.json({ success: true, synced });
 });
 
+// ── Tags + Attributes sync helper ────────────────────────────────────────────
+async function syncTagsAndAttributes(pixelProductId: number, mp: MetenziProduct): Promise<void> {
+  // ── Tags ──────────────────────────────────────────────────────────────────
+  if (mp.tags?.length) {
+    for (const t of mp.tags) {
+      const slug = t.slug || t.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      // Upsert tag
+      const [tag] = await db
+        .insert(tags)
+        .values({ name: t.name, slug, colorHex: t.color ?? "#3b82f6" })
+        .onConflictDoUpdate({ target: tags.slug, set: { name: t.name } })
+        .returning({ id: tags.id });
+      // Link to product (ignore if already linked)
+      await db
+        .insert(productTags)
+        .values({ productId: pixelProductId, tagId: tag.id })
+        .onConflictDoNothing();
+    }
+  }
+
+  // ── Attributes ────────────────────────────────────────────────────────────
+  if (mp.attributes?.length) {
+    for (const attr of mp.attributes) {
+      const defSlug = attr.attributeSlug || attr.attributeName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+      // Upsert attribute definition
+      const [def] = await db
+        .insert(attributeDefinitions)
+        .values({ name: attr.attributeName, slug: defSlug })
+        .onConflictDoUpdate({ target: attributeDefinitions.slug, set: { name: attr.attributeName } })
+        .returning({ id: attributeDefinitions.id });
+
+      // Upsert attribute option
+      const optSlug = attr.slug || attr.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+      const [opt] = await db
+        .insert(attributeOptions)
+        .values({ attributeId: def.id, value: attr.name, slug: optSlug, colorHex: attr.color ?? null })
+        .onConflictDoUpdate({ target: [attributeOptions.attributeId, attributeOptions.slug], set: { value: attr.name } })
+        .returning({ id: attributeOptions.id });
+
+      // Upsert product attribute
+      await db
+        .insert(productAttributes)
+        .values({ productId: pixelProductId, attributeId: def.id, optionId: opt.id })
+        .onConflictDoUpdate({ target: [productAttributes.productId, productAttributes.attributeId], set: { optionId: opt.id, updatedAt: new Date() } });
+    }
+  }
+}
+
 // ── POST /admin/metenzi/import ───────────────────────────────────────────────
 const importSchema = z.object({
   metenziProductId: z.string().min(1),
-  fields: z.array(z.enum(["name","image","b2bPrice","retailPrice","description","shortDescription","sku","stock","category","platform","instructions"])),
+  fields: z.array(z.enum(["name","image","b2bPrice","retailPrice","description","shortDescription","sku","stock","category","platform","instructions","tags","attributes"])),
   pixelCategoryId: z.number().int().positive().optional(),
 });
 
@@ -430,6 +492,12 @@ router.post("/admin/metenzi/import", ...guard, async (req, res) => {
     platform:    platform as never,
     isActive:    true,
   });
+
+  // Sync tags and attributes if requested
+  if (include("tags") || include("attributes")) {
+    try { await syncTagsAndAttributes(product.id, mp); }
+    catch (err) { logger.warn({ err, productId: product.id }, "Tags/attributes sync failed — product still imported"); }
+  }
 
   const [mapping] = await db
     .insert(metenziProductMappings)

@@ -41,6 +41,21 @@ export interface MetenziProduct {
     compareAtPriceUsd?: number | null;
     stockCount: number;
   }>;
+  tags?: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    color?: string | null;
+  }>;
+  attributes?: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    color?: string | null;
+    attributeId: string;
+    attributeName: string;
+    attributeSlug: string;
+  }>;
 }
 
 export interface MetenziCatalogResponse {
