@@ -2,27 +2,27 @@ import { ShoppingCart, Star, Package } from "lucide-react";
 
 const SAMPLE_PRODUCTS = [
   {
-    name: "Norton 360 for Gamers 3-Device 1-Year, EU",
-    price: "€13.95",
-    rating: 4,
-    reviews: 12,
-    imageUrl: "https://images.g2a.com/170x228/1x1x1/norton-360-for-gamers-3-devices-1-year-norton-key-europe/59139e8b5bafe3b22a8b4568",
-    stock: "In Stock",
-  },
-  {
-    name: "Microsoft Windows 11 Pro N – Retail key",
-    price: "€6.90",
+    name: "Microsoft Windows 10 Pro Retail KEY",
+    price: "€8.50",
     rating: 5,
-    reviews: 243,
-    imageUrl: "https://images.g2a.com/170x228/1x1x1/microsoft-windows-11-pro-n-pc-microsoft-key-global/8f2fffc6b3e24f76a1e51daaad945613",
+    reviews: 312,
+    imageUrl: "https://placehold.co/400x533/1e3a5f/ffffff?text=Windows+10",
     stock: "In Stock",
   },
   {
-    name: "Bitdefender Antivirus Plus 1 MAC 1 Year",
-    price: "€14.50",
+    name: "Microsoft Office 2024 Professional Plus",
+    price: "€24.90",
     rating: 4,
     reviews: 87,
-    imageUrl: "https://images.g2a.com/170x228/1x1x1/bitdefender-antivirus-plus-1-pc-1-year-bitdefender-key-global/5f743dfe5bafe33e8e72f7e2",
+    imageUrl: "https://placehold.co/400x533/d04a00/ffffff?text=Office+2024",
+    stock: "In Stock",
+  },
+  {
+    name: "Norton 360 for Gamers 3-Device 1-Year",
+    price: "€13.95",
+    rating: 4,
+    reviews: 43,
+    imageUrl: "https://placehold.co/400x533/1a7f37/ffffff?text=Norton+360",
     stock: "In Stock",
   },
 ];
@@ -38,9 +38,6 @@ function Card({ name, price, rating, reviews, imageUrl, stock, aspect }: {
           src={imageUrl}
           alt={name}
           className="h-full w-full object-cover"
-          onError={(e) => {
-            (e.target as HTMLImageElement).style.display = "none";
-          }}
         />
         <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100">
           <Package className="h-10 w-10 text-gray-300" />
