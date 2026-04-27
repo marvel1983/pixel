@@ -7,8 +7,8 @@ export function initSentry(): void {
   Sentry.init({
     dsn,
     environment: process.env.NODE_ENV ?? "development",
-    tracesSampleRate: 0.1, // 10% of transactions traced
-    integrations: [Sentry.httpIntegration()],
+    tracesSampleRate: 0,
+    skipOpenTelemetrySetup: true,
   });
 }
 
