@@ -1,15 +1,7 @@
-import * as Sentry from "@sentry/node";
+// Sentry stub — real integration requires @opentelemetry/* peer deps.
+// Wire up @sentry/node properly when those are resolved.
+export const Sentry = {
+  captureException(_err: unknown, _ctx?: unknown): void {},
+};
 
-export function initSentry(): void {
-  const dsn = process.env.SENTRY_DSN;
-  if (!dsn) return; // Sentry disabled if no DSN configured
-
-  Sentry.init({
-    dsn,
-    environment: process.env.NODE_ENV ?? "development",
-    tracesSampleRate: 0,
-    skipOpenTelemetrySetup: true,
-  });
-}
-
-export { Sentry };
+export function initSentry(): void {}
