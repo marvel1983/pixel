@@ -25,7 +25,7 @@ function urlTargetsApi(url: string): boolean {
 
 let csrfToken: string | null = null;
 
-async function ensureCsrfToken(): Promise<string> {
+export async function ensureCsrfToken(): Promise<string> {
   if (csrfToken) return csrfToken;
   const res = await originalFetch(joinApiPath("/csrf-token"), { credentials: "include" });
   const data = await res.json();
