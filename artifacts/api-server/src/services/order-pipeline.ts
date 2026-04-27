@@ -104,6 +104,13 @@ export async function runFulfillment(
   const realItems = items.filter((i) => i.variantId > 0);
   const giftCardItems = items.filter((i) => i.platform?.startsWith("GIFTCARD|"));
 
+  // Idempotency guard: if order items already exist this fulfillment was already run.
+  // Re-use the existing items so a double-call (sync + webhook) never duplicates keys.
+  const existingItems = await db
+    .select({ id: orderItems.id, variantId: orderItems.variantId })
+    .from(orderItems)
+    .where(eq(orderItems.orderId, orderId));
+
   let purchaserUserId: number | null = null;
   if (giftCardItems.length) {
     const [existingUser] = await db.select({ id: users.id }).from(users)
@@ -112,7 +119,8 @@ export async function runFulfillment(
   }
 
   const { insertedItems, createdCards } = await db.transaction(async (tx) => {
-    const insertableItems = realItems.length ? realItems : [];
+    // Skip insert if items already exist (idempotent re-entry)
+    const insertableItems = existingItems.length === 0 && realItems.length ? realItems : [];
     const inserted = insertableItems.length ? await tx
       .insert(orderItems)
       .values(insertableItems.map((item) => ({
@@ -121,7 +129,8 @@ export async function runFulfillment(
         priceUsd: item.priceUsd, quantity: item.quantity,
         bundleId: item.bundleId ?? null,
       })))
-      .returning({ id: orderItems.id, variantId: orderItems.variantId }) : [];
+      .returning({ id: orderItems.id, variantId: orderItems.variantId })
+      : existingItems.length > 0 ? existingItems : [];
 
     const cards: Awaited<ReturnType<typeof createGiftCardForOrder>>[] = [];
     for (const gcItem of giftCardItems) {
@@ -155,7 +164,9 @@ export async function runFulfillment(
   });
 
   if (createdCards.length) {
-    sendGiftCardEmails(createdCards).catch(() => {});
+    sendGiftCardEmails(createdCards).catch((err) => {
+      logger.warn({ err }, "Gift card email send failed (non-fatal)");
+    });
   }
 
   const metenziResult = insertedItems.length

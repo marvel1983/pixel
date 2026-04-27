@@ -59,36 +59,39 @@ export function verifyToken(token: string): JwtPayload {
   return jwt.verify(token, JWT_SECRET, { algorithms: ["HS256"] }) as JwtPayload;
 }
 
-export function requireAuth(req: Request, res: Response, next: NextFunction) {
-  const token =
-    req.cookies?.token ||
-    req.headers.authorization?.replace("Bearer ", "");
+export function requireAuth(req: Request, res: Response, next: NextFunction): void {
+  void (async () => {
+    const token =
+      req.cookies?.token ||
+      req.headers.authorization?.replace("Bearer ", "");
 
-  if (!token) {
-    res.status(401).json({ error: "Authentication required" });
-    return;
-  }
-
-  let payload: JwtPayload;
-  try {
-    payload = verifyToken(token);
-  } catch {
-    logger.warn("Invalid or expired token");
-    res.status(401).json({ error: "Invalid or expired token" });
-    return;
-  }
-
-  isUserActive(payload.userId).then((active) => {
-    if (!active) {
-      res.status(401).json({ error: "Account is deactivated" });
+    if (!token) {
+      res.status(401).json({ error: "Authentication required" });
       return;
     }
-    req.user = payload;
-    next();
-  }).catch((err) => {
-    logger.error({ err }, "Failed to verify user status");
-    res.status(500).json({ error: "Authentication error" });
-  });
+
+    let payload: JwtPayload;
+    try {
+      payload = verifyToken(token);
+    } catch {
+      logger.warn("Invalid or expired token");
+      res.status(401).json({ error: "Invalid or expired token" });
+      return;
+    }
+
+    try {
+      const active = await isUserActive(payload.userId);
+      if (!active) {
+        res.status(401).json({ error: "Account is deactivated" });
+        return;
+      }
+      req.user = payload;
+      next();
+    } catch (err) {
+      logger.error({ err }, "Failed to verify user status");
+      res.status(500).json({ error: "Authentication error" });
+    }
+  })();
 }
 
 export function optionalAuth(req: Request, _res: Response, next: NextFunction) {

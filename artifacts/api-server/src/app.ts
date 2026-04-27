@@ -6,11 +6,14 @@ import path from "path";
 import fs from "fs";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { initSentry, Sentry } from "./lib/sentry";
 import { maintenanceMiddleware } from "./middleware/maintenance";
 import { referralTracking } from "./middleware/referral";
 import { securityHeaders } from "./middleware/security-headers";
 import { csrfProtection, csrfTokenEndpoint } from "./middleware/csrf";
 import { publicLimit, adminLimit } from "./middleware/rate-limit";
+
+initSentry();
 
 declare global {
   namespace Express {
@@ -94,9 +97,10 @@ app.use("/api", categoryRateLimit, csrfProtection, referralTracking, maintenance
 
 // Global error handler — must have 4 params for Express to treat it as an error handler
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-  logger.error({ err }, "Unhandled route error");
-  res.status(500).json({ error: err.message || "Internal server error" });
+app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
+  Sentry.captureException(err, { extra: { path: req.path, method: req.method, userId: req.user?.userId } });
+  logger.error({ err, path: req.path, method: req.method, userId: req.user?.userId }, "Unhandled route error");
+  res.status(500).json({ error: "Internal server error" });
 });
 
 export default app;
