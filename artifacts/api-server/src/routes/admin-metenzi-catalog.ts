@@ -1,47 +1,15 @@
 import { Router } from "express";
-import { eq, inArray, and } from "drizzle-orm";
-import { z } from "zod";
+import { inArray } from "drizzle-orm";
 import { db } from "@workspace/db";
-import {
-  metenziProductMappings,
-  products,
-  productVariants,
-  tags,
-  productTags,
-  attributeDefinitions,
-  attributeOptions,
-  productAttributes,
-} from "@workspace/db/schema";
+import { metenziProductMappings, products, productVariants } from "@workspace/db/schema";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import { getMetenziConfig } from "../lib/metenzi-config";
-import { getCatalogPage, getProducts, getProductById, type MetenziProduct } from "../lib/metenzi-endpoints";
-import { downloadImageToVps } from "../lib/image-downloader";
+import { getCatalogPage, getProducts, type MetenziProduct } from "../lib/metenzi-endpoints";
 import { logger } from "../lib/logger";
 import { metenziRequest } from "../lib/metenzi-client";
+import { eq } from "drizzle-orm";
 
-/** Remove null bytes and other control chars that PostgreSQL rejects. Preserves all HTML. */
-function stripNulls(s: string | null | undefined): string | null {
-  if (!s) return null;
-  // eslint-disable-next-line no-control-regex
-  return s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "").trim() || null;
-}
-
-/** Strip HTML entirely — used for activationInstructions (shown in plain-text emails). */
-function sanitizeText(html: string | null | undefined): string | null {
-  if (!html) return null;
-  return html
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/(?:p|div|li|tr|h[1-6])>/gi, "\n")
-    .replace(/<[^>]+>/g, "")
-    .replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'")
-    .replace(/\x00/g, "")
-    .replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n")
-    .trim() || null;
-}
-
-// ── Full-catalog cache (5-min TTL) ───────────────────────────────────────────
 let _cachedAll: MetenziProduct[] | null = null;
 let _cacheTs = 0;
 const CATALOG_TTL = 5 * 60 * 1000;
@@ -57,7 +25,6 @@ async function getAllProducts(config: Parameters<typeof getProducts>[0]): Promis
 const router = Router();
 const guard = [requireAuth, requireAdmin, requirePermission("manageProducts")];
 
-// ── GET /admin/metenzi/debug ─────────────────────────────────────────────────
 router.get("/admin/metenzi/debug", ...guard, async (_req, res) => {
   const config = await getMetenziConfig();
   if (!config) { res.status(503).json({ error: "Not configured", baseUrl: null }); return; }
@@ -65,9 +32,6 @@ router.get("/admin/metenzi/debug", ...guard, async (_req, res) => {
   res.json({ baseUrl: config.baseUrl, ok: rawRes.ok, status: rawRes.status, data: rawRes.data });
 });
 
-
-// ── GET /admin/metenzi/proxy-image ───────────────────────────────────────────
-// Proxies Metenzi product images through the server to bypass CORS/auth issues
 router.get("/admin/metenzi/proxy-image", ...guard, async (req, res) => {
   let url = String(req.query.url || "");
   if (url.startsWith("//")) url = `https:${url}`;
@@ -83,32 +47,25 @@ router.get("/admin/metenzi/proxy-image", ...guard, async (req, res) => {
   } catch { res.status(502).end(); }
 });
 
-// ── GET /admin/metenzi/catalog ───────────────────────────────────────────────
-// Proxy paginated Metenzi catalog with mapping status overlay
 router.get("/admin/metenzi/catalog", ...guard, async (req, res) => {
   const config = await getMetenziConfig();
-  if (!config) {
-    res.status(503).json({ error: "Metenzi not configured" });
-    return;
-  }
+  if (!config) { res.status(503).json({ error: "Metenzi not configured" }); return; }
 
   try {
-    const page     = Math.max(1, parseInt(req.query.page as string)  || 1);
-    const limit    = Math.min(50, Math.max(5, parseInt(req.query.limit as string) || 20));
-    const search   = (req.query.search   as string | undefined)?.trim().toLowerCase();
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(50, Math.max(5, parseInt(req.query.limit as string) || 20));
+    const search = (req.query.search as string | undefined)?.trim().toLowerCase();
     const category = req.query.category as string | undefined;
     const platform = req.query.platform as string | undefined;
 
-    // When any filter is active, search the full catalog locally for accurate results.
-    // Otherwise use paginated Metenzi API directly.
     let pageProducts: MetenziProduct[];
     let total: number;
 
     if (search || category || platform) {
       let all = await getAllProducts(config);
-      if (search)   all = all.filter(p => p.name.toLowerCase().includes(search) || p.sku.toLowerCase().includes(search));
-      if (category) all = all.filter(p => p.category === category);
-      if (platform) all = all.filter(p => p.platform === platform);
+      if (search) all = all.filter((p) => p.name.toLowerCase().includes(search) || p.sku.toLowerCase().includes(search));
+      if (category) all = all.filter((p) => p.category === category);
+      if (platform) all = all.filter((p) => p.platform === platform);
       total = all.length;
       pageProducts = all.slice((page - 1) * limit, page * limit);
     } else {
@@ -117,418 +74,61 @@ router.get("/admin/metenzi/catalog", ...guard, async (req, res) => {
       total = catalog.total;
     }
 
-    // Shim to match old variable name used below
-    const catalog = { products: pageProducts, total };
-
-    // Overlay mapping status for each product on this page
-    const metenziIds = catalog.products.map((p) => p.id);
+    const metenziIds = pageProducts.map((p) => p.id);
     const mappings = metenziIds.length
       ? await db
-          .select({
-            metenziProductId: metenziProductMappings.metenziProductId,
-            pixelProductId:   metenziProductMappings.pixelProductId,
-            mappingId:        metenziProductMappings.id,
-            autoSyncStock:    metenziProductMappings.autoSyncStock,
-          })
+          .select({ metenziProductId: metenziProductMappings.metenziProductId, pixelProductId: metenziProductMappings.pixelProductId, mappingId: metenziProductMappings.id, autoSyncStock: metenziProductMappings.autoSyncStock })
           .from(metenziProductMappings)
           .where(inArray(metenziProductMappings.metenziProductId, metenziIds))
       : [];
 
     const mappingMap = new Map(mappings.map((m) => [m.metenziProductId, m]));
-
-    // Fetch pixel product names for mapped items
-    const mappedPixelIds = mappings
-      .map((m) => m.pixelProductId)
-      .filter((id): id is number => id !== null);
-
+    const mappedPixelIds = mappings.map((m) => m.pixelProductId).filter((id): id is number => id !== null);
     const pixelProducts = mappedPixelIds.length
-      ? await db
-          .select({ id: products.id, name: products.name, slug: products.slug })
-          .from(products)
-          .where(inArray(products.id, mappedPixelIds))
+      ? await db.select({ id: products.id, name: products.name, slug: products.slug }).from(products).where(inArray(products.id, mappedPixelIds))
       : [];
-
     const pixelMap = new Map(pixelProducts.map((p) => [p.id, p]));
 
-    const enriched = catalog.products.map((mp) => {
+    const enriched = pageProducts.map((mp) => {
       const mapping = mappingMap.get(mp.id);
-      const pixel   = mapping?.pixelProductId ? pixelMap.get(mapping.pixelProductId) : null;
-      return {
-        ...mp,
-        mapped:       !!mapping,
-        mappingId:    mapping?.mappingId ?? null,
-        autoSyncStock: mapping?.autoSyncStock ?? false,
-        pixelProduct: pixel ?? null,
-      };
+      const pixel = mapping?.pixelProductId ? pixelMap.get(mapping.pixelProductId) : null;
+      return { ...mp, mapped: !!mapping, mappingId: mapping?.mappingId ?? null, autoSyncStock: mapping?.autoSyncStock ?? false, pixelProduct: pixel ?? null };
     });
 
-    res.json({ products: enriched, total: catalog.total, page, limit });
+    res.json({ products: enriched, total, page, limit });
   } catch (err) {
     logger.error({ err }, "Failed to fetch Metenzi catalog");
     res.status(500).json({ error: "Failed to fetch catalog" });
   }
 });
 
-// ── GET /admin/metenzi/catalog/categories ────────────────────────────────────
-// Return distinct categories/platforms seen in last full sync (from mappings)
-router.get("/admin/metenzi/catalog/meta", ...guard, async (req, res) => {
+router.get("/admin/metenzi/catalog/meta", ...guard, async (_req, res) => {
   const config = await getMetenziConfig();
   if (!config) { res.json({ categories: [], platforms: [] }); return; }
   try {
-    // Fetch a small page to get category/platform options from live API
     const catalog = await getCatalogPage(config, { limit: 50, page: 1 });
     const categories = [...new Set(catalog.products.map((p) => p.category).filter(Boolean))].sort();
-    const platforms  = [...new Set(catalog.products.map((p) => p.platform).filter(Boolean))].sort();
+    const platforms = [...new Set(catalog.products.map((p) => p.platform).filter(Boolean))].sort();
     res.json({ categories, platforms });
   } catch {
     res.json({ categories: [], platforms: [] });
   }
 });
 
-// ── GET /admin/metenzi/mappings ──────────────────────────────────────────────
-router.get("/admin/metenzi/mappings", ...guard, async (_req, res) => {
-  const mappings = await db
-    .select({
-      id:               metenziProductMappings.id,
-      metenziProductId: metenziProductMappings.metenziProductId,
-      metenziSku:       metenziProductMappings.metenziSku,
-      metenziName:      metenziProductMappings.metenziName,
-      pixelProductId:   metenziProductMappings.pixelProductId,
-      autoSyncStock:    metenziProductMappings.autoSyncStock,
-      lastStockSyncAt:  metenziProductMappings.lastStockSyncAt,
-      lastSyncedAt:     metenziProductMappings.lastSyncedAt,
-    })
-    .from(metenziProductMappings);
-
-  res.json(mappings);
-});
-
-// ── POST /admin/metenzi/mappings ─────────────────────────────────────────────
-const createMappingSchema = z.object({
-  metenziProductId: z.string().min(1),
-  metenziSku:       z.string().optional(),
-  metenziName:      z.string().optional(),
-  pixelProductId:   z.number().int().positive(),
-});
-
-router.post("/admin/metenzi/mappings", ...guard, async (req, res) => {
-  const parsed = createMappingSchema.safeParse(req.body);
-  if (!parsed.success) { res.status(400).json({ error: "Invalid data" }); return; }
-
-  const { metenziProductId, metenziSku, metenziName, pixelProductId } = parsed.data;
-
-  // Remove any existing mapping for this Metenzi product first
-  await db
-    .delete(metenziProductMappings)
-    .where(eq(metenziProductMappings.metenziProductId, metenziProductId));
-
-  const [mapping] = await db
-    .insert(metenziProductMappings)
-    .values({ metenziProductId, metenziSku, metenziName, pixelProductId })
-    .returning();
-
-  res.json(mapping);
-});
-
-// ── DELETE /admin/metenzi/mappings/:id ───────────────────────────────────────
-router.delete("/admin/metenzi/mappings/:id", ...guard, async (req, res) => {
-  const id = parseInt(req.params.id as string);
-  if (!Number.isInteger(id)) { res.status(400).json({ error: "Invalid id" }); return; }
-  await db.delete(metenziProductMappings).where(eq(metenziProductMappings.id, id));
-  res.json({ success: true });
-});
-
-// ── PATCH /admin/metenzi/mappings/:id ────────────────────────────────────────
-router.patch("/admin/metenzi/mappings/:id", ...guard, async (req, res) => {
-  const id = parseInt(req.params.id as string);
-  if (!Number.isInteger(id)) { res.status(400).json({ error: "Invalid id" }); return; }
-
-  const updates: Record<string, unknown> = { updatedAt: new Date() };
-  if (typeof req.body.autoSyncStock === "boolean") updates.autoSyncStock = req.body.autoSyncStock;
-  if (req.body.pixelProductId !== undefined) updates.pixelProductId = req.body.pixelProductId;
-
-  await db.update(metenziProductMappings).set(updates).where(eq(metenziProductMappings.id, id));
-  res.json({ success: true });
-});
-
-// ── POST /admin/metenzi/sync-field ───────────────────────────────────────────
-const syncFieldSchema = z.object({
-  mappingId:      z.number().int().positive(),
-  fields:         z.array(z.enum(["name","image","b2bPrice","retailPrice","description","shortDescription","sku","stock","instructions","tags","attributes"])),
-});
-
-router.post("/admin/metenzi/sync-field", ...guard, async (req, res) => {
-  const parsed = syncFieldSchema.safeParse(req.body);
-  if (!parsed.success) { res.status(400).json({ error: "Invalid data" }); return; }
-
-  const { mappingId, fields } = parsed.data;
-
-  const [mapping] = await db
-    .select()
-    .from(metenziProductMappings)
-    .where(eq(metenziProductMappings.id, mappingId))
-    .limit(1);
-
-  if (!mapping || !mapping.pixelProductId) {
-    res.status(404).json({ error: "Mapping not found or no Pixel product linked" });
-    return;
-  }
-
-  const config = await getMetenziConfig();
-  if (!config) { res.status(503).json({ error: "Metenzi not configured" }); return; }
-
-  // Fetch fresh product data from Metenzi
-  // Use individual endpoint when instructions is requested — catalog listing may omit it
-  let mp: MetenziProduct | null = null;
-  if (fields.includes("instructions")) {
-    mp = await getProductById(config, mapping.metenziProductId);
-  } else {
-    const catRes = await getCatalogPage(config, { search: mapping.metenziSku ?? mapping.metenziProductId, limit: 5 });
-    mp = catRes.products.find((p) => p.id === mapping.metenziProductId) ?? null;
-  }
-  if (!mp) { res.status(404).json({ error: "Product not found in Metenzi" }); return; }
-
-  // Fetch pixel product's variant
-  const [variant] = await db
-    .select()
-    .from(productVariants)
-    .where(eq(productVariants.productId, mapping.pixelProductId))
-    .limit(1);
-
-  const synced: string[] = [];
-  const productCols: { name?: string; description?: string; shortDescription?: string; imageUrl?: string; activationInstructions?: string | null; updatedAt?: Date } = {};
-  const variantCols: { sku?: string; priceUsd?: string; b2bPriceUsd?: string; stockCount?: number; updatedAt?: Date } = {};
-
-  for (const field of fields) {
-    switch (field) {
-      case "name":             productCols.name = mp.name;                    synced.push("name");             break;
-      case "description":      productCols.description = stripNulls(mp.description) ?? undefined;           synced.push("description");      break;
-      case "shortDescription": productCols.shortDescription = stripNulls(mp.shortDescription) ?? undefined; synced.push("shortDescription"); break;
-      case "b2bPrice":         variantCols.b2bPriceUsd = mp.b2bPrice;        synced.push("b2bPrice");         break;
-      case "retailPrice":      variantCols.priceUsd = mp.retailPrice;         synced.push("retailPrice");      break;
-      case "sku":              variantCols.sku = mp.sku;                      synced.push("sku");              break;
-      case "stock":            variantCols.stockCount = mp.stock;             synced.push("stock");            break;
-      case "instructions":    productCols.activationInstructions = sanitizeText(mp.instructions); synced.push("instructions"); break;
-      case "tags":
-      case "attributes":
-        // handled together after the loop
-        break;
-      case "image":
-        if (!mp.imageUrl) { res.status(422).json({ error: "Metenzi product has no imageUrl" }); return; }
-        try {
-          productCols.imageUrl = await downloadImageToVps(mp.imageUrl);
-          synced.push("image");
-        } catch (err) {
-          logger.warn({ err, imageUrl: mp.imageUrl }, "Image sync failed");
-          res.status(500).json({ error: `Image download failed: ${(err as Error).message}` });
-          return;
-        }
-        break;
-    }
-  }
-
-  if (Object.keys(productCols).length > 0) {
-    await db.update(products).set({ ...productCols, updatedAt: new Date() }).where(eq(products.id, mapping.pixelProductId));
-  }
-  if (variant && Object.keys(variantCols).length > 0) {
-    await db.update(productVariants).set({ ...variantCols, updatedAt: new Date() }).where(eq(productVariants.id, variant.id));
-  }
-
-  if (fields.includes("tags") || fields.includes("attributes")) {
-    try { await syncTagsAndAttributes(mapping.pixelProductId!, mp); synced.push(...fields.filter(f => f === "tags" || f === "attributes")); }
-    catch (err) { logger.warn({ err }, "Tags/attributes sync failed in sync-field"); }
-  }
-
-  await db.update(metenziProductMappings)
-    .set({ lastSyncedAt: new Date(), updatedAt: new Date() })
-    .where(eq(metenziProductMappings.id, mappingId));
-
-  res.json({ success: true, synced });
-});
-
-// ── Tags + Attributes sync helper ────────────────────────────────────────────
-async function syncTagsAndAttributes(pixelProductId: number, mp: MetenziProduct): Promise<void> {
-  // ── Tags ──────────────────────────────────────────────────────────────────
-  if (mp.tags?.length) {
-    for (const t of mp.tags) {
-      const slug = t.slug || t.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-      // Upsert tag
-      const [tag] = await db
-        .insert(tags)
-        .values({ name: t.name, slug, colorHex: t.color ?? "#3b82f6" })
-        .onConflictDoUpdate({ target: tags.slug, set: { name: t.name } })
-        .returning({ id: tags.id });
-      // Link to product (ignore if already linked)
-      await db
-        .insert(productTags)
-        .values({ productId: pixelProductId, tagId: tag.id })
-        .onConflictDoNothing();
-    }
-  }
-
-  // ── Attributes ────────────────────────────────────────────────────────────
-  if (mp.attributes?.length) {
-    for (const attr of mp.attributes) {
-      const defSlug = attr.attributeSlug || attr.attributeName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-      // Upsert attribute definition
-      const [def] = await db
-        .insert(attributeDefinitions)
-        .values({ name: attr.attributeName, slug: defSlug })
-        .onConflictDoUpdate({ target: attributeDefinitions.slug, set: { name: attr.attributeName } })
-        .returning({ id: attributeDefinitions.id });
-
-      // Upsert attribute option
-      const optSlug = attr.slug || attr.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-      const [opt] = await db
-        .insert(attributeOptions)
-        .values({ attributeId: def.id, value: attr.name, slug: optSlug, colorHex: attr.color ?? null })
-        .onConflictDoUpdate({ target: [attributeOptions.attributeId, attributeOptions.slug], set: { value: attr.name } })
-        .returning({ id: attributeOptions.id });
-
-      // Upsert product attribute
-      await db
-        .insert(productAttributes)
-        .values({ productId: pixelProductId, attributeId: def.id, optionId: opt.id })
-        .onConflictDoUpdate({ target: [productAttributes.productId, productAttributes.attributeId], set: { optionId: opt.id, updatedAt: new Date() } });
-    }
-  }
-}
-
-// ── POST /admin/metenzi/import ───────────────────────────────────────────────
-const importSchema = z.object({
-  metenziProductId: z.string().min(1),
-  fields: z.array(z.enum(["name","image","b2bPrice","retailPrice","description","shortDescription","sku","stock","category","platform","instructions","tags","attributes"])),
-  pixelCategoryId: z.number().int().positive().optional(),
-});
-
-router.post("/admin/metenzi/import", ...guard, async (req, res) => {
-  const parsed = importSchema.safeParse(req.body);
-  if (!parsed.success) { res.status(400).json({ error: "Invalid data" }); return; }
-
-  const { metenziProductId, fields, pixelCategoryId } = parsed.data;
-
-  // Check if already mapped
-  const [existing] = await db
-    .select({ id: metenziProductMappings.id })
-    .from(metenziProductMappings)
-    .where(eq(metenziProductMappings.metenziProductId, metenziProductId))
-    .limit(1);
-  if (existing) { res.status(409).json({ error: "Product already mapped" }); return; }
-
-  const config = await getMetenziConfig();
-  if (!config) { res.status(503).json({ error: "Metenzi not configured" }); return; }
-
-  let mp;
-  try {
-    mp = await getProductById(config, metenziProductId);
-  } catch (err) {
-    logger.error({ err, metenziProductId }, "Failed to fetch product from Metenzi");
-    res.status(502).json({ error: "Failed to fetch product from Metenzi — try again shortly" });
-    return;
-  }
-  if (!mp) { res.status(404).json({ error: "Metenzi product not found" }); return; }
-
-  const f = new Set<string>(fields);
-  const include = (field: string) => f.has(field);
-
-  // Download image if requested.
-  let imageUrl: string | null = null;
-  if (include("image")) {
-    if (mp.imageUrl) {
-      try { imageUrl = await downloadImageToVps(mp.imageUrl); }
-      catch (err) { logger.warn({ err, imageSource: mp.imageUrl }, "Image download failed during import"); }
-    }
-  }
-
-  // Generate slug from name
-  const baseSlug = (include("name") ? mp.name : mp.id)
-    .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-
-  // Check slug uniqueness
-  const [existing2] = await db
-    .select({ slug: products.slug })
-    .from(products)
-    .where(eq(products.slug, baseSlug))
-    .limit(1);
-  const slug = existing2 ? `${baseSlug}-${Date.now()}` : baseSlug;
-
-  const [product] = await db
-    .insert(products)
-    .values({
-      name:             include("name")             ? mp.name             : mp.id,
-      slug,
-      description:             include("description")      ? stripNulls(mp.description)      : null,
-      shortDescription:        include("shortDescription") ? stripNulls(mp.shortDescription) : null,
-      imageUrl:                include("image")            ? imageUrl            : null,
-      activationInstructions:  include("instructions")     ? sanitizeText(mp.instructions)     : null,
-      categoryId:              include("category") && pixelCategoryId ? pixelCategoryId : null,
-      isActive: true,
-    })
-    .returning({ id: products.id, name: products.name, slug: products.slug });
-
-  const platform = include("platform") ? mp.platform?.toUpperCase() ?? null : null;
-
-  await db.insert(productVariants).values({
-    productId:   product.id,
-    name:        mp.name,
-    sku:         include("sku")         ? mp.sku         : `${mp.sku}-${Date.now()}`,
-    priceUsd:    include("retailPrice") ? mp.retailPrice : "0",
-    b2bPriceUsd: include("b2bPrice")   ? mp.b2bPrice    : null,
-    stockCount:  include("stock")       ? mp.stock       : 0,
-    platform:    platform as never,
-    isActive:    true,
-  });
-
-  // Sync tags and attributes if requested
-  if (include("tags") || include("attributes")) {
-    try { await syncTagsAndAttributes(product.id, mp); }
-    catch (err) { logger.warn({ err, productId: product.id }, "Tags/attributes sync failed — product still imported"); }
-  }
-
-  const [mapping] = await db
-    .insert(metenziProductMappings)
-    .values({
-      metenziProductId,
-      metenziSku:  mp.sku,
-      metenziName: mp.name,
-      pixelProductId: product.id,
-      lastSyncedAt: new Date(),
-    })
-    .returning();
-
-  res.json({ success: true, pixelProduct: product, mappingId: mapping.id });
-});
-
-// ── GET /admin/metenzi/pixel-products-search ─────────────────────────────────
-// Quick search for Pixel products to use in the mapping dropdown
 router.get("/admin/metenzi/pixel-products-search", ...guard, async (req, res) => {
   const q = String(req.query.q || "").trim();
   if (q.length < 2) { res.json([]); return; }
-
   const { ilike, or } = await import("drizzle-orm");
-
   const rows = await db
     .select({ id: products.id, name: products.name, slug: products.slug })
     .from(products)
-    .where(
-      or(
-        ilike(products.name, `%${q}%`),
-        ilike(products.slug, `%${q}%`),
-      ),
-    )
+    .where(or(ilike(products.name, `%${q}%`), ilike(products.slug, `%${q}%`)))
     .limit(20);
-
   res.json(rows);
 });
 
-// ── POST /admin/metenzi/enable-backorder ─────────────────────────────────────
-// One-shot: set backorder_allowed = true on all active variants so orders can
-// exceed current stock (fulfilled via Metenzi backorder webhooks).
 router.post("/admin/metenzi/enable-backorder", ...guard, async (_req, res) => {
-  const result = await db
-    .update(productVariants)
-    .set({ backorderAllowed: true })
-    .where(eq(productVariants.isActive, true));
+  const result = await db.update(productVariants).set({ backorderAllowed: true }).where(eq(productVariants.isActive, true));
   res.json({ success: true, updated: result.rowCount ?? 0 });
 });
 

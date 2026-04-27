@@ -169,9 +169,18 @@ export async function runFulfillment(
     });
   }
 
-  const metenziResult = insertedItems.length
-    ? await fulfillFromMetenzi(orderId, realItems, insertedItems)
-    : "skip";
+  let metenziResult: Awaited<ReturnType<typeof fulfillFromMetenzi>> | "skip";
+  try {
+    metenziResult = insertedItems.length
+      ? await fulfillFromMetenzi(orderId, realItems, insertedItems)
+      : "skip";
+  } catch (err) {
+    // Metenzi call threw unexpectedly — items are in DB but not fulfilled.
+    // Mark order FAILED so it's visible in admin and doesn't stay stuck as PENDING.
+    logger.error({ err, orderId, orderNumber }, "Metenzi fulfillment threw unexpectedly — marking order FAILED");
+    await updateOrderStatus(orderId, "FAILED");
+    throw err;
+  }
 
   if (metenziResult === "skip" || metenziResult === "completed") {
     // "skip" = no Metenzi mapping; "completed" = keys delivered immediately in POST response

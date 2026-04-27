@@ -6,6 +6,7 @@ import {
 } from "@workspace/db/schema";
 import { eq, and, gte, sql, desc, inArray } from "drizzle-orm";
 import { paramString } from "../lib/route-params";
+import { logger } from "../lib/logger";
 
 const router = Router();
 
@@ -55,7 +56,7 @@ router.post("/social-proof/batch", async (req, res) => {
   if (sid) {
     await db.insert(socialProofEvents)
       .values(ids.map((pid) => ({ productId: pid, eventType: "VIEW" as const, sessionId: sid })))
-      .catch(() => {});
+      .catch((err) => { logger.warn({ err }, "Social proof view insert failed (non-fatal)"); });
   }
 
   const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
