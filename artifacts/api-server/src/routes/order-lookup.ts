@@ -109,6 +109,15 @@ router.post("/orders/lookup", orderLookupLimit, async (req, res) => {
   }
 
   const { orderNumber, email } = parsed.data;
+  // Constant-time minimum response to prevent timing-based enumeration
+  const minResponseMs = 400;
+  const started = Date.now();
+
+  const delay = () => {
+    const elapsed = Date.now() - started;
+    const wait = Math.max(0, minResponseMs - elapsed);
+    return new Promise<void>((r) => setTimeout(r, wait));
+  };
 
   try {
     const [order] = await db
@@ -122,6 +131,8 @@ router.post("/orders/lookup", orderLookupLimit, async (req, res) => {
       )
       .limit(1);
 
+    await delay();
+
     if (!order) {
       res.status(404).json({ error: "Order not found" });
       return;
@@ -130,6 +141,7 @@ router.post("/orders/lookup", orderLookupLimit, async (req, res) => {
     const details = await fetchOrderWithKeys(order.id);
     res.json({ order: formatOrderResponse(order), ...details });
   } catch (err) {
+    await delay();
     logger.error({ err }, "Order lookup failed");
     res.status(500).json({ error: "Failed to look up order" });
   }

@@ -59,11 +59,14 @@ async function verifyTurnstile(token: string, secretKey: string): Promise<boolea
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ secret: secretKey, response: token }),
+      signal: AbortSignal.timeout(5000),
     });
+    if (!res.ok) return true; // Cloudflare error — fail open to preserve availability
     const data = await res.json() as { success: boolean };
     return data.success === true;
   } catch {
-    return false;
+    // Network error or timeout — fail open so Cloudflare outages don't lock out users
+    return true;
   }
 }
 

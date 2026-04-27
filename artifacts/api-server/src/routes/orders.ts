@@ -430,7 +430,7 @@ router.post("/orders", checkoutLimit, requireIdempotencyKey(), async (req, res) 
   }
   const computedTotal = Math.max(0, preGcTotal - gcDeduction);
 
-  if (Math.abs(computedTotal - parseFloat(total)) > 0.02) {
+  if (Math.abs(computedTotal - parseFloat(total)) > 0.005) {
     logger.warn({
       clientTotal: total,
       serverTotal: computedTotal.toFixed(4),
@@ -502,7 +502,7 @@ router.post("/orders", checkoutLimit, requireIdempotencyKey(), async (req, res) 
     res.status(201).json({ orderNumber: result.orderNumber, status: result.status, message: "Order placed successfully" });
   } catch (err) {
     logger.error({ err }, "Order pipeline failed");
-    res.status(500).json({ error: err instanceof Error ? err.message : "Failed to process order" });
+    res.status(500).json({ error: "Failed to process order" });
   }
 });
 

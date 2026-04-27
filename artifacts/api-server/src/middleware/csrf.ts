@@ -27,7 +27,7 @@ export function csrfProtection(req: Request, res: Response, next: NextFunction) 
   if (!token) {
     token = generateToken();
     res.cookie(CSRF_COOKIE, token, {
-      httpOnly: false,
+      httpOnly: true,
       sameSite: "strict",
       secure: process.env.COOKIE_SECURE === "true",
       path: "/",
@@ -59,7 +59,7 @@ export function csrfTokenEndpoint(req: Request, res: Response) {
   if (!token) {
     token = generateToken();
     res.cookie(CSRF_COOKIE, token, {
-      httpOnly: false,
+      httpOnly: true,
       sameSite: "strict",
       secure: process.env.COOKIE_SECURE === "true",
       path: "/",

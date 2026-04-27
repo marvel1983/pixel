@@ -23,16 +23,9 @@ function urlTargetsApi(url: string): boolean {
   }
 }
 
-function getCsrfFromCookie(): string | null {
-  const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/);
-  return match ? match[1] : null;
-}
-
 let csrfToken: string | null = null;
 
 async function ensureCsrfToken(): Promise<string> {
-  const cookie = getCsrfFromCookie();
-  if (cookie) { csrfToken = cookie; return cookie; }
   if (csrfToken) return csrfToken;
   const res = await originalFetch(joinApiPath("/csrf-token"), { credentials: "include" });
   const data = await res.json();
