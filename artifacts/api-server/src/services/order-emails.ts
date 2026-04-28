@@ -5,6 +5,26 @@ import { decrypt } from "../lib/encryption";
 import { logger } from "../lib/logger";
 import { sendOrderConfirmationEmail, sendKeyDeliveryEmail, sendInvoiceEmail } from "../lib/email";
 
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  EUR: "€", USD: "$", GBP: "£", PLN: "zł", CZK: "Kč", HUF: "Ft",
+  CAD: "C$", AUD: "A$", BRL: "R$", TRY: "₺",
+};
+
+function formatAmount(amountUsd: number, currencyCode: string, currencyRate: number): string {
+  const symbol = CURRENCY_SYMBOLS[currencyCode] ?? currencyCode;
+  return `${symbol}${(amountUsd * currencyRate).toFixed(2)}`;
+}
+
+async function fetchOrderCurrency(orderId: number): Promise<{ currencyCode: string; currencyRate: number }> {
+  const [row] = await db
+    .select({ currencyCode: orders.currencyCode, currencyRate: orders.currencyRate })
+    .from(orders).where(eq(orders.id, orderId)).limit(1);
+  return {
+    currencyCode: row?.currencyCode ?? "EUR",
+    currencyRate: parseFloat(row?.currencyRate ?? "1"),
+  };
+}
+
 interface BillingInfo {
   email: string;
   firstName: string;
@@ -25,12 +45,12 @@ interface ItemInfo {
   quantity: number;
 }
 
-function buildEmailItems(items: ItemInfo[]) {
+function buildEmailItems(items: ItemInfo[], currencyCode: string, currencyRate: number) {
   return items.map((it) => ({
     name: it.productName,
     variant: it.variantName,
     quantity: it.quantity,
-    price: `$${(parseFloat(it.priceUsd) * it.quantity).toFixed(2)}`,
+    price: formatAmount(parseFloat(it.priceUsd) * it.quantity, currencyCode, currencyRate),
   }));
 }
 
@@ -99,11 +119,12 @@ export async function sendOrderConfirmationOnly(
   locale?: string,
 ) {
   try {
+    const { currencyCode, currencyRate } = await fetchOrderCurrency(orderId);
     await sendOrderConfirmationEmail(billing.email, {
       orderId,
       orderRef: orderNumber,
-      items: buildEmailItems(items),
-      total: `$${total.toFixed(2)}`,
+      items: buildEmailItems(items, currencyCode, currencyRate),
+      total: formatAmount(total, currencyCode, currencyRate),
       customerName: billing.firstName,
       locale,
     });
@@ -122,11 +143,12 @@ export async function triggerOrderEmails(
   locale?: string,
 ) {
   try {
+    const { currencyCode, currencyRate } = await fetchOrderCurrency(orderId);
     await sendOrderConfirmationEmail(billing.email, {
       orderId,
       orderRef: orderNumber,
-      items: buildEmailItems(items),
-      total: `$${total.toFixed(2)}`,
+      items: buildEmailItems(items, currencyCode, currencyRate),
+      total: formatAmount(total, currencyCode, currencyRate),
       customerName: billing.firstName,
       locale,
     });
