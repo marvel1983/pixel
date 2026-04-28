@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthStore } from "@/stores/auth-store";
+import { useCurrencyStore } from "@/stores/currency-store";
 import { Wallet, ArrowUpCircle, ArrowDownCircle, Loader2, Plus, CreditCard, ExternalLink } from "lucide-react";
 import { uuidV4 } from "@/lib/uuid";
 
@@ -21,6 +22,7 @@ export function WalletTab() {
   const { t } = useTranslation();
   const [path] = useLocation();
   const { token } = useAuthStore();
+  const format = useCurrencyStore((s) => s.format);
   const { toast } = useToast();
   const [balance, setBalance] = useState("0.00");
   const [totalDeposited, setTotalDeposited] = useState("0.00");
@@ -170,7 +172,7 @@ export function WalletTab() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">{t("wallet.availableBalance")}</p>
-                <p className="text-3xl font-bold">${parseFloat(balance).toFixed(2)}</p>
+                <p className="text-3xl font-bold">{format(parseFloat(balance))}</p>
               </div>
             </div>
             <Button onClick={() => setShowTopUp(!showTopUp)} className="gap-1.5">
@@ -180,11 +182,11 @@ export function WalletTab() {
           <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t">
             <div>
               <p className="text-xs text-muted-foreground">{t("wallet.totalDeposited")}</p>
-              <p className="font-medium text-green-600">${parseFloat(totalDeposited).toFixed(2)}</p>
+              <p className="font-medium text-green-600">{format(parseFloat(totalDeposited))}</p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">{t("wallet.totalSpent")}</p>
-              <p className="font-medium text-orange-600">${parseFloat(totalSpent).toFixed(2)}</p>
+              <p className="font-medium text-orange-600">{format(parseFloat(totalSpent))}</p>
             </div>
           </div>
         </CardContent>
@@ -201,7 +203,7 @@ export function WalletTab() {
                   value={topUpAmount} onChange={(e) => setTopUpAmount(e.target.value)} />
                 <div className="flex gap-2 mt-2">
                   {[10, 25, 50, 100].map((v) => (
-                    <Button key={v} type="button" variant="outline" size="sm" onClick={() => setTopUpAmount(String(v))}>${v}</Button>
+                    <Button key={v} type="button" variant="outline" size="sm" onClick={() => setTopUpAmount(String(v))}>{format(v)}</Button>
                   ))}
                 </div>
               </div>
@@ -251,7 +253,7 @@ export function WalletTab() {
                     </div>
                     <div className="text-right">
                       <p className={`font-medium ${isCredit ? "text-green-600" : "text-orange-600"}`}>
-                        {isCredit ? "+" : ""}${Math.abs(parseFloat(tx.amountUsd)).toFixed(2)}
+                        {isCredit ? "+" : ""}{format(Math.abs(parseFloat(tx.amountUsd)))}
                       </p>
                       <p className="text-xs text-muted-foreground">{t("wallet.balance", { amount: parseFloat(tx.balanceAfter).toFixed(2) })}</p>
                     </div>

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuthStore } from "@/stores/auth-store";
+import { useCurrencyStore } from "@/stores/currency-store";
 import { Loader2, Trophy, TrendingUp, Star, Gift } from "lucide-react";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
@@ -43,6 +44,7 @@ interface Transaction {
 
 export function RewardsTab() {
   const token = useAuthStore((s) => s.token);
+  const format = useCurrencyStore((s) => s.format);
   const [loading, setLoading] = useState(true);
   const [account, setAccount] = useState<AccountData | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -98,7 +100,7 @@ export function RewardsTab() {
               <span className="text-2xl font-bold">{account.pointsBalance.toLocaleString()}</span>
             </div>
             <p className="text-sm text-muted-foreground">Available Points</p>
-            <p className="text-xs text-green-600 mt-1">Worth ${account.discountValue.toFixed(2)}</p>
+            <p className="text-xs text-green-600 mt-1">Worth {format(account.discountValue)}</p>
           </CardContent>
         </Card>
         <Card>

@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, ShoppingBag } from "lucide-react";
 import { useAuthStore } from "@/stores/auth-store";
+import { useCurrencyStore } from "@/stores/currency-store";
 import { OrderDetail } from "@/components/orders/order-detail";
 
 interface OrderSummary {
@@ -18,6 +19,7 @@ interface OrderSummary {
 export function AccountOrdersTab() {
   const { t } = useTranslation();
   const { token, user } = useAuthStore();
+  const format = useCurrencyStore((s) => s.format);
   const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Record<string, unknown> | null>(null);
@@ -83,7 +85,7 @@ export function AccountOrdersTab() {
                 </p>
               </div>
               <div className="text-right">
-                <p className="font-medium">${o.totalUsd}</p>
+                <p className="font-medium">{format(parseFloat(o.totalUsd))}</p>
                 <p className="text-xs text-muted-foreground">{new Date(o.createdAt).toLocaleDateString()}</p>
               </div>
             </button>

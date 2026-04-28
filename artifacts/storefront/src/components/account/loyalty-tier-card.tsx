@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertTriangle, TrendingUp } from "lucide-react";
+import { useCurrencyStore } from "@/stores/currency-store";
 
 export interface AccountData {
   pointsBalance: number;
@@ -40,6 +41,7 @@ const TIER_ICONS: Record<string, string> = {
 };
 
 export function LoyaltyTierCard({ account, redemptionRate }: { account: AccountData; redemptionRate: number }) {
+  const format = useCurrencyStore((s) => s.format);
   const tier = account.tier ?? "BRONZE";
   const bandRange = (account.nextTierThreshold ?? 1) - (account.currentTierThreshold ?? 0);
   const progressPct = account.nextTier
@@ -72,7 +74,7 @@ export function LoyaltyTierCard({ account, redemptionRate }: { account: AccountD
               <span className="text-5xl font-extrabold tabular-nums tracking-tight">{account.pointsBalance.toLocaleString()}</span>
               <span className="text-lg font-medium text-muted-foreground">pts</span>
             </div>
-            <p className="text-sm text-green-600 dark:text-green-400 mt-1 font-medium">Worth ${worthDollars.toFixed(2)}</p>
+            <p className="text-sm text-green-600 dark:text-green-400 mt-1 font-medium">Worth {format(worthDollars)}</p>
           </div>
           <div className="flex-none text-center md:text-right">
             <div className="flex items-center justify-center md:justify-end gap-2 mb-1">

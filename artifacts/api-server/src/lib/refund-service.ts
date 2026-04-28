@@ -1,5 +1,15 @@
 import { db } from "@workspace/db";
 import { refunds, orders, users } from "@workspace/db/schema";
+
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  EUR: "€", USD: "$", GBP: "£", PLN: "zł", CZK: "Kč", HUF: "Ft",
+  CAD: "C$", AUD: "A$", BRL: "R$", TRY: "₺",
+};
+
+function fmtRefund(amountBase: string, code: string | null, rate: string | null): string {
+  const sym = CURRENCY_SYMBOLS[code ?? "EUR"] ?? (code ?? "EUR");
+  return `${sym}${(parseFloat(amountBase) * parseFloat(rate ?? "1")).toFixed(2)}`;
+}
 import { eq } from "drizzle-orm";
 import { processProviderRefund } from "../services/refund";
 import { renderAndSendTemplate } from "./email/render-template";
@@ -54,7 +64,7 @@ export async function processRefund(refundId: number): Promise<{ success: boolea
       await renderAndSendTemplate("refund_confirmation", order.guestEmail, {
         orderNumber: order.orderNumber,
         customerName,
-        refundAmount: `$${refund.amountUsd}`,
+        refundAmount: fmtRefund(refund.amountUsd, order.currencyCode, order.currencyRate),
         reason: refund.reason,
       });
     }
@@ -105,7 +115,7 @@ export async function processWalletRefund(refundId: number, userId: number): Pro
       const customerName = order.guestEmail.split("@")[0];
       await renderAndSendTemplate("refund_confirmation", order.guestEmail, {
         orderNumber: order.orderNumber, customerName,
-        refundAmount: `$${refund.amountUsd}`, reason: refund.reason,
+        refundAmount: fmtRefund(refund.amountUsd, order.currencyCode, order.currencyRate), reason: refund.reason,
       });
     }
 

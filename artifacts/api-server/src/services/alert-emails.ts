@@ -40,8 +40,8 @@ export function priceDropEmail(p: PriceDropEmailParams): { subject: string; html
 ${img}
 <div>
 <h3 style="margin:0 0 8px;color:#111827">${p.productName}</h3>
-<p style="margin:0"><span style="text-decoration:line-through;color:#9ca3af">$${p.oldPrice}</span> <span style="color:#16a34a;font-size:20px;font-weight:700">$${p.newPrice}</span></p>
-<p style="margin:4px 0 0;color:#16a34a;font-size:14px">You save $${p.savings}!</p>
+<p style="margin:0"><span style="text-decoration:line-through;color:#9ca3af">${p.oldPrice}</span> <span style="color:#16a34a;font-size:20px;font-weight:700">${p.newPrice}</span></p>
+<p style="margin:4px 0 0;color:#16a34a;font-size:14px">You save ${p.savings}!</p>
 </div></div>
 <div style="text-align:center;margin:24px 0">
 <a href="${p.productUrl}" style="display:inline-block;padding:12px 32px;background:#2563eb;color:#fff;text-decoration:none;border-radius:6px;font-weight:600">View Product</a>
@@ -49,7 +49,7 @@ ${img}
 <p style="color:#9ca3af;font-size:12px;text-align:center;margin:20px 0 0">
 <a href="${p.unsubscribeUrl}" style="color:#9ca3af">Unsubscribe from this alert</a>
 </p>`;
-  return { subject: `Price Drop: ${p.productName} now $${p.newPrice}!`, html: layout(p.siteName, content) };
+  return { subject: `Price Drop: ${p.productName} now ${p.newPrice}!`, html: layout(p.siteName, content) };
 }
 
 export function backInStockEmail(p: BackInStockEmailParams): { subject: string; html: string } {
@@ -61,7 +61,7 @@ export function backInStockEmail(p: BackInStockEmailParams): { subject: string; 
 ${img}
 <div>
 <h3 style="margin:0 0 8px;color:#111827">${p.productName}</h3>
-<p style="margin:0;color:#111827;font-size:18px;font-weight:700">$${p.price}</p>
+<p style="margin:0;color:#111827;font-size:18px;font-weight:700">${p.price}</p>
 <p style="margin:4px 0 0;color:#16a34a;font-size:14px">${p.stockCount} in stock — grab yours now!</p>
 </div></div>
 <div style="text-align:center;margin:24px 0">

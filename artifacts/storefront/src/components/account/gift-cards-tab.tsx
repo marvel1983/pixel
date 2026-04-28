@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthStore } from "@/stores/auth-store";
+import { useCurrencyStore } from "@/stores/currency-store";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -28,6 +29,7 @@ export function GiftCardsTab() {
   const [checkResult, setCheckResult] = useState<{ code: string; balanceUsd: string; status: string } | null>(null);
   const [checkError, setCheckError] = useState("");
   const token = useAuthStore((s) => s.token);
+  const format = useCurrencyStore((s) => s.format);
 
   useEffect(() => {
     if (!token) return;
@@ -72,7 +74,7 @@ export function GiftCardsTab() {
                 <p className="font-mono text-sm">{checkResult.code}</p>
                 <Badge variant="secondary" className={STATUS_COLORS[checkResult.status] ?? ""}>{checkResult.status}</Badge>
               </div>
-              <p className="text-2xl font-bold text-blue-700">${checkResult.balanceUsd}</p>
+              <p className="text-2xl font-bold text-blue-700">{format(parseFloat(checkResult.balanceUsd))}</p>
             </div>
           )}
         </CardContent>
@@ -100,7 +102,7 @@ export function GiftCardsTab() {
                     </div>
                   </div>
                   <div className="text-right space-y-1">
-                    <p className="font-mono font-semibold">${c.balanceUsd} <span className="text-xs text-muted-foreground">/ ${c.initialAmountUsd}</span></p>
+                    <p className="font-mono font-semibold">{format(parseFloat(c.balanceUsd))} <span className="text-xs text-muted-foreground">/ {format(parseFloat(c.initialAmountUsd))}</span></p>
                     <Badge variant="secondary" className={STATUS_COLORS[c.status] ?? ""}>{c.status}</Badge>
                   </div>
                 </div>

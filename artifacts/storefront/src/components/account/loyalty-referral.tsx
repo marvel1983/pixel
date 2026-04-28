@@ -3,6 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, Star, Users, Copy, CheckCheck } from "lucide-react";
 import { useAuthStore } from "@/stores/auth-store";
+import { useCurrencyStore, SUPPORTED_CURRENCIES } from "@/stores/currency-store";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -95,6 +96,8 @@ export function EarnCard({ icon, title, description, active, muted }: {
 }
 
 export function LoyaltyEarnSection({ pointsPerDollar, bonuses }: { pointsPerDollar: number; bonuses: LoyaltyBonuses | undefined }) {
+  const code = useCurrencyStore((s) => s.code);
+  const currencySymbol = SUPPORTED_CURRENCIES.find((c) => c.code === code)?.symbol ?? "€";
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -104,7 +107,7 @@ export function LoyaltyEarnSection({ pointsPerDollar, bonuses }: { pointsPerDoll
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          <EarnCard icon="💳" title="Purchases" description={`Earn ${pointsPerDollar} pts per $1 spent`} active />
+          <EarnCard icon="💳" title="Purchases" description={`Earn ${pointsPerDollar} pts per ${currencySymbol}1 spent`} active />
           <EarnCard icon="⭐" title="Write a review" description={bonuses?.review ? `+${bonuses.review} pts` : "+50 pts"} active />
           <EarnCard icon="🎁" title="Welcome bonus" description={bonuses?.welcome ? `+${bonuses.welcome} pts` : "+100 pts"} active />
           <EarnCard icon="🎂" title="Birthday bonus" description="Coming soon" muted />

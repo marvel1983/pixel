@@ -4,10 +4,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Wallet } from "lucide-react";
 import { useWalletBalance } from "@/hooks/use-wallet-balance";
+import { useCurrencyStore } from "@/stores/currency-store";
 
 export function ProfileStoreCreditCard() {
   const { t } = useTranslation();
   const { balance, loading, loadFailed, refresh } = useWalletBalance();
+  const format = useCurrencyStore((s) => s.format);
   return (
     <Card className="mb-6 border-primary/15 bg-muted/30">
       <CardContent className="pt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -24,7 +26,7 @@ export function ProfileStoreCreditCard() {
               </div>
             ) : (
               <>
-                <p className="text-2xl font-bold tabular-nums">{loading && balance === null ? "…" : `$${(balance ?? 0).toFixed(2)}`}</p>
+                <p className="text-2xl font-bold tabular-nums">{loading && balance === null ? "…" : format(balance ?? 0)}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">{t("accountPage.storeCreditHint")}</p>
               </>
             )}

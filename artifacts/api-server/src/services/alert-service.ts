@@ -6,6 +6,7 @@ import {
   products,
   productVariants,
   siteSettings,
+  currencyRates,
 } from "@workspace/db/schema";
 import { eq, and, lte, isNull } from "drizzle-orm";
 import { enqueueEmail } from "../lib/email/queue";
@@ -34,6 +35,16 @@ export function verifyUnsubscribe(token: string): number | null {
 async function getSiteName(): Promise<string> {
   const [row] = await db.select({ n: siteSettings.siteName }).from(siteSettings).limit(1);
   return row?.n ?? "PixelCodes";
+}
+
+async function getSitePriceFormatter(): Promise<(amount: string | number) => string> {
+  const [setting] = await db.select({ c: siteSettings.defaultCurrency }).from(siteSettings).limit(1);
+  const code = setting?.c ?? "EUR";
+  const [rateRow] = await db.select({ symbol: currencyRates.symbol, rate: currencyRates.rateToUsd })
+    .from(currencyRates).where(eq(currencyRates.currencyCode, code)).limit(1);
+  const sym = rateRow?.symbol ?? "€";
+  const rate = parseFloat(rateRow?.rate ?? "1");
+  return (amount) => `${sym}${(parseFloat(String(amount)) * rate).toFixed(2)}`;
 }
 
 function getBaseUrl(): string {
@@ -74,6 +85,7 @@ export async function checkPriceDropAlerts(
   if (matching.length === 0) return 0;
 
   const siteName = await getSiteName();
+  const fmt = await getSitePriceFormatter();
   const baseUrl = getBaseUrl();
   let sent = 0;
 
@@ -85,7 +97,9 @@ export async function checkPriceDropAlerts(
 
     const { subject, html } = priceDropEmail({
       siteName, productName: row.productName, productUrl,
-      imageUrl: row.imageUrl, oldPrice, newPrice, savings, unsubscribeUrl,
+      imageUrl: row.imageUrl,
+      oldPrice: fmt(oldPrice), newPrice: fmt(newPrice), savings: fmt(savings),
+      unsubscribeUrl,
     });
 
     await enqueueEmail(row.alert.email, subject, html, { type: "price_drop", alertId: row.alert.id });
@@ -134,6 +148,7 @@ export async function checkBackInStockAlerts(
   if (matching.length === 0) return 0;
 
   const siteName = await getSiteName();
+  const fmt = await getSitePriceFormatter();
   const baseUrl = getBaseUrl();
   let sent = 0;
 
@@ -144,7 +159,7 @@ export async function checkBackInStockAlerts(
 
     const { subject, html } = backInStockEmail({
       siteName, productName: row.productName, productUrl,
-      imageUrl: row.imageUrl, price: currentPrice,
+      imageUrl: row.imageUrl, price: fmt(currentPrice),
       stockCount: newStock, unsubscribeUrl,
     });
 

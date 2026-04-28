@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuthStore } from "@/stores/auth-store";
+import { useCurrencyStore } from "@/stores/currency-store";
 import { useToast } from "@/hooks/use-toast";
 import { Copy, DollarSign, MousePointer, ShoppingCart, Loader2 } from "lucide-react";
 
@@ -34,6 +35,7 @@ interface Profile {
 
 export function AffiliateTab() {
   const token = useAuthStore((s) => s.token);
+  const format = useCurrencyStore((s) => s.format);
   const { toast } = useToast();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [commissions, setCommissions] = useState<Commission[]>([]);
@@ -102,7 +104,7 @@ export function AffiliateTab() {
         {[
           { icon: MousePointer, label: "Total Clicks", value: profile.totalClicks },
           { icon: ShoppingCart, label: "Total Orders", value: profile.totalOrders },
-          { icon: DollarSign, label: "Available", value: `$${available.toFixed(2)}` },
+          { icon: DollarSign, label: "Available", value: format(available) },
         ].map((s) => (
           <Card key={s.label}><CardContent className="pt-4 flex items-center gap-3">
             <s.icon className="h-5 w-5 text-blue-600" />
@@ -122,7 +124,7 @@ export function AffiliateTab() {
             <div className="space-y-2 flex-1">
               <p className="text-xs text-muted-foreground">Code: <strong>{profile.referralCode}</strong> · Rate: {profile.commissionRate}%</p>
               <Button size="sm" onClick={requestPayout} disabled={available < minPayout}>
-                Request Payout {available < minPayout && `(min $${minPayout})`}
+                Request Payout {available < minPayout && `(min ${format(minPayout)})`}
               </Button>
             </div>
             <div className="bg-card p-2 rounded border">
@@ -142,8 +144,8 @@ export function AffiliateTab() {
               {commissions.map((c) => (
                 <div key={c.id} className="flex items-center justify-between border-b pb-2 text-sm">
                   <div>
-                    <span className="font-medium">${c.commissionAmount}</span>
-                    <span className="text-muted-foreground ml-2">({c.commissionRate}% of ${c.orderTotal})</span>
+                    <span className="font-medium">{format(parseFloat(c.commissionAmount))}</span>
+                    <span className="text-muted-foreground ml-2">({c.commissionRate}% of {format(parseFloat(c.orderTotal))})</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColor[c.status] || "bg-gray-100"}`}>{c.status}</span>

@@ -4,6 +4,8 @@ import {
   abandonedCartEmails,
   abandonedCartSettings,
   coupons,
+  siteSettings,
+  currencyRates,
 } from "@workspace/db/schema";
 import { eq, and, sql, lte, isNull } from "drizzle-orm";
 import { enqueueEmail } from "../lib/email/queue";
@@ -18,9 +20,16 @@ async function getSettings() {
 }
 
 async function getSiteName(): Promise<string> {
-  const { siteSettings } = await import("@workspace/db/schema");
   const [row] = await db.select({ n: siteSettings.siteName }).from(siteSettings).limit(1);
   return row?.n ?? "PixelCodes";
+}
+
+async function getSiteCurrencyInfo(): Promise<{ symbol: string; rate: number }> {
+  const [setting] = await db.select({ c: siteSettings.defaultCurrency }).from(siteSettings).limit(1);
+  const code = setting?.c ?? "EUR";
+  const [rateRow] = await db.select({ symbol: currencyRates.symbol, rate: currencyRates.rateToUsd })
+    .from(currencyRates).where(eq(currencyRates.currencyCode, code)).limit(1);
+  return { symbol: rateRow?.symbol ?? "€", rate: parseFloat(rateRow?.rate ?? "1") };
 }
 
 export async function captureAbandonedCart(
@@ -109,12 +118,14 @@ async function sendEmailForCart(
     await db.update(abandonedCarts).set({ couponCode }).where(eq(abandonedCarts.id, cart.id));
   }
 
+  const { symbol: currencySymbol, rate: currencyRate } = await getSiteCurrencyInfo();
   const domain = process.env["REPLIT_DEV_DOMAIN"] || process.env["REPLIT_DOMAINS"]?.split(",")[0] || "localhost";
   const baseUrl = domain.startsWith("http") ? domain : `https://${domain}`;
   const recoveryUrl = `${baseUrl}/cart/recover/${cart.recoveryToken}`;
   const { subject, html } = abandonedCartEmail({
     emailNumber, siteName,
     items: cart.cartData.items, total: cart.cartTotal,
+    currencySymbol, currencyRate,
     recoveryUrl, unsubscribeUrl: `${recoveryUrl}?action=unsubscribe`,
     couponCode, discountPercent: settings.discountPercent,
   });

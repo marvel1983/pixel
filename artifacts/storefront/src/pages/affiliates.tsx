@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Breadcrumbs } from "@/components/shop/breadcrumbs";
 import { useAuthStore } from "@/stores/auth-store";
+import { useCurrencyStore } from "@/stores/currency-store";
 import { DollarSign, Link2, BarChart3, Shield, Clock, Users } from "lucide-react";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
@@ -19,6 +20,7 @@ interface ProgramInfo {
 export default function AffiliatesPage() {
   const [info, setInfo] = useState<ProgramInfo | null>(null);
   const token = useAuthStore((s) => s.token);
+  const format = useCurrencyStore((s) => s.format);
 
   const [error, setError] = useState(false);
 
@@ -97,7 +99,7 @@ export default function AffiliatesPage() {
             {[
               { step: "1", title: "Apply", desc: "Submit your application with details about how you'll promote" },
               { step: "2", title: "Share", desc: "Get your unique referral link and share it with your audience" },
-              { step: "3", title: "Earn", desc: `Earn ${info.defaultCommissionRate}% on every sale. Min payout: $${info.minimumPayout}` },
+              { step: "3", title: "Earn", desc: `Earn ${info.defaultCommissionRate}% on every sale. Min payout: ${format(parseFloat(info.minimumPayout ?? "25"))}` },
             ].map((s) => (
               <div key={s.step} className="text-center space-y-2">
                 <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center mx-auto">{s.step}</div>

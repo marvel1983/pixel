@@ -8,6 +8,8 @@ interface AbandonedCartEmailData {
   siteName: string;
   items: CartSnapshotItem[];
   total: string;
+  currencySymbol: string;
+  currencyRate: number;
   recoveryUrl: string;
   unsubscribeUrl: string;
   couponCode?: string;
@@ -35,14 +37,14 @@ function layout(siteName: string, content: string, unsubscribeUrl: string): stri
 </body></html>`;
 }
 
-function renderItems(items: CartSnapshotItem[]): string {
+function renderItems(items: CartSnapshotItem[], currencySymbol: string, currencyRate: number): string {
   return items.map((i) =>
     `<tr>
       <td style="padding:8px 0;border-bottom:1px solid #eee;">
         <strong style="color:#212529;">${i.productName}</strong>
         <br><span style="font-size:13px;color:#868e96;">${i.variantName} × ${i.quantity}</span>
       </td>
-      <td style="padding:8px 0;border-bottom:1px solid #eee;text-align:right;color:#212529;">$${i.priceUsd}</td>
+      <td style="padding:8px 0;border-bottom:1px solid #eee;text-align:right;color:#212529;">${currencySymbol}${(parseFloat(String(i.priceUsd)) * currencyRate).toFixed(2)}</td>
     </tr>`
   ).join("");
 }
@@ -55,12 +57,12 @@ function ctaButton(url: string, text: string): string {
 }
 
 export function abandonedCartEmail(data: AbandonedCartEmailData): { subject: string; html: string } {
-  const { emailNumber, siteName, items, total, recoveryUrl, unsubscribeUrl, couponCode, discountPercent } = data;
+  const { emailNumber, siteName, items, total, currencySymbol, currencyRate, recoveryUrl, unsubscribeUrl, couponCode, discountPercent } = data;
 
   const itemsTable = `<table width="100%" cellpadding="0" cellspacing="0" style="margin:16px 0;">
-${renderItems(items)}
+${renderItems(items, currencySymbol, currencyRate)}
 <tr><td style="padding:12px 0;font-weight:700;color:#212529;">Total</td>
-<td style="padding:12px 0;text-align:right;font-weight:700;color:#212529;">$${total}</td></tr>
+<td style="padding:12px 0;text-align:right;font-weight:700;color:#212529;">${currencySymbol}${(parseFloat(total) * currencyRate).toFixed(2)}</td></tr>
 </table>`;
 
   if (emailNumber === 1) {
