@@ -10,7 +10,7 @@ import { useCartStore } from "@/stores/cart-store";
 import { useCurrencyStore } from "@/stores/currency-store";
 import { useToast } from "@/hooks/use-toast";
 import type { MockProduct } from "@/lib/mock-data";
-import { MOCK_PRODUCTS } from "@/lib/mock-data";
+import { toMockProduct } from "@/lib/use-products";
 
 function PriceCell({ priceUsd, compareAt }: { priceUsd: string; compareAt: string | null }) {
   const format = useCurrencyStore((s) => s.format);
@@ -75,11 +75,15 @@ export default function ComparePage() {
   const [products, setProducts] = useState<MockProduct[]>([]);
   const attrs = useAttrs(t);
 
+  const API = import.meta.env.VITE_API_URL ?? "/api";
+
   useEffect(() => {
     if (productIds.length === 0) { setProducts([]); return; }
-    const idSet = new Set(productIds);
-    setProducts(MOCK_PRODUCTS.filter((p) => idSet.has(p.id)));
-  }, [productIds]);
+    fetch(`${API}/products?ids=${productIds.join(",")}&limit=10`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => { if (data?.items) setProducts(data.items.map(toMockProduct)); })
+      .catch(() => {});
+  }, [productIds, API]);
 
   function handleAddToCart(p: MockProduct) {
     const v = p.variants[0];

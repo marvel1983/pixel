@@ -3,7 +3,6 @@ import { Package, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/stores/cart-store";
 import { useCurrencyStore } from "@/stores/currency-store";
-import { MOCK_PRODUCTS } from "@/lib/mock-data";
 import { useToast } from "@/hooks/use-toast";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
@@ -74,38 +73,9 @@ export function ProductUpsell() {
         if (cancelled) return;
         if (data.offers?.length > 0) {
           setOffers(data.offers);
-        } else {
-          const fallback = MOCK_PRODUCTS.filter(
-            (p) => p.isFeatured && !cartProductIds.includes(p.id),
-          )
-            .slice(0, 2)
-            .map((p) => ({
-              id: p.id,
-              name: p.name,
-              imageUrl: p.imageUrl,
-              variantId: p.variants[0].id,
-              variantName: p.variants[0].name,
-              priceUsd: p.variants[0].priceUsd,
-              platform: p.variants[0].platform,
-            }));
-          setOffers(fallback);
         }
       } catch {
-        if (cancelled) return;
-        const fallback = MOCK_PRODUCTS.filter(
-          (p) => p.isFeatured && !cartProductIds.includes(p.id),
-        )
-          .slice(0, 2)
-          .map((p) => ({
-            id: p.id,
-            name: p.name,
-            imageUrl: p.imageUrl,
-            variantId: p.variants[0].id,
-            variantName: p.variants[0].name,
-            priceUsd: p.variants[0].priceUsd,
-            platform: p.variants[0].platform,
-          }));
-        setOffers(fallback);
+        // offers unavailable — show nothing
       }
     })();
 

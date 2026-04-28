@@ -1,9 +1,8 @@
-import { useState } from "react";
-import { Building2, Users, Receipt, ShieldCheck, ChevronRight, Send, Package } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Building2, Users, Receipt, ShieldCheck, Send, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { MOCK_PRODUCTS } from "@/lib/mock-data";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -27,12 +26,24 @@ interface ProductLine {
   quantity: number;
 }
 
+interface SimpleProduct { id: number; name: string; }
+
 export default function BusinessPage() {
   const { toast } = useToast();
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [form, setForm] = useState({ companyName: "", contactName: "", contactEmail: "", phone: "", message: "" });
   const [lines, setLines] = useState<ProductLine[]>([{ productId: 0, productName: "", quantity: 10 }]);
+  const [availableProducts, setAvailableProducts] = useState<SimpleProduct[]>([]);
+
+  useEffect(() => {
+    fetch(`${API}/products?limit=100&stock=1`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.items) setAvailableProducts(data.items.map((p: SimpleProduct) => ({ id: p.id, name: p.name })));
+      })
+      .catch(() => {});
+  }, []);
 
   const updateLine = (i: number, field: keyof ProductLine, value: string | number) => {
     setLines((prev) => prev.map((l, idx) => idx === i ? { ...l, [field]: value } : l));
@@ -44,7 +55,7 @@ export default function BusinessPage() {
     e.preventDefault();
     const validLines = lines.filter((l) => l.productId > 0 && l.quantity > 0).map((l) => ({
       productId: l.productId,
-      productName: MOCK_PRODUCTS.find((p) => p.id === l.productId)?.name ?? l.productName,
+      productName: availableProducts.find((p) => p.id === l.productId)?.name ?? l.productName,
       quantity: l.quantity,
     }));
     if (validLines.length === 0) { toast({ title: "Please select at least one product", variant: "destructive" }); return; }
@@ -161,6 +172,7 @@ export default function BusinessPage() {
         onSubmit={handleSubmit}
         submitting={submitting}
         submitted={submitted}
+        availableProducts={availableProducts}
       />
     </div>
   );
@@ -184,9 +196,10 @@ interface QuoteFormProps {
   onSubmit: (e: React.FormEvent) => void;
   submitting: boolean;
   submitted: boolean;
+  availableProducts: SimpleProduct[];
 }
 
-function QuoteFormSection({ form, setForm, lines, updateLine, addLine, removeLine, onSubmit, submitting, submitted }: QuoteFormProps) {
+function QuoteFormSection({ form, setForm, lines, updateLine, addLine, removeLine, onSubmit, submitting, submitted, availableProducts }: QuoteFormProps) {
   if (submitted) {
     return (
       <section className="py-16 bg-green-50 dark:bg-green-950" id="quote">
@@ -234,7 +247,7 @@ function QuoteFormSection({ form, setForm, lines, updateLine, addLine, removeLin
                     onChange={(e) => updateLine(i, "productId", parseInt(e.target.value, 10))}
                   >
                     <option value={0}>Select product...</option>
-                    {MOCK_PRODUCTS.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    {availableProducts.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                   </select>
                   <Input type="number" min={1} className="w-20" value={line.quantity} onChange={(e) => updateLine(i, "quantity", parseInt(e.target.value, 10) || 1)} />
                   {lines.length > 1 && (

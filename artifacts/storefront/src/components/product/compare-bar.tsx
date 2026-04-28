@@ -1,20 +1,30 @@
+import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { GitCompareArrows, X, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCompareStore } from "@/stores/compare-store";
-import { MOCK_PRODUCTS } from "@/lib/mock-data";
+import type { MockProduct } from "@/lib/mock-data";
+import { toMockProduct } from "@/lib/use-products";
+
+const API = import.meta.env.VITE_API_URL ?? "/api";
 
 export function CompareBar() {
   const { productIds, removeProduct, clearAll } = useCompareStore();
+  const [products, setProducts] = useState<MockProduct[]>([]);
+
+  useEffect(() => {
+    if (productIds.length === 0) { setProducts([]); return; }
+    fetch(`${API}/products?ids=${productIds.join(",")}&limit=10`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => { if (data?.items) setProducts(data.items.map(toMockProduct)); })
+      .catch(() => {});
+  }, [productIds]);
 
   if (productIds.length === 0) return null;
-
-  const products = MOCK_PRODUCTS.filter((p) => productIds.includes(p.id));
 
   return (
     <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-[calc(100vw-2rem)] max-w-xl animate-in slide-in-from-bottom-4 fade-in duration-300">
       <div className="bg-background border border-border rounded-xl shadow-2xl px-4 py-3 flex items-center gap-3">
-        {/* Icon + count */}
         <div className="flex items-center gap-2 shrink-0">
           <GitCompareArrows className="h-5 w-5 text-primary" />
           <span className="text-sm font-semibold text-foreground">
@@ -22,7 +32,6 @@ export function CompareBar() {
           </span>
         </div>
 
-        {/* Product thumbnails */}
         <div className="flex items-center gap-2 flex-1 overflow-hidden">
           {products.map((p) => (
             <div key={p.id} className="relative shrink-0 group">
@@ -42,21 +51,13 @@ export function CompareBar() {
               </button>
             </div>
           ))}
-          {/* Empty slots */}
           {Array.from({ length: 4 - products.length }).map((_, i) => (
-            <div
-              key={i}
-              className="w-10 h-10 rounded-lg border border-dashed border-border bg-muted/40 shrink-0"
-            />
+            <div key={i} className="w-10 h-10 rounded-lg border border-dashed border-border bg-muted/40 shrink-0" />
           ))}
         </div>
 
-        {/* Actions */}
         <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={clearAll}
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
+          <button onClick={clearAll} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
             Clear
           </button>
           <Link href="/compare">

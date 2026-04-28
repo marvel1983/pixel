@@ -2,8 +2,6 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { Search, Package, ArrowRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { MOCK_PRODUCTS } from "@/lib/mock-data";
-import { searchProducts } from "@/lib/search-utils";
 import type { SearchResponse, SearchProduct } from "@/lib/search-types";
 import { useCurrencyStore } from "@/stores/currency-store";
 
@@ -67,24 +65,7 @@ export function SearchAutocomplete() {
           setTotalCount(data.total);
           if (items.length > 0) setIsOpen(true);
         })
-        .catch(() => {
-          const local = searchProducts(MOCK_PRODUCTS, query.trim());
-          const items: SuggestionItem[] = local
-            .slice(0, MAX_SUGGESTIONS)
-            .map((p) => ({
-              id: p.id,
-              name: p.name,
-              slug: p.slug,
-              imageUrl: p.imageUrl,
-              priceUsd: parseFloat(p.variants[0]?.priceUsd ?? "0"),
-              compareAtPriceUsd: p.variants[0]?.compareAtPriceUsd
-                ? parseFloat(p.variants[0].compareAtPriceUsd)
-                : null,
-            }));
-          setSuggestions(items);
-          setTotalCount(local.length);
-          if (items.length > 0) setIsOpen(true);
-        });
+        .catch(() => {});
     }, DEBOUNCE_MS);
 
     return () => clearTimeout(timerRef.current);

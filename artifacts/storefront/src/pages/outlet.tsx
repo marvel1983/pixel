@@ -1,29 +1,15 @@
 import { useMemo } from "react";
-import { MOCK_PRODUCTS } from "@/lib/mock-data";
-import {
-  useListingFilters,
-  applyFilters,
-  paginate,
-} from "@/lib/use-listing-filters";
+import { useListingFilters } from "@/lib/use-listing-filters";
+import { useProducts, toMockProduct } from "@/lib/use-products";
 import { Breadcrumbs } from "@/components/shop/breadcrumbs";
 import { FilterSidebar } from "@/components/shop/filter-sidebar";
 import { ProductGrid } from "@/components/shop/product-grid";
 
 export default function OutletPage() {
-  const { filters, setFilters, perPage } = useListingFilters();
-
-  const saleProducts = useMemo(
-    () =>
-      MOCK_PRODUCTS.filter((p) =>
-        p.variants.some((v) => v.compareAtPriceUsd !== null),
-      ),
-    [],
-  );
-
-  const { items, totalPages, currentPage, totalItems } = useMemo(() => {
-    const filtered = applyFilters(saleProducts, filters);
-    return paginate(filtered, filters.page, perPage);
-  }, [saleProducts, filters, perPage]);
+  const { filters, setFilters, perPage } = useListingFilters({ defaultSort: "discount-desc" });
+  const { items, total, facets, loading } = useProducts(filters, perPage);
+  const products = useMemo(() => items.map(toMockProduct), [items]);
+  const totalPages = Math.max(1, Math.ceil(total / perPage));
 
   return (
     <div className="container mx-auto px-4 py-6">
@@ -34,16 +20,22 @@ export default function OutletPage() {
       </p>
 
       <div className="flex flex-col lg:flex-row gap-6">
-        <FilterSidebar filters={filters} onFilterChange={setFilters} />
-        <ProductGrid
-          products={items}
-          totalItems={totalItems}
-          currentPage={currentPage}
-          totalPages={totalPages}
-          sort={filters.sort}
-          onSortChange={(sort) => setFilters({ sort })}
-          onPageChange={(page) => setFilters({ page })}
-        />
+        <FilterSidebar filters={filters} facets={facets} onFilterChange={setFilters} />
+        {loading && products.length === 0 ? (
+          <div className="flex-1 flex items-center justify-center py-16 text-muted-foreground text-sm">
+            Loading products…
+          </div>
+        ) : (
+          <ProductGrid
+            products={products}
+            totalItems={total}
+            currentPage={filters.page}
+            totalPages={totalPages}
+            sort={filters.sort}
+            onSortChange={(sort) => setFilters({ sort })}
+            onPageChange={(page) => setFilters({ page })}
+          />
+        )}
       </div>
     </div>
   );

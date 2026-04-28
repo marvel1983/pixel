@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import type { ListingFilters } from "./use-listing-filters";
+import type { MockProduct } from "./mock-data";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -54,6 +55,29 @@ export interface Facets {
   attributes: FacetAttribute[];
 }
 
+export function toMockProduct(p: ApiProduct): MockProduct {
+  return {
+    id: p.id,
+    name: p.name,
+    slug: p.slug,
+    imageUrl: p.imageUrl,
+    categorySlug: p.categorySlug ?? "",
+    avgRating: parseFloat(p.avgRating ?? "0") || 0,
+    reviewCount: p.reviewCount,
+    isFeatured: p.isFeatured,
+    isNew: false,
+    variants: p.variants.map((v) => ({
+      id: v.id,
+      name: v.name,
+      sku: v.sku,
+      platform: v.platform ?? "",
+      priceUsd: v.priceUsd,
+      compareAtPriceUsd: v.compareAtPriceUsd,
+      stockCount: v.stockCount,
+    })),
+  };
+}
+
 interface ProductsResult {
   items: ApiProduct[];
   total: number;
@@ -62,7 +86,7 @@ interface ProductsResult {
   error: string | null;
 }
 
-export function useProducts(filters: ListingFilters, perPage: number): ProductsResult {
+export function useProducts(filters: ListingFilters, perPage: number, extraParams?: Record<string, string>): ProductsResult {
   const [state, setState] = useState<ProductsResult>({
     items: [],
     total: 0,
@@ -87,6 +111,9 @@ export function useProducts(filters: ListingFilters, perPage: number): ProductsR
     if (Object.keys(filters.attrs).length) p.set("attrs", JSON.stringify(filters.attrs));
     p.set("limit", String(perPage));
     p.set("offset", String((filters.page - 1) * perPage));
+    if (extraParams) {
+      for (const [k, v] of Object.entries(extraParams)) p.set(k, v);
+    }
 
     fetch(`${API}/products?${p.toString()}`)
       .then((r) => r.json())
@@ -110,7 +137,7 @@ export function useProducts(filters: ListingFilters, perPage: number): ProductsR
     filters.q, filters.categories.join(","), filters.platforms.join(","),
     filters.minPrice, filters.maxPrice, filters.inStockOnly, filters.sort,
     filters.page, filters.tags.join(","), JSON.stringify(filters.attrs),
-    perPage,
+    perPage, JSON.stringify(extraParams ?? null),
   ]);
 
   return state;

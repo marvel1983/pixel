@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "wouter";
-import { MOCK_PRODUCTS, type MockProduct, type MockVariant } from "@/lib/mock-data";
+import type { MockProduct, MockVariant } from "@/lib/mock-data";
 import { Breadcrumbs } from "@/components/shop/breadcrumbs";
 import { ProductImage } from "@/components/product-detail/product-image";
 import { ProductMeta } from "@/components/product-detail/product-meta";
@@ -19,6 +19,7 @@ import { addToRecentlyViewed } from "@/components/home/recently-viewed";
 import { setSeoMeta, clearSeoMeta } from "@/lib/seo";
 import { ProductJsonLd, BreadcrumbJsonLd } from "@/components/seo/json-ld";
 import { Separator } from "@/components/ui/separator";
+import { toMockProduct } from "@/lib/use-products";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -34,42 +35,36 @@ export default function ProductDetailPage() {
   const params = useParams<{ slug: string }>();
   const slug = params.slug ?? "";
 
-  const mockProduct = useMemo(
-    () => MOCK_PRODUCTS.find((p) => p.slug === slug),
-    [slug],
-  );
-
-  const [apiProduct, setApiProduct] = useState<MockProduct | null | undefined>(undefined); // undefined = loading
-
-  useEffect(() => {
-    if (mockProduct) {
-      setApiProduct(null);
-      return;
-    }
-    setApiProduct(undefined);
-    fetch(`${API}/products/${encodeURIComponent(slug)}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => setApiProduct(data ?? null))
-      .catch(() => setApiProduct(null));
-  }, [slug, mockProduct]);
-
-  const product: MockProduct | undefined = mockProduct ?? (apiProduct ?? undefined);
-
+  const [product, setProduct] = useState<MockProduct | null | undefined>(undefined);
+  const [relatedProducts, setRelatedProducts] = useState<MockProduct[]>([]);
   const [selectedVariant, setSelectedVariant] = useState<MockVariant | null>(null);
   const [quantity, setQuantity] = useState(1);
 
   useEffect(() => {
-    if (product?.variants[0]) {
-      setSelectedVariant(product.variants[0]);
-    }
-  }, [product]);
-
-  const relatedProducts = useMemo(() => {
-    if (!product) return [];
-    return MOCK_PRODUCTS.filter(
-      (p) => p.categorySlug === product.categorySlug && p.id !== product.id,
-    );
-  }, [product]);
+    setProduct(undefined);
+    setRelatedProducts([]);
+    fetch(`${API}/products/${encodeURIComponent(slug)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!data) { setProduct(null); return; }
+        const p = toMockProduct(data);
+        setProduct(p);
+        setSelectedVariant(p.variants[0] ?? null);
+        if (p.categorySlug) {
+          fetch(`${API}/products?cat=${encodeURIComponent(p.categorySlug)}&limit=6&stock=1`)
+            .then((r) => (r.ok ? r.json() : null))
+            .then((res) => {
+              if (res?.items) {
+                setRelatedProducts(
+                  res.items.map(toMockProduct).filter((r: MockProduct) => r.id !== data.id),
+                );
+              }
+            })
+            .catch(() => {});
+        }
+      })
+      .catch(() => setProduct(null));
+  }, [slug]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -86,12 +81,10 @@ export default function ProductDetailPage() {
         ogImage: product.imageUrl ?? undefined,
       });
     }
-    return () => {
-      clearSeoMeta();
-    };
+    return () => { clearSeoMeta(); };
   }, [product]);
 
-  if (!mockProduct && apiProduct === undefined) {
+  if (product === undefined) {
     return <div className="container mx-auto px-4 py-16 text-center text-muted-foreground">Loading…</div>;
   }
 
@@ -99,9 +92,7 @@ export default function ProductDetailPage() {
     return (
       <div className="container mx-auto px-4 py-16 text-center">
         <h1 className="text-2xl font-bold mb-2">Product Not Found</h1>
-        <p className="text-muted-foreground">
-          The product you're looking for doesn't exist.
-        </p>
+        <p className="text-muted-foreground">The product you're looking for doesn't exist.</p>
       </div>
     );
   }
@@ -120,22 +111,10 @@ export default function ProductDetailPage() {
       <BreadcrumbJsonLd items={breadcrumbs} />
       <Breadcrumbs crumbs={breadcrumbs} />
 
-      {/* 3-column grid: image | meta | purchase card */}
       <div className="grid gap-6 lg:grid-cols-[320px_1fr_300px] lg:items-start">
         <ProductImage imageUrl={product.imageUrl} productName={product.name} additionalImages={product.additionalImages} />
-
-        <ProductMeta
-          product={product}
-          selectedVariant={selectedVariant}
-          onVariantChange={setSelectedVariant}
-        />
-
-        <ProductPurchaseCard
-          product={product}
-          selectedVariant={selectedVariant}
-          quantity={quantity}
-          onQuantityChange={setQuantity}
-        />
+        <ProductMeta product={product} selectedVariant={selectedVariant} onVariantChange={setSelectedVariant} />
+        <ProductPurchaseCard product={product} selectedVariant={selectedVariant} quantity={quantity} onQuantityChange={setQuantity} />
       </div>
 
       <SocialShare productName={product.name} />
@@ -156,19 +135,10 @@ export default function ProductDetailPage() {
       />
 
       <Separator />
-
-      <ReviewsSection
-        productId={product.id}
-        avgRating={product.avgRating}
-        reviewCount={product.reviewCount}
-      />
-
+      <ReviewsSection productId={product.id} avgRating={product.avgRating} reviewCount={product.reviewCount} />
       <Separator />
-
       <QASection productId={product.id} />
-
       <Separator />
-
       <RelatedProducts products={relatedProducts} />
     </div>
   );

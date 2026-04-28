@@ -9,7 +9,7 @@ import { useCartStore } from "@/stores/cart-store";
 import { useCurrencyStore } from "@/stores/currency-store";
 import { useToast } from "@/hooks/use-toast";
 import type { MockProduct } from "@/lib/mock-data";
-import { MOCK_PRODUCTS } from "@/lib/mock-data";
+import { toMockProduct } from "@/lib/use-products";
 
 export default function WishlistPage() {
   const { t } = useTranslation();
@@ -20,17 +20,23 @@ export default function WishlistPage() {
   const [products, setProducts] = useState<MockProduct[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const API = import.meta.env.VITE_API_URL ?? "/api";
+
   useEffect(() => {
     if (productIds.length === 0) {
       setProducts([]);
       setLoading(false);
       return;
     }
-    const idSet = new Set(productIds);
-    const found = MOCK_PRODUCTS.filter((p) => idSet.has(p.id));
-    setProducts(found);
-    setLoading(false);
-  }, [productIds]);
+    setLoading(true);
+    fetch(`${API}/products?ids=${productIds.join(",")}&limit=100`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.items) setProducts(data.items.map(toMockProduct));
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [productIds, API]);
 
   function addAllToCart() {
     let added = 0;

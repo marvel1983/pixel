@@ -3,19 +3,21 @@ import { Link } from "wouter";
 import { GitCompareArrows, X, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCompareStore } from "@/stores/compare-store";
-import { MOCK_PRODUCTS, type MockProduct } from "@/lib/mock-data";
+import type { MockProduct } from "@/lib/mock-data";
+import { toMockProduct } from "@/lib/use-products";
+
+const API = import.meta.env.VITE_API_URL ?? "/api";
 
 export function CompareBar() {
   const { productIds, removeProduct, clearAll } = useCompareStore();
   const [products, setProducts] = useState<MockProduct[]>([]);
 
   useEffect(() => {
-    if (productIds.length === 0) {
-      setProducts([]);
-      return;
-    }
-    const idSet = new Set(productIds);
-    setProducts(MOCK_PRODUCTS.filter((p) => idSet.has(p.id)));
+    if (productIds.length === 0) { setProducts([]); return; }
+    fetch(`${API}/products?ids=${productIds.join(",")}&limit=10`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => { if (data?.items) setProducts(data.items.map(toMockProduct)); })
+      .catch(() => {});
   }, [productIds]);
 
   if (productIds.length === 0) return null;
@@ -30,10 +32,7 @@ export function CompareBar() {
 
         <div className="flex items-center gap-2 flex-1 overflow-x-auto">
           {products.map((p) => (
-            <div
-              key={p.id}
-              className="flex items-center gap-2 bg-muted/50 rounded px-2 py-1 shrink-0"
-            >
+            <div key={p.id} className="flex items-center gap-2 bg-muted/50 rounded px-2 py-1 shrink-0">
               <div className="w-8 h-8 rounded bg-muted flex items-center justify-center">
                 {p.imageUrl ? (
                   <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover rounded" />
@@ -50,9 +49,7 @@ export function CompareBar() {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <Button variant="outline" size="sm" onClick={clearAll}>
-            Clear
-          </Button>
+          <Button variant="outline" size="sm" onClick={clearAll}>Clear</Button>
           <Link href="/compare">
             <Button size="sm">
               <GitCompareArrows className="h-3 w-3 mr-1" /> Compare Now
