@@ -101,6 +101,25 @@ function formatOrderResponse(order: Order) {
   };
 }
 
+router.get("/orders/:orderNumber", requireAuth, async (req, res) => {
+  const orderNumber = orderNumberSchema.safeParse(req.params.orderNumber);
+  if (!orderNumber.success) { res.status(400).json({ error: "Invalid order number" }); return; }
+  try {
+    const [order] = await db.select().from(orders).where(
+      and(
+        eq(orders.orderNumber, orderNumber.data),
+        or(eq(orders.userId, req.user!.userId), eq(orders.guestEmail, req.user!.email)),
+      ),
+    ).limit(1);
+    if (!order) { res.status(404).json({ error: "Order not found" }); return; }
+    const details = await fetchOrderWithKeys(order.id);
+    res.json({ order: formatOrderResponse(order), ...details });
+  } catch (err) {
+    logger.error({ err }, "Order detail fetch failed");
+    res.status(500).json({ error: "Failed to fetch order" });
+  }
+});
+
 router.post("/orders/lookup", orderLookupLimit, async (req, res) => {
   const parsed = lookupSchema.safeParse(req.body);
   if (!parsed.success) {
