@@ -12,7 +12,7 @@ const router = Router();
 function resolveLogoUrl(raw: string | null | undefined): string | null {
   if (!raw) return null;
   if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
-  const siteUrl = (process.env.SITE_URL ?? "https://diginek.com").replace(/\/$/, "");
+  const siteUrl = (process.env.SITE_URL ?? "https://pixelcodes.com").replace(/\/$/, "");
   return `${siteUrl}${raw.startsWith("/") ? "" : "/"}${raw}`;
 }
 
