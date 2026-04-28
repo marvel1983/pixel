@@ -95,7 +95,6 @@ function GlobalBreadcrumbs() {
 
 function StorefrontWithMaintenance() {
   useReferralTracking();
-  useVisitorPing();
   const { info, checked } = useMaintenanceCheck();
   if (!checked) return null;
   if (info?.maintenance) {
@@ -190,6 +189,7 @@ function AppRouter() {
 
 function AppInitEffect() {
   const token = useAuthStore((s) => s.token);
+  useVisitorPing();
   useEffect(() => {
     useThemeStore.getState().init();
     // If visitor arrives via a feed link with ?currency=USD, honour it before fetching rates
