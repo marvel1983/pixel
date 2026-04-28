@@ -1,8 +1,8 @@
-import { useMemo, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useSearch } from "wouter";
 import { Link } from "wouter";
 import { useTranslation } from "react-i18next";
-import { MOCK_PRODUCTS, type MockProduct } from "@/lib/mock-data";
+import type { MockProduct } from "@/lib/mock-data";
 import type { SearchResponse, SearchProduct } from "@/lib/search-types";
 import { useListingFilters } from "@/lib/use-listing-filters";
 import { Breadcrumbs } from "@/components/shop/breadcrumbs";
@@ -63,6 +63,16 @@ export default function SearchPage() {
   const [items, setItems] = useState<MockProduct[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [popularProducts, setPopularProducts] = useState<MockProduct[]>([]);
+
+  useEffect(() => {
+    fetch(`${API_URL}/products?sort=popular&limit=6&stock=1`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.items) setPopularProducts(data.items.map(toMockProduct));
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!query.trim()) {
@@ -95,14 +105,6 @@ export default function SearchPage() {
   }, [query, filters, perPage]);
 
   const totalPages = Math.max(1, Math.ceil(total / perPage));
-
-  const popularProducts = useMemo(
-    () =>
-      [...MOCK_PRODUCTS]
-        .sort((a, b) => b.reviewCount - a.reviewCount)
-        .slice(0, 6),
-    [],
-  );
 
   return (
     <div className="container mx-auto px-4 py-6">
