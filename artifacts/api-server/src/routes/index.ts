@@ -94,6 +94,7 @@ import adminMetenziCatalogRouter from "./admin-metenzi-catalog";
 import adminMetenziMappingsRouter from "./admin-metenzi-mappings";
 import adminMetenziSyncRouter from "./admin-metenzi-sync";
 import productsRouter from "./products";
+import visitorsRouter from "./visitors";
 
 const router: IRouter = Router();
 
@@ -192,5 +193,6 @@ router.use(adminMetenziMappingsRouter);
 router.use(adminMetenziSyncRouter);
 router.use(adminFeedsRouter);
 router.use(productsRouter);
+router.use(visitorsRouter);
 
 export default router;

@@ -28,7 +28,7 @@ async function getMaintenanceState() {
   return cachedMaintenance;
 }
 
-const ADMIN_PREFIXES = ["/admin", "/auth", "/maintenance-status", "/robots.txt", "/webhooks"];
+const ADMIN_PREFIXES = ["/admin", "/auth", "/maintenance-status", "/robots.txt", "/webhooks", "/visitors"];
 
 export async function maintenanceMiddleware(req: Request, res: Response, next: NextFunction) {
   const path = req.path;

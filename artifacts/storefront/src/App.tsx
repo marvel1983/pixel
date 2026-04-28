@@ -26,6 +26,7 @@ import {
   ToPrivacyPolicy,
 } from "@/pages/legacy-routes";
 import { useReferralTracking } from "@/hooks/use-referral";
+import { useVisitorPing } from "@/hooks/use-visitor-ping";
 import { ExitIntentPopup } from "@/components/newsletter/exit-intent-popup";
 import { PurchaseToastProvider } from "@/components/social-proof/purchase-toast";
 import { CompareBar } from "@/components/product/compare-bar";
@@ -94,6 +95,7 @@ function GlobalBreadcrumbs() {
 
 function StorefrontWithMaintenance() {
   useReferralTracking();
+  useVisitorPing();
   const { info, checked } = useMaintenanceCheck();
   if (!checked) return null;
   if (info?.maintenance) {
