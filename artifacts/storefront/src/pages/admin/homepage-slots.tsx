@@ -187,9 +187,10 @@ export default function HomepageSlotsPage() {
   }, []);
 
   useEffect(() => {
-    fetch(`${API}/products?limit=500&stock=1`, { headers })
-      .then((r) => r.json())
+    fetch(`${API}/products?limit=500`)
+      .then((r) => r.ok ? r.json() : Promise.reject(r.status))
       .then((d: { items?: ApiProduct[] }) => setAllProducts((d.items ?? []).map(toSlim)))
+      .catch(() => {})
       .finally(() => setLoadingProducts(false));
   }, []);
 
