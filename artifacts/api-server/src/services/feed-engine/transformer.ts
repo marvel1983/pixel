@@ -34,6 +34,7 @@ export function enrichProduct(
   const priceUsd = Number(row.price ?? 0);
   const compareUsd = row.compareAtPrice ? Number(row.compareAtPrice) : null;
   const stock = Number(row.stock ?? 0);
+  const baseUrl = storeUrl.replace(/\/+$/, "");
 
   return {
     ...row,
@@ -43,7 +44,7 @@ export function enrichProduct(
       : "",
     availability: stock > 0 ? "in stock" : "out of stock",
     condition: "new",
-    slug: `${storeUrl}/product/${row.slug ?? ""}?currency=${cfg.targetCurrency}`,
+    slug: `${baseUrl}/product/${row.slug ?? ""}?currency=${cfg.targetCurrency}`,
     description: row.description ? stripHtml(String(row.description)) : "",
     // Raw price in target currency as a number (used by filter evaluator)
     _priceConverted: convertPrice(priceUsd, cfg),
