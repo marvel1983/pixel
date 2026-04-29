@@ -22,6 +22,7 @@ import {
   ToAboutUs,
   ToAffiliates,
   ToCookiePolicy,
+  ToContact,
   ToHowToBuy,
   ToOrderLookup,
   ToPrivacyPolicy,
@@ -155,6 +156,7 @@ function StorefrontWithMaintenance() {
           <Route path="/cookies" component={ToCookiePolicy} />
           <Route path="/orders" component={ToOrderLookup} />
           <Route path="/affiliate" component={ToAffiliates} />
+          <Route path="/contact" component={ToContact} />
           <Route path="/how-to-activate" component={ToHowToBuy} />
           <Route component={StaticPageView} />
         </Switch>

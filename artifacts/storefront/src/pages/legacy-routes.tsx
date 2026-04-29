@@ -41,3 +41,6 @@ export function ToAffiliates() {
 export function ToHowToBuy() {
   return <RedirectTo to="/how-to-buy" />;
 }
+export function ToContact() {
+  return <RedirectTo to="/support" />;
+}
