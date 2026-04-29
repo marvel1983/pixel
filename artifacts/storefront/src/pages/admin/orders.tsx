@@ -348,7 +348,8 @@ export default function AdminOrdersPage() {
                     </span>
                   </td>
                   <td className={`${tableCell} text-center font-mono tabular-nums text-[#8fa0bb] border-r-0`}>
-                    {new Date(r.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                    <div>{new Date(r.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" })}</div>
+                    <div className="text-[10px] text-[#5a6a84]">{new Date(r.createdAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</div>
                   </td>
                 </tr>
               ))}
