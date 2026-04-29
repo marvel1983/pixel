@@ -38,7 +38,7 @@ router.post("/webhooks/stripe", async (req, res) => {
       ? paymentConfig.secretKey
       : process.env.STRIPE_SECRET_KEY ?? "";
     const stripe = createStripeClient(secretKey);
-    const rawBody = req.rawBody ?? JSON.stringify(req.body);
+    const rawBody: string | Buffer = Buffer.isBuffer(req.body) ? req.body : JSON.stringify(req.body);
     event = stripe.webhooks.constructEvent(rawBody, sig as string, webhookSecret);
   } catch (err) {
     logger.warn({ err }, "Stripe webhook signature verification failed");

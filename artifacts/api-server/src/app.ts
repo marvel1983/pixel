@@ -66,11 +66,17 @@ app.use(cors({
   credentials: true,
 }));
 app.use(cookieParser());
+// Stripe webhook needs the raw body Buffer for HMAC verification.
+// express.raw() must be registered BEFORE express.json() so the stream
+// is consumed as a Buffer before json() can parse it for this path.
+app.use("/api/webhooks/stripe", express.raw({ type: "application/json" }));
 app.use(
   express.json({
     limit: "10mb",
     verify: (req: Request, _res, buf) => {
-      if (req.url?.includes("/webhooks/")) {
+      // Capture raw body for non-Stripe webhooks (Metenzi, Checkout.com) that
+      // still need HMAC verification against the original byte sequence.
+      if (req.url?.includes("/webhooks/") && !req.url.includes("/webhooks/stripe")) {
         (req as Request).rawBody = buf.toString("utf8");
       }
     },
