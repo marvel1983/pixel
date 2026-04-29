@@ -115,8 +115,6 @@ const COLS = [
     links: [
       { label: "About Us", href: "/about-us" },
       { label: "Blog", href: "/blog" },
-      { label: "Careers", href: "/careers" },
-      { label: "Press", href: "/press" },
       { label: "Affiliate Program", href: "/affiliates" },
     ],
   },

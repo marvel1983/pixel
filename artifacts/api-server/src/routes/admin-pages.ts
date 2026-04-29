@@ -126,7 +126,7 @@ router.post("/admin/pages/seed", requireAuth, requireAdmin, requirePermission("m
   for (const p of defaultPages) {
     const [existing] = await db.select({ id: pages.id }).from(pages).where(eq(pages.slug, p.slug));
     if (!existing) {
-      await db.insert(pages).values({ ...p, content: `<h1>${p.title}</h1><p>Content coming soon.</p>`, isPublished: true });
+      await db.insert(pages).values({ ...p, content: `<p>Content coming soon.</p>`, isPublished: true });
       seeded++;
     }
   }
