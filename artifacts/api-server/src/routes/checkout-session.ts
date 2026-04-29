@@ -165,6 +165,7 @@ router.post("/checkout/session", requireIdempotencyKey(), async (req, res) => {
       const session = await stripeCircuit.exec(
         async () => stripe.checkout.sessions.create({
           mode: "payment", customer_email: billing.email,
+          payment_method_types: ["card"],
           line_items: [{ price_data: { currency: chargeCurrency, product_data: { name: description }, unit_amount: Math.round(cardTotal * 100) }, quantity: 1 }],
           metadata: { orderId: String(order.id), orderNumber },
           payment_intent_data: { metadata: { orderId: String(order.id), orderNumber } },
