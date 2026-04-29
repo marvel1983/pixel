@@ -102,6 +102,7 @@ export default function HomePage() {
   const { t } = useTranslation();
   const [sectionTypes, setSectionTypes] = useState<string[]>(ALL_TYPES);
   const [hp, setHp] = useState<HomepageProducts>({ featured: [], byCategory: {} });
+  const [categorySlots, setCategorySlots] = useState<Record<string, number[]>>({});
 
   useEffect(() => {
     setSeoMeta({ title: t("seo.homeTitle"), description: t("seo.homeDescription") });
@@ -120,23 +121,31 @@ export default function HomePage() {
         if (ordered.length) setSectionTypes(ordered);
       })
       .catch(() => {});
+
+    fetch(`${API}/homepage-slots`)
+      .then((r) => r.json())
+      .then((d: { slots: Record<string, number[]> }) => { if (d.slots) setCategorySlots(d.slots); })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
-    // Fetch first category + featured immediately (visible on load)
+    function paramsForTab(slug: string): Record<string, string> {
+      const ids = categorySlots[slug];
+      return ids?.length ? { ids: ids.join(",") } : { cat: slug };
+    }
+
     const firstSlug = CATEGORY_TABS[0].categorySlug;
     Promise.all([
       fetchProducts({ featured: "1" }),
-      fetchProducts({ cat: firstSlug }),
+      fetchProducts(paramsForTab(firstSlug)),
     ]).then(([featured, firstItems]) => {
       setHp({ featured, byCategory: { [firstSlug]: firstItems } });
     }).catch(() => {});
 
-    // Fetch remaining categories after initial render settles
     const id = setTimeout(() => {
       Promise.all(
         CATEGORY_TABS.slice(1).map(({ categorySlug }) =>
-          fetchProducts({ cat: categorySlug }).then((items) => [categorySlug, items] as const)
+          fetchProducts(paramsForTab(categorySlug)).then((items) => [categorySlug, items] as const)
         )
       ).then((catResults) => {
         setHp((prev) => {
@@ -148,7 +157,7 @@ export default function HomePage() {
     }, 800);
 
     return () => clearTimeout(id);
-  }, []);
+  }, [categorySlots]);
 
   function renderSection(type: string): ReactNode {
     switch (type) {

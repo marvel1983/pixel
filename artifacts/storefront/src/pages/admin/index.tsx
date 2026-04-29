@@ -30,6 +30,7 @@ import MetenziBalancePage from "./metenzi-balance";
 import MetenziCatalogPage from "./metenzi-catalog";
 import CheckoutUpsellPage from "./checkout-upsell";
 import HomepageSectionsPage from "./homepage-sections";
+import HomepageSlotsPage from "./homepage-slots";
 import BrandSectionsPage from "./brand-sections";
 import EmailTemplatesPage from "./email-templates";
 import EmailTemplateEditPage from "./email-template-edit";
@@ -114,6 +115,7 @@ export default function AdminRoot() {
           <Route path="/admin/user-imports" component={AdminUserImportsPage} />
           <Route path="/admin/reviews" component={AdminReviewsPage} />
           <Route path="/admin/homepage-sections" component={HomepageSectionsPage} />
+          <Route path="/admin/homepage-slots" component={HomepageSlotsPage} />
           <Route path="/admin/brand-sections" component={BrandSectionsPage} />
           <Route path="/admin/email-templates/:id" component={EmailTemplateEditPage} />
           <Route path="/admin/email-templates" component={EmailTemplatesPage} />

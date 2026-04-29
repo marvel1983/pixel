@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { homepageSections } from "@workspace/db/schema";
+import { homepageSections, siteSettings } from "@workspace/db/schema";
 import { eq, asc } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
@@ -58,6 +58,33 @@ router.get("/homepage-sections", async (_req, res) => {
     }
   }
   res.json({ sections });
+});
+
+router.get("/admin/homepage-slots", requireAuth, requireAdmin, requirePermission("manageContent"), async (_req, res) => {
+  const [row] = await db.select({ slots: siteSettings.homepageCategorySlots }).from(siteSettings).limit(1);
+  res.json({ slots: row?.slots ?? {} });
+});
+
+router.put("/admin/homepage-slots", requireAuth, requireAdmin, requirePermission("manageContent"), async (req, res) => {
+  const slots = req.body.slots;
+  if (!slots || typeof slots !== "object" || Array.isArray(slots)) { res.status(400).json({ error: "slots object required" }); return; }
+  for (const [key, val] of Object.entries(slots)) {
+    if (!Array.isArray(val) || !val.every((v) => typeof v === "number" && Number.isInteger(v))) {
+      res.status(400).json({ error: `Invalid slot value for key "${key}"` }); return;
+    }
+  }
+  const [existing] = await db.select({ id: siteSettings.id }).from(siteSettings).limit(1);
+  if (existing) {
+    await db.update(siteSettings).set({ homepageCategorySlots: slots, updatedAt: new Date() }).where(eq(siteSettings.id, existing.id));
+  } else {
+    await db.insert(siteSettings).values({ homepageCategorySlots: slots });
+  }
+  res.json({ slots });
+});
+
+router.get("/homepage-slots", async (_req, res) => {
+  const [row] = await db.select({ slots: siteSettings.homepageCategorySlots }).from(siteSettings).limit(1);
+  res.json({ slots: row?.slots ?? {} });
 });
 
 export default router;

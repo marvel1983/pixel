@@ -79,6 +79,7 @@ const sections: NavSection[] = [
     title: "CONTENT",
     items: [
       { label: "Homepage",        href: "/admin/homepage-sections", icon: Layout },
+      { label: "Category Slots",  href: "/admin/homepage-slots",   icon: Layout },
       { label: "Brand Sections",  href: "/admin/brand-sections",   icon: ShoppingBag },
       { label: "Blog Posts",      href: "/admin/blog",             icon: BookOpen },
       { label: "Blog Categories", href: "/admin/blog/categories",  icon: Tags },

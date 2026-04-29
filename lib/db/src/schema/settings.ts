@@ -121,6 +121,7 @@ export const siteSettings = pgTable("site_settings", {
   turnstileSecretKey: text("turnstile_secret_key"),
   riskConfig: jsonb("risk_config").$type<RiskScoringConfig>(),
   processingFeeTiers: jsonb("processing_fee_tiers").$type<Array<{ minAmount: number; feePercent: number; feeFixed: number }>>(),
+  homepageCategorySlots: jsonb("homepage_category_slots").$type<Record<string, number[]>>(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
