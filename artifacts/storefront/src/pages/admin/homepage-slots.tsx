@@ -187,11 +187,27 @@ export default function HomepageSlotsPage() {
   }, []);
 
   useEffect(() => {
-    fetch(`${API}/products?limit=500`)
-      .then((r) => r.ok ? r.json() : Promise.reject(r.status))
-      .then((d: { items?: ApiProduct[] }) => setAllProducts((d.items ?? []).map(toSlim)))
-      .catch(() => {})
-      .finally(() => setLoadingProducts(false));
+    async function loadAll() {
+      const PAGE = 100;
+      const first = await fetch(`${API}/products?limit=${PAGE}&offset=0`);
+      if (!first.ok) return;
+      const d = await first.json() as { items?: ApiProduct[]; total?: number };
+      const items = [...(d.items ?? [])];
+      const total = d.total ?? 0;
+      if (total > PAGE) {
+        const pages = Math.ceil(total / PAGE) - 1;
+        const rest = await Promise.all(
+          Array.from({ length: pages }, (_, i) =>
+            fetch(`${API}/products?limit=${PAGE}&offset=${(i + 1) * PAGE}`)
+              .then((r) => r.ok ? r.json() : { items: [] })
+              .then((x: { items?: ApiProduct[] }) => x.items ?? [])
+          )
+        );
+        items.push(...rest.flat());
+      }
+      setAllProducts(items.map(toSlim));
+    }
+    loadAll().catch(() => {}).finally(() => setLoadingProducts(false));
   }, []);
 
   const setTabSlots = useCallback((tab: string, ids: number[]) => {
