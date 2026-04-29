@@ -7,6 +7,7 @@ import {
   orderConfirmationEmail,
   keyDeliveryEmail,
   passwordResetEmail,
+  adminInviteEmail,
 } from "./templates";
 import { invoiceEmail } from "./invoice-template";
 import { generateInvoicePdf } from "./invoice-pdf";
@@ -98,6 +99,12 @@ export async function sendPasswordResetEmail(
   const brand = await getSiteBrand();
   const { subject, html } = passwordResetEmail({ ...data, ...brand });
   await enqueueEmail(to, subject, html, { type: "password_reset" });
+}
+
+export async function sendAdminInviteEmail(to: string, inviteLink: string): Promise<void> {
+  const brand = await getSiteBrand();
+  const { subject, html } = adminInviteEmail({ ...brand, inviteLink, expiresIn: "7 days" });
+  await enqueueEmail(to, subject, html, { type: "admin_invite" });
 }
 
 export async function sendInvoiceEmail(

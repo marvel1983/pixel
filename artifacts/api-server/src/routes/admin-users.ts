@@ -7,6 +7,7 @@ import { requireAuth, requireAdmin, signToken } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import bcrypt from "bcryptjs";
 import { paramString } from "../lib/route-params";
+import { sendAdminInviteEmail } from "../lib/email";
 
 const router = Router();
 
@@ -66,6 +67,9 @@ router.post("/admin/admin-users/invite", requireAuth, requireAdmin, requireSuper
       invitedBy: req.user!.userId, expiresAt,
       permissionsJson: JSON.stringify(permissions || {}),
     });
+    const storeUrl = (process.env.STORE_PUBLIC_URL ?? process.env.APP_PUBLIC_URL ?? "https://pixelcodes.com").replace(/\/$/, "");
+    const inviteUrl = `${storeUrl}/admin/accept-invite?token=${inviteToken}`;
+    sendAdminInviteEmail(email.toLowerCase(), inviteUrl).catch(() => {});
     res.json({ success: true, inviteToken, inviteUrl: `/admin/accept-invite?token=${inviteToken}` });
   }
 });

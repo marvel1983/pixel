@@ -170,6 +170,30 @@ ${et(lang, "email.keys.warning")}
   };
 }
 
+export interface AdminInviteData {
+  siteName: string;
+  logoUrl?: string | null;
+  inviteLink: string;
+  expiresIn: string;
+}
+
+export function adminInviteEmail(data: AdminInviteData): { subject: string; html: string } {
+  const content = `
+<h2 style="margin:0 0 16px;color:#212529;font-size:20px;">You've been invited to manage ${data.siteName}</h2>
+<p style="color:#495057;line-height:1.6;margin:0 0 16px;">
+  You have been invited to join the ${data.siteName} admin panel. Click the button below to set up your account.
+</p>
+<div style="text-align:center;margin:0 0 24px;">
+<a href="${data.inviteLink}" style="display:inline-block;background:${BRAND_COLOR};color:#fff;padding:14px 36px;border-radius:6px;text-decoration:none;font-weight:600;font-size:15px;">Accept Invitation</a>
+</div>
+<p style="color:#868e96;font-size:13px;margin:0 0 8px;">This invitation expires in ${data.expiresIn}. If you weren't expecting this, you can ignore it.</p>
+<p style="color:#868e96;font-size:12px;margin:0;word-break:break-all;">Link: ${data.inviteLink}</p>`;
+  return {
+    subject: `Admin invitation — ${data.siteName}`,
+    html: layout({ siteName: data.siteName, logoUrl: data.logoUrl }, content),
+  };
+}
+
 export interface PasswordResetData {
   siteName: string;
   logoUrl?: string | null;

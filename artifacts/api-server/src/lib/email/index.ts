@@ -6,6 +6,7 @@ export {
   sendKeyDeliveryEmail,
   sendPasswordResetEmail,
   sendInvoiceEmail,
+  sendAdminInviteEmail,
 } from "./send-emails";
 export {
   welcomeEmail,
