@@ -23,6 +23,11 @@
     "onlyBuiltDependencies": [
       "esbuild",
       "puppeteer"
-    ]
+    ],
+    "peerDependencyRules": {
+      "allowedVersions": {
+        "drizzle-orm>@opentelemetry/api": "*"
+      }
+    }
   }
 }
