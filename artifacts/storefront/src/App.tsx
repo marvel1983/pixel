@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect } from "react";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { ensureCsrfToken } from "@/lib/api-client";
+import { captureAttribution } from "@/lib/attribution";
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -201,6 +202,7 @@ function AppInitEffect() {
         store.setCode(urlCurrency.toUpperCase() as Parameters<typeof store.setCode>[0]);
       }
     }
+    captureAttribution();
     useCurrencyStore.getState().fetchRates();
     useFlashSaleStore.getState().load();
     useLoyaltyStore.getState().load();

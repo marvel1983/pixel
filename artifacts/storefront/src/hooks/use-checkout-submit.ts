@@ -5,6 +5,7 @@ import type { AppliedGiftCard } from "@/components/checkout/gift-card-input";
 import { validateBilling } from "@/lib/checkout-validation";
 import { uuidV4 } from "@/lib/uuid";
 import { hasRegionMismatch } from "@/components/cart/region-warning";
+import { getAttribution } from "@/lib/attribution";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -94,12 +95,14 @@ export function useCheckoutSubmit(params: Params) {
     const cardTotal = Math.max(0, total - walletAmount);
     const needsCardPayment = cardTotal > 0.01 && paymentMethod === "card";
 
+    const attribution = getAttribution();
     const sharedPayload = {
       billing, items, coupon, cppSelected, vatNumber: billing.vatNumber || undefined,
       total: total.toFixed(2), giftCards: appliedGiftCards.map((c) => ({ code: c.code, amount: c.applied })),
       loyaltyPointsUsed: loyaltyPoints || undefined, walletAmountUsd: walletAmount > 0 ? walletAmount : undefined,
       serviceIds: selectedServiceIds.length > 0 ? selectedServiceIds : undefined,
       guestPassword: guestPassword || undefined, locale,
+      attribution: attribution || undefined,
     };
 
     const subscribeNewsletter = () => {

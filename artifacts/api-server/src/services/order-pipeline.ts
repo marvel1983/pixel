@@ -54,6 +54,7 @@ interface OrderInput {
   services?: Array<{ id: number; name: string; priceUsd: string }>;
   locale?: string;
   clientIp?: string;
+  attribution?: { utm_source?: string; utm_medium?: string; utm_campaign?: string; referrer?: string };
 }
 
 export interface FulfillmentInput {
@@ -253,6 +254,7 @@ export async function executeOrderPipeline(input: OrderInput) {
       userId: input.userId ?? null, cppSelected: input.cppSelected,
       cppAmountUsd: cppAmount.toFixed(2), taxRate: input.taxRate.toFixed(2),
       taxAmountUsd: input.taxAmount.toFixed(2), vatNumber: input.vatNumber,
+      attribution: input.attribution ?? null,
     })
     .returning({ id: orders.id });
 

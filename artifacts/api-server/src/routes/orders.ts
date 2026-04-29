@@ -45,6 +45,12 @@ const orderSchema = z.object({
   loyaltyPointsUsed: z.number().int().min(0).optional(),
   serviceIds: z.array(z.number().int().positive()).max(10).optional(),
   locale: z.string().max(10).optional(),
+  attribution: z.object({
+    utm_source: z.string().max(100).optional(),
+    utm_medium: z.string().max(100).optional(),
+    utm_campaign: z.string().max(100).optional(),
+    referrer: z.string().max(300).optional(),
+  }).optional(),
 });
 
 const generateOrderNumber = () => `PC-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
@@ -225,6 +231,7 @@ router.post("/orders", checkoutLimit, requireIdempotencyKey(), async (req, res) 
       walletAmountUsd: walletDeduction > 0 ? walletDeduction : undefined,
       userId, services: validatedServices.length > 0 ? validatedServices : undefined,
       locale: userLocale, clientIp: req.ip ?? (req.headers["x-real-ip"] as string) ?? "",
+      attribution: parsed.data.attribution ?? undefined,
     });
     res.status(201).json({ orderNumber: result.orderNumber, status: result.status, message: "Order placed successfully" });
   } catch (err) {

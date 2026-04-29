@@ -52,6 +52,12 @@ const sessionSchema = z.object({
   locale: z.string().max(10).optional(),
   successUrl: z.string().url().optional(),
   cancelUrl: z.string().url().optional(),
+  attribution: z.object({
+    utm_source: z.string().max(100).optional(),
+    utm_medium: z.string().max(100).optional(),
+    utm_campaign: z.string().max(100).optional(),
+    referrer: z.string().max(300).optional(),
+  }).optional(),
 });
 
 router.post("/checkout/session", requireIdempotencyKey(), async (req, res) => {
@@ -118,6 +124,7 @@ router.post("/checkout/session", requireIdempotencyKey(), async (req, res) => {
     userId: userId ?? null, cppSelected: cppSelected ?? false, cppAmountUsd: cppAmount.toFixed(2),
     taxRate: taxRate.toFixed(2), taxAmountUsd: taxAmount.toFixed(2),
     vatNumber: vatNumber ?? null, billingSnapshot: billing,
+    attribution: parsed.data.attribution ?? null,
   }).returning({ id: orders.id });
 
   let loyaltyRedeemed = false;

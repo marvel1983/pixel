@@ -58,6 +58,7 @@ router.get("/admin/orders", requireAuth, requireAdmin, requirePermission("manage
       subtotalUsd: orders.subtotalUsd, discountUsd: orders.discountUsd, totalUsd: orders.totalUsd,
       cppSelected: orders.cppSelected, cppAmountUsd: orders.cppAmountUsd,
       couponId: orders.couponId, currencyCode: orders.currencyCode, createdAt: orders.createdAt,
+      attribution: orders.attribution,
     }).from(orders).where(whereClause).orderBy(desc(orders.createdAt)).limit(limit).offset(offset),
   ]);
 

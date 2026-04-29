@@ -73,6 +73,12 @@ export const orders = pgTable("orders", {
   }>(),
   ipAddress: varchar("ip_address", { length: 45 }),
   userAgent: text("user_agent"),
+  attribution: jsonb("attribution").$type<{
+    utm_source?: string;
+    utm_medium?: string;
+    utm_campaign?: string;
+    referrer?: string;
+  }>(),
   notes: text("notes"),
   riskHold: boolean("risk_hold").notNull().default(false),
   riskScore: integer("risk_score"),

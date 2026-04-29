@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthStore } from "@/stores/auth-store";
 import { useToast } from "@/hooks/use-toast";
+import { formatSource } from "@/lib/attribution";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -14,6 +15,7 @@ interface OrderRow {
   cppSelected: boolean; cppAmountUsd: string;
   couponId: number | null; createdAt: string;
   items: { productName: string; quantity: number }[]; itemCount: number;
+  attribution?: { utm_source?: string; utm_medium?: string; utm_campaign?: string; referrer?: string } | null;
 }
 
 interface HeldOrder {
@@ -293,6 +295,7 @@ export default function AdminOrdersPage() {
                 <th className={`${thBase} w-[60px] text-center`}>CPP</th>
                 <th className={`${thBase} w-[70px] text-center`}>Coupon</th>
                 <th className={`${thBase} w-[130px] text-center`}>Status</th>
+                <th className={`${thBase} w-[110px] text-center`}>Source</th>
                 <th className={`${thBase} w-[95px] text-center border-r-0`}>Date</th>
               </tr>
             </thead>
@@ -347,6 +350,9 @@ export default function AdminOrdersPage() {
                       {r.status.replace("_", " ")}
                     </span>
                   </td>
+                  <td className={`${tableCell} text-center text-[11px] text-[#9ca8bc]`}>
+                    {formatSource(r.attribution)}
+                  </td>
                   <td className={`${tableCell} text-center font-mono tabular-nums text-[#8fa0bb] border-r-0`}>
                     <div>{new Date(r.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" })}</div>
                     <div className="text-[10px] text-[#5a6a84]">{new Date(r.createdAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</div>
@@ -355,7 +361,7 @@ export default function AdminOrdersPage() {
               ))}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="px-3 py-12 text-center text-[13px] text-[#4a5570]">
+                  <td colSpan={11} className="px-3 py-12 text-center text-[13px] text-[#4a5570]">
                     No orders found
                   </td>
                 </tr>
