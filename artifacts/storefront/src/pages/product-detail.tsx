@@ -36,17 +36,20 @@ export default function ProductDetailPage() {
   const slug = params.slug ?? "";
 
   const [product, setProduct] = useState<MockProduct | null | undefined>(undefined);
+  const [fetchError, setFetchError] = useState(false);
   const [relatedProducts, setRelatedProducts] = useState<MockProduct[]>([]);
   const [selectedVariant, setSelectedVariant] = useState<MockVariant | null>(null);
   const [quantity, setQuantity] = useState(1);
 
   useEffect(() => {
     setProduct(undefined);
+    setFetchError(false);
     setRelatedProducts([]);
     fetch(`${API}/products/${encodeURIComponent(slug)}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (!data) { setProduct(null); return; }
+      .then(async (r) => {
+        if (r.status === 404) { setProduct(null); return; }
+        if (!r.ok) { setFetchError(true); return; }
+        const data = await r.json();
         const p = toMockProduct(data);
         setProduct(p);
         setSelectedVariant(p.variants[0] ?? null);
@@ -63,7 +66,7 @@ export default function ProductDetailPage() {
             .catch(() => {});
         }
       })
-      .catch(() => setProduct(null));
+      .catch(() => setFetchError(true));
   }, [slug]);
 
   useEffect(() => {
@@ -84,8 +87,18 @@ export default function ProductDetailPage() {
     return () => { clearSeoMeta(); };
   }, [product]);
 
-  if (product === undefined) {
+  if (product === undefined && !fetchError) {
     return <div className="container mx-auto px-4 py-16 text-center text-muted-foreground">Loading…</div>;
+  }
+
+  if (fetchError) {
+    return (
+      <div className="container mx-auto px-4 py-16 text-center">
+        <h1 className="text-2xl font-bold mb-2">Something went wrong</h1>
+        <p className="text-muted-foreground mb-4">Could not load this product. Please try again.</p>
+        <button onClick={() => window.location.reload()} className="px-4 py-2 bg-primary text-white rounded-md text-sm">Reload page</button>
+      </div>
+    );
   }
 
   if (!product || !selectedVariant) {
