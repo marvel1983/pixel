@@ -102,7 +102,7 @@ async function seed() {
     { question: "How do I receive my license key?", answer: "After your payment is confirmed, your license key will be instantly available in your order confirmation page and sent to your email.", categoryLabel: "Orders", sortOrder: 1 },
     { question: "Are these keys genuine?", answer: "Yes, all our keys are 100% genuine and sourced from authorized distributors. Every key is guaranteed to activate successfully.", categoryLabel: "Products", sortOrder: 2 },
     { question: "What payment methods do you accept?", answer: "We accept all major credit and debit cards through our secure payment processor. You can also pay using your PixelCodes wallet balance.", categoryLabel: "Payment", sortOrder: 3 },
-    { question: "Can I get a refund?", answer: "If your key fails to activate, contact our support team and we will provide a replacement or full refund within 30 days of purchase.", categoryLabel: "Refunds", sortOrder: 4 },
+    { question: "Can I get a refund?", answer: "If your key fails to activate, contact our support team within 15 days of purchase and we will provide a replacement or full refund. Keys must be used within 15 days of purchase or the warranty is voided. No refund is issued if the key was received and successfully activated.", categoryLabel: "Refunds", sortOrder: 4 },
   ]);
 
   const defaultPages = [
