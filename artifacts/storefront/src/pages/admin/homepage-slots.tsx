@@ -8,6 +8,8 @@ import { GripVertical, X, Search, Loader2, Save } from "lucide-react";
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
 const TABS = [
+  { value: "featured",            label: "Featured Products" },
+  { value: "new-additions",       label: "New Additions" },
   { value: "operating-systems",   label: "Operating Systems" },
   { value: "office-productivity", label: "Office & Productivity" },
   { value: "antivirus-security",  label: "Antivirus & Security" },
@@ -60,12 +62,14 @@ function TabPanel({ tabValue, selectedIds, onChange, allProducts, loadingProduct
     .map((id) => allProducts.find((p) => p.id === id))
     .filter((p): p is SlimProduct => !!p);
 
+  const isFreeSlot = tabValue === "featured" || tabValue === "new-additions";
+
   const available = allProducts.filter(
-    (p) => (p.categorySlug === tabValue) && !selectedIds.includes(p.id) &&
+    (p) => (isFreeSlot || p.categorySlug === tabValue) && !selectedIds.includes(p.id) &&
       (query.trim() === "" || p.name.toLowerCase().includes(query.toLowerCase()))
   );
 
-  const unfiltered = allProducts.filter(
+  const unfiltered = isFreeSlot ? [] : allProducts.filter(
     (p) => !selectedIds.includes(p.id) && query.trim() !== "" &&
       p.categorySlug !== tabValue && p.name.toLowerCase().includes(query.toLowerCase())
   );

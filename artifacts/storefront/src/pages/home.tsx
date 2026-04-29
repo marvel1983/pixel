@@ -95,13 +95,14 @@ const SECTION_VARIANT: Partial<Record<string, "default" | "muted" | "card">> = {
 
 interface HomepageProducts {
   featured: MockProduct[];
+  newAdditions: MockProduct[];
   byCategory: Record<string, MockProduct[]>;
 }
 
 export default function HomePage() {
   const { t } = useTranslation();
   const [sectionTypes, setSectionTypes] = useState<string[]>(ALL_TYPES);
-  const [hp, setHp] = useState<HomepageProducts>({ featured: [], byCategory: {} });
+  const [hp, setHp] = useState<HomepageProducts>({ featured: [], newAdditions: [], byCategory: {} });
   const [categorySlots, setCategorySlots] = useState<Record<string, number[]>>({});
 
   useEffect(() => {
@@ -129,23 +130,24 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    function paramsForTab(slug: string): Record<string, string> {
-      const ids = categorySlots[slug];
-      return ids?.length ? { ids: ids.join(",") } : { cat: slug };
+    function paramsForSlot(key: string, fallback: Record<string, string>): Record<string, string> {
+      const ids = categorySlots[key];
+      return ids?.length ? { ids: ids.join(",") } : fallback;
     }
 
     const firstSlug = CATEGORY_TABS[0].categorySlug;
     Promise.all([
-      fetchProducts({ featured: "1" }),
-      fetchProducts(paramsForTab(firstSlug)),
-    ]).then(([featured, firstItems]) => {
-      setHp({ featured, byCategory: { [firstSlug]: firstItems } });
+      fetchProducts(paramsForSlot("featured", { featured: "1" })),
+      fetchProducts(paramsForSlot("new-additions", { featured: "1" })),
+      fetchProducts(paramsForSlot(firstSlug, { cat: firstSlug })),
+    ]).then(([featured, newAdditions, firstItems]) => {
+      setHp({ featured, newAdditions, byCategory: { [firstSlug]: firstItems } });
     }).catch(() => {});
 
     const id = setTimeout(() => {
       Promise.all(
         CATEGORY_TABS.slice(1).map(({ categorySlug }) =>
-          fetchProducts(paramsForTab(categorySlug)).then((items) => [categorySlug, items] as const)
+          fetchProducts(paramsForSlot(categorySlug, { cat: categorySlug })).then((items) => [categorySlug, items] as const)
         )
       ).then((catResults) => {
         setHp((prev) => {
@@ -179,7 +181,7 @@ export default function HomePage() {
       case "PRODUCT_SPOTLIGHT":
         return hp.featured.length > 0 ? <FeaturedSpotlight products={hp.featured} /> : null;
       case "NEW_ADDITIONS":
-        return hp.featured.length > 0 ? <NewAdditions products={hp.featured.filter((_, i) => i < 6)} /> : null;
+        return hp.newAdditions.length > 0 ? <NewAdditions products={hp.newAdditions} /> : null;
       case "FEATURED_BUNDLES":
         return <FeaturedBundles />;
       default:
