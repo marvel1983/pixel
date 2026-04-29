@@ -10,7 +10,8 @@ export interface Attribution {
 /** Call once on app startup. Captures UTM params + referrer on first landing only. */
 export function captureAttribution(): void {
   try {
-    if (sessionStorage.getItem(KEY)) return;
+    // Use !== null so an empty "{}" stored for direct traffic still blocks re-capture on Stripe redirect-back
+    if (sessionStorage.getItem(KEY) !== null) return;
     const p = new URLSearchParams(window.location.search);
     const attr: Attribution = {};
     const src = p.get("utm_source"); if (src) attr.utm_source = src.slice(0, 100);
@@ -18,7 +19,8 @@ export function captureAttribution(): void {
     const cmp = p.get("utm_campaign"); if (cmp) attr.utm_campaign = cmp.slice(0, 100);
     const ref = document.referrer;
     if (ref && !ref.includes(window.location.hostname)) attr.referrer = ref.slice(0, 300);
-    if (Object.keys(attr).length) sessionStorage.setItem(KEY, JSON.stringify(attr));
+    // Always store — even empty — so returning from checkout.stripe.com can't overwrite this
+    sessionStorage.setItem(KEY, JSON.stringify(attr));
   } catch { /* sessionStorage blocked */ }
 }
 
@@ -26,7 +28,9 @@ export function captureAttribution(): void {
 export function getAttribution(): Attribution | undefined {
   try {
     const s = sessionStorage.getItem(KEY);
-    return s ? (JSON.parse(s) as Attribution) : undefined;
+    if (!s) return undefined;
+    const attr = JSON.parse(s) as Attribution;
+    return Object.keys(attr).length > 0 ? attr : undefined;
   } catch {
     return undefined;
   }
