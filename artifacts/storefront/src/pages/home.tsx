@@ -138,7 +138,7 @@ export default function HomePage() {
     const firstSlug = CATEGORY_TABS[0].categorySlug;
     Promise.all([
       fetchProducts(paramsForSlot("featured", { featured: "1" })),
-      fetchProducts(paramsForSlot("new-additions", { featured: "1" })),
+      fetchProducts(paramsForSlot("new-additions", { stock: "1" })),
       fetchProducts(paramsForSlot(firstSlug, { cat: firstSlug })),
     ]).then(([featured, newAdditions, firstItems]) => {
       setHp({ featured, newAdditions, byCategory: { [firstSlug]: firstItems } });
