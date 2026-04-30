@@ -9,6 +9,7 @@ import {
   metenziProductMappings,
   productVariants,
   products,
+  metenziWebhookEvents,
 } from "@workspace/db/schema";
 import { encrypt } from "../lib/encryption";
 import { sendKeyDeliveryEmail, enqueueEmail } from "../lib/email";
@@ -207,13 +208,26 @@ async function handleOrderFulfilled(data: FulfilledData) {
   }
 
   if (keysToDeliver.length === 0) {
-    // Webhook fired but no keys extracted — keep PROCESSING so cron poll retries
-    logger.warn({ orderId: order.id, metenziOrderId, topLevelKeyCount: topLevelKeys.length }, "keys.delivered: no keys matched mapping — keeping PROCESSING for retry");
+    // Webhook fired but no keys extracted — keep PROCESSING and enqueue an
+    // exponential poller so we self-heal without waiting for the 10-min cron.
+    logger.warn({ orderId: order.id, metenziOrderId, topLevelKeyCount: topLevelKeys.length }, "keys.delivered: no keys matched mapping — scheduling exponential retry poll");
+    try {
+      const { enqueueJob } = await import("../lib/job-queue");
+      await enqueueJob({
+        queue: "order-processing", name: "metenzi-poll-keys",
+        priority: 2, maxAttempts: 1,
+        payload: { orderId: order.id, attempt: 1 },
+        scheduledAt: new Date(Date.now() + 60 * 1000),
+      });
+    } catch (err) {
+      logger.error({ err, orderId: order.id }, "Failed to enqueue metenzi-poll-keys job");
+    }
     await logAuditEvent("UPDATE", "order", order.id, {
       webhookEvent: "order.fulfilled",
       metenziOrderId,
       keysDelivered: 0,
       warning: "no_keys_matched",
+      retryScheduled: true,
       topLevelKeys: topLevelKeys.map(k => ({ productId: k.productId, codeType: k.codeType })),
     });
     return;
@@ -378,7 +392,60 @@ async function handleClaimResolved(data: ClaimEventData) {
   });
 }
 
+function extractMetenziOrderId(data: unknown): string | null {
+  if (!data || typeof data !== "object") return null;
+  const d = data as Record<string, unknown>;
+  return (d.id as string) ?? (d.orderId as string) ?? null;
+}
+
+async function logWebhookEvent(event: string, data: unknown): Promise<{ logId: number | null; orderId: number | null }> {
+  const metenziOrderId = extractMetenziOrderId(data);
+  let relatedOrderId: number | null = null;
+  if (metenziOrderId) {
+    const [row] = await db.select({ id: orders.id }).from(orders).where(eq(orders.externalOrderId, metenziOrderId)).limit(1);
+    relatedOrderId = row?.id ?? null;
+  }
+  try {
+    const [inserted] = await db.insert(metenziWebhookEvents).values({
+      eventType: event,
+      metenziOrderId,
+      relatedOrderId,
+      rawPayload: (data ?? {}) as Record<string, unknown>,
+    }).returning({ id: metenziWebhookEvents.id });
+    return { logId: inserted?.id ?? null, orderId: relatedOrderId };
+  } catch (err) {
+    logger.error({ err, event }, "Failed to insert metenzi_webhook_events row");
+    return { logId: null, orderId: relatedOrderId };
+  }
+}
+
+async function markWebhookProcessed(logId: number | null, success: boolean, outcomeNote: string, errorMsg?: string): Promise<void> {
+  if (!logId) return;
+  try {
+    await db.update(metenziWebhookEvents).set({
+      processedAt: new Date(),
+      success,
+      outcomeNote: outcomeNote.slice(0, 200),
+      errorMsg: errorMsg ? errorMsg.slice(0, 4000) : null,
+    }).where(eq(metenziWebhookEvents.id, logId));
+  } catch (err) {
+    logger.error({ err, logId }, "Failed to update metenzi_webhook_events row");
+  }
+}
+
 export async function handleWebhookEvent(event: string, data: unknown) {
+  const { logId } = await logWebhookEvent(event, data);
+  try {
+    await dispatchWebhookEvent(event, data);
+    await markWebhookProcessed(logId, true, `handled:${event}`);
+  } catch (err) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    await markWebhookProcessed(logId, false, `failed:${event}`, errMsg);
+    throw err;
+  }
+}
+
+async function dispatchWebhookEvent(event: string, data: unknown) {
   switch (event) {
     // Our internal names (used by redeliver-keys endpoint)
     case "order.fulfilled":

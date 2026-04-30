@@ -61,6 +61,50 @@ export function registerAllWorkers() {
     await fulfillPendingBackorders();
   });
 
+  // Polls Metenzi for keys when an order.fulfilled webhook arrives empty.
+  // Uses exponential reschedule (1m, 5m, 15m, 1h, 6h) — caps at 5 attempts.
+  registerWorker("order-processing", "metenzi-poll-keys", async (payload) => {
+    const { orderId, attempt = 1 } = payload as { orderId: number; attempt?: number };
+    const { db } = await import("@workspace/db");
+    const { orders } = await import("@workspace/db/schema");
+    const { eq } = await import("drizzle-orm");
+    const { getMetenziConfig } = await import("../lib/metenzi-config");
+    const { getOrderById } = await import("../lib/metenzi-endpoints");
+
+    const [order] = await db.select({ id: orders.id, status: orders.status, externalOrderId: orders.externalOrderId })
+      .from(orders).where(eq(orders.id, orderId));
+    if (!order || order.status !== "PROCESSING" || !order.externalOrderId) {
+      logger.info({ orderId, attempt }, "metenzi-poll-keys: order no longer needs polling, stopping");
+      return;
+    }
+    const config = await getMetenziConfig();
+    if (!config) return;
+
+    const metenziOrder = await getOrderById(config, order.externalOrderId);
+    if (metenziOrder?.keys && metenziOrder.keys.length > 0) {
+      const { handleWebhookEvent } = await import("../services/webhook-handlers");
+      await handleWebhookEvent("order.fulfilled", { id: metenziOrder.id, keys: metenziOrder.keys });
+      logger.info({ orderId, attempt, keys: metenziOrder.keys.length }, "metenzi-poll-keys: keys delivered");
+      return;
+    }
+
+    // Backoff schedule in seconds for attempts 1..5 → next-fire delay
+    const BACKOFF_SECS = [60, 300, 900, 3600, 21600];
+    if (attempt >= BACKOFF_SECS.length) {
+      logger.warn({ orderId, attempt }, "metenzi-poll-keys: max attempts exhausted; stuck-fulfillment escalator will take over");
+      return;
+    }
+    const delaySecs = BACKOFF_SECS[attempt];
+    const { enqueueJob } = await import("./job-queue");
+    await enqueueJob({
+      queue: "order-processing", name: "metenzi-poll-keys",
+      priority: 2, maxAttempts: 1,
+      payload: { orderId, attempt: attempt + 1 },
+      scheduledAt: new Date(Date.now() + delaySecs * 1000),
+    });
+    logger.info({ orderId, attempt, nextDelaySecs: delaySecs }, "metenzi-poll-keys: no keys yet, rescheduled");
+  });
+
   registerWorker("order-processing", "metenzi-retry-fulfillment", async (payload) => {
     const { orderId, productIds } = payload as { orderId: number; productIds: number[] };
     const { getMetenziConfig } = await import("../lib/metenzi-config");

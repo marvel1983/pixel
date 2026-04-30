@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { orders, orderItems } from "@workspace/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and, isNotNull, lt, inArray } from "drizzle-orm";
+import { licenseKeys } from "@workspace/db/schema";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import { runFulfillment } from "../services/order-pipeline";
@@ -9,6 +10,47 @@ import { parseFulfillmentPayload } from "./checkout-session";
 import { logger } from "../lib/logger";
 
 const router = Router();
+
+// Returns PROCESSING orders that have been waiting for keys past the warn threshold.
+// Used by the admin dashboard "Stuck Fulfillment" panel.
+router.get("/admin/orders/stuck-fulfillment", requireAuth, requireAdmin, requirePermission("manageOrders"), async (_req, res) => {
+  const cutoff = new Date(Date.now() - 30 * 60 * 1000); // 30 min
+
+  const candidates = await db.select({
+    id: orders.id, orderNumber: orders.orderNumber, guestEmail: orders.guestEmail,
+    totalUsd: orders.totalUsd, externalOrderId: orders.externalOrderId,
+    createdAt: orders.createdAt, stuckAlertSentAt: orders.stuckAlertSentAt,
+  }).from(orders)
+    .where(and(
+      eq(orders.status, "PROCESSING"),
+      isNotNull(orders.externalOrderId),
+      lt(orders.createdAt, cutoff),
+    ))
+    .orderBy(desc(orders.createdAt))
+    .limit(100);
+
+  if (candidates.length === 0) { res.json({ orders: [], count: 0 }); return; }
+
+  // Filter to those with zero delivered keys
+  const ids = candidates.map((c) => c.id);
+  const itemRows = await db.select({ id: orderItems.id, orderId: orderItems.orderId })
+    .from(orderItems).where(inArray(orderItems.orderId, ids));
+  const itemIdsByOrder: Record<number, number[]> = {};
+  for (const r of itemRows) (itemIdsByOrder[r.orderId] ??= []).push(r.id);
+  const allItemIds = itemRows.map((r) => r.id);
+  const keyRows = allItemIds.length
+    ? await db.select({ orderItemId: licenseKeys.orderItemId }).from(licenseKeys).where(inArray(licenseKeys.orderItemId, allItemIds))
+    : [];
+  const deliveredByItem: Record<number, number> = {};
+  for (const r of keyRows) if (r.orderItemId != null) deliveredByItem[r.orderItemId] = (deliveredByItem[r.orderItemId] ?? 0) + 1;
+
+  const stuck = candidates.filter((c) => {
+    const itemIds = itemIdsByOrder[c.id] ?? [];
+    return itemIds.reduce((s, id) => s + (deliveredByItem[id] ?? 0), 0) === 0;
+  });
+
+  res.json({ orders: stuck, count: stuck.length });
+});
 
 router.get("/admin/orders/held", requireAuth, requireAdmin, requirePermission("manageOrders"), async (_req, res) => {
   const held = await db.select({

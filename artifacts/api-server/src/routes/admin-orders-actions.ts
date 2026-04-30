@@ -182,6 +182,44 @@ router.post("/admin/orders/:id/redeliver-keys", requireAuth, requireAdmin, requi
   res.json({ success: true });
 });
 
+router.post("/admin/orders/:id/force-fulfill", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
+  const id = Number(paramString(req.params, "id"));
+  if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid order ID" }); return; }
+  const { forceFulfill } = await import("../services/force-fulfill");
+  try {
+    const result = await forceFulfill(id);
+    res.json(result);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Force fulfill failed";
+    const status = msg.includes("not found") ? 404 : 500;
+    res.status(status).json({ error: msg });
+  }
+});
+
+router.post("/admin/orders/:id/manual-assign-keys", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
+  const id = Number(paramString(req.params, "id"));
+  if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid order ID" }); return; }
+
+  const body = req.body as { keys?: Array<{ orderItemId?: number; key?: string }> };
+  if (!Array.isArray(body?.keys) || body.keys.length === 0) {
+    res.status(400).json({ error: "Body must include non-empty keys array: [{orderItemId, key}, ...]" }); return;
+  }
+
+  const { manualAssignKeys } = await import("../services/manual-key-assign");
+  try {
+    const result = await manualAssignKeys(
+      id,
+      body.keys.map((k) => ({ orderItemId: Number(k.orderItemId), key: String(k.key ?? "") })),
+      req.user?.userId ?? null,
+    );
+    res.json({ success: true, ...result });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Manual assign failed";
+    const status = msg.includes("not found") ? 404 : 400;
+    res.status(status).json({ error: msg });
+  }
+});
+
 router.post("/admin/orders/:id/retry-fulfillment", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
   const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid order ID" }); return; }

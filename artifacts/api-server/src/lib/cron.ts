@@ -9,6 +9,7 @@ import { processSurveyEmails } from "../services/survey-service";
 import { logger } from "./logger";
 import { syncMetenziStock } from "./metenzi-stock-sync";
 import { pollMetenziFulfillment } from "../services/metenzi-fulfillment-poll";
+import { escalateStuckFulfillments } from "../services/stuck-fulfillment-escalation";
 
 let syncTask: ScheduledTask | null = null;
 let metenziStockTask: ScheduledTask | null = null;
@@ -103,7 +104,8 @@ export function startCronJobs(): void {
     }
   });
 
-  // Fallback fulfillment poll — delivers keys for PROCESSING orders if webhook didn't fire
+  // Fallback fulfillment poll — delivers keys for PROCESSING orders if webhook didn't fire,
+  // then escalates ones that have been stuck past the warning threshold.
   metenziPollTask = cron.schedule("*/10 * * * *", async () => {
     try {
       const result = await pollMetenziFulfillment();
@@ -112,6 +114,14 @@ export function startCronJobs(): void {
       }
     } catch (error) {
       logger.error({ error }, "Cron: Metenzi fulfillment poll failed");
+    }
+    try {
+      const escalation = await escalateStuckFulfillments();
+      if (escalation.warned > 0 || escalation.critical > 0 || escalation.errors > 0) {
+        logger.info(escalation, "Cron: stuck-fulfillment escalation finished");
+      }
+    } catch (error) {
+      logger.error({ error }, "Cron: stuck-fulfillment escalation failed");
     }
   });
 

@@ -267,6 +267,37 @@ export async function getOrderById(
   return (d.order ?? d.data ?? (d.id ? d : null)) as MetenziOrder | null;
 }
 
+/**
+ * Tells Metenzi that an order has been paid so their internal fulfillment gate
+ * re-runs. Returns:
+ *   - "ok"            → Metenzi accepted the signal (200/201/202/204)
+ *   - "not_supported" → Metenzi has not exposed this endpoint yet (404/405/501)
+ *   - "error"         → other failure; caller can choose to surface it
+ *
+ * The endpoint path is best-effort: when Metenzi rolls out the fix discussed in
+ * the integration plan, set the path here to whatever they pick. The 404 fallback
+ * keeps the call safe on older deploys.
+ */
+export async function confirmPayment(
+  config: MetenziClientConfig,
+  orderId: string,
+): Promise<{ result: "ok" | "not_supported" | "error"; status: number; raw?: unknown }> {
+  try {
+    const res = await metenziRequest<Record<string, unknown>>(config, {
+      method: "POST",
+      path: `/api/public/orders/${orderId}/confirm-payment`,
+      body: { paid: true },
+    });
+    if (res.ok) return { result: "ok", status: res.status, raw: res.data };
+    if (res.status === 404 || res.status === 405 || res.status === 501) {
+      return { result: "not_supported", status: res.status };
+    }
+    return { result: "error", status: res.status, raw: res.data };
+  } catch (err) {
+    return { result: "error", status: 0, raw: err instanceof Error ? err.message : String(err) };
+  }
+}
+
 export async function getBalance(
   config: MetenziClientConfig,
 ): Promise<MetenziBalance> {

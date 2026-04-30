@@ -166,6 +166,27 @@ jobs:
             echo "→ Widening short_description to TEXT (was varchar 500)..."
             psql "$DATABASE_URL" -c "ALTER TABLE products ALTER COLUMN short_description TYPE TEXT;" || true
 
+            echo "→ Adding stuck_alert_sent_at column to orders..."
+            psql "$DATABASE_URL" -c "ALTER TABLE orders ADD COLUMN IF NOT EXISTS stuck_alert_sent_at TIMESTAMP;" || true
+
+            echo "→ Creating metenzi_webhook_events table..."
+            psql "$DATABASE_URL" -c "
+              CREATE TABLE IF NOT EXISTS metenzi_webhook_events (
+                id SERIAL PRIMARY KEY,
+                event_type VARCHAR(80) NOT NULL,
+                metenzi_order_id VARCHAR(100),
+                related_order_id INTEGER REFERENCES orders(id) ON DELETE SET NULL,
+                raw_payload JSONB NOT NULL,
+                received_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                processed_at TIMESTAMP,
+                success BOOLEAN,
+                error_msg TEXT,
+                outcome_note VARCHAR(200)
+              );" || true
+            psql "$DATABASE_URL" -c "CREATE INDEX IF NOT EXISTS metenzi_webhook_events_received_at_idx ON metenzi_webhook_events(received_at);" || true
+            psql "$DATABASE_URL" -c "CREATE INDEX IF NOT EXISTS metenzi_webhook_events_metenzi_order_id_idx ON metenzi_webhook_events(metenzi_order_id);" || true
+            psql "$DATABASE_URL" -c "CREATE INDEX IF NOT EXISTS metenzi_webhook_events_related_order_id_idx ON metenzi_webhook_events(related_order_id);" || true
+
             echo "→ Reloading PM2..."
             set -a; source /var/www/pixel-storefront/.env; set +a
             pm2 reload pixel-api --update-env

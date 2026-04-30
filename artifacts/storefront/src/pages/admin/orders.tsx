@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { Link } from "wouter";
-import { Search, Download, ChevronLeft, ChevronRight, ShieldAlert, CheckCircle2, XCircle } from "lucide-react";
+import { Search, Download, ChevronLeft, ChevronRight, ShieldAlert, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthStore } from "@/stores/auth-store";
@@ -23,6 +23,12 @@ interface HeldOrder {
   totalUsd: string; riskScore: number | null; riskReasons: string[] | null;
   ipAddress: string | null; createdAt: string;
   billingSnapshot: { country?: string; firstName?: string; lastName?: string } | null;
+}
+
+interface StuckOrder {
+  id: number; orderNumber: string; guestEmail: string | null;
+  totalUsd: string; externalOrderId: string | null;
+  createdAt: string; stuckAlertSentAt: string | null;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -54,6 +60,10 @@ export default function AdminOrdersPage() {
   const [heldOrders, setHeldOrders] = useState<HeldOrder[]>([]);
   const [showHeld, setShowHeld] = useState(false);
   const [heldLoading, setHeldLoading] = useState(false);
+  const [stuckOrders, setStuckOrders] = useState<StuckOrder[]>([]);
+  const [stuckCount, setStuckCount] = useState(0);
+  const [showStuck, setShowStuck] = useState(false);
+  const [stuckLoading, setStuckLoading] = useState(false);
   const token = useAuthStore((s) => s.token);
   const { toast } = useToast();
   const limit = 25;
@@ -87,6 +97,18 @@ export default function AdminOrdersPage() {
   }, [token]);
 
   useEffect(() => { if (showHeld) fetchHeld(); }, [showHeld, fetchHeld]);
+
+  const fetchStuck = useCallback(() => {
+    setStuckLoading(true);
+    fetch(`${API}/admin/orders/stuck-fulfillment`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((d) => { setStuckOrders(d.orders ?? []); setStuckCount(d.count ?? 0); })
+      .catch(() => {})
+      .finally(() => setStuckLoading(false));
+  }, [token]);
+
+  // Always fetch count on mount so the badge is accurate even when collapsed
+  useEffect(() => { fetchStuck(); }, [fetchStuck]);
 
   const releaseHeld = async (id: number) => {
     if (!confirm("Release this order and deliver the keys?")) return;
@@ -143,6 +165,40 @@ export default function AdminOrdersPage() {
 
   return (
     <div className="space-y-3 text-[#e8edf5]">
+      {/* Stuck Fulfillment Panel — orders where Metenzi accepted the order but no keys arrived */}
+      {stuckCount > 0 && (
+        <div className="rounded-lg border border-amber-500/40 bg-[#1a160d]">
+          <button onClick={() => setShowStuck((v) => !v)} className="w-full flex items-center gap-2 px-4 py-3 text-left">
+            <Clock className="h-4 w-4 text-amber-300 shrink-0" />
+            <span className="text-[13px] font-bold text-amber-200">Stuck Fulfillment</span>
+            <span className="ml-2 rounded-full bg-amber-500 px-2 py-0.5 text-[11px] font-bold text-[#1a160d]">{stuckCount}</span>
+            <span className="text-[11.5px] text-amber-300/70 ml-2">PROCESSING orders waiting &gt;30 min for keys</span>
+            <span className="ml-auto text-[11px] text-amber-500">{showStuck ? "▲ hide" : "▼ show"}</span>
+          </button>
+          {showStuck && (
+            <div className="border-t border-amber-500/20 px-4 pb-4 pt-3 space-y-2">
+              {stuckLoading && <p className="text-[12px] text-[#5a6a84]">Loading…</p>}
+              {!stuckLoading && stuckOrders.map((o) => {
+                const ageMin = Math.floor((Date.now() - new Date(o.createdAt).getTime()) / 60000);
+                const ageLabel = ageMin >= 60 ? `${(ageMin / 60).toFixed(1)}h` : `${ageMin}m`;
+                const isCritical = ageMin >= 24 * 60;
+                return (
+                  <div key={o.id} className="rounded border border-amber-500/20 bg-[#1f1a10] p-3 flex items-center gap-3 flex-wrap">
+                    <Link href={`/admin/orders/${o.id}`} className="text-[13px] font-bold text-amber-200 hover:underline">#{o.orderNumber}</Link>
+                    <span className="text-[12px] text-[#dde4f0]">{o.guestEmail ?? "—"}</span>
+                    <span className="text-[12px] font-bold text-amber-300">€{o.totalUsd}</span>
+                    <span className={`text-[11.5px] font-bold ${isCritical ? "text-rose-300" : "text-amber-300"}`}>{ageLabel} stuck</span>
+                    <span className="text-[11px] text-[#5a6a84] font-mono truncate max-w-[280px]" title={o.externalOrderId ?? ""}>Metenzi: {o.externalOrderId ?? "—"}</span>
+                    {o.stuckAlertSentAt && <span className="text-[10.5px] text-amber-500/70">Admin alerted</span>}
+                  </div>
+                );
+              })}
+              {!stuckLoading && stuckOrders.length === 0 && <p className="text-[12px] text-[#5a6a84]">No stuck orders right now.</p>}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Held Orders Panel */}
       <div className="rounded-lg border border-rose-500/30 bg-[#1a0f0f]">
         <button

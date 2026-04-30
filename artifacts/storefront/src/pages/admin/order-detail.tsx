@@ -1,12 +1,13 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, Link } from "wouter";
-import { ArrowLeft, Send, CheckCircle, XCircle, RotateCcw, Key, AlertTriangle, ShieldAlert, BadgeCheck, Clock, Save } from "lucide-react";
+import { ArrowLeft, Send, CheckCircle, XCircle, RotateCcw, Key, AlertTriangle, ShieldAlert, BadgeCheck, Save, Zap } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthStore } from "@/stores/auth-store";
 import { RefundModal } from "@/components/admin/refund-modal";
 import { Card, InfoRow, ActionBtn, STATUS_COLORS, type OrderDetail } from "@/components/admin/order-detail-ui";
 import { OrderKeysCard } from "@/components/admin/order-keys-card";
 import { OrderDetailSidebar } from "@/components/admin/order-detail-sidebar";
+import { OrderTimeline } from "@/components/admin/order-timeline";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -18,6 +19,7 @@ export default function OrderDetailPage() {
   const [saving, setSaving] = useState(false);
   const [refundOpen, setRefundOpen] = useState(false);
   const [redelivering, setRedelivering] = useState(false);
+  const [forcing, setForcing] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const [syncingKeys, setSyncingKeys] = useState(false);
   const [releasing, setReleasing] = useState(false);
@@ -52,6 +54,19 @@ export default function OrderDetailPage() {
     } catch { alert("Request failed"); }
     setRedelivering(false);
   };
+  const forceFulfill = async () => {
+    if (!confirm("Force fulfillment? This re-fetches keys from Metenzi and signals payment confirmation in case their fulfillment gate hasn't run.")) return;
+    setForcing(true);
+    try {
+      const r = await fetch(`${API}/admin/orders/${params.id}/force-fulfill`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
+      const d = await r.json();
+      if (!r.ok) { alert(d.error ?? "Force fulfill failed"); return; }
+      const summary = `Outcome: ${d.outcome}\nKeys delivered now: ${d.keysProcessed}\n${d.totalDelivered}/${d.totalExpected} total delivered.${d.metenziStatus ? `\nMetenzi status: ${d.metenziStatus}` : ""}${d.confirmPaymentResult ? `\nConfirm-payment: ${d.confirmPaymentResult}` : ""}${d.hint ? `\n\n${d.hint}` : ""}`;
+      alert(summary);
+      reload();
+    } catch { alert("Request failed"); }
+    setForcing(false);
+  };
   const retryFulfillment = async () => {
     if (!confirm("Retry Metenzi fulfillment for this order? Only use this after topping up your Metenzi balance or resolving the API issue.")) return;
     setRetrying(true);
@@ -70,6 +85,17 @@ export default function OrderDetailPage() {
       if (!r.ok) alert(d.error ?? "Failed"); else { alert(d.message); reload(); }
     } catch { alert("Request failed"); }
     setSyncingKeys(false);
+  };
+  const manualAssignKeys = async (entries: Array<{ orderItemId: number; key: string }>) => {
+    const r = await fetch(`${API}/admin/orders/${params.id}/manual-assign-keys`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ keys: entries }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error ?? "Manual assign failed");
+    alert(`${d.keysAdded} key(s) assigned. Order is now ${d.newStatus}.`);
+    reload();
   };
   const releaseHeld = async () => {
     if (!confirm("Release this order? This will run fulfillment and deliver keys to the customer.")) return;
@@ -125,6 +151,7 @@ export default function OrderDetailPage() {
         <ActionBtn onClick={() => setRefundOpen(true)} disabled={order.status === "REFUNDED"} icon={<RotateCcw className="h-3.5 w-3.5" />} color="violet">Issue Refund</ActionBtn>
         <ActionBtn onClick={resendEmail} icon={<Send className="h-3.5 w-3.5" />} color="sky">Resend Email</ActionBtn>
         {order.externalOrderId && <ActionBtn onClick={redeliverKeys} disabled={redelivering} icon={<Key className="h-3.5 w-3.5" />} color="amber">{redelivering ? "Re-delivering..." : "Re-deliver Keys"}</ActionBtn>}
+        {order.externalOrderId && order.status !== "COMPLETED" && <ActionBtn onClick={forceFulfill} disabled={forcing} icon={<Zap className="h-3.5 w-3.5" />} color="violet">{forcing ? "Forcing..." : "Force Fulfill"}</ActionBtn>}
         {order.status === "PROCESSING" && !order.externalOrderId && <ActionBtn onClick={retryFulfillment} disabled={retrying} icon={<RotateCcw className="h-3.5 w-3.5" />} color="orange">{retrying ? "Retrying..." : "Retry Fulfillment"}</ActionBtn>}
       </div>
 
@@ -209,7 +236,7 @@ export default function OrderDetailPage() {
             )}
           </Card>
           {order.externalOrderId && <Card title="Metenzi Order"><InfoRow label="External Order ID" value={order.externalOrderId} mono /></Card>}
-          <OrderKeysCard items={items} licenseKeys={licenseKeys} externalOrderId={order.externalOrderId} syncingKeys={syncingKeys} onSync={syncBackorderKeys} syncOrderIdRef={syncOrderIdRef} />
+          <OrderKeysCard items={items} licenseKeys={licenseKeys} externalOrderId={order.externalOrderId} syncingKeys={syncingKeys} onSync={syncBackorderKeys} syncOrderIdRef={syncOrderIdRef} onManualAssign={manualAssignKeys} />
           <Card title="Admin Notes">
             <textarea className="w-full rounded border border-[#1e3a5f] bg-[#0a1828] px-3 py-2 text-[12.5px] text-[#dde4f0] placeholder:text-[#3d5070] focus:border-sky-500/60 focus:outline-none focus:ring-1 focus:ring-sky-500/30 resize-none" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Internal notes..." />
             <button onClick={saveNotes} disabled={saving} className="mt-2 flex items-center gap-1.5 rounded border border-sky-500/50 bg-sky-600/20 px-3 py-1.5 text-[12px] font-medium text-sky-200 hover:bg-sky-600/30 disabled:opacity-50 transition-colors">
@@ -217,19 +244,7 @@ export default function OrderDetailPage() {
             </button>
           </Card>
           <Card title="Timeline">
-            <div className="space-y-3">
-              {timeline.map((t, i) => (
-                <div key={i} className="flex items-start gap-3">
-                  <div className="mt-0.5 h-5 w-5 shrink-0 rounded-full border border-sky-500/40 bg-sky-500/10 flex items-center justify-center">
-                    <Clock className="h-3 w-3 text-sky-400" />
-                  </div>
-                  <div>
-                    <p className="text-[12.5px] font-medium text-[#dde4f0]">{t.event}</p>
-                    <p className="text-[11px] text-[#5a6a84]">{new Date(t.date).toLocaleString()}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <OrderTimeline entries={timeline} />
           </Card>
         </div>
         <OrderDetailSidebar order={order} coupon={coupon} customer={customer} />

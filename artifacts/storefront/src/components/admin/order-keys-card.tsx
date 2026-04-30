@@ -1,6 +1,7 @@
-import { useRef } from "react";
-import { Copy, AlertTriangle } from "lucide-react";
+import { useRef, useState } from "react";
+import { Copy, AlertTriangle, Plus } from "lucide-react";
 import { Card } from "./order-detail-ui";
+import { OrderManualKeyForm } from "./order-manual-key-form";
 
 interface Item { id: number; productName: string; variantName: string; priceUsd: string; quantity: number }
 interface LicenseKey { orderItemId: number; id: number; keyValue: string; status: string }
@@ -12,15 +13,17 @@ interface Props {
   syncingKeys: boolean;
   onSync: (metenziOrderId: string | undefined) => void;
   syncOrderIdRef: React.RefObject<HTMLInputElement | null>;
+  onManualAssign: (entries: Array<{ orderItemId: number; key: string }>) => Promise<void>;
 }
 
-export function OrderKeysCard({ items, licenseKeys, externalOrderId, syncingKeys, onSync, syncOrderIdRef }: Props) {
+export function OrderKeysCard({ items, licenseKeys, externalOrderId, syncingKeys, onSync, syncOrderIdRef, onManualAssign }: Props) {
   const totalExpected = items.reduce((s, i) => s + i.quantity, 0);
   const missing = totalExpected - licenseKeys.length;
+  const [manualOpen, setManualOpen] = useState(false);
 
   return (
     <Card title="License Keys">
-      {missing > 0 && (
+      {missing > 0 && !manualOpen && (
         <div className="mb-3 rounded border border-amber-500/40 bg-amber-900/20 px-3 py-3">
           <div className="flex items-center gap-2 mb-2">
             <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />
@@ -29,9 +32,9 @@ export function OrderKeysCard({ items, licenseKeys, externalOrderId, syncingKeys
             </p>
           </div>
           <p className="text-[11.5px] text-amber-400/80 mb-2">
-            If the key has been assigned on Metenzi, enter that order ID below and click Sync.
+            If the key has been assigned on Metenzi, enter that order ID below and click Sync. Otherwise paste keys manually.
           </p>
-          <div className="flex gap-2">
+          <div className="flex gap-2 mb-2">
             <input ref={syncOrderIdRef} defaultValue={externalOrderId ?? ""}
               placeholder="Metenzi order ID (e.g. 7aba34d0-...)"
               className="flex-1 rounded border border-[#1e3a5f] bg-[#0a1828] px-2.5 py-1.5 text-[12px] font-mono text-[#dde4f0] placeholder:text-[#3d5070] focus:border-amber-500/60 focus:outline-none"
@@ -41,6 +44,20 @@ export function OrderKeysCard({ items, licenseKeys, externalOrderId, syncingKeys
               {syncingKeys ? "Syncing..." : "Sync Keys"}
             </button>
           </div>
+          <button onClick={() => setManualOpen(true)}
+            className="flex items-center gap-1.5 rounded border border-sky-500/50 bg-sky-600/20 px-2.5 py-1 text-[11.5px] font-medium text-sky-200 hover:bg-sky-600/35 transition-colors">
+            <Plus className="h-3 w-3" /> Add key manually
+          </button>
+        </div>
+      )}
+      {manualOpen && (
+        <div className="mb-3">
+          <OrderManualKeyForm
+            items={items}
+            licenseKeys={licenseKeys}
+            onSubmit={async (entries) => { await onManualAssign(entries); setManualOpen(false); }}
+            onClose={() => setManualOpen(false)}
+          />
         </div>
       )}
       {licenseKeys.length === 0 ? (

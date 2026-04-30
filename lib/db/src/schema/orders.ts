@@ -83,6 +83,10 @@ export const orders = pgTable("orders", {
   riskHold: boolean("risk_hold").notNull().default(false),
   riskScore: integer("risk_score"),
   riskReasons: jsonb("risk_reasons").$type<string[]>(),
+  // Set the first time the stuck-fulfillment escalator emails the admin about
+  // a PROCESSING order that has not received keys within the warning threshold.
+  // Used to prevent re-alerting on every poll tick.
+  stuckAlertSentAt: timestamp("stuck_alert_sent_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (t) => ({

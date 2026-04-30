@@ -115,14 +115,8 @@ router.get("/admin/orders/:id", requireAuth, requireAdmin, requirePermission("ma
   const customer = customerRows[0] ?? null;
   const coupon = couponRows[0] ?? null;
 
-  const timeline = [
-    { event: "Order created", date: order.createdAt.toISOString() },
-    ...(order.paymentIntentId ? [{ event: "Payment processed", date: order.updatedAt.toISOString() }] : []),
-    ...(order.externalOrderId ? [{ event: "Sent to Metenzi", date: order.updatedAt.toISOString() }] : []),
-    ...(order.status === "COMPLETED" ? [{ event: "Order completed", date: order.updatedAt.toISOString() }] : []),
-    ...(order.status === "REFUNDED" ? [{ event: "Order refunded", date: order.updatedAt.toISOString() }] : []),
-    ...(order.status === "FAILED" ? [{ event: "Order failed", date: order.updatedAt.toISOString() }] : []),
-  ];
+  const { buildOrderTimeline } = await import("../services/order-timeline");
+  const timeline = await buildOrderTimeline(id);
 
   let stripePaymentDetails: {
     status: string; cardBrand?: string; cardLast4?: string;

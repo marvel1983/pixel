@@ -29,7 +29,7 @@ export interface OrderDetail {
   licenseKeys: { orderItemId: number; id: number; keyValue: string; status: string }[];
   customer: { id: number; email: string; firstName: string | null; lastName: string | null; createdAt: string } | null;
   coupon: { id: number; code: string; discountPercent: string } | null;
-  timeline: { event: string; date: string }[];
+  timeline: { event: string; date: string; kind?: string; details?: Record<string, unknown> }[];
 }
 
 export function Card({ title, children }: { title: string; children: ReactNode }) {
