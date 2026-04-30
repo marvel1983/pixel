@@ -328,7 +328,7 @@ export function HeroBanner() {
 
   return (
     <div
-      className="relative w-full overflow-hidden rounded-xl shadow-2xl shadow-black/30"
+      className="relative w-full overflow-hidden"
       style={{ minHeight: 286, height: "clamp(286px, 39vw, 494px)" }}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}

@@ -14,6 +14,7 @@ import { ShopByBrand } from "@/components/home/shop-by-brand";
 import { PromoBanner } from "@/components/home/promo-banner";
 import { PageSection } from "@/components/home/page-section";
 import { CategoryBrowseTabs } from "@/components/home/category-browse-tabs";
+import { CategoryRow } from "@/components/home/category-row";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -163,17 +164,31 @@ export default function HomePage() {
     switch (type) {
       case "HERO_SLIDER":
         return null;
-      case "CATEGORY_ROW":
-        return (
-          <CategoryBrowseTabs
-            eyebrow={t("home.sectionEyebrowShop")}
-            title={t("home.browseByCategory")}
-            tabs={CATEGORY_TABS.map((tab) => ({
-              ...tab,
-              products: hp.byCategory[tab.categorySlug] ?? [],
-            }))}
-          />
+      case "CATEGORY_ROW": {
+        const extraRows = CATEGORY_TABS.filter(
+          (tab) => tab.categorySlug !== "operating-systems" && tab.categorySlug !== "games",
         );
+        return (
+          <div className="space-y-8">
+            <CategoryBrowseTabs
+              eyebrow={t("home.sectionEyebrowShop")}
+              title={t("home.browseByCategory")}
+              tabs={CATEGORY_TABS.map((tab) => ({
+                ...tab,
+                products: hp.byCategory[tab.categorySlug] ?? [],
+              }))}
+            />
+            {extraRows.map((tab) => (
+              <CategoryRow
+                key={tab.categorySlug}
+                title={t(tab.labelKey)}
+                categorySlug={tab.categorySlug}
+                products={hp.byCategory[tab.categorySlug] ?? []}
+              />
+            ))}
+          </div>
+        );
+      }
       case "BRAND_SECTIONS":
         return <ShopByBrand />;
       case "PRODUCT_SPOTLIGHT":
@@ -206,9 +221,9 @@ export default function HomePage() {
       <OrganizationJsonLd />
       <WebSiteJsonLd />
       <div className="bg-muted/20">
-        <div className="container mx-auto px-4 pb-4 pt-6 lg:pt-8">
-          <HeroBanner />
-          <TrustBar className="mt-3" />
+        <HeroBanner />
+        <div className="container mx-auto px-4 pb-4 pt-3">
+          <TrustBar />
         </div>
       </div>
       <div className="container mx-auto space-y-6 px-4 pt-3 pb-6">
