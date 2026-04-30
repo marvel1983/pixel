@@ -20,7 +20,13 @@ interface Slide {
   /** main accent hex */
   accent: string;
   /** illustration variant */
-  visual: "windows" | "office" | "games" | "security";
+  visual: "windows" | "office" | "games" | "security" | "product";
+  /** product image URL for "product" visual variant */
+  productImage?: string;
+  /** When set, the slide renders as a single clickable banner image (no HTML overlay) */
+  bannerImage?: string;
+  /** Alt text for bannerImage */
+  bannerAlt?: string;
 }
 
 const SLIDES: Slide[] = [
@@ -84,11 +90,27 @@ const SLIDES: Slide[] = [
     accent: "#4ade80",
     visual: "security",
   },
+  {
+    id: 5,
+    badge: "",
+    headline: "",
+    headlineAccent: "",
+    sub: "",
+    cta: "",
+    ctaLink: "/product/microsoft-windows-10-pro-retail-key",
+    secondaryCta: "",
+    secondaryLink: "/product/microsoft-windows-10-pro-retail-key",
+    bg: "from-[#dbeafe] via-[#bfdbfe] to-[#dbeafe]",
+    accent: "#2563eb",
+    visual: "product",
+    bannerImage: "/banners/win10-pro-hero.png",
+    bannerAlt: "Windows 10 Pro — Limited Time Offer €9.90 — Get your key now",
+  },
 ];
 
 /* ─── Decorative visuals (pure SVG/CSS, right panel) ────── */
 
-function VisualWindows({ accent }: { accent: string }) {
+function VisualWindows({ accent, priceTag = "From $8.99" }: { accent: string; priceTag?: string }) {
   return (
     <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
       {/* large faint circle */}
@@ -111,7 +133,7 @@ function VisualWindows({ accent }: { accent: string }) {
         className="absolute bottom-8 right-4 rounded-xl px-3 py-1.5 text-xs font-bold backdrop-blur-sm"
         style={{ background: `${accent}22`, border: `1px solid ${accent}44`, color: accent }}
       >
-        From $8.99
+        {priceTag}
       </div>
     </div>
   );
@@ -244,10 +266,33 @@ function VisualSecurity({ accent }: { accent: string }) {
   );
 }
 
-function SlideVisual({ visual, accent }: { visual: Slide["visual"]; accent: string }) {
-  if (visual === "windows") return <VisualWindows accent={accent} />;
+function VisualProduct({ accent, imageUrl }: { accent: string; imageUrl?: string }) {
+  if (!imageUrl) return null;
+  return (
+    <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
+      {/* radial glow behind image */}
+      <div
+        className="absolute w-72 h-72 rounded-full opacity-30"
+        style={{ background: `radial-gradient(circle, ${accent}55, transparent 70%)` }}
+      />
+      <div className="absolute w-56 h-56 rounded-full border opacity-15" style={{ borderColor: accent }} />
+      {/* product image */}
+      <img
+        src={imageUrl}
+        alt=""
+        loading="eager"
+        className="relative z-10 max-h-[80%] max-w-[80%] object-contain"
+        style={{ filter: `drop-shadow(0 12px 28px ${accent}66)` }}
+      />
+    </div>
+  );
+}
+
+function SlideVisual({ visual, accent, priceTag, productImage }: { visual: Slide["visual"]; accent: string; priceTag?: string; productImage?: string }) {
+  if (visual === "windows") return <VisualWindows accent={accent} priceTag={priceTag} />;
   if (visual === "office") return <VisualOffice accent={accent} />;
   if (visual === "games") return <VisualGames accent={accent} />;
+  if (visual === "product") return <VisualProduct accent={accent} imageUrl={productImage} />;
   return <VisualSecurity accent={accent} />;
 }
 
@@ -284,7 +329,7 @@ export function HeroBanner() {
   return (
     <div
       className="relative w-full overflow-hidden rounded-xl shadow-2xl shadow-black/30"
-      style={{ minHeight: 220, height: "clamp(220px, 30vw, 380px)" }}
+      style={{ minHeight: 286, height: "clamp(286px, 39vw, 494px)" }}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
@@ -308,7 +353,21 @@ export function HeroBanner() {
         style={{ background: `radial-gradient(ellipse 60% 80% at 80% 50%, ${s.accent}18, transparent 70%)` }}
       />
 
-      {/* Content + Visual: 2-column */}
+      {/* Full-width banner image mode */}
+      {s.bannerImage ? (
+        <Link
+          href={s.ctaLink}
+          className={`relative block h-full w-full transition-opacity duration-200 ${fading ? "opacity-0" : "opacity-100"}`}
+        >
+          <img
+            src={s.bannerImage}
+            alt={s.bannerAlt ?? ""}
+            loading="eager"
+            className="h-full w-full object-cover"
+          />
+        </Link>
+      ) : (
+      /* Content + Visual: 2-column */
       <div
         className={`relative h-full grid grid-cols-[1fr] sm:grid-cols-[1fr_180px] lg:grid-cols-[1fr_220px] transition-opacity duration-200 ${fading ? "opacity-0" : "opacity-100"}`}
       >
@@ -363,9 +422,10 @@ export function HeroBanner() {
 
         {/* Right: illustration — hidden on xs, visible sm+ */}
         <div className="relative overflow-hidden hidden sm:block">
-          <SlideVisual visual={s.visual} accent={s.accent} />
+          <SlideVisual visual={s.visual} accent={s.accent} productImage={s.productImage} />
         </div>
       </div>
+      )}
 
       {/* Slide counter top-right */}
       <div className="absolute top-3 right-3 font-mono text-[10px] text-white/25 tabular-nums select-none">

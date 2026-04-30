@@ -2,7 +2,6 @@ import { useState, useEffect, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { MockProduct } from "@/lib/mock-data";
 import { HeroBanner } from "@/components/home/hero-banner";
-import { CategorySidebar } from "@/components/home/category-sidebar";
 import { FeaturedSpotlight } from "@/components/home/featured-spotlight";
 import { NewAdditions } from "@/components/home/new-additions";
 import { RecentlyViewed } from "@/components/home/recently-viewed";
@@ -11,7 +10,6 @@ import { TrustpilotCarousel } from "@/components/trustpilot/trustpilot-carousel"
 import { setSeoMeta, clearSeoMeta } from "@/lib/seo";
 import { OrganizationJsonLd, WebSiteJsonLd } from "@/components/seo/json-ld";
 import { TrustBar } from "@/components/home/trust-bar";
-import { StatsStrip } from "@/components/home/stats-strip";
 import { ShopByBrand } from "@/components/home/shop-by-brand";
 import { PromoBanner } from "@/components/home/promo-banner";
 import { PageSection } from "@/components/home/page-section";
@@ -209,12 +207,8 @@ export default function HomePage() {
       <WebSiteJsonLd />
       <div className="bg-muted/20">
         <div className="container mx-auto px-4 pb-4 pt-6 lg:pt-8">
-          <div className="grid grid-cols-1 gap-3 lg:grid-cols-[220px_1fr]">
-            <CategorySidebar />
-            <HeroBanner />
-          </div>
+          <HeroBanner />
           <TrustBar className="mt-3" />
-          <StatsStrip className="mt-3" />
         </div>
       </div>
       <div className="container mx-auto space-y-6 px-4 pt-3 pb-6">
