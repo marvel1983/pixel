@@ -5,19 +5,22 @@ interface SeoMeta {
   ogImage?: string;
 }
 
+const DEFAULT_OG_IMAGE = "https://pixelcodes.com/opengraph.jpg?v=2";
+
 export function setSeoMeta(meta: SeoMeta) {
   document.title = meta.title;
 
+  const ogImage = meta.ogImage ?? DEFAULT_OG_IMAGE;
   setMeta("description", meta.description);
   setMeta("og:title", meta.title);
   setMeta("og:description", meta.description);
-  setMeta("og:type", "product");
+  setMeta("og:type", meta.ogImage ? "product" : "website");
   setMeta("og:url", meta.canonicalUrl ?? window.location.href);
-  if (meta.ogImage) setMeta("og:image", meta.ogImage);
+  setMeta("og:image", ogImage);
   setMeta("twitter:card", "summary_large_image");
   setMeta("twitter:title", meta.title);
   setMeta("twitter:description", meta.description);
-  if (meta.ogImage) setMeta("twitter:image", meta.ogImage);
+  setMeta("twitter:image", ogImage);
 
   let canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
   if (!canonical) {
