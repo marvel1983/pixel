@@ -132,6 +132,8 @@ async function upsertProduct(mp: MetenziProduct): Promise<void> {
   let productId: number;
 
   if (existing) {
+    // Keep any image the admin uploaded locally; never overwrite with a Metenzi server path.
+    const keepImage = existing.imageUrl && !existing.imageUrl.startsWith("/uploads/product-images/");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await db
       .update(products)
@@ -141,7 +143,7 @@ async function upsertProduct(mp: MetenziProduct): Promise<void> {
         shortDescription: mp.shortDescription,
         type: mapProductType(mp.type ?? "software"),
         categoryId,
-        imageUrl: mp.imageUrl,
+        imageUrl: keepImage ? existing.imageUrl : null,
         galleryImages: mp.galleryImages ?? null,
         isActive: isProductActive(mp),
         externalId: mp.id ?? existing.externalId,
@@ -162,7 +164,7 @@ async function upsertProduct(mp: MetenziProduct): Promise<void> {
         shortDescription: mp.shortDescription,
         type: mapProductType(mp.type ?? "software"),
         categoryId,
-        imageUrl: mp.imageUrl,
+        imageUrl: null,
         galleryImages: mp.galleryImages ?? null,
         isActive: isProductActive(mp),
       } as any)
