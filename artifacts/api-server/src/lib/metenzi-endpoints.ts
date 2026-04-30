@@ -311,20 +311,39 @@ export async function getBalance(
   return res.data.data;
 }
 
+// Metenzi exposes status as a string ("active" / "disabled"), not a boolean.
+// Older code paths expected `isActive`; normalise so our admin UI labels match
+// reality regardless of which key is present in the API response.
+function normaliseWebhook(raw: Record<string, unknown>): MetenziWebhook {
+  const isActiveExplicit = typeof raw.isActive === "boolean" ? raw.isActive : undefined;
+  const statusStr = typeof raw.status === "string" ? raw.status.toLowerCase() : undefined;
+  const isActive = isActiveExplicit ?? (statusStr ? statusStr === "active" : false);
+  return {
+    id: String(raw.id ?? ""),
+    url: String(raw.url ?? ""),
+    events: Array.isArray(raw.events) ? (raw.events as string[]) : [],
+    isActive,
+    signingSecret: raw.signingSecret as string | undefined,
+    secret: raw.secret as string | undefined,
+  };
+}
+
 export async function listWebhooks(
   config: MetenziClientConfig,
 ): Promise<MetenziWebhook[]> {
-  const res = await metenziRequest<{ webhooks?: MetenziWebhook[]; data?: MetenziWebhook[] } | MetenziWebhook[]>(config, {
+  const res = await metenziRequest<{ webhooks?: unknown[]; data?: unknown[] } | unknown[]>(config, {
     method: "GET",
     path: "/api/public/webhooks",
   });
   if (!res.ok) {
     throw new Error(`Failed to list Metenzi webhooks: ${res.status}`);
   }
-  if (Array.isArray(res.data)) return res.data;
-  return (res.data as { webhooks?: MetenziWebhook[]; data?: MetenziWebhook[] }).webhooks
-    ?? (res.data as { webhooks?: MetenziWebhook[]; data?: MetenziWebhook[] }).data
-    ?? [];
+  const raw = Array.isArray(res.data)
+    ? res.data
+    : ((res.data as { webhooks?: unknown[]; data?: unknown[] }).webhooks
+      ?? (res.data as { webhooks?: unknown[]; data?: unknown[] }).data
+      ?? []);
+  return raw.map((w) => normaliseWebhook(w as Record<string, unknown>));
 }
 
 export async function listClaims(
