@@ -1,6 +1,3 @@
-/* Force light-mode text colors when site is in dark mode — banner is always light-bg */
-.dark .win10-pro-hero-shell { color: #0a1f3d; }
-
 /* Scoped under .win10-pro-hero-shell so generic class names don't leak. */
 .win10-pro-hero-shell {
   --sky-1: #f0f9ff;
@@ -492,3 +489,20 @@
   .win10-pro-hero-shell .sale-card { width: calc(100vw - 140px); min-width: 196px; }
   .win10-pro-hero-shell .message p { display: none; }
 }
+
+/* Dark mode: banner always has a light background — pin all text to light-mode ink values */
+.dark .win10-pro-hero-shell { color: #0a1f3d; background: #e0f2fe; }
+.dark .win10-pro-hero-shell h1 { color: #003a6b; }
+.dark .win10-pro-hero-shell h1 span { color: #0078d4; }
+.dark .win10-pro-hero-shell .brand { color: #5c6570; }
+.dark .win10-pro-hero-shell .message strong { color: #0a1f3d; }
+.dark .win10-pro-hero-shell .message p { color: #2a3b55; }
+.dark .win10-pro-hero-shell .benefit b { color: #0a1f3d; }
+.dark .win10-pro-hero-shell .benefit small { color: #4a617d; }
+.dark .win10-pro-hero-shell .price { color: #003a6b; }
+.dark .win10-pro-hero-shell .delivery strong { color: #0a1f3d; }
+.dark .win10-pro-hero-shell .delivery span { color: #4a617d; }
+.dark .win10-pro-hero-shell .box-brand { color: #60636a; }
+.dark .win10-pro-hero-shell .box-title { color: #00345f; }
+.dark .win10-pro-hero-shell .box-tag { color: #00345f; }
+.dark .win10-pro-hero-shell .badge { color: #003a6b; }
