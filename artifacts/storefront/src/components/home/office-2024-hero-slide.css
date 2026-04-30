@@ -1,3 +1,6 @@
+/* Force light-mode text colors when site is in dark mode — banner is always light-bg */
+.dark .office-2024-hero-shell { color: #1f0f4a; }
+
 /* Scoped under .office-2024-hero-shell so generic class names don't leak. */
 .office-2024-hero-shell {
   --bg-1: #faf5ff;

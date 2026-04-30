@@ -1,3 +1,6 @@
+/* Force light-mode text colors when site is in dark mode — banner is always light-bg */
+.dark .win-pro-hero-shell { color: #071b3f; }
+
 /* Scoped under .win-pro-hero-shell so generic class names don't leak. */
 .win-pro-hero-shell {
   --sky-1: #eaf7ff;
