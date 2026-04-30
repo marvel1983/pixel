@@ -48,58 +48,51 @@ async function findOrCreateCategory(categoryName: string): Promise<number> {
   return created.id;
 }
 
-function mapPlatform(
-  platform: string | undefined | null,
-): (typeof productVariants.$inferInsert)["platform"] {
-  if (!platform) return "OTHER" as (typeof productVariants.$inferInsert)["platform"];
+function mapPlatform(platform: string | undefined | null): string {
+  if (!platform) return "OTHER";
   const platformMap: Record<string, string> = {
     // Windows / PC
-    "windows":      "WINDOWS",
-    "windows/mac":  "WINDOWS",
-    "pc":           "WINDOWS",
-    "microsoft":    "WINDOWS",
-    "skype":        "WINDOWS",
+    "windows": "WINDOWS", "windows/mac": "WINDOWS", "pc": "WINDOWS",
+    "microsoft": "WINDOWS", "skype": "WINDOWS",
     // Mac
-    "mac":          "MAC",
-    "macos":        "MAC",
-    "mac os":       "MAC",
-    "ios":          "MAC",
+    "mac": "MAC", "macos": "MAC", "mac os": "MAC", "ios": "MAC",
     // Linux
-    "linux":        "LINUX",
+    "linux": "LINUX",
     // Steam
-    "steam":        "STEAM",
+    "steam": "STEAM",
     // EA App / Origin
-    "origin":       "ORIGIN",
-    "ea app":       "ORIGIN",
-    "ea":           "ORIGIN",
+    "origin": "ORIGIN", "ea app": "ORIGIN", "ea": "ORIGIN",
     // Ubisoft
-    "uplay":        "UPLAY",
-    "ubisoft":      "UPLAY",
-    "ubisoft connect": "UPLAY",
+    "uplay": "UPLAY", "ubisoft": "UPLAY", "ubisoft connect": "UPLAY",
     // GOG
-    "gog":          "GOG",
+    "gog": "GOG",
     // Epic
-    "epic":         "EPIC",
-    "epic games":   "EPIC",
+    "epic": "EPIC", "epic games": "EPIC",
     // Xbox
-    "xbox":         "XBOX",
-    "microsoft xbox": "XBOX",
-    "xbox one":     "XBOX",
-    "xbox series":  "XBOX",
+    "xbox": "XBOX", "microsoft xbox": "XBOX", "xbox one": "XBOX", "xbox series": "XBOX",
     // PlayStation
-    "playstation":       "PLAYSTATION",
-    "sony playstation":  "PLAYSTATION",
-    "sony":              "PLAYSTATION",
-    "playstation 4":     "PLAYSTATION",
-    "playstation 5":     "PLAYSTATION",
-    "ps4":               "PLAYSTATION",
-    "ps5":               "PLAYSTATION",
+    "playstation": "PLAYSTATION", "sony playstation": "PLAYSTATION", "sony": "PLAYSTATION",
+    "playstation 4": "PLAYSTATION", "playstation 5": "PLAYSTATION", "ps4": "PLAYSTATION", "ps5": "PLAYSTATION",
     // Nintendo
-    "nintendo":     "NINTENDO",
-    "switch":       "NINTENDO",
+    "nintendo": "NINTENDO", "switch": "NINTENDO",
+    // Music
+    "spotify": "SPOTIFY",
+    // Streaming
+    "netflix": "NETFLIX", "hulu": "HULU",
+    "disney": "DISNEY", "disney+": "DISNEY",
+    "paramount": "PARAMOUNT", "paramount+": "PARAMOUNT",
+    // Gift cards / payments
+    "amazon": "AMAZON", "amazon prime": "AMAZON",
+    "paysafe": "PAYSAFE", "paysafecard": "PAYSAFE",
+    // Gaming platforms (brand-specific)
+    "roblox": "ROBLOX",
+    "minecraft": "MINECRAFT", "minecraft.net": "MINECRAFT",
+    "battle.net": "BATTLE_NET", "blizzard": "BATTLE_NET", "blizzard entertainment": "BATTLE_NET",
+    "rockstar": "ROCKSTAR", "rockstar games": "ROCKSTAR",
+    "pubg": "PUBG", "pubg mobile": "PUBG",
+    "razer": "RAZER", "razer gold": "RAZER",
   };
-  const mapped = platformMap[platform.toLowerCase().trim()];
-  return (mapped ?? "OTHER") as (typeof productVariants.$inferInsert)["platform"];
+  return platformMap[platform.toLowerCase().trim()] ?? "OTHER";
 }
 
 function mapProductType(

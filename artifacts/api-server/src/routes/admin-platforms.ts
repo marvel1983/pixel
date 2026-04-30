@@ -9,11 +9,6 @@ import { getMetenziConfig } from "../lib/metenzi-config";
 
 const router = Router();
 
-const VALID_PLATFORMS = [
-  "WINDOWS", "MAC", "LINUX", "STEAM", "ORIGIN",
-  "UPLAY", "GOG", "EPIC", "XBOX", "PLAYSTATION", "NINTENDO", "OTHER",
-] as const;
-
 router.get(
   "/admin/platforms/stats",
   requireAuth, requireAdmin, requirePermission("manageProducts"),
@@ -51,13 +46,14 @@ router.patch(
   async (req, res) => {
     const id = Number(req.params.id);
     const { platform } = req.body as { platform: string };
-    if (!VALID_PLATFORMS.includes(platform as (typeof VALID_PLATFORMS)[number])) {
+    if (!platform || typeof platform !== "string" || platform.trim().length === 0 || platform.length > 50) {
       res.status(400).json({ error: "Invalid platform" });
       return;
     }
     await db
       .update(productVariants)
-      .set({ platform: platform as (typeof VALID_PLATFORMS)[number], updatedAt: new Date() })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .set({ platform: platform as any, updatedAt: new Date() })
       .where(eq(productVariants.id, id));
     res.json({ ok: true });
   },

@@ -23,20 +23,6 @@ export const productTypeEnum = pgEnum("product_type", [
   "GIFT_CARD",
 ]);
 
-export const platformEnum = pgEnum("platform", [
-  "WINDOWS",
-  "MAC",
-  "LINUX",
-  "STEAM",
-  "ORIGIN",
-  "UPLAY",
-  "GOG",
-  "EPIC",
-  "XBOX",
-  "PLAYSTATION",
-  "NINTENDO",
-  "OTHER",
-]);
 
 export const products = pgTable("products", {
   id: serial("id").primaryKey(),
@@ -78,7 +64,7 @@ export const productVariants = pgTable("product_variants", {
     .references(() => products.id, { onDelete: "cascade" }),
   name: varchar("name", { length: 200 }).notNull(),
   sku: varchar("sku", { length: 100 }).notNull().unique(),
-  platform: platformEnum("platform"),
+  platform: varchar("platform", { length: 50 }),
   priceUsd: numeric("price_usd", { precision: 10, scale: 2 }).notNull(),
   compareAtPriceUsd: numeric("compare_at_price_usd", {
     precision: 10,

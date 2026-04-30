@@ -1,32 +1,10 @@
 import { useState, useEffect } from "react";
-import { Monitor, Apple, Terminal, Gamepad2, Package, ChevronRight, ArrowLeft, RefreshCw } from "lucide-react";
+import { ChevronRight, ArrowLeft, RefreshCw } from "lucide-react";
 import { useAuthStore } from "@/stores/auth-store";
 import { useLocation } from "wouter";
+import { PLATFORM_META, ALL_PLATFORMS, getPlatformMeta } from "./platform-meta";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
-
-const PLATFORM_META: Record<string, { label: string; icon: React.ReactNode; color: string; bg: string }> = {
-  WINDOWS:     { label: "Windows",     icon: <Monitor className="h-5 w-5" />,  color: "#60a5fa", bg: "#0d1f3c" },
-  MAC:         { label: "macOS",       icon: <Apple className="h-5 w-5" />,    color: "#a78bfa", bg: "#1a0d3c" },
-  LINUX:       { label: "Linux",       icon: <Terminal className="h-5 w-5" />, color: "#f59e0b", bg: "#2a1a00" },
-  STEAM:       { label: "Steam",       icon: <Gamepad2 className="h-5 w-5" />, color: "#4fc3f7", bg: "#001a2a" },
-  EPIC:        { label: "Epic Games",  icon: <Gamepad2 className="h-5 w-5" />, color: "#e2e8f0", bg: "#1a1a1a" },
-  GOG:         { label: "GOG",         icon: <Gamepad2 className="h-5 w-5" />, color: "#c084fc", bg: "#1a0028" },
-  ORIGIN:      { label: "EA App",      icon: <Gamepad2 className="h-5 w-5" />, color: "#fb923c", bg: "#2a1000" },
-  UPLAY:       { label: "Ubisoft",     icon: <Gamepad2 className="h-5 w-5" />, color: "#60a5fa", bg: "#001028" },
-  XBOX:        { label: "Xbox",        icon: <Gamepad2 className="h-5 w-5" />, color: "#4ade80", bg: "#001a0a" },
-  PLAYSTATION: { label: "PlayStation", icon: <Gamepad2 className="h-5 w-5" />, color: "#60a5fa", bg: "#001028" },
-  NINTENDO:    { label: "Nintendo",    icon: <Gamepad2 className="h-5 w-5" />, color: "#f87171", bg: "#2a0000" },
-  OTHER:       { label: "Other",       icon: <Package className="h-5 w-5" />,  color: "#94a3b8", bg: "#1a1d24" },
-};
-
-// Full enum list used in the manual assignment dropdown
-const ALL_PLATFORMS = ["WINDOWS", "MAC", "LINUX", "STEAM", "ORIGIN", "UPLAY", "GOG", "EPIC", "XBOX", "PLAYSTATION", "NINTENDO", "OTHER"];
-const PLATFORM_LABELS: Record<string, string> = {
-  WINDOWS: "Windows", MAC: "macOS", LINUX: "Linux", STEAM: "Steam",
-  ORIGIN: "EA App (Origin)", UPLAY: "Ubisoft Connect", GOG: "GOG",
-  EPIC: "Epic Games", XBOX: "Xbox", PLAYSTATION: "PlayStation", NINTENDO: "Nintendo", OTHER: "Other",
-};
 
 interface PlatformStat { platform: string; variantCount: number; productCount: number; }
 interface Variant { id: number; sku: string; platform: string | null; priceUsd: string; stockCount: number; }
@@ -106,7 +84,7 @@ export default function AdminPlatformsPage() {
 
   /* ── Drill-down: products for a selected platform ── */
   if (selected) {
-    const meta = PLATFORM_META[selected] ?? PLATFORM_META.OTHER;
+    const meta = getPlatformMeta(selected);
     const stat = statsMap[selected];
     const allVariants = products.flatMap((p) =>
       p.variants.filter((v) => v.platform === selected).map((v) => ({ ...v, product: p })),
@@ -152,7 +130,9 @@ export default function AdminPlatformsPage() {
                           onChange={(e) => assignPlatform(v.id, e.target.value)}
                           className="text-xs rounded px-2 py-1.5 border border-[#2e3340] bg-[#161920] text-[#c8d0e0] cursor-pointer focus:outline-none focus:border-[#3b82f6]"
                         >
-                          {ALL_PLATFORMS.map((pl) => <option key={pl} value={pl}>{PLATFORM_LABELS[pl]}</option>)}
+                          {ALL_PLATFORMS.map((pl) => (
+                            <option key={pl} value={pl}>{getPlatformMeta(pl).label}</option>
+                          ))}
                         </select>
                       </td>
                       <td className="px-4 py-3">
@@ -184,7 +164,7 @@ export default function AdminPlatformsPage() {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold text-[#e2e8f0]">Platforms</h1>
-          <p className="text-sm text-[#4a5568] mt-1">Enterprise & PC platform distribution. Click a platform to browse products and reassign variants manually.</p>
+          <p className="text-sm text-[#4a5568] mt-1">Platform distribution across all products. Click a tile to browse and reassign variants.</p>
         </div>
         <div className="flex flex-col items-end gap-1.5 shrink-0">
           <button
@@ -202,7 +182,7 @@ export default function AdminPlatformsPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {Object.entries(PLATFORM_META).map(([key, meta]) => {
           const stat = statsMap[key];
           return (
@@ -210,24 +190,24 @@ export default function AdminPlatformsPage() {
               key={key}
               onClick={() => stat ? setSelected(key) : undefined}
               disabled={!stat}
-              className="text-left rounded-lg border p-4 transition-all"
-              style={{ background: stat ? meta.bg : "#0f1117", borderColor: stat ? `${meta.color}30` : "#1f2330", opacity: stat ? 1 : 0.4, cursor: stat ? "pointer" : "default" }}
+              className="text-left rounded-lg border p-3 transition-all"
+              style={{ background: stat ? meta.bg : "#0f1117", borderColor: stat ? `${meta.color}30` : "#1f2330", opacity: stat ? 1 : 0.35, cursor: stat ? "pointer" : "default" }}
               onMouseEnter={(e) => { if (stat) e.currentTarget.style.borderColor = `${meta.color}70`; }}
               onMouseLeave={(e) => { if (stat) e.currentTarget.style.borderColor = `${meta.color}30`; }}
             >
-              <div className="flex items-center gap-3 mb-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ background: `${meta.color}15`, color: meta.color }}>{meta.icon}</div>
-                <span className="text-sm font-semibold text-[#c8d0e0]">{meta.label}</span>
+              <div className="flex items-center gap-2 mb-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded-md" style={{ background: `${meta.color}15`, color: meta.color }}>{meta.icon}</div>
+                <span className="text-xs font-semibold text-[#c8d0e0] truncate">{meta.label}</span>
               </div>
               {loadingStats ? (
-                <div className="space-y-1.5"><div className="h-3 rounded animate-pulse bg-[#1e2128] w-16" /><div className="h-3 rounded animate-pulse bg-[#1e2128] w-12" /></div>
+                <div className="h-3 rounded animate-pulse bg-[#1e2128] w-12" />
               ) : stat ? (
                 <div>
-                  <p className="text-lg font-bold" style={{ color: meta.color }}>{stat.productCount}</p>
-                  <p className="text-[11px] text-[#4a5568]">{stat.variantCount} variant{stat.variantCount !== 1 ? "s" : ""}</p>
+                  <p className="text-base font-bold" style={{ color: meta.color }}>{stat.productCount}</p>
+                  <p className="text-[10px] text-[#4a5568]">{stat.variantCount} var.</p>
                 </div>
               ) : (
-                <p className="text-xs text-[#2a2d3a]">No products</p>
+                <p className="text-xs text-[#2a2d3a]">–</p>
               )}
             </button>
           );
@@ -256,12 +236,12 @@ export default function AdminPlatformsPage() {
               <tr>
                 <td colSpan={4} className="px-4 py-10 text-center">
                   <p className="text-sm text-[#4a5568]">No platform data yet.</p>
-                  <p className="text-xs text-[#2a2d3a] mt-1">Run a Metenzi sync to populate automatically, or open a product and assign a platform to its variants manually.</p>
+                  <p className="text-xs text-[#2a2d3a] mt-1">Run a Metenzi sync to populate automatically, or open a product and assign a platform manually.</p>
                 </td>
               </tr>
             ) : (
               [...stats].sort((a, b) => b.variantCount - a.variantCount).map((s) => {
-                const meta = PLATFORM_META[s.platform] ?? PLATFORM_META.OTHER;
+                const meta = getPlatformMeta(s.platform);
                 const total = stats.reduce((sum, x) => sum + x.variantCount, 0);
                 const pct = total > 0 ? Math.round((s.variantCount / total) * 100) : 0;
                 return (
