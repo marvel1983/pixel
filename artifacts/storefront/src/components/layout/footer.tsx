@@ -168,7 +168,7 @@ export function Footer() {
             <div className="lg:w-72 shrink-0">
               <div className="mb-4">
                 <Link href="/">
-                  <img src="/logo.png" alt="PixelCodes" className="h-10 w-auto brightness-0 invert" />
+                  <img src="/logo.png" alt="PixelCodes" className="h-10 w-auto" />
                 </Link>
               </div>
 
