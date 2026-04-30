@@ -6,6 +6,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthStore } from "@/stores/auth-store";
 import { useToast } from "@/hooks/use-toast";
 import { formatSource } from "@/lib/attribution";
+import { DATE_PRESETS, presetToRange, type DatePresetKey, type OrderMetrics } from "@/lib/date-presets";
+import { OrdersMetricsBar } from "@/components/admin/orders-metrics-bar";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -52,8 +54,12 @@ export default function AdminOrdersPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("ALL");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  const todayRange = presetToRange("today")!;
+  const [preset, setPreset] = useState<DatePresetKey>("today");
+  const [from, setFrom] = useState(todayRange.from);
+  const [to, setTo] = useState(todayRange.to);
+  const [metrics, setMetrics] = useState<OrderMetrics | null>(null);
+  const [metricsLoading, setMetricsLoading] = useState(true);
   const [hasCoupon, setHasCoupon] = useState(false);
   const [hasCpp, setHasCpp] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -86,6 +92,36 @@ export default function AdminOrdersPage() {
   }, [token, page, search, status, from, to, hasCoupon, hasCpp]);
 
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
+
+  const fetchMetrics = useCallback(() => {
+    setMetricsLoading(true);
+    const params = new URLSearchParams();
+    if (search) params.set("search", search);
+    if (status !== "ALL") params.set("status", status);
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
+    if (hasCoupon) params.set("hasCoupon", "true");
+    if (hasCpp) params.set("hasCpp", "true");
+
+    fetch(`${API}/admin/orders/metrics?${params}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((d: OrderMetrics) => setMetrics(d))
+      .catch(() => {})
+      .finally(() => setMetricsLoading(false));
+  }, [token, search, status, from, to, hasCoupon, hasCpp]);
+
+  useEffect(() => { fetchMetrics(); }, [fetchMetrics]);
+
+  const applyPreset = (key: DatePresetKey) => {
+    setPreset(key);
+    if (key === "custom") return;
+    const range = presetToRange(key);
+    if (range) {
+      setFrom(range.from);
+      setTo(range.to);
+      setPage(1);
+    }
+  };
 
   const fetchHeld = useCallback(() => {
     setHeldLoading(true);
@@ -256,6 +292,25 @@ export default function AdminOrdersPage() {
         </Button>
       </div>
 
+      <OrdersMetricsBar metrics={metrics} loading={metricsLoading} />
+
+      <div className="flex flex-wrap items-center gap-1.5 rounded-md border border-[#2d3344] bg-[#161a24] p-2">
+        <span className="px-1 text-[10.5px] font-bold uppercase tracking-widest text-[#8b95ab]">Period:</span>
+        {DATE_PRESETS.map((p) => (
+          <button
+            key={p.key}
+            onClick={() => applyPreset(p.key)}
+            className={`rounded px-2.5 py-1 text-[12px] font-semibold transition-colors ${
+              preset === p.key
+                ? "bg-sky-500 text-white"
+                : "bg-[#0f1117] text-[#9ca8bc] hover:bg-[#1a1f2e] hover:text-[#e8edf5]"
+            }`}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+
       <div className="flex flex-wrap items-end gap-2.5 rounded-md border border-[#2d3344] bg-[#161a24] p-2.5">
         <div className="min-w-[200px] flex-1">
           <div className="relative">
@@ -292,6 +347,7 @@ export default function AdminOrdersPage() {
           value={from}
           onChange={(e) => {
             setFrom(e.target.value);
+            setPreset("custom");
             setPage(1);
           }}
         />
@@ -301,6 +357,7 @@ export default function AdminOrdersPage() {
           value={to}
           onChange={(e) => {
             setTo(e.target.value);
+            setPreset("custom");
             setPage(1);
           }}
         />

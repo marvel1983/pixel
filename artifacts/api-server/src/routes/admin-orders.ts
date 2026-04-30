@@ -42,6 +42,58 @@ router.get("/admin/orders/export", requireAuth, requireAdmin, requirePermission(
   res.send(header + csv);
 });
 
+router.get("/admin/orders/metrics", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
+  const conditions = buildFilters(req.query);
+  const baseWhere = conditions.length > 0 ? and(...conditions) : undefined;
+  const completedOnly = and(...conditions, eq(orders.status, "COMPLETED"));
+
+  const [
+    [orderTotals],
+    [{ totalOrders }],
+    [{ couponOrders }],
+    [{ cppOrders }],
+    keysAgg,
+    topProducts,
+  ] = await Promise.all([
+    db.select({
+      revenue: sql<string>`COALESCE(SUM(${orders.totalUsd}), 0)`.as("revenue"),
+      completedCount: count(),
+    }).from(orders).where(completedOnly),
+    db.select({ totalOrders: count() }).from(orders).where(baseWhere),
+    db.select({ couponOrders: count() }).from(orders).where(and(baseWhere, sql`${orders.couponId} IS NOT NULL`)),
+    db.select({ cppOrders: count() }).from(orders).where(and(baseWhere, eq(orders.cppSelected, true))),
+    db.select({
+      keys: sql<string>`COALESCE(SUM(${orderItems.quantity}), 0)`.as("keys"),
+    }).from(orderItems)
+      .innerJoin(orders, eq(orderItems.orderId, orders.id))
+      .where(completedOnly),
+    db.select({
+      productName: orderItems.productName,
+      quantity: sql<string>`COALESCE(SUM(${orderItems.quantity}), 0)`.as("quantity"),
+      revenue: sql<string>`COALESCE(SUM(${orderItems.priceUsd} * ${orderItems.quantity}), 0)`.as("revenue"),
+    }).from(orderItems)
+      .innerJoin(orders, eq(orderItems.orderId, orders.id))
+      .where(completedOnly)
+      .groupBy(orderItems.productName)
+      .orderBy(desc(sql`SUM(${orderItems.quantity})`))
+      .limit(3),
+  ]);
+
+  res.json({
+    totalRevenue: orderTotals?.revenue ?? "0",
+    totalKeys: Number(keysAgg[0]?.keys ?? 0),
+    completedOrders: orderTotals?.completedCount ?? 0,
+    totalOrders: totalOrders ?? 0,
+    couponOrders: couponOrders ?? 0,
+    cppOrders: cppOrders ?? 0,
+    topProducts: topProducts.map((p) => ({
+      productName: p.productName,
+      quantity: Number(p.quantity),
+      revenue: p.revenue,
+    })),
+  });
+});
+
 router.get("/admin/orders", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
   const page = Math.max(1, Number(req.query.page) || 1);
   const limit = Math.min(100, Math.max(10, Number(req.query.limit) || 25));
