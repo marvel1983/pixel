@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, type ComponentType } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Link } from "wouter";
+import { WinProHeroSlide } from "./win-pro-hero-slide";
 
 /* ─── Slide data ─────────────────────────────────────────── */
 interface Slide {
@@ -27,6 +28,8 @@ interface Slide {
   bannerImage?: string;
   /** Alt text for bannerImage */
   bannerAlt?: string;
+  /** When set, the slide renders this component instead of the default layout (handles its own CTAs) */
+  customComponent?: ComponentType;
 }
 
 const SLIDES: Slide[] = [
@@ -105,6 +108,21 @@ const SLIDES: Slide[] = [
     visual: "product",
     bannerImage: "/banners/win10-pro-hero.png",
     bannerAlt: "Windows 10 Pro — Limited Time Offer €9.90 — Get your key now",
+  },
+  {
+    id: 6,
+    badge: "",
+    headline: "",
+    headlineAccent: "",
+    sub: "",
+    cta: "",
+    ctaLink: "/product/microsoft-windows-11-pro-retail-key",
+    secondaryCta: "",
+    secondaryLink: "/product/microsoft-windows-11-pro-retail-key",
+    bg: "from-[#eaf7ff] via-[#cfefff] to-[#9fdcff]",
+    accent: "#1464f6",
+    visual: "product",
+    customComponent: WinProHeroSlide,
   },
 ];
 
@@ -329,7 +347,7 @@ export function HeroBanner() {
   return (
     <div
       className="relative w-full overflow-hidden"
-      style={{ minHeight: 286, height: "clamp(286px, 39vw, 740px)" }}
+      style={{ minHeight: 286, height: "clamp(286px, 43vw, 740px)" }}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
@@ -353,8 +371,12 @@ export function HeroBanner() {
         style={{ background: `radial-gradient(ellipse 60% 80% at 80% 50%, ${s.accent}18, transparent 70%)` }}
       />
 
-      {/* Full-width banner image mode */}
-      {s.bannerImage ? (
+      {/* Custom React component slide (full-bleed, manages its own CTAs) */}
+      {s.customComponent ? (
+        <div className={`relative h-full w-full transition-opacity duration-200 ${fading ? "opacity-0" : "opacity-100"}`}>
+          <s.customComponent />
+        </div>
+      ) : s.bannerImage ? (
         <Link
           href={s.ctaLink}
           className={`relative block h-full w-full transition-opacity duration-200 ${fading ? "opacity-0" : "opacity-100"}`}
