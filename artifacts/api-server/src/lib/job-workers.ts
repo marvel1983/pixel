@@ -1,5 +1,6 @@
 import { registerQueueWorker, registerWorker, enqueueRecurringIfDue, type QueueName, PRIORITY, type Priority } from "./job-queue";
 import { syncProducts } from "./product-sync";
+import { syncMetenziStock } from "./metenzi-stock-sync";
 import { processEmailQueue } from "./email";
 import { approveHeldCommissions } from "../services/affiliate-service";
 import { processAbandonedCarts } from "../services/abandoned-cart-service";
@@ -17,6 +18,13 @@ export function registerAllWorkers() {
 
   registerQueueWorker("product-sync", async () => {
     await syncProducts();
+  });
+
+  registerWorker("product-sync", "metenzi-stock-sync", async () => {
+    const result = await syncMetenziStock();
+    if (result.updated > 0 || result.errors > 0) {
+      logger.info(result, "Metenzi stock sync finished");
+    }
   });
 
   registerQueueWorker("abandoned-cart", async () => {
@@ -219,6 +227,7 @@ interface RecurringDef {
 const RECURRING: RecurringDef[] = [
   { queue: "email", name: "process-queue", intervalMs: 60_000, priority: PRIORITY.HIGH },
   { queue: "product-sync", name: "sync-all", intervalMs: 30 * 60_000, priority: PRIORITY.NORMAL },
+  { queue: "product-sync", name: "metenzi-stock-sync", intervalMs: 15 * 60_000, priority: PRIORITY.HIGH },
   { queue: "order-processing", name: "fulfill-backorders", intervalMs: 15 * 60_000, priority: PRIORITY.HIGH },
   { queue: "abandoned-cart", name: "process-carts", intervalMs: 15 * 60_000, priority: PRIORITY.NORMAL },
   { queue: "alerts", name: "trustpilot-invites", intervalMs: 30 * 60_000, priority: PRIORITY.LOW },

@@ -30,6 +30,7 @@ interface Section {
 interface ApiVariant {
   id: number; name: string; sku: string; platform: string | null;
   priceUsd: string; compareAtPriceUsd: string | null; stockCount: number;
+  backorderAllowed?: boolean; backorderEta?: string | null;
 }
 interface ApiProduct {
   id: number; name: string; slug: string; imageUrl: string | null;
@@ -59,6 +60,8 @@ function toMockProduct(p: ApiProduct): MockProduct {
       priceUsd: v.priceUsd,
       compareAtPriceUsd: v.compareAtPriceUsd,
       stockCount: v.stockCount,
+      backorderAllowed: v.backorderAllowed,
+      backorderEta: v.backorderEta,
     })),
   };
 }

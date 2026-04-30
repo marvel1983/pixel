@@ -32,6 +32,8 @@ function toMockProduct(item: SearchProduct): MockProduct {
       priceUsd: v.priceUsd,
       compareAtPriceUsd: v.compareAtPriceUsd,
       stockCount: v.stockCount ?? 0,
+      backorderAllowed: v.backorderAllowed,
+      backorderEta: v.backorderEta,
     })),
   };
 }

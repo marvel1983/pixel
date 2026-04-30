@@ -7,6 +7,8 @@ export interface SearchVariant {
   priceUsd: string;
   compareAtPriceUsd: string | null;
   stockCount: number;
+  backorderAllowed?: boolean;
+  backorderEta?: string | null;
 }
 
 export interface SearchProduct {

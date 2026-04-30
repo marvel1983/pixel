@@ -13,6 +13,8 @@ export interface ApiVariant {
   priceOverrideUsd: string | null;
   compareAtPriceUsd: string | null;
   stockCount: number;
+  backorderAllowed?: boolean;
+  backorderEta?: string | null;
 }
 
 export interface ApiProduct {
@@ -74,6 +76,8 @@ export function toMockProduct(p: ApiProduct): MockProduct {
       priceUsd: v.priceUsd,
       compareAtPriceUsd: v.compareAtPriceUsd,
       stockCount: v.stockCount,
+      backorderAllowed: v.backorderAllowed,
+      backorderEta: v.backorderEta,
     })),
   };
 }
