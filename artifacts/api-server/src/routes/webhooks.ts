@@ -81,26 +81,33 @@ router.post("/webhooks/metenzi", async (req, res) => {
   const rawBody = req.rawBody ?? JSON.stringify(req.body);
   const eventType = eventHeader ?? (req.body?.event as string) ?? "";
 
+  // Metenzi signs with the secret VERBATIM (incl. `whsec_` prefix) and the raw body
+  // only — no event/timestamp concatenation. We try the verbatim form first, then
+  // the prefix-stripped variant, then the legacy event/timestamp prefixed forms,
+  // for back-compat with older deliveries.
   const secrets = [config.webhookSecret, config.hmacSecret].filter(Boolean) as string[];
   let valid = false;
   const sigDebug: string[] = [];
   for (const secret of secrets) {
-    const rawSec = secret.replace(/^whsec_/, "");
-    const candidates: string[] = [rawBody, `${eventType}.${rawBody}`];
-    if (timestamp) candidates.unshift(`${timestamp}.${eventType}.${rawBody}`);
-    for (const payload of candidates) {
-      try {
-        const expected = crypto.createHmac("sha256", rawSec).update(payload).digest("hex");
-        sigDebug.push(`fmt[${payload.slice(0, 30)}…] → exp[${expected.slice(0, 12)}…] got[${signature.slice(0, 12)}…]`);
-        const sigBuf = Buffer.from(signature, "hex");
-        const expBuf = Buffer.from(expected, "hex");
-        if (sigBuf.length === expBuf.length && crypto.timingSafeEqual(sigBuf, expBuf)) {
-          valid = true;
-          break;
+    const secretVariants = secret.startsWith("whsec_") ? [secret, secret.slice(6)] : [secret];
+    for (const sec of secretVariants) {
+      const candidates: string[] = [rawBody, `${eventType}.${rawBody}`];
+      if (timestamp) candidates.unshift(`${timestamp}.${eventType}.${rawBody}`);
+      for (const payload of candidates) {
+        try {
+          const expected = crypto.createHmac("sha256", sec).update(payload).digest("hex");
+          sigDebug.push(`secLen=${sec.length} fmt[${payload.slice(0, 30)}…] → exp[${expected.slice(0, 12)}…] got[${signature.slice(0, 12)}…]`);
+          const sigBuf = Buffer.from(signature, "hex");
+          const expBuf = Buffer.from(expected, "hex");
+          if (sigBuf.length === expBuf.length && crypto.timingSafeEqual(sigBuf, expBuf)) {
+            valid = true;
+            break;
+          }
+        } catch (e) {
+          sigDebug.push(`error: ${(e as Error).message}`);
         }
-      } catch (e) {
-        sigDebug.push(`error: ${(e as Error).message}`);
       }
+      if (valid) break;
     }
     if (valid) break;
   }
