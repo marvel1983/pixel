@@ -1,7 +1,6 @@
 const METHODS = [
   { name: "Visa",       color: "#1A1F71", bg: "#f0f4ff", border: "#c7d2f7" },
   { name: "Mastercard", color: "#EB001B", bg: "#fff0f0", border: "#fcc" },
-  { name: "PayPal",     color: "#003087", bg: "#e8f0fb", border: "#b3c9f0" },
   { name: "Apple Pay",  color: "#1d1d1f", bg: "#f5f5f7", border: "#d2d2d7" },
   { name: "Google Pay", color: "#1a73e8", bg: "#e8f4fd", border: "#b6d9f8" },
 ];

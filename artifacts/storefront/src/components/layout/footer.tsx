@@ -264,10 +264,6 @@ export function Footer() {
                   <span className="inline-block w-4 h-4 rounded-full bg-[#F79E1B] opacity-90 -ml-1.5" />
                 </span>
               </PayPill>
-              <PayPill bg="#003087" border="#004aa5">
-                <span style={{ color: "#009CDE" }}>Pay</span>
-                <span className="text-white ml-0.5">Pal</span>
-              </PayPill>
               <PayPill bg="#000" border="#333">
                 <span className="text-white text-[11px] tracking-tight">⌘ Pay</span>
               </PayPill>
@@ -278,9 +274,6 @@ export function Footer() {
                 <span style={{ color: "#34A853" }}>g</span>
                 <span style={{ color: "#4285F4" }}>le</span>
                 <span className="text-slate-500 ml-0.5">Pay</span>
-              </PayPill>
-              <PayPill bg="rgba(247,147,26,0.12)" border="rgba(247,147,26,0.3)">
-                <span style={{ color: "#F7931A" }} className="text-[13px]">₿</span>
               </PayPill>
             </div>
 
