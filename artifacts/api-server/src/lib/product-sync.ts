@@ -1,4 +1,4 @@
-import { eq, or } from "drizzle-orm";
+import { eq, or, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   products,
@@ -119,11 +119,13 @@ async function upsertProduct(mp: MetenziProduct): Promise<void> {
     ? await findOrCreateCategory(mp.category)
     : null;
 
-  // Look up by stable Metenzi ID first, then fall back to slug.
-  // This preserves existing slugs even when Metenzi renames their product URLs.
+  // Look up by stable Metenzi ID first, then slug, then normalized name.
+  // Name match prevents duplicates when manually-created products share the same
+  // name as a Metenzi product that has a different slug and no externalId yet.
   const conditions = [];
   if (mp.id) conditions.push(eq(products.externalId, mp.id));
   if (mp.slug) conditions.push(eq(products.slug, mp.slug));
+  if (mp.name) conditions.push(eq(sql`LOWER(TRIM(${products.name}))`, mp.name.toLowerCase().trim()));
 
   const [existing] = conditions.length > 0
     ? await db.select().from(products).where(or(...conditions)).limit(1)
