@@ -158,12 +158,14 @@ async function handleOrderFulfilled(data: FulfilledData) {
       }
 
       const key = keyItem.code;
-      const encryptedKey = encrypt(key);
       const keyMask = key.length <= 8 ? key.slice(0, 2) + "****" : key.slice(0, 4) + "****" + key.slice(-4);
-      // Per-key idempotency: skip if this exact key was already stored
+      // Per-key idempotency: dedup by (orderItemId, keyMask) since encrypt() uses random
+      // salt+IV — the same plaintext key produces different ciphertexts each time, so
+      // comparing keyValue would always miss and we'd insert duplicates.
       const [existing] = await db.select({ id: licenseKeys.id }).from(licenseKeys)
-        .where(and(eq(licenseKeys.keyValue, encryptedKey), eq(licenseKeys.orderItemId, dbItem.id))).limit(1);
-      if (existing) { logger.info({ orderId: order.id }, "Key already stored, skipping (idempotent)"); continue; }
+        .where(and(eq(licenseKeys.keyMask, keyMask), eq(licenseKeys.orderItemId, dbItem.id))).limit(1);
+      if (existing) { logger.info({ orderId: order.id, keyMask }, "Key already stored, skipping (idempotent)"); continue; }
+      const encryptedKey = encrypt(key);
       await db.insert(licenseKeys).values({
         variantId: dbItem.variantId,
         keyValue: encryptedKey,

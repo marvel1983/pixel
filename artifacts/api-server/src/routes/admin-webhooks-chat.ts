@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import { getMetenziConfig } from "../lib/metenzi-config";
-import { listWebhooks, createWebhook, deleteWebhook } from "../lib/metenzi-endpoints";
+import { listWebhooks, createWebhook, deleteWebhook, testWebhook } from "../lib/metenzi-endpoints";
 import { paramString } from "../lib/route-params";
 import { getWebhookLog } from "../lib/webhook-log";
 
@@ -38,6 +38,15 @@ router.post("/admin/settings/webhooks", requireAuth, requireAdmin, requirePermis
   try {
     const webhook = await createWebhook(config, url, events);
     res.json(webhook);
+  } catch (e) { res.status(500).json({ error: (e as Error).message }); }
+});
+
+router.post("/admin/settings/webhooks/:id/test", requireAuth, requireAdmin, requirePermission("manageSettings"), async (req, res) => {
+  const config = await getMetenziConfig();
+  if (!config) { res.status(400).json({ error: "Metenzi API not configured" }); return; }
+  try {
+    const result = await testWebhook(config, paramString(req.params, "id"));
+    res.json(result);
   } catch (e) { res.status(500).json({ error: (e as Error).message }); }
 });
 

@@ -104,11 +104,19 @@ router.post("/admin/orders/:id/sync-backorder-keys", requireAuth, requireAdmin, 
     : [];
   const itemByProductId = new Map(itemsWithProduct.map((i) => [i.productId, i]));
 
-  const existingKeyValues = new Set(
-    itemIds.length
-      ? (await db.select({ keyValue: licenseKeys.keyValue }).from(licenseKeys).where(inArray(licenseKeys.orderItemId, itemIds))).map((k) => k.keyValue)
-      : [],
-  );
+  // Dedup by (orderItemId, keyMask) — encrypt() is non-deterministic so comparing
+  // ciphertext always misses, leading to double-inserts when the webhook and a
+  // manual sync deliver the same key.
+  const existingMaskByItem = new Map<number, Set<string>>();
+  if (itemIds.length > 0) {
+    const rows = await db.select({ orderItemId: licenseKeys.orderItemId, keyMask: licenseKeys.keyMask })
+      .from(licenseKeys).where(inArray(licenseKeys.orderItemId, itemIds));
+    for (const r of rows) {
+      if (r.orderItemId == null || !r.keyMask) continue;
+      if (!existingMaskByItem.has(r.orderItemId)) existingMaskByItem.set(r.orderItemId, new Set());
+      existingMaskByItem.get(r.orderItemId)!.add(r.keyMask);
+    }
+  }
 
   const toInsert: Array<{ variantId: number; keyValue: string; keyMask: string; orderItemId: number }> = [];
   let keysAdded = 0;
@@ -120,10 +128,12 @@ router.post("/admin/orders/:id/sync-backorder-keys", requireAuth, requireAdmin, 
     if (!dbItem) continue;
     const alreadyDelivered = deliveredByItem[dbItem.id] ?? 0;
     if (alreadyDelivered >= dbItem.quantity) continue;
-    const encryptedKey = encrypt(mk.code);
-    if (existingKeyValues.has(encryptedKey)) continue;
-    existingKeyValues.add(encryptedKey);
     const keyMask = mk.code.length <= 8 ? mk.code.slice(0, 2) + "****" : mk.code.slice(0, 4) + "****" + mk.code.slice(-4);
+    const seenForItem = existingMaskByItem.get(dbItem.id) ?? new Set<string>();
+    if (seenForItem.has(keyMask)) continue;
+    seenForItem.add(keyMask);
+    existingMaskByItem.set(dbItem.id, seenForItem);
+    const encryptedKey = encrypt(mk.code);
     toInsert.push({ variantId: dbItem.variantId, keyValue: encryptedKey, keyMask, orderItemId: dbItem.id });
     deliveredByItem[dbItem.id] = alreadyDelivered + 1;
     keysAdded++;

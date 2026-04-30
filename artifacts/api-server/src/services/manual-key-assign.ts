@@ -70,16 +70,22 @@ export async function manualAssignKeys(
   }
   const itemsById = new Map(items.map((i) => [i.id, i]));
 
-  // Existing keys for capacity & de-dupe
+  // Existing keys: track per-item count (capacity) and per-item mask set (dedup).
+  // We dedup by keyMask rather than encrypted keyValue because encrypt() is
+  // non-deterministic — same plaintext → different ciphertext → false negatives.
   const existingKeys = await db
-    .select({ orderItemId: licenseKeys.orderItemId, keyValue: licenseKeys.keyValue })
+    .select({ orderItemId: licenseKeys.orderItemId, keyMask: licenseKeys.keyMask })
     .from(licenseKeys)
     .where(inArray(licenseKeys.orderItemId, requestedItemIds));
   const deliveredByItem: Record<number, number> = {};
+  const masksByItem: Map<number, Set<string>> = new Map();
   for (const k of existingKeys) {
-    if (k.orderItemId != null) deliveredByItem[k.orderItemId] = (deliveredByItem[k.orderItemId] ?? 0) + 1;
+    if (k.orderItemId == null) continue;
+    deliveredByItem[k.orderItemId] = (deliveredByItem[k.orderItemId] ?? 0) + 1;
+    if (!k.keyMask) continue;
+    if (!masksByItem.has(k.orderItemId)) masksByItem.set(k.orderItemId, new Set());
+    masksByItem.get(k.orderItemId)!.add(k.keyMask);
   }
-  const existingEncrypted = new Set(existingKeys.map((k) => k.keyValue));
 
   const toInsert: Array<{
     variantId: number; keyValue: string; keyMask: string; orderItemId: number;
@@ -93,12 +99,15 @@ export async function manualAssignKeys(
     if (!item) continue;
     const cur = deliveredByItem[k.orderItemId] ?? 0;
     if (cur >= item.quantity) { capacityExceededSkipped++; continue; }
-    const encrypted = encrypt(k.key);
-    if (existingEncrypted.has(encrypted)) { duplicatesSkipped++; continue; }
-    existingEncrypted.add(encrypted);
+    const mask = maskKey(k.key);
+    const seen = masksByItem.get(k.orderItemId) ?? new Set<string>();
+    if (seen.has(mask)) { duplicatesSkipped++; continue; }
+    seen.add(mask);
+    masksByItem.set(k.orderItemId, seen);
     deliveredByItem[k.orderItemId] = cur + 1;
+    const encrypted = encrypt(k.key);
     toInsert.push({
-      variantId: item.variantId, keyValue: encrypted, keyMask: maskKey(k.key), orderItemId: k.orderItemId,
+      variantId: item.variantId, keyValue: encrypted, keyMask: mask, orderItemId: k.orderItemId,
       _meta: { orderItemId: k.orderItemId, variantId: item.variantId, productName: item.productName, variantName: item.variantName, rawKey: k.key },
     });
   }

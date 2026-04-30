@@ -222,19 +222,20 @@ async function assignKeysToOrder(
     for (const keyItem of keysToAssign) {
       const key = keyItem.code;
       if (!key) continue;
-      const encryptedKey = encrypt(key);
       const keyMask = key.length <= 8 ? key.slice(0, 2) + "****" : key.slice(0, 4) + "****" + key.slice(-4);
 
+      // Dedup by (orderItemId, keyMask) — encrypt() uses random salt+IV so the same
+      // plaintext key produces different ciphertexts each call.
       const [existing] = await db
         .select({ id: licenseKeys.id })
         .from(licenseKeys)
-        .where(and(eq(licenseKeys.keyValue, encryptedKey), eq(licenseKeys.orderItemId, item.orderItemId)))
+        .where(and(eq(licenseKeys.keyMask, keyMask), eq(licenseKeys.orderItemId, item.orderItemId)))
         .limit(1);
       if (existing) continue;
 
       await db.insert(licenseKeys).values({
         variantId: item.variantId,
-        keyValue: encryptedKey,
+        keyValue: encrypt(key),
         keyMask,
         status: "SOLD",
         source: "API",

@@ -395,6 +395,45 @@ export async function deleteWebhook(
   return res.ok;
 }
 
+export interface MetenziWebhookTestResult {
+  delivered: boolean;
+  statusCode?: number;
+  latencyMs?: number;
+  error?: string;
+  attemptedAt?: string;
+  signature?: string;
+  webhookEventId?: string;
+}
+
+/**
+ * Triggers Metenzi's synchronous webhook test (introduced after the auto-disable
+ * incident). Sends a synthetic webhook.test event to the subscription and returns
+ * delivery diagnostics so we can verify a fresh URL without waiting for a real order.
+ * No retries, no failure-counter side effects.
+ */
+export async function testWebhook(
+  config: MetenziClientConfig,
+  webhookId: string,
+): Promise<MetenziWebhookTestResult> {
+  const res = await metenziRequest<Record<string, unknown>>(config, {
+    method: "POST",
+    path: `/api/public/webhooks/${webhookId}/test`,
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to test Metenzi webhook ${webhookId}: ${res.status}`);
+  }
+  const d = (res.data?.data ?? res.data) as Record<string, unknown>;
+  return {
+    delivered: Boolean(d?.delivered),
+    statusCode: typeof d?.statusCode === "number" ? d.statusCode : undefined,
+    latencyMs: typeof d?.latencyMs === "number" ? d.latencyMs : undefined,
+    error: typeof d?.error === "string" ? d.error : undefined,
+    attemptedAt: typeof d?.attemptedAt === "string" ? d.attemptedAt : undefined,
+    signature: typeof d?.signature === "string" ? d.signature : undefined,
+    webhookEventId: typeof d?.webhookEventId === "string" ? d.webhookEventId : undefined,
+  };
+}
+
 export async function submitClaim(
   config: MetenziClientConfig,
   orderId: string,

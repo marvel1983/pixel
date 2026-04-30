@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Plus, Trash2, Webhook, AlertCircle, CheckCircle, X, Copy, Zap } from "lucide-react";
+import { Plus, Trash2, Webhook, AlertCircle, CheckCircle, X, Copy, Zap, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuthStore } from "@/stores/auth-store";
@@ -70,6 +70,23 @@ export default function SettingsWebhooksTab() {
     setConfirmDelete(null);
   };
 
+  const [testingId, setTestingId] = useState<string | null>(null);
+  const testWebhookFn = async (id: string) => {
+    setTestingId(id);
+    try {
+      const r = await api(`/admin/settings/webhooks/${id}/test`, { method: "POST" });
+      const lines = [
+        `delivered: ${r.delivered}`,
+        r.statusCode != null ? `statusCode: ${r.statusCode}` : null,
+        r.latencyMs != null ? `latency: ${r.latencyMs}ms` : null,
+        r.error ? `error: ${r.error}` : null,
+        r.attemptedAt ? `at: ${r.attemptedAt}` : null,
+      ].filter(Boolean);
+      alert(`Webhook test result:\n\n${lines.join("\n")}`);
+    } catch (e) { alert(`Test failed: ${(e as Error).message}`); }
+    setTestingId(null);
+  };
+
   const loadLogs = async () => {
     setLogsLoading(true);
     setLogsError("");
@@ -133,7 +150,10 @@ export default function SettingsWebhooksTab() {
                     {w.isActive ? <CheckCircle className="h-4 w-4 text-green-500" /> : <AlertCircle className="h-4 w-4 text-yellow-500" />}
                     <code className="text-xs font-mono break-all">{w.url}</code>
                   </div>
-                  <Button size="sm" variant="ghost" className="text-red-600" onClick={() => setConfirmDelete(w.id)}><Trash2 className="h-3 w-3" /></Button>
+                  <div className="flex items-center gap-1">
+                    <Button size="sm" variant="ghost" disabled={testingId === w.id} onClick={() => testWebhookFn(w.id)} title="Send synthetic webhook.test event"><Send className="h-3 w-3" /></Button>
+                    <Button size="sm" variant="ghost" className="text-red-600" onClick={() => setConfirmDelete(w.id)}><Trash2 className="h-3 w-3" /></Button>
+                  </div>
                 </div>
                 <div className="flex flex-wrap gap-1">{w.events.map((e) => <Badge key={e} variant="secondary" className="text-xs">{e}</Badge>)}</div>
                 <div className="flex items-center gap-2"><Badge variant={w.isActive ? "default" : "secondary"}>{w.isActive ? "Active" : "Inactive"}</Badge><span className="text-xs text-muted-foreground">ID: {w.id}</span></div>
