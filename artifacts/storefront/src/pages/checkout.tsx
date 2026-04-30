@@ -50,6 +50,7 @@ export default function CheckoutPage() {
 
   const [billing, setBilling] = useState<BillingData>(INITIAL_BILLING);
   const [billingErrors, setBillingErrors] = useState<Partial<Record<keyof BillingData, string>>>({});
+  const [billingTouched, setBillingTouched] = useState<Partial<Record<keyof BillingData, boolean>>>({});
   const [cppSelected, setCppSelected] = useState(false);
   const [guestPassword, setGuestPassword] = useState<string | null>(null);
   const [taxInfo, setTaxInfo] = useState<TaxInfo>({ taxRate: 0, taxLabel: "VAT", exempt: false, b2bEnabled: false, priceDisplay: "exclusive" });
@@ -105,9 +106,22 @@ export default function CheckoutPage() {
     </div>
   );
 
+  function validateBillingField(field: keyof BillingData, value: string): string | undefined {
+    const required: (keyof BillingData)[] = ["email", "firstName", "lastName", "country", "city", "address", "zip", "phone"];
+    if (required.includes(field) && !value.trim()) return t("checkout.fieldRequired");
+    if (field === "email" && value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return t("checkout.invalidEmail");
+    return undefined;
+  }
+
   function handleBillingChange(field: keyof BillingData, value: string) {
     setBilling((prev) => ({ ...prev, [field]: value }));
     if (billingErrors[field]) setBillingErrors((prev) => ({ ...prev, [field]: undefined }));
+  }
+
+  function handleBillingBlur(field: keyof BillingData) {
+    setBillingTouched((prev) => ({ ...prev, [field]: true }));
+    const err = validateBillingField(field, billing[field] ?? "");
+    setBillingErrors((prev) => ({ ...prev, [field]: err }));
   }
 
   const gcDeduction = appliedGiftCards.reduce((s, c) => s + c.applied, 0);
@@ -127,7 +141,7 @@ export default function CheckoutPage() {
       <CartProgress step={2} />
       <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
         <div className="space-y-6">
-          <BillingForm data={billing} errors={billingErrors} onChange={handleBillingChange} showVatField={taxInfo.b2bEnabled} />
+          <BillingForm data={billing} errors={billingErrors} onChange={handleBillingChange} onBlur={handleBillingBlur} touched={billingTouched} showVatField={taxInfo.b2bEnabled} />
           <CheckoutRegionBlock items={items} customerCountry={billing.country} acknowledged={regionAcknowledged} onAcknowledge={setRegionAcknowledged} />
           {!token && <GuestAccount onPasswordChange={setGuestPassword} />}
           {checkoutConfig.cppEnabled && <CppSection selected={cppSelected} onToggle={setCppSelected} cppPrice={cppFlatPrice} cppLabel={checkoutConfig.cppLabel} cppDescription={checkoutConfig.cppDescription} />}

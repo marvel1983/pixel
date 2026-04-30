@@ -33,6 +33,7 @@ import { ExitIntentPopup } from "@/components/newsletter/exit-intent-popup";
 import { PurchaseToastProvider } from "@/components/social-proof/purchase-toast";
 import { CompareBar } from "@/components/product/compare-bar";
 import { RouteBreadcrumbJsonLd } from "@/components/seo/json-ld";
+import { RouteProgressBar } from "@/components/layout/route-progress-bar";
 
 // Critical path — eager
 import HomePage from "@/pages/home";
@@ -104,6 +105,7 @@ function StorefrontWithMaintenance() {
   }
   return (
     <SiteLayout>
+      <RouteProgressBar />
       <GlobalBreadcrumbs />
       <Suspense>
         <Switch>

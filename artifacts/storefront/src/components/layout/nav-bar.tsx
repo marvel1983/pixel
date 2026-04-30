@@ -26,6 +26,7 @@ import { useCartStore } from "@/stores/cart-store";
 import { useWishlistStore } from "@/stores/wishlist-store";
 import { useCompareStore } from "@/stores/compare-store";
 import { useAuthStore } from "@/stores/auth-store";
+import { useCartDrawerStore } from "@/stores/cart-drawer-store";
 import { CurrencySelector } from "./currency-selector";
 import { LanguageSelector } from "../shop/language-selector";
 import { ThemeToggle } from "./theme-toggle";
@@ -48,6 +49,7 @@ export function NavBar() {
   const itemCount = useCartStore((s) => s.getItemCount());
   const wishCount = useWishlistStore((s) => s.productIds.length);
   const compareCount = useCompareStore((s) => s.productIds.length);
+  const openCartDrawer = useCartDrawerStore((s) => s.open);
 
   return (
     <>
@@ -121,17 +123,16 @@ export function NavBar() {
               </Button>
             </Link>
 
-            <Link href="/cart">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="relative text-white"
-                aria-label={itemCount > 0 ? `Shopping cart — ${itemCount} item${itemCount !== 1 ? "s" : ""}` : "Shopping cart"}
-              >
-                <ShoppingCart className="h-5 w-5" aria-hidden />
-                {itemCount > 0 && <NavBadge count={itemCount} />}
-              </Button>
-            </Link>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative text-white"
+              aria-label={itemCount > 0 ? `Shopping cart — ${itemCount} item${itemCount !== 1 ? "s" : ""}` : "Shopping cart"}
+              onClick={openCartDrawer}
+            >
+              <ShoppingCart className="h-5 w-5" aria-hidden />
+              {itemCount > 0 && <NavBadge count={itemCount} />}
+            </Button>
 
             <UserMenu />
           </div>

@@ -121,6 +121,7 @@ export function ProductPurchaseCard({ product, selectedVariant, quantity, onQuan
     clearTimeout(addedTimer.current);
     setAdded(true);
     addedTimer.current = setTimeout(() => setAdded(false), 3000);
+    toast({ title: `${product.name} added to cart` });
   }
 
   return (
@@ -233,7 +234,11 @@ export function ProductPurchaseCard({ product, selectedVariant, quantity, onQuan
           size="sm"
           className="w-full h-9 text-sm text-white border-0 ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
           style={{ backgroundColor: isWishlisted ? "#ea8a00" : "#f97316" }}
-          onClick={() => toggleWishlist(product.id)}
+          onClick={() => {
+            const adding = !isWishlisted;
+            toggleWishlist(product.id);
+            toast({ title: adding ? `${product.name} added to wishlist` : `${product.name} removed from wishlist` });
+          }}
         >
           <Heart className={`h-3.5 w-3.5 mr-1.5 ${isWishlisted ? "fill-white" : ""}`} />
           {isWishlisted ? "In Wishlist" : "Add to Wishlist"}

@@ -97,14 +97,17 @@ export function ProductCard({ product, flashSalePrice: flashSalePriceProp }: Pro
       clearTimeout(addedTimer.current);
       setAdded(true);
       addedTimer.current = setTimeout(() => setAdded(false), 3000);
+      toast({ title: `${product.name} added to cart` });
     })();
   }
 
   function handleWishlist(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
+    const adding = !isWishlisted;
     toggleWishlist(product.id);
     setHeartPulse(true);
+    toast({ title: adding ? `${product.name} added to wishlist` : `${product.name} removed from wishlist` });
   }
 
   useEffect(() => {

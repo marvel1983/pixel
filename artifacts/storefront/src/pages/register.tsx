@@ -43,6 +43,19 @@ export default function RegisterPage() {
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  function validateField(name: string, value: string): string {
+    if (name === "email" && value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return t("checkout.invalidEmail");
+    if (name === "confirmPassword" && value && value !== form.password) return t("auth.passwordsMismatch");
+    if (name === "password" && value && value.length < 8) return t("resetPassword.minChars");
+    return "";
+  }
+
+  function handleBlur(name: string, value: string) {
+    const err = validateField(name, value);
+    setFieldErrors((prev) => ({ ...prev, [name]: err }));
+  }
 
   useEffect(() => {
     setSeoMeta({ title: t("seo.registerTitle"), description: t("seo.registerDescription") });
@@ -155,9 +168,12 @@ export default function RegisterPage() {
                   type="email"
                   value={form.email}
                   onChange={(e) => update("email", e.target.value)}
+                  onBlur={(e) => handleBlur("email", e.target.value)}
                   placeholder={t("auth.emailPlaceholder")}
+                  className={fieldErrors.email ? "border-destructive" : ""}
                   required
                 />
+                {fieldErrors.email && <p className="text-[11px] text-destructive mt-1">{fieldErrors.email}</p>}
               </div>
 
               <div className="border-t pt-4 space-y-4">
@@ -241,7 +257,9 @@ export default function RegisterPage() {
                     type={showPw ? "text" : "password"}
                     value={form.password}
                     onChange={(e) => update("password", e.target.value)}
+                    onBlur={(e) => handleBlur("password", e.target.value)}
                     placeholder={t("resetPassword.minChars")}
+                    className={fieldErrors.password ? "border-destructive" : ""}
                     minLength={8}
                     required
                   />
@@ -253,6 +271,7 @@ export default function RegisterPage() {
                     {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
+                {fieldErrors.password && <p className="text-[11px] text-destructive mt-1">{fieldErrors.password}</p>}
               </div>
 
               <div>
@@ -262,8 +281,11 @@ export default function RegisterPage() {
                   type="password"
                   value={form.confirmPassword}
                   onChange={(e) => update("confirmPassword", e.target.value)}
+                  onBlur={(e) => handleBlur("confirmPassword", e.target.value)}
+                  className={fieldErrors.confirmPassword ? "border-destructive" : ""}
                   required
                 />
+                {fieldErrors.confirmPassword && <p className="text-[11px] text-destructive mt-1">{fieldErrors.confirmPassword}</p>}
               </div>
 
               <div className="flex items-center gap-2">

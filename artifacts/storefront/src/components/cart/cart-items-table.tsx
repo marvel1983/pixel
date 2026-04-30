@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useCartStore, type CartItem } from "@/stores/cart-store";
 import { useCurrencyStore } from "@/stores/currency-store";
+import { useToast } from "@/hooks/use-toast";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -19,6 +20,13 @@ export function CartItemsTable() {
   const removeBundleItems = useCartStore((s) => s.removeBundleItems);
   const clearCart = useCartStore((s) => s.clearCart);
   const { format } = useCurrencyStore();
+  const { toast } = useToast();
+
+  function handleRemove(variantId: number, bundleId?: number) {
+    const item = items.find((i) => i.variantId === variantId && i.bundleId === bundleId);
+    removeItem(variantId, bundleId);
+    if (item) toast({ title: `${item.productName} removed from cart` });
+  }
 
   const cartPriceSyncKey = useMemo(
     () =>
@@ -110,7 +118,7 @@ export function CartItemsTable() {
           items={bundleItems}
           format={format}
           onRemoveBundle={removeBundleItems}
-          onRemoveItem={removeItem}
+          onRemoveItem={handleRemove}
         />
       ))}
 
@@ -121,7 +129,7 @@ export function CartItemsTable() {
           item={item}
           format={format}
           onUpdateQuantity={handleUpdateQuantity}
-          onRemove={removeItem}
+          onRemove={handleRemove}
           isLast={idx === standaloneItems.length - 1 && bundleGroups.size === 0}
         />
       ))}

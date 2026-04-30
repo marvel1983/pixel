@@ -6,6 +6,7 @@ import { LiveChatWidget } from "./live-chat-widget";
 import { CompareBar } from "@/components/compare/compare-bar";
 import { FlashSaleBanner } from "@/components/flash-sale/flash-sale-banner";
 import { BackToTop } from "@/components/ui/back-to-top";
+import { CartDrawer } from "@/components/cart/cart-drawer";
 
 interface SiteLayoutProps {
   children: ReactNode;
@@ -24,6 +25,7 @@ export function SiteLayout({ children }: SiteLayoutProps) {
       <LiveChatWidget />
       <CompareBar />
       <BackToTop />
+      <CartDrawer />
     </div>
   );
 }
