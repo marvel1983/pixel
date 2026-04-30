@@ -490,19 +490,20 @@
   .win-pro-hero-shell .message p { display: none; }
 }
 
-/* Dark mode: banner always has a light background — pin all text to light-mode ink values */
-.dark .win-pro-hero-shell { color: #071b3f; background: #cfefff; }
-.dark .win-pro-hero-shell h1 { color: #061b45; }
-.dark .win-pro-hero-shell h1 span { color: #1464f6; }
-.dark .win-pro-hero-shell .brand { color: #5c6570; }
-.dark .win-pro-hero-shell .message strong { color: #071b3f; }
-.dark .win-pro-hero-shell .message p { color: #2a3b55; }
-.dark .win-pro-hero-shell .benefit b { color: #071b3f; }
-.dark .win-pro-hero-shell .benefit small { color: #4a617d; }
-.dark .win-pro-hero-shell .price { color: #061b45; }
-.dark .win-pro-hero-shell .delivery strong { color: #071b3f; }
-.dark .win-pro-hero-shell .delivery span { color: #4a617d; }
-.dark .win-pro-hero-shell .box-brand { color: #60636a; }
-.dark .win-pro-hero-shell .box-title { color: #5d23b8; }
-.dark .win-pro-hero-shell .box-tag { color: #5d23b8; }
-.dark .win-pro-hero-shell .badge { color: #061b45; }
+/* Dark mode: banner always has a light background — pin all text to light-mode ink values.
+   Uses !important to override the global .dark h1/.dark p/.dark span blanket rule in index.css. */
+.dark .win-pro-hero-shell { color: #071b3f !important; background: #cfefff !important; }
+.dark .win-pro-hero-shell h1 { color: #061b45 !important; }
+.dark .win-pro-hero-shell h1 span { color: #1464f6 !important; }
+.dark .win-pro-hero-shell .brand { color: #5c6570 !important; }
+.dark .win-pro-hero-shell .message strong { color: #071b3f !important; }
+.dark .win-pro-hero-shell .message p { color: #2a3b55 !important; }
+.dark .win-pro-hero-shell .benefit b { color: #071b3f !important; }
+.dark .win-pro-hero-shell .benefit small { color: #4a617d !important; }
+.dark .win-pro-hero-shell .price { color: #061b45 !important; }
+.dark .win-pro-hero-shell .delivery strong { color: #071b3f !important; }
+.dark .win-pro-hero-shell .delivery span { color: #4a617d !important; }
+.dark .win-pro-hero-shell .box-brand { color: #60636a !important; }
+.dark .win-pro-hero-shell .box-title { color: #5d23b8 !important; }
+.dark .win-pro-hero-shell .box-tag { color: #5d23b8 !important; }
+.dark .win-pro-hero-shell .badge { color: #061b45 !important; }

@@ -390,19 +390,20 @@
   .office-2024-hero-shell .message p { display: none; }
 }
 
-/* Dark mode: banner always has a light background — pin all text to light-mode ink values */
-.dark .office-2024-hero-shell { color: #1f0f4a; background: #ede9fe; }
-.dark .office-2024-hero-shell h1 { color: #4c1d95; }
-.dark .office-2024-hero-shell h1 span { color: #7c3aed; }
-.dark .office-2024-hero-shell .brand { color: #5c6570; }
-.dark .office-2024-hero-shell .message strong { color: #1f0f4a; }
-.dark .office-2024-hero-shell .message p { color: #3a2d5f; }
-.dark .office-2024-hero-shell .benefit b { color: #1f0f4a; }
-.dark .office-2024-hero-shell .benefit small { color: #5b4d7a; }
-.dark .office-2024-hero-shell .price { color: #4c1d95; }
-.dark .office-2024-hero-shell .delivery strong { color: #1f0f4a; }
-.dark .office-2024-hero-shell .delivery span { color: #5b4d7a; }
-.dark .office-2024-hero-shell .box-brand { color: #60636a; }
-.dark .office-2024-hero-shell .box-title { color: #7c3aed; }
-.dark .office-2024-hero-shell .box-tag { color: #7c3aed; }
-.dark .office-2024-hero-shell .badge { color: #4c1d95; }
+/* Dark mode: banner always has a light background — pin all text to light-mode ink values.
+   Uses !important to override the global .dark h1/.dark p/.dark span blanket rule in index.css. */
+.dark .office-2024-hero-shell { color: #1f0f4a !important; background: #ede9fe !important; }
+.dark .office-2024-hero-shell h1 { color: #4c1d95 !important; }
+.dark .office-2024-hero-shell h1 span { color: #7c3aed !important; }
+.dark .office-2024-hero-shell .brand { color: #5c6570 !important; }
+.dark .office-2024-hero-shell .message strong { color: #1f0f4a !important; }
+.dark .office-2024-hero-shell .message p { color: #3a2d5f !important; }
+.dark .office-2024-hero-shell .benefit b { color: #1f0f4a !important; }
+.dark .office-2024-hero-shell .benefit small { color: #5b4d7a !important; }
+.dark .office-2024-hero-shell .price { color: #4c1d95 !important; }
+.dark .office-2024-hero-shell .delivery strong { color: #1f0f4a !important; }
+.dark .office-2024-hero-shell .delivery span { color: #5b4d7a !important; }
+.dark .office-2024-hero-shell .box-brand { color: #60636a !important; }
+.dark .office-2024-hero-shell .box-title { color: #7c3aed !important; }
+.dark .office-2024-hero-shell .box-tag { color: #7c3aed !important; }
+.dark .office-2024-hero-shell .badge { color: #4c1d95 !important; }
