@@ -329,7 +329,7 @@ export function HeroBanner() {
   return (
     <div
       className="relative w-full overflow-hidden"
-      style={{ minHeight: 286, height: "clamp(286px, 39vw, 494px)" }}
+      style={{ minHeight: 286, height: "clamp(286px, 39vw, 740px)" }}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
