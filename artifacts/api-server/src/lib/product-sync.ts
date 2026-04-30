@@ -49,8 +49,9 @@ async function findOrCreateCategory(categoryName: string): Promise<number> {
 }
 
 function mapPlatform(
-  platform: string,
+  platform: string | undefined | null,
 ): (typeof productVariants.$inferInsert)["platform"] {
+  if (!platform) return "OTHER" as (typeof productVariants.$inferInsert)["platform"];
   const platformMap: Record<string, string> = {
     windows: "WINDOWS",
     mac: "MAC",
@@ -145,6 +146,16 @@ async function upsertProduct(mp: MetenziProduct): Promise<void> {
     for (const v of mp.variants) {
       await upsertVariant(productId, v, backorderEta);
     }
+  } else if (mp.sku) {
+    // Metenzi product has no variants array — synthesize one from top-level fields
+    await upsertVariant(productId, {
+      sku: mp.sku,
+      name: mp.name,
+      platform: mp.platform ?? "WINDOWS",
+      priceUsd: (mp.retailPriceCents ?? 0) / 100,
+      compareAtPriceUsd: null,
+      stockCount: mp.stock ?? mp.textKeyStock ?? 0,
+    }, backorderEta);
   }
 }
 
