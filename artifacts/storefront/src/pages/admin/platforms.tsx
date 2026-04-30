@@ -73,7 +73,8 @@ export default function AdminPlatformsPage() {
       });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error ?? "Sync failed");
-      setSyncMsg(`Synced ${d.synced ?? 0} products${d.errors ? ` · ${d.errors} errors` : ""}`);
+      const fetched = d.totalFetched ?? 0;
+      setSyncMsg(`Fetched ${fetched} from Metenzi · synced ${d.synced ?? 0}${d.errors ? ` · ${d.errors} errors` : ""}`);
       loadStats();
     } catch (e) {
       setSyncMsg(e instanceof Error ? e.message : "Sync failed");

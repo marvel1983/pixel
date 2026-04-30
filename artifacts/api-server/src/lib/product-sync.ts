@@ -114,7 +114,7 @@ async function upsertProduct(mp: MetenziProduct): Promise<void> {
         categoryId,
         imageUrl: mp.imageUrl,
         galleryImages: mp.galleryImages ?? null,
-        isActive: mp.isActive ?? true,
+        isActive: isProductActive(mp),
         externalId: mp.id ?? existing.externalId,
         // slug intentionally NOT updated — preserve the original URL forever
         updatedAt: new Date(),
@@ -127,7 +127,7 @@ async function upsertProduct(mp: MetenziProduct): Promise<void> {
       .insert(products)
       .values({
         name: mp.name,
-        slug: mp.slug!,
+        slug: mp.slug ?? deriveSlug(mp),
         externalId: mp.id ?? null,
         description: mp.description,
         shortDescription: mp.shortDescription,
@@ -135,7 +135,7 @@ async function upsertProduct(mp: MetenziProduct): Promise<void> {
         categoryId,
         imageUrl: mp.imageUrl,
         galleryImages: mp.galleryImages ?? null,
-        isActive: mp.isActive ?? true,
+        isActive: isProductActive(mp),
       } as any)
       .returning({ id: products.id });
     productId = created.id;
@@ -207,23 +207,43 @@ async function upsertVariant(
   }
 }
 
+// Metenzi uses status:"active"|"in_stock"|"disabled" — isActive is optional and often absent.
+function isProductActive(p: MetenziProduct): boolean {
+  if (typeof p.isActive === "boolean") return p.isActive;
+  const s = (p.status ?? "").toLowerCase();
+  return s !== "disabled" && s !== "inactive" && s !== "archived";
+}
+
+// Generate a URL-safe slug from name + id suffix when Metenzi omits the slug field.
+function deriveSlug(mp: MetenziProduct): string {
+  const base = mp.name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "")
+    .slice(0, 80);
+  return `${base}-${mp.id.slice(-6)}`;
+}
+
 export async function syncProducts(): Promise<{
   synced: number;
   errors: number;
+  totalFetched: number;
 }> {
   const config = await getMetenziConfig();
   if (!config) {
     logger.warn("Skipping product sync: Metenzi not configured");
-    return { synced: 0, errors: 0 };
+    return { synced: 0, errors: 0, totalFetched: 0 };
   }
 
   logger.info("Starting Metenzi product sync");
   let synced = 0;
   let errors = 0;
+  let totalFetched = 0;
 
   try {
     const allProducts = await getProducts(config);
-    const metenziProducts = allProducts.filter((p) => p.isActive);
+    totalFetched = allProducts.length;
+    const metenziProducts = allProducts.filter(isProductActive);
     logger.info(
       { total: allProducts.length, active: metenziProducts.length },
       "Fetched Metenzi products",
@@ -240,9 +260,9 @@ export async function syncProducts(): Promise<{
     }
   } catch (error) {
     logger.error({ error }, "Failed to fetch Metenzi products");
-    return { synced: 0, errors: 1 };
+    return { synced: 0, errors: 1, totalFetched: 0 };
   }
 
   logger.info({ synced, errors }, "Metenzi product sync complete");
-  return { synced, errors };
+  return { synced, errors, totalFetched };
 }
