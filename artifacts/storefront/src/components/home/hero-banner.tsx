@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Link } from "wouter";
 import { WinProHeroSlide } from "./win-pro-hero-slide";
+import { Win10ProHeroSlide } from "./win10-pro-hero-slide";
 
 /* ─── Slide data ─────────────────────────────────────────── */
 interface Slide {
@@ -103,11 +104,10 @@ const SLIDES: Slide[] = [
     ctaLink: "/product/microsoft-windows-10-pro-retail-key",
     secondaryCta: "",
     secondaryLink: "/product/microsoft-windows-10-pro-retail-key",
-    bg: "from-[#dbeafe] via-[#bfdbfe] to-[#dbeafe]",
-    accent: "#2563eb",
+    bg: "from-[#f0f9ff] via-[#e0f2fe] to-[#bae6fd]",
+    accent: "#0078d4",
     visual: "product",
-    bannerImage: "/banners/win10-pro-hero.png",
-    bannerAlt: "Windows 10 Pro — Limited Time Offer €9.90 — Get your key now",
+    customComponent: Win10ProHeroSlide,
   },
   {
     id: 6,
