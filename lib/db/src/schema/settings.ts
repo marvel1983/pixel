@@ -122,6 +122,7 @@ export const siteSettings = pgTable("site_settings", {
   riskConfig: jsonb("risk_config").$type<RiskScoringConfig>(),
   processingFeeTiers: jsonb("processing_fee_tiers").$type<Array<{ minAmount: number; feePercent: number; feeFixed: number }>>(),
   homepageCategorySlots: jsonb("homepage_category_slots").$type<Record<string, number[]>>(),
+  guaranteeTiles: jsonb("guarantee_tiles").$type<Array<{ icon: string; label: string; sub: string }>>(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 

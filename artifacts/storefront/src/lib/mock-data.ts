@@ -19,6 +19,7 @@ export interface MockProduct {
   systemRequirements?: Record<string, string>;
   tags?: Array<{ id: number; name: string; slug: string; colorHex: string | null }>;
   productAttributes?: Array<{ attrName: string; attrSlug: string; optValue: string | null }>;
+  customInfoTiles?: Array<{ icon: string; title: string; subtitle: string }>;
 }
 
 export interface MockVariant {

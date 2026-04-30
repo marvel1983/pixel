@@ -18,6 +18,7 @@ const SettingsTrustpilotTab = lazy(() => import("./settings-trustpilot"));
 const SettingsSocialProofTab = lazy(() => import("./settings-social-proof"));
 const SettingsConsentTab = lazy(() => import("./settings-consent"));
 const SettingsPaymentProvidersTab = lazy(() => import("./settings-payment-providers"));
+const SettingsGuaranteeTilesTab = lazy(() => import("./settings-guarantee-tiles"));
 
 const tabs = [
   { key: "general", label: "General" },
@@ -29,6 +30,7 @@ const tabs = [
   { key: "loyalty", label: "Loyalty" },
   { key: "trustpilot", label: "Trustpilot" },
   { key: "social-proof", label: "Social Proof" },
+  { key: "guarantee-tiles", label: "Guarantee Tiles" },
   { key: "payment-providers", label: "Payment Providers" },
   { key: "smtp", label: "SMTP" },
   { key: "api-keys", label: "API Keys" },
@@ -72,6 +74,7 @@ export default function AdminSettingsPage() {
         {activeTab === "loyalty" && <SettingsLoyaltyTab />}
         {activeTab === "trustpilot" && <SettingsTrustpilotTab />}
         {activeTab === "social-proof" && <SettingsSocialProofTab />}
+        {activeTab === "guarantee-tiles" && <SettingsGuaranteeTilesTab />}
         {activeTab === "google-oauth" && <SettingsGoogleTab />}
         {activeTab === "turnstile" && <SettingsTurnstileTab />}
         {activeTab === "risk-scoring" && <SettingsRiskScoringTab />}

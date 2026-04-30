@@ -260,6 +260,7 @@ router.get("/products/:slug", async (req: Request, res: Response) => {
       isNew: sql<boolean>`false`,
       regionRestrictions: products.regionRestrictions,
       platformType: products.platformType,
+      customInfoTiles: products.customInfoTiles,
       keyFeatures: products.keyFeatures,
       systemRequirements: products.systemRequirements,
       categorySlug: categories.slug,

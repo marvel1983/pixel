@@ -1,10 +1,14 @@
+import { useState, useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Globe, Monitor, Key, Package, Shield, RotateCcw, Headphones, Zap, Star } from "lucide-react";
+import { Globe, Monitor, Key, Package, Star } from "lucide-react";
 import { ViewerCount } from "@/components/social-proof/viewer-count";
 import { SoldBadge } from "@/components/social-proof/sold-badge";
 import { ActivationGuideLink } from "@/components/product/platform-badge";
 import { VolumePricing } from "@/components/product-detail/volume-pricing";
+import { INFO_ICON_MAP, ACCENT_BY_ICON } from "@/lib/info-tile-icons";
 import type { MockProduct, MockVariant } from "@/lib/mock-data";
+
+const API_URL = import.meta.env.VITE_API_URL ?? "/api";
 
 interface ProductMetaProps {
   product: MockProduct;
@@ -31,6 +35,12 @@ const WORKS_ON: Record<string, string> = {
 };
 
 export function ProductMeta({ product, selectedVariant, onVariantChange }: ProductMetaProps) {
+  const [guaranteeTiles, setGuaranteeTiles] = useState<Array<{ icon: string; label: string; sub: string }>>([]);
+
+  useEffect(() => {
+    fetch(`${API_URL}/guarantee-tiles`).then((r) => r.json()).then((d) => setGuaranteeTiles(d.tiles ?? [])).catch(() => {});
+  }, []);
+
   const basePrice = parseFloat(selectedVariant.priceUsd);
   const compareAt = selectedVariant.compareAtPriceUsd ? parseFloat(selectedVariant.compareAtPriceUsd) : null;
   const discount = compareAt ? Math.round((1 - basePrice / compareAt) * 100) : 0;
@@ -77,7 +87,7 @@ export function ProductMeta({ product, selectedVariant, onVariantChange }: Produ
       <ViewerCount productId={product.id} />
       <SoldBadge productId={product.id} />
 
-      {/* 2×2 Feature grid */}
+      {/* Auto-generated + custom info tiles */}
       <div className="grid grid-cols-2 gap-2">
         <div className="border rounded-lg p-3 flex items-start gap-2">
           <Globe className="h-4 w-4 text-primary mt-0.5 shrink-0" />
@@ -107,6 +117,19 @@ export function ProductMeta({ product, selectedVariant, onVariantChange }: Produ
             <p className="text-xs text-muted-foreground">{worksOn}</p>
           </div>
         </div>
+        {product.customInfoTiles?.map((t, i) => {
+          const Icon = INFO_ICON_MAP[t.icon];
+          const accent = ACCENT_BY_ICON[t.icon]?.accent ?? "#3b82f6";
+          return (
+            <div key={i} className="border rounded-lg p-3 flex items-start gap-2">
+              {Icon && <Icon className="h-4 w-4 mt-0.5 shrink-0" style={{ color: accent }} />}
+              <div>
+                <p className="text-xs font-semibold">{t.title}</p>
+                <p className="text-xs text-muted-foreground">{t.subtitle}</p>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       <ActivationGuideLink platformType={product.platformType} />
@@ -136,24 +159,20 @@ export function ProductMeta({ product, selectedVariant, onVariantChange }: Produ
       <VolumePricing productId={product.id} basePrice={selectedVariant.priceUsd} />
 
       {/* Trust badges */}
-      <div className="grid grid-cols-2 gap-x-4 gap-y-2 pt-3 border-t">
-        <div className="flex items-center gap-2">
-          <Shield className="h-4 w-4 text-green-600 shrink-0" />
-          <span className="text-xs text-muted-foreground">Secure Payment</span>
+      {guaranteeTiles.length > 0 && (
+        <div className="grid grid-cols-2 gap-x-4 gap-y-2 pt-3 border-t">
+          {guaranteeTiles.map((t) => {
+            const Icon = INFO_ICON_MAP[t.icon];
+            const accent = ACCENT_BY_ICON[t.icon]?.accent ?? "#3b82f6";
+            return (
+              <div key={t.label} className="flex items-center gap-2">
+                {Icon && <Icon className="h-4 w-4 shrink-0" style={{ color: accent }} />}
+                <span className="text-xs text-muted-foreground">{t.label}</span>
+              </div>
+            );
+          })}
         </div>
-        <div className="flex items-center gap-2">
-          <RotateCcw className="h-4 w-4 text-blue-600 shrink-0" />
-          <span className="text-xs text-muted-foreground">Money Back Guarantee</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Headphones className="h-4 w-4 text-purple-600 shrink-0" />
-          <span className="text-xs text-muted-foreground">24/7 Support</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Zap className="h-4 w-4 text-yellow-500 shrink-0" />
-          <span className="text-xs text-muted-foreground">Instant Delivery</span>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

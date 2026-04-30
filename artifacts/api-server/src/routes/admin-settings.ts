@@ -12,6 +12,35 @@ import type { MetenziClientConfig } from "../lib/metenzi-client";
 
 const router = Router();
 
+const DEFAULT_GUARANTEE_TILES = [
+  { icon: "shield", label: "Secure Payment", sub: "256-bit SSL encrypted" },
+  { icon: "zap", label: "Instant Delivery", sub: "Digital key via email" },
+  { icon: "refresh", label: "Money-Back", sub: "30-day guarantee" },
+  { icon: "headphones", label: "24/7 Support", sub: "Live chat & email" },
+];
+
+router.get("/guarantee-tiles", async (_req, res) => {
+  const [row] = await db.select({ guaranteeTiles: siteSettings.guaranteeTiles }).from(siteSettings).limit(1);
+  res.json({ tiles: row?.guaranteeTiles ?? DEFAULT_GUARANTEE_TILES });
+});
+
+router.get("/admin/settings/guarantee-tiles", requireAuth, requireAdmin, requirePermission("manageSettings"), async (_req, res) => {
+  const [row] = await db.select({ guaranteeTiles: siteSettings.guaranteeTiles }).from(siteSettings).limit(1);
+  res.json({ tiles: row?.guaranteeTiles ?? DEFAULT_GUARANTEE_TILES });
+});
+
+router.put("/admin/settings/guarantee-tiles", requireAuth, requireAdmin, requirePermission("manageSettings"), async (req, res) => {
+  const tiles = req.body.tiles;
+  if (!Array.isArray(tiles)) { res.status(400).json({ error: "tiles must be an array" }); return; }
+  const [row] = await db.select({ id: siteSettings.id }).from(siteSettings).limit(1);
+  if (row) {
+    await db.update(siteSettings).set({ guaranteeTiles: tiles, updatedAt: new Date() }).where(eq(siteSettings.id, row.id));
+  } else {
+    await db.insert(siteSettings).values({ guaranteeTiles: tiles });
+  }
+  res.json({ success: true });
+});
+
 const VALID_FIELDS: Record<string, string[]> = {
   metenzi: ["apiKey", "hmacSecret", "webhookSecret"],
   checkout: ["publicKey", "secretKey"],

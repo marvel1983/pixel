@@ -7,6 +7,7 @@ import { VariantPricingCard } from "./variant-pricing-card";
 import { ProductEditSidebar } from "./product-edit-sidebar";
 import { s } from "./product-edit-types";
 import type { ProductData, VariantData, CategoryOption, ProductOption, TagDef, AttrDef, AttrValue } from "./product-edit-types";
+import { INFO_ICON_OPTIONS } from "@/lib/info-tile-icons";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -26,6 +27,7 @@ export default function ProductEditPage() {
   const [newFeature, setNewFeature] = useState("");
   const [newReqKey, setNewReqKey] = useState("");
   const [newReqVal, setNewReqVal] = useState("");
+  const [newTile, setNewTile] = useState({ icon: "shield", title: "", subtitle: "" });
   const [showAddVariant, setShowAddVariant] = useState(false);
   const [newV, setNewV] = useState({ name: "", sku: "", priceUsd: "", compareAtPriceUsd: "", stockCount: "0" });
   const [addingVariant, setAddingVariant] = useState(false);
@@ -49,7 +51,7 @@ export default function ProductEditPage() {
       fetch(`${API_URL}/admin/attributes`, { headers: authHdr }).then((r) => r.json()).catch(() => []),
       fetch(`${API_URL}/admin/products/${productId}/attributes`, { headers: authHdr }).then((r) => r.json()).catch(() => []),
     ]).then(async ([d, tagsData, productTagsData, attrsData, productAttrsData]) => {
-      setProduct({ ...d.product, keyFeatures: d.product.keyFeatures ?? [], systemRequirements: d.product.systemRequirements ?? {}, relatedProductIds: d.product.relatedProductIds ?? [], crossSellProductIds: d.product.crossSellProductIds ?? [], activationInstructions: d.product.activationInstructions ?? null });
+      setProduct({ ...d.product, keyFeatures: d.product.keyFeatures ?? [], systemRequirements: d.product.systemRequirements ?? {}, relatedProductIds: d.product.relatedProductIds ?? [], crossSellProductIds: d.product.crossSellProductIds ?? [], activationInstructions: d.product.activationInstructions ?? null, customInfoTiles: d.product.customInfoTiles ?? [] });
       setVariants(d.variants);
       setCats(d.categories);
       setAllProducts(d.allProducts ?? []);
@@ -300,6 +302,32 @@ export default function ProductEditPage() {
                   })}
                 </div>
             }
+          </div>
+
+          {/* Custom Info Tiles */}
+          <div style={s.card}>
+            <p style={s.secTitle}>Custom Info Tiles</p>
+            <p style={{ fontSize: 10, color: "#566070", marginBottom: 6, marginTop: -4 }}>Per-product tiles shown in the info grid on the product page.</p>
+            {product.customInfoTiles.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 6 }}>
+                {product.customInfoTiles.map((t, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}>
+                    <span style={{ color: "#8b94a8", minWidth: 72, fontWeight: 600 }}>{t.icon}</span>
+                    <span style={{ flex: 1, color: "#c8d0e0" }}>{t.title}</span>
+                    <span style={{ flex: 2, color: "#8b94a8" }}>{t.subtitle}</span>
+                    <button onClick={() => upd("customInfoTiles", product.customInfoTiles.filter((_, j) => j !== i))} style={{ background: "none", border: "none", cursor: "pointer", color: "#3a4255", display: "flex" }}><X size={11} /></button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div style={{ display: "flex", gap: 5 }}>
+              <select style={{ ...s.inp, flex: "none", width: 120 }} value={newTile.icon} onChange={(e) => setNewTile((t) => ({ ...t, icon: e.target.value }))}>
+                {INFO_ICON_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+              <input style={{ ...s.inp, flex: 1 }} placeholder="Title" value={newTile.title} onChange={(e) => setNewTile((t) => ({ ...t, title: e.target.value }))} />
+              <input style={{ ...s.inp, flex: 2 }} placeholder="Subtitle" value={newTile.subtitle} onChange={(e) => setNewTile((t) => ({ ...t, subtitle: e.target.value }))} />
+              <button style={s.iconBtn} onClick={() => { if (newTile.title.trim()) { upd("customInfoTiles", [...product.customInfoTiles, { ...newTile }]); setNewTile({ icon: "shield", title: "", subtitle: "" }); } }}><Plus size={13} /></button>
+            </div>
           </div>
 
           {/* SEO */}

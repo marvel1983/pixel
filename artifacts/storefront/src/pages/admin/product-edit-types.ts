@@ -8,6 +8,7 @@ export interface ProductData {
   relatedProductIds: number[]; crossSellProductIds: number[];
   regionRestrictions: string[]; platformType: string | null;
   activationInstructions: string | null;
+  customInfoTiles: Array<{ icon: string; title: string; subtitle: string }>;
 }
 
 export interface VariantData {

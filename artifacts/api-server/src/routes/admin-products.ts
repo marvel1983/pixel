@@ -269,6 +269,7 @@ router.post("/admin/products", requireAuth, requireAdmin, requirePermission("man
       regionRestrictions: body.regionRestrictions ?? [],
       platformType: body.platformType || null,
       sortOrder: body.sortOrder ?? 0,
+      customInfoTiles: body.customInfoTiles ?? [],
     })
     .returning({ id: products.id });
 
@@ -305,6 +306,7 @@ router.put("/admin/products/:id", requireAuth, requireAdmin, requirePermission("
       platformType: body.platformType || null,
       sortOrder: body.sortOrder,
       activationInstructions: body.activationInstructions ?? null,
+      customInfoTiles: body.customInfoTiles ?? [],
       updatedAt: new Date(),
     })
     .where(eq(products.id, id));
