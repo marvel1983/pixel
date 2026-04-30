@@ -27,7 +27,7 @@ interface BillingFormProps {
   data: BillingData;
   errors: Partial<Record<keyof BillingData, string>>;
   onChange: (field: keyof BillingData, value: string) => void;
-  onBlur?: (field: keyof BillingData) => void;
+  onBlur?: (field: keyof BillingData, value?: string) => void;
   touched?: Partial<Record<keyof BillingData, boolean>>;
   showVatField?: boolean;
 }
@@ -99,7 +99,7 @@ export function BillingForm({ data, errors, onChange, onBlur, touched, showVatFi
       {/* Country + Phone — same row */}
       <div className="grid grid-cols-2 gap-3">
         <Field id="country" label={`${t("checkout.country")} *`} error={errors.country} valid={isValid("country")}>
-          <Select value={data.country} onValueChange={(v) => { onChange("country", v); onBlur?.("country"); }}>
+          <Select value={data.country} onValueChange={(v) => { onChange("country", v); onBlur?.("country", v); }}>
             <SelectTrigger className={`h-9 text-sm ${errors.country ? "border-destructive" : ""}`}>
               <SelectValue placeholder={t("checkout.selectCountry")} />
             </SelectTrigger>

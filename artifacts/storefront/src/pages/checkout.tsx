@@ -118,9 +118,9 @@ export default function CheckoutPage() {
     if (billingErrors[field]) setBillingErrors((prev) => ({ ...prev, [field]: undefined }));
   }
 
-  function handleBillingBlur(field: keyof BillingData) {
+  function handleBillingBlur(field: keyof BillingData, overrideValue?: string) {
     setBillingTouched((prev) => ({ ...prev, [field]: true }));
-    const err = validateBillingField(field, billing[field] ?? "");
+    const err = validateBillingField(field, overrideValue ?? billing[field] ?? "");
     setBillingErrors((prev) => ({ ...prev, [field]: err }));
   }
 
