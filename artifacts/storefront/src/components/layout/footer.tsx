@@ -125,6 +125,7 @@ const COLS = [
       { label: "Contact Us", href: "/contact" },
       { label: "How to Activate", href: "/how-to-activate" },
       { label: "Refund Policy", href: "/refund-policy" },
+      { label: "Terms & Conditions", href: "/terms" },
       { label: "FAQ", href: "/faq" },
       { label: "Track Order", href: "/order-lookup" },
     ],
@@ -283,13 +284,13 @@ export function Footer() {
             {/* Legal */}
             <div className="flex flex-wrap gap-x-4 gap-y-1">
               {LEGAL.map(({ label, href }) => (
-                <Link key={href} href={href} className="text-xs text-slate-600 hover:text-slate-400 transition-colors">
+                <Link key={href} href={href} className="text-xs text-slate-500 hover:text-slate-300 transition-colors">
                   {label}
                 </Link>
               ))}
               <button
                 onClick={() => useCookieConsentStore.getState().openModal()}
-                className="text-xs text-slate-600 hover:text-slate-400 transition-colors inline-flex items-center gap-1"
+                className="text-xs text-slate-500 hover:text-slate-300 transition-colors inline-flex items-center gap-1"
               >
                 <Cookie className="h-3 w-3" /> Cookies
               </button>
