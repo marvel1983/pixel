@@ -5,15 +5,19 @@ import { useLocation } from "wouter";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
-// Enterprise & PC digital platforms only — no console-specific entries
 const PLATFORM_META: Record<string, { label: string; icon: React.ReactNode; color: string; bg: string }> = {
-  WINDOWS: { label: "Windows",    icon: <Monitor className="h-5 w-5" />,  color: "#60a5fa", bg: "#0d1f3c" },
-  MAC:     { label: "macOS",      icon: <Apple className="h-5 w-5" />,    color: "#a78bfa", bg: "#1a0d3c" },
-  LINUX:   { label: "Linux",      icon: <Terminal className="h-5 w-5" />, color: "#f59e0b", bg: "#2a1a00" },
-  STEAM:   { label: "Steam",      icon: <Gamepad2 className="h-5 w-5" />, color: "#4fc3f7", bg: "#001a2a" },
-  EPIC:    { label: "Epic Games", icon: <Gamepad2 className="h-5 w-5" />, color: "#e2e8f0", bg: "#1a1a1a" },
-  GOG:     { label: "GOG",        icon: <Gamepad2 className="h-5 w-5" />, color: "#c084fc", bg: "#1a0028" },
-  OTHER:   { label: "Other",      icon: <Package className="h-5 w-5" />,  color: "#94a3b8", bg: "#1a1d24" },
+  WINDOWS:     { label: "Windows",     icon: <Monitor className="h-5 w-5" />,  color: "#60a5fa", bg: "#0d1f3c" },
+  MAC:         { label: "macOS",       icon: <Apple className="h-5 w-5" />,    color: "#a78bfa", bg: "#1a0d3c" },
+  LINUX:       { label: "Linux",       icon: <Terminal className="h-5 w-5" />, color: "#f59e0b", bg: "#2a1a00" },
+  STEAM:       { label: "Steam",       icon: <Gamepad2 className="h-5 w-5" />, color: "#4fc3f7", bg: "#001a2a" },
+  EPIC:        { label: "Epic Games",  icon: <Gamepad2 className="h-5 w-5" />, color: "#e2e8f0", bg: "#1a1a1a" },
+  GOG:         { label: "GOG",         icon: <Gamepad2 className="h-5 w-5" />, color: "#c084fc", bg: "#1a0028" },
+  ORIGIN:      { label: "EA App",      icon: <Gamepad2 className="h-5 w-5" />, color: "#fb923c", bg: "#2a1000" },
+  UPLAY:       { label: "Ubisoft",     icon: <Gamepad2 className="h-5 w-5" />, color: "#60a5fa", bg: "#001028" },
+  XBOX:        { label: "Xbox",        icon: <Gamepad2 className="h-5 w-5" />, color: "#4ade80", bg: "#001a0a" },
+  PLAYSTATION: { label: "PlayStation", icon: <Gamepad2 className="h-5 w-5" />, color: "#60a5fa", bg: "#001028" },
+  NINTENDO:    { label: "Nintendo",    icon: <Gamepad2 className="h-5 w-5" />, color: "#f87171", bg: "#2a0000" },
+  OTHER:       { label: "Other",       icon: <Package className="h-5 w-5" />,  color: "#94a3b8", bg: "#1a1d24" },
 };
 
 // Full enum list used in the manual assignment dropdown
