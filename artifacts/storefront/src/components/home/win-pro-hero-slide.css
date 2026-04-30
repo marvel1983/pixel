@@ -491,7 +491,10 @@
 }
 
 /* Dark mode: banner always has a light background — pin all text to light-mode ink values.
-   Uses !important to override the global .dark h1/.dark p/.dark span blanket rule in index.css. */
+   Uses !important to override the global .dark h1/.dark p/.dark span blanket rule in index.css.
+   Catch-all for spans: inherit from the parent's pinned color; specific overrides follow. */
+.dark .win-pro-hero-shell span { color: inherit !important; }
+.dark .win-pro-hero-shell .sale-ribbon { color: white !important; }
 .dark .win-pro-hero-shell { color: #071b3f !important; background: #cfefff !important; }
 .dark .win-pro-hero-shell h1 { color: #061b45 !important; }
 .dark .win-pro-hero-shell h1 span { color: #1464f6 !important; }
