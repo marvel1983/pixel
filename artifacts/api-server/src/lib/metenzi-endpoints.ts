@@ -415,12 +415,20 @@ export async function testWebhook(
   config: MetenziClientConfig,
   webhookId: string,
 ): Promise<MetenziWebhookTestResult> {
+  // Metenzi's HMAC verifier signs `JSON.stringify(body || '')`, which for an empty
+  // POST evaluates to `'""'` on their side. Our client signs with `""` (literally
+  // empty) when body is undefined. Sending an explicit `{}` keeps both sides on
+  // `'{}'` so the signature matches.
   const res = await metenziRequest<Record<string, unknown>>(config, {
     method: "POST",
     path: `/api/public/webhooks/${webhookId}/test`,
+    body: {},
   });
   if (!res.ok) {
-    throw new Error(`Failed to test Metenzi webhook ${webhookId}: ${res.status}`);
+    const detail = typeof res.data === "object" && res.data !== null
+      ? JSON.stringify(res.data).slice(0, 200)
+      : String(res.data ?? "");
+    throw new Error(`Metenzi webhook test ${webhookId} failed: ${res.status} — ${detail}`);
   }
   const d = (res.data?.data ?? res.data) as Record<string, unknown>;
   return {
