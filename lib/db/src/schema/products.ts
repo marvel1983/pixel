@@ -63,6 +63,7 @@ export const products = pgTable("products", {
   reviewCount: integer("review_count").notNull().default(0),
   activationInstructions: text("activation_instructions"),
   customInfoTiles: jsonb("custom_info_tiles").$type<Array<{ icon: string; title: string; subtitle: string }>>(),
+  externalId: varchar("external_id", { length: 100 }).unique(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (t) => ({

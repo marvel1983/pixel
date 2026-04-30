@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   products,
@@ -83,17 +83,21 @@ function mapProductType(
 }
 
 async function upsertProduct(mp: MetenziProduct): Promise<void> {
-  if (!mp.slug) return; // skip products without slugs
+  if (!mp.slug && !mp.id) return;
 
   const categoryId = mp.category
     ? await findOrCreateCategory(mp.category)
     : null;
 
-  const [existing] = await db
-    .select()
-    .from(products)
-    .where(eq(products.slug, mp.slug))
-    .limit(1);
+  // Look up by stable Metenzi ID first, then fall back to slug.
+  // This preserves existing slugs even when Metenzi renames their product URLs.
+  const conditions = [];
+  if (mp.id) conditions.push(eq(products.externalId, mp.id));
+  if (mp.slug) conditions.push(eq(products.slug, mp.slug));
+
+  const [existing] = conditions.length > 0
+    ? await db.select().from(products).where(or(...conditions)).limit(1)
+    : [];
 
   let productId: number;
 
@@ -110,6 +114,8 @@ async function upsertProduct(mp: MetenziProduct): Promise<void> {
         imageUrl: mp.imageUrl,
         galleryImages: mp.galleryImages ?? null,
         isActive: mp.isActive ?? true,
+        externalId: mp.id ?? existing.externalId,
+        // slug intentionally NOT updated — preserve the original URL forever
         updatedAt: new Date(),
       } as any)
       .where(eq(products.id, existing.id));
@@ -121,6 +127,7 @@ async function upsertProduct(mp: MetenziProduct): Promise<void> {
       .values({
         name: mp.name,
         slug: mp.slug!,
+        externalId: mp.id ?? null,
         description: mp.description,
         shortDescription: mp.shortDescription,
         type: mapProductType(mp.type ?? "software"),
