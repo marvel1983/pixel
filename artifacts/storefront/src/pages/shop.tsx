@@ -1,16 +1,23 @@
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useListingFilters } from "@/lib/use-listing-filters";
 import { useProducts } from "@/lib/use-products";
 import { Breadcrumbs } from "@/components/shop/breadcrumbs";
 import { FilterSidebar } from "@/components/shop/filter-sidebar";
 import { ProductGrid } from "@/components/shop/product-grid";
+import { ProductGridSkeleton } from "@/components/shop/product-grid-skeleton";
+import { setSeoMeta, clearSeoMeta } from "@/lib/seo";
 import type { MockProduct } from "@/lib/mock-data";
 
 export default function ShopPage() {
   const { t } = useTranslation();
   const { filters, setFilters, perPage } = useListingFilters();
   const { items, total, facets, loading } = useProducts(filters, perPage);
+
+  useEffect(() => {
+    setSeoMeta({ title: t("shop.title") + " | PixelCodes", description: t("shop.metaDescription", "Browse our full catalog of digital software license keys."), canonicalUrl: `${window.location.origin}/shop` });
+    return () => { clearSeoMeta(); };
+  }, [t]);
 
   // Convert API products to MockProduct-compatible shape for ProductCard / ProductGrid
   const products = useMemo<MockProduct[]>(() =>
@@ -52,12 +59,9 @@ export default function ShopPage() {
           onFilterChange={setFilters}
         />
         <div className="flex-1">
-          {loading && products.length === 0 && (
-            <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
-              Loading products…
-            </div>
-          )}
-          {!loading || products.length > 0 ? (
+          {loading && products.length === 0 ? (
+            <ProductGridSkeleton count={8} />
+          ) : (
             <ProductGrid
               products={products}
               totalItems={total}
@@ -67,7 +71,7 @@ export default function ShopPage() {
               onSortChange={(sort) => setFilters({ sort })}
               onPageChange={(page) => setFilters({ page })}
             />
-          ) : null}
+          )}
         </div>
       </div>
     </div>

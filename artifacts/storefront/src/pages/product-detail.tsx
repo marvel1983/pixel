@@ -20,6 +20,7 @@ import { setSeoMeta, clearSeoMeta } from "@/lib/seo";
 import { ProductJsonLd, BreadcrumbJsonLd } from "@/components/seo/json-ld";
 import { Separator } from "@/components/ui/separator";
 import { toMockProduct } from "@/lib/use-products";
+import { ProductDetailSkeleton } from "@/components/product-detail/product-detail-skeleton";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -88,7 +89,7 @@ export default function ProductDetailPage() {
   }, [product]);
 
   if (product === undefined && !fetchError) {
-    return <div className="container mx-auto px-4 py-16 text-center text-muted-foreground">Loading…</div>;
+    return <ProductDetailSkeleton />;
   }
 
   if (fetchError) {

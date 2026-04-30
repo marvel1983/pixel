@@ -135,8 +135,8 @@ export function ProductCard({ product, flashSalePrice: flashSalePriceProp }: Pro
             {product.imageUrl ? (
               <img src={product.imageUrl} alt={product.name} className="h-full w-full object-contain p-3" loading="lazy" decoding="async" />
             ) : (
-              <div className="flex h-full w-full items-center justify-center">
-                <Package className="h-12 w-12 text-muted-foreground/30" />
+              <div className="flex h-full w-full items-center justify-center" role="img" aria-label={`${product.name} — no image available`}>
+                <Package className="h-12 w-12 text-muted-foreground/30" aria-hidden />
               </div>
             )}
           </div>
@@ -170,22 +170,25 @@ export function ProductCard({ product, flashSalePrice: flashSalePriceProp }: Pro
             {!isNewRecently && <span />}
             <button
               onClick={handleWishlist}
+              aria-label={isWishlisted ? `Remove ${product.name} from wishlist` : `Add ${product.name} to wishlist`}
               className={`w-7 h-7 rounded-full bg-white/90 shadow flex items-center justify-center hover:bg-white transition-colors ${isWishlisted ? "text-red-500" : "text-muted-foreground"} ${heartPulse ? "animate-heart-pulse" : ""}`}
             >
-              <Heart className={`h-3.5 w-3.5 ${isWishlisted ? "fill-red-500" : ""}`} />
+              <Heart className={`h-3.5 w-3.5 ${isWishlisted ? "fill-red-500" : ""}`} aria-hidden />
             </button>
             <button
               onClick={handleCompare}
+              aria-label={isComparing ? `Remove ${product.name} from compare` : `Add ${product.name} to compare`}
               className={`w-7 h-7 rounded-full bg-white/90 shadow flex items-center justify-center hover:bg-white transition-colors ${isComparing ? "text-primary" : "text-muted-foreground"}`}
             >
-              <GitCompareArrows className="h-3.5 w-3.5" />
+              <GitCompareArrows className="h-3.5 w-3.5" aria-hidden />
             </button>
           </div>
           <button
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); setQuickViewOpen(true); }}
+            aria-label={`Quick view ${product.name}`}
             className="absolute inset-x-0 bottom-0 bg-black/60 text-white text-xs py-1.5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1 z-20"
           >
-            <Eye className="h-3 w-3" /> Quick View
+            <Eye className="h-3 w-3" aria-hidden /> Quick View
           </button>
         </div>
 
@@ -280,6 +283,9 @@ export function ProductCard({ product, flashSalePrice: flashSalePriceProp }: Pro
       </div>
     </Link>
     <QuickViewModal product={product} open={quickViewOpen} onClose={() => setQuickViewOpen(false)} />
+    <span className="sr-only" aria-live="polite" aria-atomic="true">
+      {added ? `${product.name} added to cart` : ""}
+    </span>
     </>
   );
 }

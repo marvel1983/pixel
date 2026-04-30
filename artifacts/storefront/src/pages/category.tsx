@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { useParams } from "wouter";
 import { useTranslation } from "react-i18next";
 import { useListingFilters } from "@/lib/use-listing-filters";
@@ -7,6 +7,8 @@ import { Breadcrumbs } from "@/components/shop/breadcrumbs";
 import { FilterSidebar } from "@/components/shop/filter-sidebar";
 import { ProductGrid } from "@/components/shop/product-grid";
 import { CollectionPageJsonLd, BreadcrumbJsonLd } from "@/components/seo/json-ld";
+import { ProductGridSkeleton } from "@/components/shop/product-grid-skeleton";
+import { setSeoMeta, clearSeoMeta } from "@/lib/seo";
 
 const CATEGORY_KEYS: Record<string, string> = {
   "operating-systems": "categories.operatingSystems",
@@ -33,6 +35,11 @@ export default function CategoryPage() {
     { label: categoryName },
   ];
 
+  useEffect(() => {
+    setSeoMeta({ title: `${categoryName} | PixelCodes`, description: `Buy genuine ${categoryName} license keys. Instant digital delivery.`, canonicalUrl: `${window.location.origin}/category/${slug}` });
+    return () => { clearSeoMeta(); };
+  }, [categoryName, slug]);
+
   return (
     <div className="container mx-auto px-4 py-6">
       <CollectionPageJsonLd name={categoryName} slug={slug} />
@@ -48,9 +55,7 @@ export default function CategoryPage() {
           hideCategoryFilter
         />
         {loading && products.length === 0 ? (
-          <div className="flex-1 flex items-center justify-center py-16 text-muted-foreground text-sm">
-            Loading products…
-          </div>
+          <ProductGridSkeleton count={8} />
         ) : (
           <ProductGrid
             products={products}

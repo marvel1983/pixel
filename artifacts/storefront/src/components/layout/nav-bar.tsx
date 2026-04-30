@@ -58,8 +58,9 @@ export function NavBar() {
             size="icon"
             className="lg:hidden text-white mr-2"
             onClick={() => setMobileOpen(true)}
+            aria-label="Open navigation menu"
           >
-            <Menu className="h-5 w-5" />
+            <Menu className="h-5 w-5" aria-hidden />
           </Button>
 
           <div className="relative hidden lg:block">
@@ -101,8 +102,9 @@ export function NavBar() {
                 variant="ghost"
                 size="icon"
                 className="relative text-white"
+                aria-label={compareCount > 0 ? `Compare — ${compareCount} item${compareCount !== 1 ? "s" : ""}` : "Compare products"}
               >
-                <GitCompareArrows className="h-5 w-5" />
+                <GitCompareArrows className="h-5 w-5" aria-hidden />
                 {compareCount > 0 && <NavBadge count={compareCount} />}
               </Button>
             </Link>
@@ -112,8 +114,9 @@ export function NavBar() {
                 variant="ghost"
                 size="icon"
                 className="relative text-white"
+                aria-label={wishCount > 0 ? `Wishlist — ${wishCount} item${wishCount !== 1 ? "s" : ""}` : "View wishlist"}
               >
-                <Heart className="h-5 w-5" />
+                <Heart className="h-5 w-5" aria-hidden />
                 {wishCount > 0 && <NavBadge count={wishCount} />}
               </Button>
             </Link>
@@ -123,8 +126,9 @@ export function NavBar() {
                 variant="ghost"
                 size="icon"
                 className="relative text-white"
+                aria-label={itemCount > 0 ? `Shopping cart — ${itemCount} item${itemCount !== 1 ? "s" : ""}` : "Shopping cart"}
               >
-                <ShoppingCart className="h-5 w-5" />
+                <ShoppingCart className="h-5 w-5" aria-hidden />
                 {itemCount > 0 && <NavBadge count={itemCount} />}
               </Button>
             </Link>
@@ -148,8 +152,8 @@ function UserMenu() {
   if (!user) {
     return (
       <Link href="/login">
-        <Button variant="ghost" size="icon" className="text-white">
-          <User className="h-5 w-5" />
+        <Button variant="ghost" size="icon" className="text-white" aria-label="Sign in">
+          <User className="h-5 w-5" aria-hidden />
         </Button>
       </Link>
     );
@@ -158,8 +162,8 @@ function UserMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="text-white">
-          <User className="h-5 w-5" />
+        <Button variant="ghost" size="icon" className="text-white" aria-label={`Account menu for ${user.firstName ?? user.email}`}>
+          <User className="h-5 w-5" aria-hidden />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">
@@ -218,7 +222,10 @@ function NavBadge({ count }: { count: number }) {
   }, [bounce, count]);
 
   return (
-    <span className={`absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground px-1 ${bounce ? "animate-badge-bounce" : ""}`}>
+    <span
+      className={`absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground px-1 ${bounce ? "animate-badge-bounce" : ""}`}
+      aria-hidden="true"
+    >
       {count > 99 ? "99+" : count}
     </span>
   );

@@ -226,11 +226,12 @@
     @apply border-border;
   }
 
-  button:focus, button:focus-visible,
-  a:focus, a:focus-visible,
-  [role="button"]:focus, [role="button"]:focus-visible {
-    outline: none !important;
-    --tw-ring-shadow: none !important;
+  /* Suppress focus ring on mouse/touch click only — keyboard users keep visible ring */
+  button:focus:not(:focus-visible),
+  a:focus:not(:focus-visible),
+  [role="button"]:focus:not(:focus-visible) {
+    outline: none;
+    --tw-ring-shadow: none;
   }
 
   body {

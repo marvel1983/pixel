@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Loader2, ShoppingBag } from "lucide-react";
 import { useAuthStore } from "@/stores/auth-store";
 import { useCurrencyStore } from "@/stores/currency-store";
@@ -50,7 +51,20 @@ export function AccountOrdersTab() {
     } catch { /* ignore */ } finally { setLoadingDetail(false); }
   }
 
-  if (loading) return <Card><CardContent className="py-8 text-center"><Loader2 className="h-6 w-6 animate-spin mx-auto" /></CardContent></Card>;
+  if (loading) return (
+    <Card aria-busy="true" aria-label="Loading orders">
+      <CardContent className="py-4 space-y-3">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="flex items-center gap-4 border rounded-lg p-4">
+            <Skeleton className="h-10 w-10 rounded-md shrink-0" />
+            <div className="flex-1 space-y-2"><Skeleton className="h-4 w-32" /><Skeleton className="h-3 w-52" /></div>
+            <Skeleton className="h-6 w-20 rounded-full" />
+            <Skeleton className="h-4 w-14" />
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
 
   if (selectedOrder) return (
     <div>
