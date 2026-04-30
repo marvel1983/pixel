@@ -52,10 +52,13 @@ function mapPlatform(platform: string | undefined | null): string {
   if (!platform) return "OTHER";
   const platformMap: Record<string, string> = {
     // Windows / PC
-    "windows": "WINDOWS", "windows/mac": "WINDOWS", "pc": "WINDOWS",
-    "microsoft": "WINDOWS", "skype": "WINDOWS",
-    // Mac
-    "mac": "MAC", "macos": "MAC", "mac os": "MAC", "ios": "MAC",
+    "windows": "WINDOWS", "pc": "WINDOWS", "microsoft": "WINDOWS", "skype": "WINDOWS",
+    // Cross-platform
+    "windows/mac": "WINDOWS_MAC",
+    // Mac / macOS
+    "mac": "MAC", "macos": "MAC", "mac os": "MAC",
+    // iOS (mobile — separate from macOS)
+    "ios": "IOS",
     // Linux
     "linux": "LINUX",
     // Steam

@@ -1,4 +1,4 @@
-import { Monitor, Apple, Terminal, Gamepad2, Package, Music, Tv, CreditCard } from "lucide-react";
+import { Monitor, Apple, Terminal, Gamepad2, Package, Music, Tv, CreditCard, Smartphone } from "lucide-react";
 
 export interface PlatformMeta {
   label: string;
@@ -8,9 +8,11 @@ export interface PlatformMeta {
 }
 
 export const PLATFORM_META: Record<string, PlatformMeta> = {
-  WINDOWS:    { label: "Windows",     icon: <Monitor className="h-5 w-5" />,    color: "#60a5fa", bg: "#0d1f3c" },
-  MAC:        { label: "macOS",       icon: <Apple className="h-5 w-5" />,      color: "#a78bfa", bg: "#1a0d3c" },
-  LINUX:      { label: "Linux",       icon: <Terminal className="h-5 w-5" />,   color: "#f59e0b", bg: "#2a1a00" },
+  WINDOWS:     { label: "Windows",      icon: <Monitor className="h-5 w-5" />,    color: "#60a5fa", bg: "#0d1f3c" },
+  WINDOWS_MAC: { label: "Windows/Mac", icon: <Monitor className="h-5 w-5" />,    color: "#818cf8", bg: "#0d0d2a" },
+  MAC:         { label: "macOS",        icon: <Apple className="h-5 w-5" />,      color: "#a78bfa", bg: "#1a0d3c" },
+  IOS:         { label: "iOS",          icon: <Smartphone className="h-5 w-5" />, color: "#c4b5fd", bg: "#150a2a" },
+  LINUX:       { label: "Linux",        icon: <Terminal className="h-5 w-5" />,   color: "#f59e0b", bg: "#2a1a00" },
   STEAM:      { label: "Steam",       icon: <Gamepad2 className="h-5 w-5" />,   color: "#4fc3f7", bg: "#001a2a" },
   EPIC:       { label: "Epic Games",  icon: <Gamepad2 className="h-5 w-5" />,   color: "#e2e8f0", bg: "#1a1a1a" },
   GOG:        { label: "GOG",         icon: <Gamepad2 className="h-5 w-5" />,   color: "#c084fc", bg: "#1a0028" },
