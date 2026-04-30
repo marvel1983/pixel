@@ -166,11 +166,20 @@ jobs:
             echo "→ Widening short_description to TEXT (was varchar 500)..."
             psql "$DATABASE_URL" -c "ALTER TABLE products ALTER COLUMN short_description TYPE TEXT;" || true
 
+            # The DATABASE_URL has special characters in password that break psql's URL parser
+            # (we've inherited this — the existing psql "$DATABASE_URL" lines above silently fail).
+            # Parse explicit connection params here so subsequent migrations actually run.
+            export PGPASSWORD="$(python3 -c "import os, re; m=re.match(r'postgresql://[^:]+:(.+)@[^:/]+:\\d+/.+', os.environ['DATABASE_URL']); print(m.group(1))")"
+            PG_HOST="$(python3 -c "import os, re; m=re.match(r'postgresql://[^:]+:.+@([^:/]+):\\d+/.+', os.environ['DATABASE_URL']); print(m.group(1))")"
+            PG_USER="$(python3 -c "import os, re; m=re.match(r'postgresql://([^:]+):.+@.+', os.environ['DATABASE_URL']); print(m.group(1))")"
+            PG_DB="$(python3 -c "import os, re; m=re.match(r'postgresql://[^:]+:.+@[^:/]+:\\d+/(.+)', os.environ['DATABASE_URL']); print(m.group(1))")"
+            PSQL="psql -h $PG_HOST -U $PG_USER -d $PG_DB"
+
             echo "→ Adding stuck_alert_sent_at column to orders..."
-            psql "$DATABASE_URL" -c "ALTER TABLE orders ADD COLUMN IF NOT EXISTS stuck_alert_sent_at TIMESTAMP;" || true
+            $PSQL -c "ALTER TABLE orders ADD COLUMN IF NOT EXISTS stuck_alert_sent_at TIMESTAMP;" || true
 
             echo "→ Creating metenzi_webhook_events table..."
-            psql "$DATABASE_URL" -c "
+            $PSQL -c "
               CREATE TABLE IF NOT EXISTS metenzi_webhook_events (
                 id SERIAL PRIMARY KEY,
                 event_type VARCHAR(80) NOT NULL,
@@ -183,9 +192,9 @@ jobs:
                 error_msg TEXT,
                 outcome_note VARCHAR(200)
               );" || true
-            psql "$DATABASE_URL" -c "CREATE INDEX IF NOT EXISTS metenzi_webhook_events_received_at_idx ON metenzi_webhook_events(received_at);" || true
-            psql "$DATABASE_URL" -c "CREATE INDEX IF NOT EXISTS metenzi_webhook_events_metenzi_order_id_idx ON metenzi_webhook_events(metenzi_order_id);" || true
-            psql "$DATABASE_URL" -c "CREATE INDEX IF NOT EXISTS metenzi_webhook_events_related_order_id_idx ON metenzi_webhook_events(related_order_id);" || true
+            $PSQL -c "CREATE INDEX IF NOT EXISTS metenzi_webhook_events_received_at_idx ON metenzi_webhook_events(received_at);" || true
+            $PSQL -c "CREATE INDEX IF NOT EXISTS metenzi_webhook_events_metenzi_order_id_idx ON metenzi_webhook_events(metenzi_order_id);" || true
+            $PSQL -c "CREATE INDEX IF NOT EXISTS metenzi_webhook_events_related_order_id_idx ON metenzi_webhook_events(related_order_id);" || true
 
             echo "→ Reloading PM2..."
             set -a; source /var/www/pixel-storefront/.env; set +a
