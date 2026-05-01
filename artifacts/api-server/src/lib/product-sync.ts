@@ -5,6 +5,7 @@ import {
   productVariants,
   categories,
   categoryMeta,
+  metenziProductMappings,
 } from "@workspace/db/schema";
 import { getProducts, type MetenziProduct } from "./metenzi-endpoints";
 import { getMetenziConfig } from "./metenzi-config";
@@ -119,17 +120,36 @@ async function upsertProduct(mp: MetenziProduct): Promise<void> {
     ? await findOrCreateCategory(mp.category)
     : null;
 
-  // Look up by stable Metenzi ID first, then slug, then normalized name.
-  // Name match prevents duplicates when manually-created products share the same
-  // name as a Metenzi product that has a different slug and no externalId yet.
-  const conditions = [];
-  if (mp.id) conditions.push(eq(products.externalId, mp.id));
-  if (mp.slug) conditions.push(eq(products.slug, mp.slug));
-  if (mp.name) conditions.push(eq(sql`LOWER(TRIM(${products.name}))`, mp.name.toLowerCase().trim()));
+  // Look up the existing pixel product. Order of strategies (first match wins):
+  //   1. metenzi_product_mappings table — the most stable link, survives renames/
+  //      slug regenerations on the Metenzi side
+  //   2. products.external_id — same Metenzi UUID stored directly on the product
+  //      (introduced after some legacy rows were created without it)
+  //   3. products.slug — for legacy rows where neither mapping nor external_id exist
+  //   4. exact lowercased+trimmed name match — last-resort dedup against manually
+  //      created products that share a name with a Metenzi catalog item
+  let existing: typeof products.$inferSelect | undefined;
 
-  const [existing] = conditions.length > 0
-    ? await db.select().from(products).where(or(...conditions)).limit(1)
-    : [];
+  if (mp.id) {
+    const [byMapping] = await db
+      .select()
+      .from(products)
+      .innerJoin(metenziProductMappings, eq(metenziProductMappings.pixelProductId, products.id))
+      .where(eq(metenziProductMappings.metenziProductId, mp.id))
+      .limit(1);
+    if (byMapping) existing = byMapping.products;
+  }
+
+  if (!existing) {
+    const conditions = [];
+    if (mp.id) conditions.push(eq(products.externalId, mp.id));
+    if (mp.slug) conditions.push(eq(products.slug, mp.slug));
+    if (mp.name) conditions.push(eq(sql`LOWER(TRIM(${products.name}))`, mp.name.toLowerCase().trim()));
+    if (conditions.length > 0) {
+      const [byOther] = await db.select().from(products).where(or(...conditions)).limit(1);
+      if (byOther) existing = byOther;
+    }
+  }
 
   let productId: number;
 
@@ -174,6 +194,13 @@ async function upsertProduct(mp: MetenziProduct): Promise<void> {
     productId = created.id;
   }
 
+  // Keep metenzi_product_mappings in sync with where the variants actually live.
+  // Without this, renaming a Metenzi product orphans the old mapping (which is
+  // exactly how order PC-MON3F5IG-9AVW0448 ended up unfulfillable).
+  if (mp.id) {
+    await syncMappingRow(productId, mp);
+  }
+
   const backorderEta = mp.estimatedRestockDate ?? mp.backorderEta ?? mp.restockEta ?? null;
   if (mp.variants?.length) {
     for (const v of mp.variants) {
@@ -189,6 +216,40 @@ async function upsertProduct(mp: MetenziProduct): Promise<void> {
       compareAtPriceUsd: null,
       stockCount: mp.stock ?? mp.textKeyStock ?? 0,
     }, backorderEta);
+  }
+}
+
+async function syncMappingRow(pixelProductId: number, mp: MetenziProduct): Promise<void> {
+  const [existing] = await db
+    .select({ id: metenziProductMappings.id, pixelProductId: metenziProductMappings.pixelProductId })
+    .from(metenziProductMappings)
+    .where(eq(metenziProductMappings.metenziProductId, mp.id))
+    .limit(1);
+
+  const baseFields = {
+    metenziSku: mp.sku ?? null,
+    metenziName: mp.name,
+    updatedAt: new Date(),
+  };
+
+  if (existing) {
+    if (existing.pixelProductId !== pixelProductId) {
+      logger.info(
+        { metenziProductId: mp.id, fromPixelProductId: existing.pixelProductId, toPixelProductId: pixelProductId },
+        "Re-pointing Metenzi mapping to follow variant migration",
+      );
+    }
+    await db
+      .update(metenziProductMappings)
+      .set({ pixelProductId, ...baseFields })
+      .where(eq(metenziProductMappings.id, existing.id));
+  } else {
+    await db.insert(metenziProductMappings).values({
+      metenziProductId: mp.id,
+      pixelProductId,
+      ...baseFields,
+    });
+    logger.info({ metenziProductId: mp.id, pixelProductId }, "Created Metenzi mapping during sync");
   }
 }
 
