@@ -13,10 +13,10 @@ export function SoldBadge({ productId, compact }: SoldBadgeProps) {
 
   if (compact) {
     return (
-      <span className="inline-flex items-center gap-1 text-[10px] font-medium text-green-700 bg-green-50 border border-green-200 rounded px-1.5 py-0.5">
+      <div className="inline-flex items-center gap-1 text-[10px] font-medium text-green-700 bg-green-50 border border-green-200 rounded px-1.5 py-0.5 dark:text-green-300 dark:bg-green-900/40 dark:border-green-800">
         <TrendingUp className="h-2.5 w-2.5" />
         {sold} sold today
-      </span>
+      </div>
     );
   }
 

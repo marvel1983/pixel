@@ -12,15 +12,15 @@ export function StockUrgencyBadge({ stockCount, compact }: StockUrgencyBadgeProp
   if (!show) return null;
 
   const colors = variant === "critical"
-    ? "text-red-700 bg-red-50 border-red-200"
-    : "text-amber-700 bg-amber-50 border-amber-200";
+    ? "text-red-700 bg-red-50 border-red-200 dark:text-red-300 dark:bg-red-900/40 dark:border-red-800"
+    : "text-amber-700 bg-amber-50 border-amber-200 dark:text-amber-300 dark:bg-amber-900/40 dark:border-amber-800";
 
   if (compact) {
     return (
-      <span className={`inline-flex items-center gap-1 text-[10px] font-medium rounded px-1.5 py-0.5 border ${colors}`}>
+      <div className={`inline-flex items-center gap-1 text-[10px] font-medium rounded px-1.5 py-0.5 border ${colors}`}>
         <AlertTriangle className="h-2.5 w-2.5" />
         {label}
-      </span>
+      </div>
     );
   }
 
