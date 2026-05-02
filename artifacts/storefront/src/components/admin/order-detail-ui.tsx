@@ -17,7 +17,8 @@ export interface OrderDetail {
     totalUsd: string; walletAmountUsed: string | null; currencyCode: string; currencyRate: string;
     cppSelected: boolean; cppAmountUsd: string; couponId: number | null;
     paymentIntentId: string | null; externalOrderId: string | null;
-    ipAddress: string | null; notes: string | null; createdAt: string; updatedAt: string;
+    ipAddress: string | null; notes: string | null; failureReason: string | null;
+    createdAt: string; updatedAt: string;
     riskScore: number | null; riskReasons: string[] | null;
   };
   stripePaymentDetails: {

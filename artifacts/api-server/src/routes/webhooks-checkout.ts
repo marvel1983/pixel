@@ -65,7 +65,7 @@ router.post("/webhooks/checkout", async (req, res) => {
     if (type === "payment_approved") {
       await handleCheckoutPaymentApproved(data);
     } else if (type === "payment_declined" || type === "payment_expired") {
-      await handleCheckoutPaymentFailed(data);
+      await handleCheckoutPaymentFailed(data, type);
     }
   } catch (err) {
     logger.error({ err, type }, "Checkout.com webhook handler threw");
@@ -126,7 +126,7 @@ async function handleCheckoutPaymentApproved(data: Record<string, unknown>) {
   }
 }
 
-async function handleCheckoutPaymentFailed(data: Record<string, unknown>) {
+async function handleCheckoutPaymentFailed(data: Record<string, unknown>, eventType: string) {
   const metadata = (data.metadata ?? {}) as Record<string, string>;
   const orderId = parseInt(metadata.orderId ?? "0", 10);
   if (!orderId) return;
@@ -148,8 +148,21 @@ async function handleCheckoutPaymentFailed(data: Record<string, unknown>) {
     ).catch((err) => logger.error({ err, orderId }, "Checkout.com failed: loyalty restore failed"));
   }
 
-  await db.update(orders).set({ status: "FAILED", notes: null, updatedAt: new Date() }).where(eq(orders.id, orderId));
-  logger.info({ orderId, orderNumber: order.orderNumber }, "Checkout.com: payment failed, order cancelled");
+  const responseCode = (data.response_code ?? data.responseCode) as string | undefined;
+  const responseSummary = (data.response_summary ?? data.responseSummary) as string | undefined;
+  const baseLabel = eventType === "payment_expired"
+    ? "Checkout.com payment link expired before customer paid"
+    : "Checkout.com payment was declined";
+  const detail = [responseCode && `code ${responseCode}`, responseSummary].filter(Boolean).join(" — ");
+  const failureReason = detail ? `${baseLabel} (${detail}).` : `${baseLabel}.`;
+
+  await db.update(orders).set({
+    status: "FAILED",
+    notes: null,
+    failureReason,
+    updatedAt: new Date(),
+  }).where(eq(orders.id, orderId));
+  logger.info({ orderId, orderNumber: order.orderNumber, responseCode, responseSummary }, "Checkout.com: payment failed, order cancelled");
 }
 
 export default router;

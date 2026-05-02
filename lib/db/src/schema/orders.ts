@@ -80,6 +80,7 @@ export const orders = pgTable("orders", {
     referrer?: string;
   }>(),
   notes: text("notes"),
+  failureReason: text("failure_reason"),
   riskHold: boolean("risk_hold").notNull().default(false),
   riskScore: integer("risk_score"),
   riskReasons: jsonb("risk_reasons").$type<string[]>(),

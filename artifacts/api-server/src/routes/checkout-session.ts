@@ -203,7 +203,13 @@ router.post("/checkout/session", requireIdempotencyKey(), async (req, res) => {
         logger.error({ err: e, orderId: order.id }, "Failed to restore loyalty points on checkout session failure");
       });
     }
-    await db.update(orders).set({ status: "FAILED", notes: null, updatedAt: new Date() }).where(eq(orders.id, order.id));
+    const errMessage = err instanceof Error ? err.message : String(err);
+    await db.update(orders).set({
+      status: "FAILED",
+      notes: null,
+      failureReason: `Failed to create payment session with provider: ${errMessage}`,
+      updatedAt: new Date(),
+    }).where(eq(orders.id, order.id));
     logger.error({ err, orderNumber }, "Failed to create Stripe checkout session");
     res.status(500).json({ error: "Failed to create checkout session" });
   }

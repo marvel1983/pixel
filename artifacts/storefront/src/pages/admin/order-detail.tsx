@@ -155,6 +155,15 @@ export default function OrderDetailPage() {
         {order.status === "PROCESSING" && !order.externalOrderId && <ActionBtn onClick={retryFulfillment} disabled={retrying} icon={<RotateCcw className="h-3.5 w-3.5" />} color="orange">{retrying ? "Retrying..." : "Retry Fulfillment"}</ActionBtn>}
       </div>
 
+      {order.status === "FAILED" && order.failureReason && (
+        <div className="flex items-start gap-3 rounded border border-red-500/40 bg-red-500/10 px-4 py-3 text-[13px] text-red-200">
+          <XCircle className="h-4 w-4 mt-0.5 shrink-0 text-red-400" />
+          <div className="min-w-0">
+            <p className="font-semibold text-red-300">Failure reason</p>
+            <p className="text-[12.5px] text-red-200/90 mt-0.5 leading-relaxed">{order.failureReason}</p>
+          </div>
+        </div>
+      )}
       {order.status === "HELD" && (
         <div className="flex items-start gap-3 rounded border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-[13px] text-emerald-200">
           <BadgeCheck className="h-4 w-4 mt-0.5 shrink-0 text-emerald-400" />

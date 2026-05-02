@@ -124,7 +124,12 @@ export async function buildOrderTimeline(orderId: number): Promise<TimelineEntry
   } else if (order.status === "REFUNDED") {
     out.push({ event: "Order refunded", date: order.updatedAt.toISOString(), kind: "order" });
   } else if (order.status === "FAILED") {
-    out.push({ event: "Order failed", date: order.updatedAt.toISOString(), kind: "order" });
+    out.push({
+      event: "Order failed",
+      date: order.updatedAt.toISOString(),
+      kind: "alert",
+      details: order.failureReason ? { reason: order.failureReason } : undefined,
+    });
   }
 
   out.sort((a, b) => a.date.localeCompare(b.date));
