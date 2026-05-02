@@ -334,9 +334,19 @@ async function resolveExistingProduct(mp: MetenziProduct): Promise<ProductResolu
     if (bySlug) return { kind: "found", product: bySlug };
   }
 
-  // 5. fuzzy name match → conflict (do not auto-link or auto-create)
+  // 5a. fuzzy name match against INACTIVE products → silently merge (preserves
+  //     admin's deactivation decision; prevents duplicate active products).
   if (mp.name) {
-    const candidate = await findFuzzyNameCandidate(mp.name);
+    const inactiveCandidate = await findFuzzyNameCandidate(mp.name, false);
+    if (inactiveCandidate) {
+      const [product] = await db.select().from(products).where(eq(products.id, inactiveCandidate.id)).limit(1);
+      if (product) return { kind: "found", product };
+    }
+  }
+
+  // 5b. fuzzy name match against ACTIVE products → conflict (do not auto-link)
+  if (mp.name) {
+    const candidate = await findFuzzyNameCandidate(mp.name, true);
     if (candidate) {
       await enqueueConflict({
         type: "fuzzy_name_match",
@@ -354,16 +364,11 @@ async function resolveExistingProduct(mp: MetenziProduct): Promise<ProductResolu
 const FUZZY_NAME_THRESHOLD = 0.7;
 const FUZZY_NAME_CANDIDATE_LIMIT = 500;
 
-/**
- * Returns the highest-scoring product name above the similarity threshold, or
- * null. Compares against active products only — orphaned/disabled products
- * shouldn't drag new Metenzi items into review.
- */
-async function findFuzzyNameCandidate(name: string): Promise<{ id: number; name: string; score: number } | null> {
+async function findFuzzyNameCandidate(name: string, activeOnly: boolean): Promise<{ id: number; name: string; score: number } | null> {
   const candidates = await db
     .select({ id: products.id, name: products.name })
     .from(products)
-    .where(eq(products.isActive, true))
+    .where(eq(products.isActive, activeOnly))
     .limit(FUZZY_NAME_CANDIDATE_LIMIT);
   let best: { id: number; name: string; score: number } | null = null;
   for (const c of candidates) {
