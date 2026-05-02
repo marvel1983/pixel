@@ -95,6 +95,7 @@ import adminMetenziCatalogRouter from "./admin-metenzi-catalog";
 import adminMetenziMappingsRouter from "./admin-metenzi-mappings";
 import adminMetenziSyncRouter from "./admin-metenzi-sync";
 import adminMetenziWebhooksRouter from "./admin-metenzi-webhooks";
+import adminMappingConflictsRouter from "./admin-mapping-conflicts";
 import productsRouter from "./products";
 import visitorsRouter from "./visitors";
 
@@ -195,6 +196,7 @@ router.use(adminMetenziCatalogRouter);
 router.use(adminMetenziMappingsRouter);
 router.use(adminMetenziSyncRouter);
 router.use(adminMetenziWebhooksRouter);
+router.use(adminMappingConflictsRouter);
 router.use(adminFeedsRouter);
 router.use(productsRouter);
 router.use(visitorsRouter);

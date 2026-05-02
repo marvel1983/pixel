@@ -1,4 +1,4 @@
-import { eq, or, sql } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   products,
@@ -11,6 +11,7 @@ import { getProducts, type MetenziProduct } from "./metenzi-endpoints";
 import { getMetenziConfig } from "./metenzi-config";
 import { logger } from "./logger";
 import { checkPriceDropAlerts, checkBackInStockAlerts } from "../services/alert-service";
+import { enqueueConflict, nameSimilarity, writeMappingAudit } from "../services/mapping-conflicts";
 
 async function findOrCreateCategory(categoryName: string): Promise<number> {
   const slug = categoryName
@@ -120,36 +121,12 @@ async function upsertProduct(mp: MetenziProduct): Promise<void> {
     ? await findOrCreateCategory(mp.category)
     : null;
 
-  // Look up the existing pixel product. Order of strategies (first match wins):
-  //   1. metenzi_product_mappings table — the most stable link, survives renames/
-  //      slug regenerations on the Metenzi side
-  //   2. products.external_id — same Metenzi UUID stored directly on the product
-  //      (introduced after some legacy rows were created without it)
-  //   3. products.slug — for legacy rows where neither mapping nor external_id exist
-  //   4. exact lowercased+trimmed name match — last-resort dedup against manually
-  //      created products that share a name with a Metenzi catalog item
-  let existing: typeof products.$inferSelect | undefined;
+  // Resolve the matching pixel product (or queue a conflict for admin review).
+  // See resolveExistingProduct for the full cascade.
+  const resolution = await resolveExistingProduct(mp);
+  if (resolution.kind === "queued") return; // conflict surfaced to admin; do not write
 
-  if (mp.id) {
-    const [byMapping] = await db
-      .select()
-      .from(products)
-      .innerJoin(metenziProductMappings, eq(metenziProductMappings.pixelProductId, products.id))
-      .where(eq(metenziProductMappings.metenziProductId, mp.id))
-      .limit(1);
-    if (byMapping) existing = byMapping.products;
-  }
-
-  if (!existing) {
-    const conditions = [];
-    if (mp.id) conditions.push(eq(products.externalId, mp.id));
-    if (mp.slug) conditions.push(eq(products.slug, mp.slug));
-    if (mp.name) conditions.push(eq(sql`LOWER(TRIM(${products.name}))`, mp.name.toLowerCase().trim()));
-    if (conditions.length > 0) {
-      const [byOther] = await db.select().from(products).where(or(...conditions)).limit(1);
-      if (byOther) existing = byOther;
-    }
-  }
+  let existing = resolution.kind === "found" ? resolution.product : undefined;
 
   let productId: number;
 
@@ -221,10 +198,22 @@ async function upsertProduct(mp: MetenziProduct): Promise<void> {
 
 async function syncMappingRow(pixelProductId: number, mp: MetenziProduct): Promise<void> {
   const [existing] = await db
-    .select({ id: metenziProductMappings.id, pixelProductId: metenziProductMappings.pixelProductId })
+    .select({
+      id: metenziProductMappings.id,
+      pixelProductId: metenziProductMappings.pixelProductId,
+      disabled: metenziProductMappings.disabled,
+    })
     .from(metenziProductMappings)
     .where(eq(metenziProductMappings.metenziProductId, mp.id))
     .limit(1);
+
+  // Respect admin's "Unmap" decision — disabled rows are owned by the admin
+  // and sync must not touch them. This is the contract that makes manual
+  // unmapping actually stick.
+  if (existing?.disabled) {
+    logger.info({ metenziProductId: mp.id, mappingId: existing.id }, "Skipping disabled mapping (admin unmapped)");
+    return;
+  }
 
   const baseFields = {
     metenziSku: mp.sku ?? null,
@@ -238,6 +227,12 @@ async function syncMappingRow(pixelProductId: number, mp: MetenziProduct): Promi
         { metenziProductId: mp.id, fromPixelProductId: existing.pixelProductId, toPixelProductId: pixelProductId },
         "Re-pointing Metenzi mapping to follow variant migration",
       );
+      await writeMappingAudit({
+        action: "UPDATE",
+        pixelProductId,
+        metenziProductId: mp.id,
+        details: { fromPixelProductId: existing.pixelProductId, toPixelProductId: pixelProductId, reason: "variant_migration" },
+      });
     }
     await db
       .update(metenziProductMappings)
@@ -250,7 +245,132 @@ async function syncMappingRow(pixelProductId: number, mp: MetenziProduct): Promi
       ...baseFields,
     });
     logger.info({ metenziProductId: mp.id, pixelProductId }, "Created Metenzi mapping during sync");
+    await writeMappingAudit({
+      action: "CREATE",
+      pixelProductId,
+      metenziProductId: mp.id,
+      details: { metenziSku: mp.sku ?? null, metenziName: mp.name },
+    });
   }
+}
+
+type ProductResolution =
+  | { kind: "found"; product: typeof products.$inferSelect }
+  | { kind: "new" }
+  | { kind: "queued" };
+
+/**
+ * Lookup cascade for an incoming Metenzi product. Three outcomes:
+ *   - found   → caller should UPDATE this pixel product in place
+ *   - queued  → caller should do nothing (an admin conflict was enqueued)
+ *   - new     → caller should INSERT a fresh pixel product
+ *
+ * Order of attempts (first match wins, all skip rows where mapping.disabled=true):
+ *   1. UUID match in metenzi_product_mappings
+ *   2. SKU match in metenzi_product_mappings → if UUID differs, this is a
+ *      potential UUID rotation: ENQUEUE conflict, do not auto-migrate
+ *   3. external_id match on products
+ *   4. slug match on products
+ *   5. fuzzy name match against existing products → ENQUEUE conflict
+ *   6. fall through → "new"
+ */
+async function resolveExistingProduct(mp: MetenziProduct): Promise<ProductResolution> {
+  // 1. UUID via mapping (active only)
+  if (mp.id) {
+    const [byUUID] = await db
+      .select()
+      .from(products)
+      .innerJoin(metenziProductMappings, eq(metenziProductMappings.pixelProductId, products.id))
+      .where(and(eq(metenziProductMappings.metenziProductId, mp.id), eq(metenziProductMappings.disabled, false)))
+      .limit(1);
+    if (byUUID) return { kind: "found", product: byUUID.products };
+
+    // The UUID exists as a disabled mapping → admin said "leave this Metenzi
+    // product alone." Honour that and don't process further.
+    const [disabledByUUID] = await db
+      .select({ id: metenziProductMappings.id })
+      .from(metenziProductMappings)
+      .where(and(eq(metenziProductMappings.metenziProductId, mp.id), eq(metenziProductMappings.disabled, true)))
+      .limit(1);
+    if (disabledByUUID) {
+      logger.info({ metenziProductId: mp.id }, "Sync skipped: Metenzi product is admin-disabled");
+      return { kind: "queued" };
+    }
+  }
+
+  // 2. SKU via mapping → potential UUID rotation
+  if (mp.sku) {
+    const [bySku] = await db
+      .select({
+        mappingId: metenziProductMappings.id,
+        mappingUUID: metenziProductMappings.metenziProductId,
+        pixelProductId: metenziProductMappings.pixelProductId,
+      })
+      .from(metenziProductMappings)
+      .where(and(eq(metenziProductMappings.metenziSku, mp.sku), eq(metenziProductMappings.disabled, false)))
+      .limit(1);
+    if (bySku && bySku.mappingUUID !== mp.id && bySku.pixelProductId != null) {
+      await enqueueConflict({
+        type: "uuid_rotation",
+        metenziProduct: mp,
+        candidatePixelProductId: bySku.pixelProductId,
+        candidateMappingId: bySku.mappingId,
+      });
+      return { kind: "queued" };
+    }
+  }
+
+  // 3. external_id on product (legacy: mapping table empty but product was tagged)
+  if (mp.id) {
+    const [byExt] = await db.select().from(products).where(eq(products.externalId, mp.id)).limit(1);
+    if (byExt) return { kind: "found", product: byExt };
+  }
+
+  // 4. slug match
+  if (mp.slug) {
+    const [bySlug] = await db.select().from(products).where(eq(products.slug, mp.slug)).limit(1);
+    if (bySlug) return { kind: "found", product: bySlug };
+  }
+
+  // 5. fuzzy name match → conflict (do not auto-link or auto-create)
+  if (mp.name) {
+    const candidate = await findFuzzyNameCandidate(mp.name);
+    if (candidate) {
+      await enqueueConflict({
+        type: "fuzzy_name_match",
+        metenziProduct: mp,
+        candidatePixelProductId: candidate.id,
+        similarityScore: candidate.score,
+      });
+      return { kind: "queued" };
+    }
+  }
+
+  return { kind: "new" };
+}
+
+const FUZZY_NAME_THRESHOLD = 0.7;
+const FUZZY_NAME_CANDIDATE_LIMIT = 500;
+
+/**
+ * Returns the highest-scoring product name above the similarity threshold, or
+ * null. Compares against active products only — orphaned/disabled products
+ * shouldn't drag new Metenzi items into review.
+ */
+async function findFuzzyNameCandidate(name: string): Promise<{ id: number; name: string; score: number } | null> {
+  const candidates = await db
+    .select({ id: products.id, name: products.name })
+    .from(products)
+    .where(eq(products.isActive, true))
+    .limit(FUZZY_NAME_CANDIDATE_LIMIT);
+  let best: { id: number; name: string; score: number } | null = null;
+  for (const c of candidates) {
+    const score = nameSimilarity(name, c.name);
+    if (score >= FUZZY_NAME_THRESHOLD && (!best || score > best.score)) {
+      best = { id: c.id, name: c.name, score };
+    }
+  }
+  return best;
 }
 
 type MetenziVariant = NonNullable<MetenziProduct["variants"]>[number];

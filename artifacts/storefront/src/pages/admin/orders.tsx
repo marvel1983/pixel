@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { formatSource } from "@/lib/attribution";
 import { DATE_PRESETS, presetToRange, type DatePresetKey, type OrderMetrics } from "@/lib/date-presets";
 import { OrdersMetricsBar } from "@/components/admin/orders-metrics-bar";
+import { MappingConflictsPanel } from "@/components/admin/mapping-conflicts-panel";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -201,6 +202,9 @@ export default function AdminOrdersPage() {
 
   return (
     <div className="space-y-3 text-[#e8edf5]">
+      {/* Mapping Conflicts Panel — sync paused on items needing admin decision (UUID rotation, fuzzy duplicates) */}
+      <MappingConflictsPanel />
+
       {/* Stuck Fulfillment Panel — orders where Metenzi accepted the order but no keys arrived */}
       {stuckCount > 0 && (
         <div className="rounded-lg border border-amber-500/40 bg-[#1a160d]">

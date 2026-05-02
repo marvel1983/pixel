@@ -52,4 +52,5 @@ export * from "./product-attributes";
 export * from "./product-tags";
 export * from "./user-imports";
 export * from "./metenzi-mappings";
+export * from "./metenzi-mapping-conflicts";
 export * from "./metenzi-webhook-events";

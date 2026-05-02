@@ -17,6 +17,10 @@ export const metenziProductMappings = pgTable("metenzi_product_mappings", {
     onDelete: "set null",
   }),
   autoSyncStock: boolean("auto_sync_stock").notNull().default(false),
+  // When true, sync ignores this Metenzi product entirely. Set by the admin
+  // "Unmap" action so manual decisions survive across sync runs (instead of
+  // having sync silently re-create the link).
+  disabled: boolean("disabled").notNull().default(false),
   lastStockSyncAt: timestamp("last_stock_sync_at"),
   lastSyncedAt: timestamp("last_synced_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),

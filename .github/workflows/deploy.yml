@@ -196,6 +196,31 @@ jobs:
             $PSQL -c "CREATE INDEX IF NOT EXISTS metenzi_webhook_events_metenzi_order_id_idx ON metenzi_webhook_events(metenzi_order_id);" || true
             $PSQL -c "CREATE INDEX IF NOT EXISTS metenzi_webhook_events_related_order_id_idx ON metenzi_webhook_events(related_order_id);" || true
 
+            echo "→ Adding disabled column to metenzi_product_mappings..."
+            $PSQL -c "ALTER TABLE metenzi_product_mappings ADD COLUMN IF NOT EXISTS disabled BOOLEAN NOT NULL DEFAULT FALSE;" || true
+
+            echo "→ Creating metenzi_mapping_conflicts table..."
+            $PSQL -c "
+              CREATE TABLE IF NOT EXISTS metenzi_mapping_conflicts (
+                id SERIAL PRIMARY KEY,
+                conflict_type VARCHAR(50) NOT NULL,
+                metenzi_product_id VARCHAR(100) NOT NULL,
+                metenzi_sku VARCHAR(100),
+                metenzi_name VARCHAR(300),
+                raw_payload JSONB NOT NULL,
+                candidate_pixel_product_id INTEGER REFERENCES products(id) ON DELETE SET NULL,
+                candidate_mapping_id INTEGER REFERENCES metenzi_product_mappings(id) ON DELETE SET NULL,
+                similarity_score NUMERIC(5,2),
+                status VARCHAR(20) NOT NULL DEFAULT 'pending',
+                resolution_note TEXT,
+                resolved_by INTEGER REFERENCES users(id),
+                resolved_at TIMESTAMP,
+                created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+              );" || true
+            $PSQL -c "CREATE INDEX IF NOT EXISTS metenzi_mapping_conflicts_status_idx ON metenzi_mapping_conflicts(status);" || true
+            $PSQL -c "CREATE INDEX IF NOT EXISTS metenzi_mapping_conflicts_metenzi_id_idx ON metenzi_mapping_conflicts(metenzi_product_id);" || true
+
             echo "→ Reloading PM2..."
             set -a; source /var/www/pixel-storefront/.env; set +a
             pm2 reload pixel-api --update-env
