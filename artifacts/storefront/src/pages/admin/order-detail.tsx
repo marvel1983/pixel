@@ -267,7 +267,7 @@ export default function OrderDetailPage() {
         <OrderDetailSidebar order={order} coupon={coupon} customer={customer} refunds={orderRefunds ?? []} />
       </div>
 
-      {data && <RefundModal orderId={data.order.id} orderNumber={data.order.orderNumber} orderTotal={data.order.totalUsd} currencyCode={data.order.currencyCode} currencyRate={data.order.currencyRate} open={refundOpen} onClose={() => setRefundOpen(false)} onSuccess={reload} />}
+      {data && <RefundModal orderId={data.order.id} orderNumber={data.order.orderNumber} orderTotal={data.order.totalUsd} currencyCode={data.order.currencyCode} currencyRate={data.order.currencyRate} paymentIntentId={data.order.paymentIntentId} open={refundOpen} onClose={() => setRefundOpen(false)} onSuccess={reload} />}
     </div>
   );
 }

@@ -18,23 +18,27 @@ interface Props {
   orderTotal: string;
   currencyCode: string;
   currencyRate: string;
+  paymentIntentId: string | null;
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
 }
 
+type Destination = "" | "wallet" | "stripe";
+
 interface ExistingRefund {
   id: number; amountUsd: string; status: string; reason: string; createdAt: string;
 }
 
-export function RefundModal({ orderId, orderNumber, orderTotal, currencyCode, currencyRate, open, onClose, onSuccess }: Props) {
+export function RefundModal({ orderId, orderNumber, orderTotal, currencyCode, currencyRate, paymentIntentId, open, onClose, onSuccess }: Props) {
   const sym = currencySymbol(currencyCode);
   const fmt = (amt: string | number) => formatMoney(amt, currencyRate, currencyCode);
+  const stripeDisabled = !paymentIntentId;
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState(REASONS[0]);
   const [notes, setNotes] = useState("");
   const [notifyCustomer, setNotifyCustomer] = useState(true);
-  const [refundToWallet, setRefundToWallet] = useState(false);
+  const [destination, setDestination] = useState<Destination>("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [existing, setExisting] = useState<ExistingRefund[]>([]);
@@ -59,13 +63,14 @@ export function RefundModal({ orderId, orderNumber, orderTotal, currencyCode, cu
     const refundAmt = parseFloat(amount);
     if (!refundAmt || refundAmt <= 0) { setError("Enter a valid refund amount"); return; }
     if (refundAmt > maxRefundable + 0.01) { setError(`Max refundable: ${fmt(maxRefundable)}`); return; }
+    if (!destination) { setError("Choose a refund destination"); return; }
     setError("");
     setSubmitting(true);
     try {
       const res = await fetch(`${API}/admin/refunds`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ orderId, amount: refundAmt.toFixed(2), reason, notes: notes.trim() || undefined, notifyCustomer, refundToWallet }),
+        body: JSON.stringify({ orderId, amount: refundAmt.toFixed(2), reason, notes: notes.trim() || undefined, notifyCustomer, refundToWallet: destination === "wallet" }),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error || "Refund failed"); return; }
@@ -123,10 +128,30 @@ export function RefundModal({ orderId, orderNumber, orderTotal, currencyCode, cu
               onChange={(e) => setNotes(e.target.value)} placeholder="Internal notes about this refund..." />
           </div>
 
-          <label className="flex items-center gap-2 cursor-pointer">
-            <Checkbox checked={refundToWallet} onCheckedChange={(v) => setRefundToWallet(!!v)} />
-            <span className="text-sm">Refund to customer wallet</span>
-          </label>
+          <div className="space-y-2">
+            <Label>Refund destination <span className="text-red-500">*</span></Label>
+            <div className="grid gap-2">
+              <DestinationOption
+                value="wallet"
+                selected={destination === "wallet"}
+                onSelect={() => setDestination("wallet")}
+                title="Refund to customer wallet"
+                detail="Adds the amount to the customer's PixelCodes wallet balance. Instant; no card refund."
+              />
+              <DestinationOption
+                value="stripe"
+                selected={destination === "stripe"}
+                onSelect={() => !stripeDisabled && setDestination("stripe")}
+                disabled={stripeDisabled}
+                title="Refund by Stripe"
+                detail={
+                  stripeDisabled
+                    ? "Unavailable — this order has no Stripe payment intent on file."
+                    : "Returns the amount to the original card via Stripe. Customer sees it in 5–10 business days."
+                }
+              />
+            </div>
+          </div>
 
           <label className="flex items-center gap-2 cursor-pointer">
             <Checkbox checked={notifyCustomer} onCheckedChange={(v) => setNotifyCustomer(!!v)} />
@@ -137,11 +162,42 @@ export function RefundModal({ orderId, orderNumber, orderTotal, currencyCode, cu
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSubmit} disabled={submitting || maxRefundable <= 0} variant="destructive">
+          <Button onClick={handleSubmit} disabled={submitting || maxRefundable <= 0 || !destination} variant="destructive">
             {submitting ? "Processing..." : `Refund ${fmt(amount || "0")}`}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function DestinationOption({ value, selected, onSelect, disabled, title, detail }: {
+  value: "wallet" | "stripe"; selected: boolean; onSelect: () => void; disabled?: boolean; title: string; detail: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      disabled={disabled}
+      aria-pressed={selected}
+      className={`flex items-start gap-3 rounded-md border px-3 py-2.5 text-left transition-colors w-full ${
+        disabled
+          ? "border-border/40 bg-muted/20 opacity-50 cursor-not-allowed"
+          : selected
+            ? "border-primary bg-primary/10"
+            : "border-border bg-muted/30 hover:bg-muted/50 cursor-pointer"
+      }`}
+    >
+      <span className={`mt-0.5 h-4 w-4 shrink-0 rounded-full border-2 flex items-center justify-center ${
+        selected ? "border-primary" : "border-muted-foreground/40"
+      }`}>
+        {selected && <span className="h-2 w-2 rounded-full bg-primary" />}
+      </span>
+      <span className="flex-1 min-w-0">
+        <span className="block text-sm font-medium">{title}</span>
+        <span className="block text-xs text-muted-foreground mt-0.5">{detail}</span>
+      </span>
+      <span className="sr-only">{value}</span>
+    </button>
   );
 }
