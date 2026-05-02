@@ -133,6 +133,9 @@ async function upsertProduct(mp: MetenziProduct): Promise<void> {
   if (existing) {
     // Keep any image the admin uploaded locally; never overwrite with a Metenzi server path.
     const keepImage = existing.imageUrl && !existing.imageUrl.startsWith("/uploads/product-images/");
+    // isActive intentionally NOT updated — admin's Active/Inactive toggle is the
+    // source of truth on existing products. Otherwise the sync flips manually
+    // disabled items back to active every 30 min.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await db
       .update(products)
@@ -144,7 +147,6 @@ async function upsertProduct(mp: MetenziProduct): Promise<void> {
         categoryId,
         imageUrl: keepImage ? existing.imageUrl : null,
         galleryImages: mp.galleryImages ?? null,
-        isActive: isProductActive(mp),
         externalId: mp.id ?? existing.externalId,
         // slug intentionally NOT updated — preserve the original URL forever
         updatedAt: new Date(),

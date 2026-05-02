@@ -52,7 +52,10 @@ router.get("/admin/metenzi/catalog", ...guard, async (req, res) => {
 
   try {
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
-    const limit = Math.min(50, Math.max(5, parseInt(req.query.limit as string) || 20));
+    // 100000 is the "All" sentinel from the admin UI; cap real paging at 1000.
+    const rawLimit = parseInt(req.query.limit as string) || 50;
+    const wantsAll = rawLimit >= 10000;
+    const limit = wantsAll ? Number.MAX_SAFE_INTEGER : Math.min(1000, Math.max(5, rawLimit));
     const search = (req.query.search as string | undefined)?.trim().toLowerCase();
     const category = req.query.category as string | undefined;
     const platform = req.query.platform as string | undefined;
@@ -60,13 +63,13 @@ router.get("/admin/metenzi/catalog", ...guard, async (req, res) => {
     let pageProducts: MetenziProduct[];
     let total: number;
 
-    if (search || category || platform) {
+    if (search || category || platform || wantsAll) {
       let all = await getAllProducts(config);
       if (search) all = all.filter((p) => p.name.toLowerCase().includes(search) || p.sku.toLowerCase().includes(search));
       if (category) all = all.filter((p) => p.category === category);
       if (platform) all = all.filter((p) => p.platform === platform);
       total = all.length;
-      pageProducts = all.slice((page - 1) * limit, page * limit);
+      pageProducts = wantsAll ? all : all.slice((page - 1) * limit, page * limit);
     } else {
       const catalog = await getCatalogPage(config, { page, limit });
       pageProducts = catalog.products;

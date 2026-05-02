@@ -72,14 +72,15 @@ export default function MetenziCatalogPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const lastIndexRef                  = useRef<number | null>(null);
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [limit, setLimit] = useState<number>(50);
 
-  const limit = 20;
+  const PAGE_SIZE_ALL = 100000;
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const fetchCatalog = useCallback(async (p = page, s = search, cat = category, plt = platform) => {
+  const fetchCatalog = useCallback(async (p = page, s = search, cat = category, plt = platform, lim = limit) => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ page: String(p), limit: String(limit) });
+      const params = new URLSearchParams({ page: String(p), limit: String(lim) });
       if (s)   params.set("search", s);
       if (cat) params.set("category", cat);
       if (plt) params.set("platform", plt);
@@ -91,12 +92,12 @@ export default function MetenziCatalogPage() {
       setConfigured(true);
     } catch { setConfigured(false); }
     finally { setLoading(false); }
-  }, [page, search, category, platform]);
+  }, [page, search, category, platform, limit]);
 
-  useEffect(() => { fetchCatalog(page, search, category, platform); }, [page, category, platform]);
+  useEffect(() => { fetchCatalog(page, search, category, platform, limit); }, [page, category, platform, limit]);
   useEffect(() => {
     if (searchTimer.current) clearTimeout(searchTimer.current);
-    searchTimer.current = setTimeout(() => { setPage(1); fetchCatalog(1, search, category, platform); }, 400);
+    searchTimer.current = setTimeout(() => { setPage(1); fetchCatalog(1, search, category, platform, limit); }, 400);
     return () => { if (searchTimer.current) clearTimeout(searchTimer.current); };
   }, [search]);
   useEffect(() => {
@@ -126,7 +127,7 @@ export default function MetenziCatalogPage() {
       body: JSON.stringify({ metenziProductId: selected.id, metenziSku: selected.sku, metenziName: selected.name, pixelProductId }),
     });
     setPixelQuery(""); setPixelResults([]);
-    await fetchCatalog(page, search, category, platform);
+    await fetchCatalog(page, search, category, platform, limit);
     setActionLoading(false);
   };
 
@@ -134,7 +135,7 @@ export default function MetenziCatalogPage() {
     if (!selected?.mappingId || !confirm(`Remove mapping for "${selected.name}"?`)) return;
     setActionLoading(true);
     await fetch(`${API}/admin/metenzi/mappings/${selected.mappingId}`, { method: "DELETE", headers: hdrs });
-    await fetchCatalog(page, search, category, platform);
+    await fetchCatalog(page, search, category, platform, limit);
     setActionLoading(false);
   };
 
@@ -145,7 +146,7 @@ export default function MetenziCatalogPage() {
       method: "PATCH", headers: hdrs,
       body: JSON.stringify({ autoSyncStock: !selected.autoSyncStock }),
     });
-    await fetchCatalog(page, search, category, platform);
+    await fetchCatalog(page, search, category, platform, limit);
     setActionLoading(false);
   };
 
@@ -160,7 +161,7 @@ export default function MetenziCatalogPage() {
     const data = await res.json();
     if (res.ok && data.success) setSyncedResult(data.synced ?? [field]);
     else alert(data.error ?? "Sync failed");
-    await fetchCatalog(page, search, category, platform);
+    await fetchCatalog(page, search, category, platform, limit);
     setSyncingFields(prev => { const s = new Set(prev); s.delete(field); return s; });
   };
 
@@ -174,7 +175,7 @@ export default function MetenziCatalogPage() {
     const data = await res.json();
     if (!res.ok) { alert(data.error ?? "Import failed"); setImportLoading(false); return; }
     setShowImport(false);
-    await fetchCatalog(page, search, category, platform);
+    await fetchCatalog(page, search, category, platform, limit);
     setImportLoading(false);
   };
 
@@ -225,7 +226,7 @@ export default function MetenziCatalogPage() {
     const data = await res.json().catch(() => ({}));
     if (!res.ok) { alert(data.error ?? "Bulk unmap failed"); setBulkLoading(false); return; }
     clearSelection();
-    await fetchCatalog(page, search, category, platform);
+    await fetchCatalog(page, search, category, platform, limit);
     setBulkLoading(false);
   };
 
@@ -247,7 +248,7 @@ export default function MetenziCatalogPage() {
       {/* Header */}
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-bold tracking-tight text-white">Metenzi Catalog</h1>
-        <Button size="sm" variant="outline" className="border-[#3d4558] bg-[#1a1f2e] text-[#e8edf5] hover:bg-[#252a38]" onClick={() => fetchCatalog(page, search, category, platform)} disabled={loading}>
+        <Button size="sm" variant="outline" className="border-[#3d4558] bg-[#1a1f2e] text-[#e8edf5] hover:bg-[#252a38]" onClick={() => fetchCatalog(page, search, category, platform, limit)} disabled={loading}>
           <RefreshCw className={`mr-1 h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Refresh
         </Button>
       </div>
@@ -271,6 +272,18 @@ export default function MetenziCatalogPage() {
             {platforms.map(p => <option key={p} value={p}>{p}</option>)}
           </select>
         )}
+        <select
+          className="h-8 rounded border border-[#3d4558] bg-[#0f1117] px-2 text-[13px] text-[#e8edf5]"
+          value={limit}
+          onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
+          aria-label="Items per page"
+        >
+          <option value={50}>50 / page</option>
+          <option value={100}>100 / page</option>
+          <option value={200}>200 / page</option>
+          <option value={500}>500 / page</option>
+          <option value={PAGE_SIZE_ALL}>All</option>
+        </select>
       </div>
 
       {/* Stats */}
@@ -316,7 +329,7 @@ export default function MetenziCatalogPage() {
                     onChange={togglePageAll}
                   />
                 </th>
-                <th className={thBase} style={{ color: "#fff" }}>Product</th>
+                <th className={thBase} style={{ color: "#fff" }}>Metenzi product</th>
                 <th className={thBase} style={{ color: "#fff" }}>SKU</th>
                 <th className={thBase} style={{ color: "#fff" }}>Category</th>
                 <th className={thBase} style={{ color: "#fff" }}>Platform</th>
@@ -324,7 +337,7 @@ export default function MetenziCatalogPage() {
                 <th className={`${thBase} text-right`} style={{ color: "#fff" }}>Retail</th>
                 <th className={`${thBase} text-right`} style={{ color: "#fff" }}>Stock</th>
                 <th className={thBase} style={{ color: "#fff" }}>Status</th>
-                <th className={`${thBase} border-r-0`} style={{ color: "#fff" }}>Linked product</th>
+                <th className={`${thBase} border-r-0`} style={{ color: "#fff" }}>PixelCodes product</th>
               </tr>
             </thead>
             <tbody>
