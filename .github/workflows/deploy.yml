@@ -178,6 +178,9 @@ jobs:
             echo "→ Adding stuck_alert_sent_at column to orders..."
             $PSQL -c "ALTER TABLE orders ADD COLUMN IF NOT EXISTS stuck_alert_sent_at TIMESTAMP;" || true
 
+            echo "→ Adding failure_reason column to orders..."
+            $PSQL -c "ALTER TABLE orders ADD COLUMN IF NOT EXISTS failure_reason TEXT;" || true
+
             echo "→ Creating metenzi_webhook_events table..."
             $PSQL -c "
               CREATE TABLE IF NOT EXISTS metenzi_webhook_events (

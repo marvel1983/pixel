@@ -139,7 +139,12 @@ async function handleStripeSessionExpired(session: import("stripe").Stripe.Check
     ).catch((err) => logger.error({ err, orderId }, "Stripe expired: loyalty restore failed"));
   }
 
-  await db.update(orders).set({ status: "FAILED", notes: null, updatedAt: new Date() }).where(eq(orders.id, orderId));
+  await db.update(orders).set({
+    status: "FAILED",
+    notes: null,
+    failureReason: "Stripe checkout session expired without payment. Customer either abandoned checkout or could not complete payment (e.g., card declined, 3D Secure failed, insufficient funds). The hosted Stripe page does not report card-level decline reasons back to the merchant when the session expires.",
+    updatedAt: new Date(),
+  }).where(eq(orders.id, orderId));
   logger.info({ orderId, orderNumber: order.orderNumber }, "Stripe: session expired, order cancelled");
 }
 
