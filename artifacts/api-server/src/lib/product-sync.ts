@@ -131,26 +131,25 @@ async function upsertProduct(mp: MetenziProduct): Promise<void> {
   let productId: number;
 
   if (existing) {
-    // Keep any image the admin uploaded locally; never overwrite with a Metenzi server path.
-    const keepImage = existing.imageUrl && !existing.imageUrl.startsWith("/uploads/product-images/");
-    // isActive intentionally NOT updated — admin's Active/Inactive toggle is the
-    // source of truth on existing products. Otherwise the sync flips manually
-    // disabled items back to active every 30 min.
-    // categoryId intentionally NOT updated — admin assigns products to specific
-    // sub-categories (antivirus, office, etc.); Metenzi always sends "Software"
-    // which would overwrite manual assignments on every 30-min sync.
+    // Fields intentionally NOT updated from Metenzi on existing products:
+    //   isActive    — admin's toggle is source of truth
+    //   categoryId  — admin assigns sub-categories; Metenzi always sends "Software"
+    //   slug        — preserve the original URL forever
+    //   imageUrl    — admin uploads are preserved; Metenzi doesn't provide images
+    //   galleryImages — keep admin-set gallery; fall back to Metenzi only if unset
+    //   description / shortDescription — editable by admin; only populated from
+    //                 Metenzi on first sync (when still null)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await db
       .update(products)
       .set({
         name: mp.name,
-        description: mp.description,
-        shortDescription: mp.shortDescription,
         type: mapProductType(mp.type ?? "software"),
-        imageUrl: keepImage ? existing.imageUrl : null,
-        galleryImages: mp.galleryImages ?? null,
+        description: existing.description ?? mp.description,
+        shortDescription: existing.shortDescription ?? mp.shortDescription,
+        imageUrl: existing.imageUrl ?? null,
+        galleryImages: existing.galleryImages ?? mp.galleryImages ?? null,
         externalId: mp.id ?? existing.externalId,
-        // slug intentionally NOT updated — preserve the original URL forever
         updatedAt: new Date(),
       } as any)
       .where(eq(products.id, existing.id));
