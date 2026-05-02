@@ -136,6 +136,9 @@ async function upsertProduct(mp: MetenziProduct): Promise<void> {
     // isActive intentionally NOT updated — admin's Active/Inactive toggle is the
     // source of truth on existing products. Otherwise the sync flips manually
     // disabled items back to active every 30 min.
+    // categoryId intentionally NOT updated — admin assigns products to specific
+    // sub-categories (antivirus, office, etc.); Metenzi always sends "Software"
+    // which would overwrite manual assignments on every 30-min sync.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await db
       .update(products)
@@ -144,7 +147,6 @@ async function upsertProduct(mp: MetenziProduct): Promise<void> {
         description: mp.description,
         shortDescription: mp.shortDescription,
         type: mapProductType(mp.type ?? "software"),
-        categoryId,
         imageUrl: keepImage ? existing.imageUrl : null,
         galleryImages: mp.galleryImages ?? null,
         externalId: mp.id ?? existing.externalId,
