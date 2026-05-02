@@ -18,6 +18,25 @@ interface ProductMetaProps {
 
 type Tag = { id: number; name: string; slug: string; colorHex: string | null };
 
+const REGION_SUBTITLE: Record<string, string> = {
+  "Global":          "Can be activated worldwide · Check region restrictions",
+  "EU":              "European Union · EU region keys only",
+  "European Union":  "European Union · EU region keys only",
+  "Europe":          "European countries · EU/EEA region only",
+  "USA":             "United States · US activation only",
+  "US":              "United States · US activation only",
+  "UK":              "United Kingdom · UK activation only",
+  "Germany":         "Germany · DE region only",
+  "France":          "France · FR region only",
+  "Croatia":         "Croatia · HR region only",
+  "Austria":         "Austria · AT region only",
+  "Poland":          "Poland · PL region only",
+  "Australia":       "Australia · AU region only",
+  "Canada":          "Canada · CA region only",
+  "Brazil":          "Brazil · BR region only",
+  "Russia":          "Russia · RU region only",
+};
+
 const PLATFORM_LABEL: Record<string, string> = {
   STEAM: "Steam",
   WINDOWS: "Windows",
@@ -52,7 +71,7 @@ export function ProductMeta({ product, selectedVariant, onVariantChange }: Produ
   const regionAttr = product.productAttributes?.find((a) => a.attrSlug === "region");
   const regionTile = product.customInfoTiles?.find((t) => t.icon === "Globe");
   const regionLabel = regionAttr?.optValue ?? regionTile?.title ?? "Global";
-  const regionSub = regionTile?.subtitle ?? "Can be activated worldwide · Check region restrictions";
+  const regionSub = regionTile?.subtitle ?? REGION_SUBTITLE[regionLabel] ?? `${regionLabel} · Regional activation only`;
   const extraTiles = product.customInfoTiles?.filter((t) => t.icon !== "Globe") ?? [];
 
   return (
