@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { metenziProductMappings, products, productVariants } from "@workspace/db/schema";
 import { requireAuth, requireAdmin } from "../middleware/auth";
@@ -8,7 +8,6 @@ import { getMetenziConfig } from "../lib/metenzi-config";
 import { getCatalogPage, getProducts, type MetenziProduct } from "../lib/metenzi-endpoints";
 import { logger } from "../lib/logger";
 import { metenziRequest } from "../lib/metenzi-client";
-import { eq } from "drizzle-orm";
 
 let _cachedAll: MetenziProduct[] | null = null;
 let _cacheTs = 0;
@@ -79,7 +78,10 @@ router.get("/admin/metenzi/catalog", ...guard, async (req, res) => {
       ? await db
           .select({ metenziProductId: metenziProductMappings.metenziProductId, pixelProductId: metenziProductMappings.pixelProductId, mappingId: metenziProductMappings.id, autoSyncStock: metenziProductMappings.autoSyncStock })
           .from(metenziProductMappings)
-          .where(inArray(metenziProductMappings.metenziProductId, metenziIds))
+          .where(and(
+            inArray(metenziProductMappings.metenziProductId, metenziIds),
+            eq(metenziProductMappings.disabled, false),
+          ))
       : [];
 
     const mappingMap = new Map(mappings.map((m) => [m.metenziProductId, m]));

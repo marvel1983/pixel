@@ -1,6 +1,6 @@
 import { Router, type Request } from "express";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { metenziProductMappings, auditLog } from "@workspace/db/schema";
 import { requireAuth, requireAdmin } from "../middleware/auth";
@@ -98,6 +98,32 @@ router.delete("/admin/metenzi/mappings/:id", ...guard, async (req, res) => {
     .where(eq(metenziProductMappings.id, id));
   await audit("UPDATE", req, existing.pixelProductId, { kind: "admin_unmapped_soft", mappingId: id, metenziProductId: existing.metenziProductId, previousPixelProductId: existing.pixelProductId });
   res.json({ success: true, mode: "soft" });
+});
+
+const bulkUnmapSchema = z.object({
+  metenziProductIds: z.array(z.string().min(1)).min(1).max(500),
+});
+
+router.post("/admin/metenzi/mappings/bulk-unmap", ...guard, async (req, res) => {
+  const parsed = bulkUnmapSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Invalid data" }); return; }
+  const { metenziProductIds } = parsed.data;
+  const existing = await db.select().from(metenziProductMappings).where(and(
+    inArray(metenziProductMappings.metenziProductId, metenziProductIds),
+    eq(metenziProductMappings.disabled, false),
+  ));
+  if (existing.length === 0) { res.json({ success: true, unmapped: 0 }); return; }
+  const ids = existing.map((e) => e.id);
+  await db.update(metenziProductMappings)
+    .set({ disabled: true, pixelProductId: null, updatedAt: new Date() })
+    .where(inArray(metenziProductMappings.id, ids));
+  await Promise.all(existing.map((e) => audit("UPDATE", req, e.pixelProductId, {
+    kind: "admin_unmapped_soft_bulk",
+    mappingId: e.id,
+    metenziProductId: e.metenziProductId,
+    previousPixelProductId: e.pixelProductId,
+  })));
+  res.json({ success: true, unmapped: existing.length });
 });
 
 router.patch("/admin/metenzi/mappings/:id", ...guard, async (req, res) => {

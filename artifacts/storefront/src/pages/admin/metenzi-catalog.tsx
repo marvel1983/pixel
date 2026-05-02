@@ -69,6 +69,9 @@ export default function MetenziCatalogPage() {
     new Set(["name","image","b2bPrice","retailPrice","description","shortDescription","sku","stock","instructions","tags","attributes"] as SyncFieldKey[])
   );
   const [importLoading, setImportLoading] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const lastIndexRef                  = useRef<number | null>(null);
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   const limit = 20;
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -179,6 +182,53 @@ export default function MetenziCatalogPage() {
     setSelected(p); setDrawer(true); setPixelQuery(""); setPixelResults([]); setSyncedResult([]);
   };
 
+  const toggleRow = (idx: number, shift: boolean) => {
+    const id = products[idx]?.id; if (!id) return;
+    const last = lastIndexRef.current;
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (shift && last !== null && last !== idx) {
+        const [a, b] = idx < last ? [idx, last] : [last, idx];
+        const shouldAdd = !prev.has(id);
+        for (let i = a; i <= b; i++) {
+          const pid = products[i]?.id; if (!pid) continue;
+          if (shouldAdd) next.add(pid); else next.delete(pid);
+        }
+      } else if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+    lastIndexRef.current = idx;
+  };
+
+  const allOnPageSelected = products.length > 0 && products.every((p) => selectedIds.has(p.id));
+  const anyOnPageSelected = !allOnPageSelected && products.some((p) => selectedIds.has(p.id));
+  const togglePageAll = () => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allOnPageSelected) products.forEach((p) => next.delete(p.id));
+      else products.forEach((p) => next.add(p.id));
+      return next;
+    });
+    lastIndexRef.current = null;
+  };
+  const clearSelection = () => { setSelectedIds(new Set()); lastIndexRef.current = null; };
+
+  const handleBulkUnmap = async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`Unmap ${selectedIds.size} product(s)? This can be re-mapped later.`)) return;
+    setBulkLoading(true);
+    const res = await fetch(`${API}/admin/metenzi/mappings/bulk-unmap`, {
+      method: "POST", headers: hdrs,
+      body: JSON.stringify({ metenziProductIds: Array.from(selectedIds) }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) { alert(data.error ?? "Bulk unmap failed"); setBulkLoading(false); return; }
+    clearSelection();
+    await fetchCatalog(page, search, category, platform);
+    setBulkLoading(false);
+  };
+
   const totalPages = Math.ceil(total / limit);
 
   if (!configured) return (
@@ -229,6 +279,23 @@ export default function MetenziCatalogPage() {
         <span>Page <strong className="text-white">{page}</strong> / {totalPages || 1}</span>
       </div>
 
+      {/* Bulk action bar */}
+      {selectedIds.size > 0 && (
+        <div className="flex items-center justify-between rounded-md border border-sky-700/60 bg-sky-950/30 px-3 py-2">
+          <span className="text-[13px] text-sky-200">
+            <strong className="text-white tabular-nums">{selectedIds.size}</strong> selected
+          </span>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" className="h-7 border-[#3d4558] bg-[#1a1f2e] text-[#e8edf5] hover:bg-[#252a38]" onClick={clearSelection} disabled={bulkLoading}>
+              Clear
+            </Button>
+            <Button size="sm" variant="outline" className="h-7 border-red-800 text-red-300 hover:bg-red-950" onClick={handleBulkUnmap} disabled={bulkLoading}>
+              <Unlink className="mr-1 h-3 w-3" /> Unmap selected
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Table */}
       {loading ? (
         <div className="space-y-px rounded-md overflow-hidden border border-[#1e2638]">
@@ -239,7 +306,17 @@ export default function MetenziCatalogPage() {
           <table className="w-full border-collapse text-left" style={{ borderSpacing: 0 }}>
             <thead>
               <tr className="border-b-2 border-[#2a2e3a]" style={{ backgroundColor: "#1e2128" }}>
-                <th className={`${thBase} border-l-0`} style={{ color: "#fff" }}>Product</th>
+                <th className={`${thBase} border-l-0 w-[34px] text-center`} style={{ color: "#fff" }} onClick={(e) => e.stopPropagation()}>
+                  <input
+                    type="checkbox"
+                    aria-label="Select all on page"
+                    className="h-3.5 w-3.5 cursor-pointer accent-sky-500 align-middle"
+                    checked={allOnPageSelected}
+                    ref={(el) => { if (el) el.indeterminate = anyOnPageSelected; }}
+                    onChange={togglePageAll}
+                  />
+                </th>
+                <th className={thBase} style={{ color: "#fff" }}>Product</th>
                 <th className={thBase} style={{ color: "#fff" }}>SKU</th>
                 <th className={thBase} style={{ color: "#fff" }}>Category</th>
                 <th className={thBase} style={{ color: "#fff" }}>Platform</th>
@@ -253,9 +330,22 @@ export default function MetenziCatalogPage() {
             <tbody>
               {products.map((p, i) => (
                 <tr key={p.id} onClick={() => openDrawer(p)}
-                  className={`cursor-pointer transition-colors duration-75 ${selected?.id === p.id ? "bg-sky-500/10" : i % 2 === 0 ? "bg-[#0c1018] hover:bg-[#111825]" : "bg-[#0f1520] hover:bg-[#141e2e]"}`}
+                  className={`cursor-pointer transition-colors duration-75 ${selectedIds.has(p.id) ? "bg-sky-500/15" : selected?.id === p.id ? "bg-sky-500/10" : i % 2 === 0 ? "bg-[#0c1018] hover:bg-[#111825]" : "bg-[#0f1520] hover:bg-[#141e2e]"}`}
                 >
-                  <td className={`${td} border-l-0`}>
+                  <td
+                    className={`${td} border-l-0 text-center select-none`}
+                    onClick={(e) => { e.stopPropagation(); toggleRow(i, e.shiftKey); }}
+                  >
+                    <input
+                      type="checkbox"
+                      aria-label={`Select ${p.name}`}
+                      tabIndex={-1}
+                      className="h-3.5 w-3.5 cursor-pointer accent-sky-500 align-middle pointer-events-none"
+                      checked={selectedIds.has(p.id)}
+                      readOnly
+                    />
+                  </td>
+                  <td className={td}>
                     <div className="flex items-center gap-2">
                       {imgProxy(p.imageUrl)
                         ? <img src={imgProxy(p.imageUrl)!} alt="" className="h-6 w-6 rounded object-cover flex-shrink-0 bg-[#1a1f2e]" onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
@@ -287,7 +377,7 @@ export default function MetenziCatalogPage() {
                 </tr>
               ))}
               {products.length === 0 && (
-                <tr><td colSpan={9} className="px-3 py-12 text-center text-[13px] text-[#4a5570]">No products found</td></tr>
+                <tr><td colSpan={10} className="px-3 py-12 text-center text-[13px] text-[#4a5570]">No products found</td></tr>
               )}
             </tbody>
           </table>
