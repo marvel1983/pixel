@@ -48,6 +48,10 @@ export function ProductMeta({ product, selectedVariant, onVariantChange }: Produ
   const platformLabel = PLATFORM_LABEL[platform] ?? platform;
   const worksOn = WORKS_ON[platform] ?? "Windows";
 
+  // If admin added a Globe custom tile, use it for the region slot; render the rest separately
+  const regionTile = product.customInfoTiles?.find((t) => t.icon === "Globe");
+  const extraTiles = product.customInfoTiles?.filter((t) => t.icon !== "Globe") ?? [];
+
   return (
     <div className="border rounded-lg p-5 bg-card space-y-4 h-full">
       {/* Badges */}
@@ -92,8 +96,8 @@ export function ProductMeta({ product, selectedVariant, onVariantChange }: Produ
         <div className="border rounded-lg p-3 flex items-start gap-2">
           <Globe className="h-4 w-4 text-primary mt-0.5 shrink-0" />
           <div>
-            <p className="text-xs font-semibold">Global</p>
-            <p className="text-xs text-muted-foreground">Can be activated worldwide · Check region restrictions</p>
+            <p className="text-xs font-semibold">{regionTile?.title ?? "Global"}</p>
+            <p className="text-xs text-muted-foreground">{regionTile?.subtitle ?? "Can be activated worldwide · Check region restrictions"}</p>
           </div>
         </div>
         <div className="border rounded-lg p-3 flex items-start gap-2">
@@ -117,7 +121,7 @@ export function ProductMeta({ product, selectedVariant, onVariantChange }: Produ
             <p className="text-xs text-muted-foreground">{worksOn}</p>
           </div>
         </div>
-        {product.customInfoTiles?.map((t, i) => {
+        {extraTiles.map((t, i) => {
           const Icon = INFO_ICON_MAP[t.icon];
           const accent = ACCENT_BY_ICON[t.icon]?.accent ?? "#3b82f6";
           return (
