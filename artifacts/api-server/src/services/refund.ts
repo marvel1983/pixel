@@ -1,10 +1,14 @@
+import type Stripe from "stripe";
 import { logger } from "../lib/logger";
 import { stripeCircuit } from "../lib/circuit-instances";
+import { getActivePaymentConfig } from "../lib/payment-config";
+import { createStripeClient } from "../lib/stripe-client";
 
 export interface RefundRequest {
   paymentIntentId: string;
-  amount: string;
+  amountMinor: number;
   reason: string;
+  internalRefundId: number;
 }
 
 export interface RefundResult {
@@ -13,30 +17,56 @@ export interface RefundResult {
   error?: string;
 }
 
+function mapReason(reason: string): Stripe.RefundCreateParams.Reason {
+  const r = reason.toLowerCase();
+  if (r.includes("duplicate")) return "duplicate";
+  if (r.includes("fraud")) return "fraudulent";
+  return "requested_by_customer";
+}
+
 async function rawProcessProviderRefund(params: RefundRequest): Promise<RefundResult> {
-  logger.info(
-    { paymentIntentId: params.paymentIntentId, amount: params.amount },
-    "Checkout.com: processing refund",
-  );
-
-  await new Promise((r) => setTimeout(r, 300));
-
-  if (params.paymentIntentId.includes("_fail_refund_")) {
-    return {
-      success: false,
-      refundId: "",
-      error: "Refund declined by payment provider",
-    };
+  if (!params.paymentIntentId) {
+    return { success: false, refundId: "", error: "Order has no Stripe payment intent on file" };
+  }
+  if (!Number.isFinite(params.amountMinor) || params.amountMinor <= 0) {
+    return { success: false, refundId: "", error: `Invalid refund amount: ${params.amountMinor}` };
   }
 
-  const refundId = `rf_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const config = await getActivePaymentConfig();
+  if (!config) {
+    return { success: false, refundId: "", error: "No active payment provider configured" };
+  }
+  if (config.provider !== "stripe") {
+    return { success: false, refundId: "", error: `Active provider is ${config.provider}, refund flow only supports Stripe` };
+  }
 
-  logger.info(
-    { refundId, amount: params.amount },
-    "Checkout.com: refund processed",
-  );
+  const stripe = createStripeClient(config.secretKey);
 
-  return { success: true, refundId };
+  try {
+    const refund = await stripe.refunds.create(
+      {
+        payment_intent: params.paymentIntentId,
+        amount: params.amountMinor,
+        reason: mapReason(params.reason),
+        metadata: { internal_refund_id: String(params.internalRefundId), internal_reason: params.reason.slice(0, 500) },
+      },
+      { idempotencyKey: `refund:${params.internalRefundId}` },
+    );
+
+    logger.info(
+      { stripeRefundId: refund.id, amountMinor: params.amountMinor, status: refund.status, paymentIntentId: params.paymentIntentId },
+      "Stripe refund created",
+    );
+
+    if (refund.status === "succeeded" || refund.status === "pending") {
+      return { success: true, refundId: refund.id };
+    }
+    return { success: false, refundId: refund.id, error: refund.failure_reason ?? `Stripe refund returned status: ${refund.status}` };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    logger.error({ err, paymentIntentId: params.paymentIntentId }, "Stripe refund call failed");
+    return { success: false, refundId: "", error: msg };
+  }
 }
 
 export async function processProviderRefund(params: RefundRequest): Promise<RefundResult> {
@@ -45,7 +75,7 @@ export async function processProviderRefund(params: RefundRequest): Promise<Refu
     async () => ({
       success: false,
       refundId: "",
-      error: "Payment processing temporarily unavailable, please try again shortly",
+      error: "Stripe is temporarily unavailable, please try again shortly",
     }),
   );
 }

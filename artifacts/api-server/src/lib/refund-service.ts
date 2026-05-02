@@ -28,10 +28,14 @@ export async function processRefund(refundId: number): Promise<{ success: boolea
   await db.update(refunds).set({ status: "PROCESSING" }).where(eq(refunds.id, refundId));
 
   try {
+    const amountInChargeCurrency = parseFloat(refund.amountUsd) * parseFloat(order.currencyRate ?? "1");
+    const amountMinor = Math.round(amountInChargeCurrency * 100);
+
     const providerResult = await processProviderRefund({
       paymentIntentId: order.paymentIntentId ?? "",
-      amount: refund.amountUsd,
+      amountMinor,
       reason: refund.reason,
+      internalRefundId: refund.id,
     });
 
     if (!providerResult.success) {
