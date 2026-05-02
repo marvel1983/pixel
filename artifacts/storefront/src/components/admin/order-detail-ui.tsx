@@ -1,5 +1,21 @@
 import type { ReactNode } from "react";
 
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  EUR: "€", USD: "$", GBP: "£", PLN: "zł", CZK: "Kč", HUF: "Ft",
+  CAD: "C$", AUD: "A$", BRL: "R$", TRY: "₺",
+};
+
+export function currencySymbol(code: string | null | undefined): string {
+  return CURRENCY_SYMBOLS[(code ?? "EUR").toUpperCase()] ?? (code ?? "EUR");
+}
+
+export function formatMoney(baseAmount: string | number, currencyRate: string | number, currencyCode: string | null | undefined): string {
+  const amt = typeof baseAmount === "string" ? parseFloat(baseAmount) : baseAmount;
+  const rate = typeof currencyRate === "string" ? parseFloat(currencyRate) : currencyRate;
+  const display = (Number.isFinite(amt) ? amt : 0) * (Number.isFinite(rate) && rate > 0 ? rate : 1);
+  return `${currencySymbol(currencyCode)}${display.toFixed(2)}`;
+}
+
 export const STATUS_COLORS: Record<string, string> = {
   PENDING:            "border-amber-400   bg-amber-500/40   text-amber-100   font-bold",
   PROCESSING:         "border-sky-400     bg-sky-500/40     text-sky-100     font-bold",
@@ -30,6 +46,19 @@ export interface OrderDetail {
   customer: { id: number; email: string; firstName: string | null; lastName: string | null; createdAt: string } | null;
   coupon: { id: number; code: string; discountPercent: string } | null;
   timeline: { event: string; date: string; kind?: string; details?: Record<string, unknown> }[];
+  refunds: RefundEntry[];
+}
+
+export interface RefundEntry {
+  id: number;
+  amountUsd: string;
+  reason: string;
+  notes: string | null;
+  status: string;
+  externalRefundId: string | null;
+  failureReason: string | null;
+  createdAt: string;
+  processedAt: string | null;
 }
 
 export function Card({ title, children }: { title: string; children: ReactNode }) {

@@ -4,10 +4,11 @@ import { ArrowLeft, Send, CheckCircle, XCircle, RotateCcw, Key, AlertTriangle, S
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthStore } from "@/stores/auth-store";
 import { RefundModal } from "@/components/admin/refund-modal";
-import { Card, InfoRow, ActionBtn, STATUS_COLORS, type OrderDetail } from "@/components/admin/order-detail-ui";
+import { Card, InfoRow, ActionBtn, STATUS_COLORS, formatMoney, type OrderDetail } from "@/components/admin/order-detail-ui";
 import { OrderKeysCard } from "@/components/admin/order-keys-card";
 import { OrderDetailSidebar } from "@/components/admin/order-detail-sidebar";
 import { OrderTimeline } from "@/components/admin/order-timeline";
+import { RefundsCard } from "@/components/admin/refunds-card";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -120,7 +121,10 @@ export default function OrderDetailPage() {
 
   if (loading) return <div className="space-y-4"><Skeleton className="h-8 w-48 bg-[#1a2235]" /><Skeleton className="h-64 bg-[#1a2235]" /><Skeleton className="h-64 bg-[#1a2235]" /></div>;
   if (!data) return <div className="p-12 text-center text-[#5a6a84]">Order not found</div>;
-  const { order, items, licenseKeys, customer, coupon, timeline, stripePaymentDetails } = data;
+  const { order, items, licenseKeys, customer, coupon, timeline, stripePaymentDetails, refunds: orderRefunds } = data;
+  const completedRefundTotal = (orderRefunds ?? []).filter((r) => r.status === "COMPLETED").reduce((s, r) => s + parseFloat(r.amountUsd), 0);
+  const isRefunded = order.status === "REFUNDED" || order.status === "PARTIALLY_REFUNDED";
+  const fmtMoney = (amt: string | number) => formatMoney(amt, order.currencyRate, order.currencyCode);
 
   return (
     <div className="space-y-4 text-[#dde4f0]">
@@ -154,6 +158,18 @@ export default function OrderDetailPage() {
         {order.externalOrderId && order.status !== "COMPLETED" && <ActionBtn onClick={forceFulfill} disabled={forcing} icon={<Zap className="h-3.5 w-3.5" />} color="violet">{forcing ? "Forcing..." : "Force Fulfill"}</ActionBtn>}
         {order.status === "PROCESSING" && !order.externalOrderId && <ActionBtn onClick={retryFulfillment} disabled={retrying} icon={<RotateCcw className="h-3.5 w-3.5" />} color="orange">{retrying ? "Retrying..." : "Retry Fulfillment"}</ActionBtn>}
       </div>
+
+      {isRefunded && (
+        <div className="flex items-start gap-3 rounded border border-violet-500/50 bg-violet-500/10 px-4 py-3 text-[13px] text-violet-100">
+          <RotateCcw className="h-4 w-4 mt-0.5 shrink-0 text-violet-300" />
+          <div className="space-y-0.5 min-w-0">
+            <p className="font-bold text-violet-200">
+              {order.status === "REFUNDED" ? "Order fully refunded" : "Order partially refunded"} — {fmtMoney(completedRefundTotal)} returned of {fmtMoney(order.totalUsd)}
+            </p>
+            <p className="text-[12px] text-violet-200/80">See the Refunds section below for breakdown of each refund and Stripe IDs.</p>
+          </div>
+        </div>
+      )}
 
       {order.status === "HELD" && (
         <div className="flex items-start gap-3 rounded border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-[13px] text-emerald-200">
@@ -236,6 +252,7 @@ export default function OrderDetailPage() {
             )}
           </Card>
           {order.externalOrderId && <Card title="Metenzi Order"><InfoRow label="External Order ID" value={order.externalOrderId} mono /></Card>}
+          {(orderRefunds ?? []).length > 0 && <RefundsCard refunds={orderRefunds} orderTotalUsd={order.totalUsd} currencyCode={order.currencyCode} currencyRate={order.currencyRate} />}
           <OrderKeysCard items={items} licenseKeys={licenseKeys} externalOrderId={order.externalOrderId} syncingKeys={syncingKeys} onSync={syncBackorderKeys} syncOrderIdRef={syncOrderIdRef} onManualAssign={manualAssignKeys} />
           <Card title="Admin Notes">
             <textarea className="w-full rounded border border-[#1e3a5f] bg-[#0a1828] px-3 py-2 text-[12.5px] text-[#dde4f0] placeholder:text-[#3d5070] focus:border-sky-500/60 focus:outline-none focus:ring-1 focus:ring-sky-500/30 resize-none" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Internal notes..." />
@@ -247,10 +264,10 @@ export default function OrderDetailPage() {
             <OrderTimeline entries={timeline} />
           </Card>
         </div>
-        <OrderDetailSidebar order={order} coupon={coupon} customer={customer} />
+        <OrderDetailSidebar order={order} coupon={coupon} customer={customer} refunds={orderRefunds ?? []} />
       </div>
 
-      {data && <RefundModal orderId={data.order.id} orderNumber={data.order.orderNumber} orderTotal={data.order.totalUsd} open={refundOpen} onClose={() => setRefundOpen(false)} onSuccess={reload} />}
+      {data && <RefundModal orderId={data.order.id} orderNumber={data.order.orderNumber} orderTotal={data.order.totalUsd} currencyCode={data.order.currencyCode} currencyRate={data.order.currencyRate} open={refundOpen} onClose={() => setRefundOpen(false)} onSuccess={reload} />}
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { useAuthStore } from "@/stores/auth-store";
+import { currencySymbol, formatMoney } from "@/components/admin/order-detail-ui";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -15,6 +16,8 @@ interface Props {
   orderId: number;
   orderNumber: string;
   orderTotal: string;
+  currencyCode: string;
+  currencyRate: string;
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
@@ -24,7 +27,9 @@ interface ExistingRefund {
   id: number; amountUsd: string; status: string; reason: string; createdAt: string;
 }
 
-export function RefundModal({ orderId, orderNumber, orderTotal, open, onClose, onSuccess }: Props) {
+export function RefundModal({ orderId, orderNumber, orderTotal, currencyCode, currencyRate, open, onClose, onSuccess }: Props) {
+  const sym = currencySymbol(currencyCode);
+  const fmt = (amt: string | number) => formatMoney(amt, currencyRate, currencyCode);
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState(REASONS[0]);
   const [notes, setNotes] = useState("");
@@ -53,7 +58,7 @@ export function RefundModal({ orderId, orderNumber, orderTotal, open, onClose, o
   const handleSubmit = async () => {
     const refundAmt = parseFloat(amount);
     if (!refundAmt || refundAmt <= 0) { setError("Enter a valid refund amount"); return; }
-    if (refundAmt > maxRefundable + 0.01) { setError(`Max refundable: $${maxRefundable.toFixed(2)}`); return; }
+    if (refundAmt > maxRefundable + 0.01) { setError(`Max refundable: ${fmt(maxRefundable)}`); return; }
     setError("");
     setSubmitting(true);
     try {
@@ -77,9 +82,9 @@ export function RefundModal({ orderId, orderNumber, orderTotal, open, onClose, o
         </DialogHeader>
         <div className="space-y-4">
           <div className="rounded-lg bg-muted/50 p-3 text-sm space-y-1">
-            <div className="flex justify-between"><span className="text-muted-foreground">Order Total</span><span className="font-mono font-semibold">${orderTotal}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Already Refunded</span><span className="font-mono text-red-600">${refundedTotal.toFixed(2)}</span></div>
-            <div className="flex justify-between border-t pt-1"><span className="font-medium">Refundable</span><span className="font-mono font-bold">${maxRefundable.toFixed(2)}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Order Total</span><span className="font-mono font-semibold">{fmt(orderTotal)}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Already Refunded</span><span className="font-mono text-red-600">{fmt(refundedTotal)}</span></div>
+            <div className="flex justify-between border-t pt-1"><span className="font-medium">Refundable</span><span className="font-mono font-bold">{fmt(maxRefundable)}</span></div>
           </div>
 
           {existing.length > 0 && (
@@ -87,7 +92,7 @@ export function RefundModal({ orderId, orderNumber, orderTotal, open, onClose, o
               <Label className="text-xs text-muted-foreground">Previous Refunds</Label>
               {existing.map((r) => (
                 <div key={r.id} className="flex items-center gap-2 text-xs bg-muted/30 rounded px-2 py-1">
-                  <span className="font-mono">${r.amountUsd}</span>
+                  <span className="font-mono">{fmt(r.amountUsd)}</span>
                   <Badge variant="secondary" className="text-[10px]">{r.status}</Badge>
                   <span className="text-muted-foreground ml-auto">{new Date(r.createdAt).toLocaleDateString()}</span>
                 </div>
@@ -96,7 +101,7 @@ export function RefundModal({ orderId, orderNumber, orderTotal, open, onClose, o
           )}
 
           <div className="space-y-2">
-            <Label>Refund Amount ($)</Label>
+            <Label>Refund Amount ({sym})</Label>
             <Input type="number" step="0.01" min="0.01" max={maxRefundable} value={amount}
               onChange={(e) => setAmount(e.target.value)} />
             <div className="flex gap-2">
@@ -133,7 +138,7 @@ export function RefundModal({ orderId, orderNumber, orderTotal, open, onClose, o
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button onClick={handleSubmit} disabled={submitting || maxRefundable <= 0} variant="destructive">
-            {submitting ? "Processing..." : `Refund $${amount || "0.00"}`}
+            {submitting ? "Processing..." : `Refund ${fmt(amount || "0")}`}
           </Button>
         </DialogFooter>
       </DialogContent>

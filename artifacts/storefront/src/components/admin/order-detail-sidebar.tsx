@@ -1,20 +1,33 @@
-import { Card, SummaryRow } from "./order-detail-ui";
+import { Card, SummaryRow, formatMoney } from "./order-detail-ui";
 import type { OrderDetail } from "./order-detail-ui";
 
-type SidebarProps = Pick<OrderDetail, "order" | "coupon" | "customer">;
+type SidebarProps = Pick<OrderDetail, "order" | "coupon" | "customer" | "refunds">;
 
-export function OrderDetailSidebar({ order, coupon, customer }: SidebarProps) {
+export function OrderDetailSidebar({ order, coupon, customer, refunds }: SidebarProps) {
+  const fmt = (amt: string | number) => formatMoney(amt, order.currencyRate, order.currencyCode);
+  const refundedTotal = (refunds ?? []).filter((r) => r.status === "COMPLETED").reduce((s, r) => s + parseFloat(r.amountUsd), 0);
+  const orderTotal = parseFloat(order.totalUsd);
+  const netCharge = Math.max(0, orderTotal - refundedTotal);
+
   return (
     <div className="space-y-4">
       <Card title="Order Summary">
         <div className="space-y-2 text-[12.5px]">
-          <SummaryRow label="Subtotal" value={`€${order.subtotalUsd}`} />
-          {parseFloat(order.discountUsd) > 0 && <SummaryRow label="Discount" value={`-€${order.discountUsd}`} valueClass="text-rose-300 font-semibold" />}
+          <SummaryRow label="Subtotal" value={fmt(order.subtotalUsd)} />
+          {parseFloat(order.discountUsd) > 0 && <SummaryRow label="Discount" value={`-${fmt(order.discountUsd)}`} valueClass="text-rose-300 font-semibold" />}
           {coupon && <SummaryRow label="Coupon" value={`${coupon.code} (${coupon.discountPercent}%)`} valueClass="text-amber-300" />}
-          {order.cppSelected && <SummaryRow label="CPP" value={`€${order.cppAmountUsd}`} valueClass="text-purple-300" />}
+          {order.cppSelected && <SummaryRow label="CPP" value={fmt(order.cppAmountUsd)} valueClass="text-purple-300" />}
           <div className="mt-2 border-t border-[#2e3340] pt-2">
-            <SummaryRow label="Total" value={`€${order.totalUsd}`} labelClass="font-bold text-white" valueClass="font-bold text-white text-[14px]" />
+            <SummaryRow label="Total" value={fmt(order.totalUsd)} labelClass="font-bold text-white" valueClass="font-bold text-white text-[14px]" />
           </div>
+          {refundedTotal > 0 && (
+            <>
+              <SummaryRow label="Refunded" value={`-${fmt(refundedTotal)}`} labelClass="text-rose-300" valueClass="text-rose-300 font-semibold" />
+              <div className="border-t border-[#2e3340] pt-2">
+                <SummaryRow label="Net charge" value={fmt(netCharge)} labelClass="font-bold text-violet-200" valueClass="font-bold text-violet-200 text-[14px]" />
+              </div>
+            </>
+          )}
         </div>
       </Card>
 

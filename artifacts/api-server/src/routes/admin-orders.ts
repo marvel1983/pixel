@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { orders, orderItems, licenseKeys, users, coupons } from "@workspace/db/schema";
+import { orders, orderItems, licenseKeys, users, coupons, refunds } from "@workspace/db/schema";
 import { eq, desc, sql, and, or, ilike, gte, lte, inArray, count, sum } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
@@ -142,7 +142,7 @@ router.get("/admin/orders/:id", requireAuth, requireAdmin, requirePermission("ma
   const [order] = await db.select().from(orders).where(eq(orders.id, id));
   if (!order) { res.status(404).json({ error: "Order not found" }); return; }
 
-  const [items, customerRows, couponRows] = await Promise.all([
+  const [items, customerRows, couponRows, orderRefunds] = await Promise.all([
     db.select().from(orderItems).where(eq(orderItems.orderId, id)),
     order.userId
       ? db.select({ id: users.id, email: users.email, firstName: users.firstName, lastName: users.lastName, createdAt: users.createdAt })
@@ -152,6 +152,11 @@ router.get("/admin/orders/:id", requireAuth, requireAdmin, requirePermission("ma
       ? db.select({ id: coupons.id, code: coupons.code, discountValue: coupons.discountValue })
           .from(coupons).where(eq(coupons.id, order.couponId))
       : Promise.resolve([] as { id: number; code: string; discountValue: string }[]),
+    db.select({
+      id: refunds.id, amountUsd: refunds.amountUsd, reason: refunds.reason, notes: refunds.notes,
+      status: refunds.status, externalRefundId: refunds.externalRefundId, failureReason: refunds.failureReason,
+      createdAt: refunds.createdAt, processedAt: refunds.processedAt,
+    }).from(refunds).where(eq(refunds.orderId, id)).orderBy(desc(refunds.createdAt)),
   ]);
 
   const itemIds = items.map((i) => i.id);
@@ -217,7 +222,7 @@ router.get("/admin/orders/:id", requireAuth, requireAdmin, requirePermission("ma
     }
   }
 
-  res.json({ order, items, licenseKeys: decryptedKeys, customer, coupon, timeline, stripePaymentDetails });
+  res.json({ order, items, licenseKeys: decryptedKeys, customer, coupon, timeline, stripePaymentDetails, refunds: orderRefunds });
 });
 
 function buildFilters(query: Record<string, unknown>) {
