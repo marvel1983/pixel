@@ -48,8 +48,11 @@ export function ProductMeta({ product, selectedVariant, onVariantChange }: Produ
   const platformLabel = PLATFORM_LABEL[platform] ?? platform;
   const worksOn = WORKS_ON[platform] ?? "Windows";
 
-  // If admin added a Globe custom tile, use it for the region slot; render the rest separately
+  // Derive region label: REGION attribute → Globe custom tile → "Global" fallback
+  const regionAttr = product.productAttributes?.find((a) => a.attrSlug === "region");
   const regionTile = product.customInfoTiles?.find((t) => t.icon === "Globe");
+  const regionLabel = regionAttr?.optValue ?? regionTile?.title ?? "Global";
+  const regionSub = regionTile?.subtitle ?? "Can be activated worldwide · Check region restrictions";
   const extraTiles = product.customInfoTiles?.filter((t) => t.icon !== "Globe") ?? [];
 
   return (
@@ -96,8 +99,8 @@ export function ProductMeta({ product, selectedVariant, onVariantChange }: Produ
         <div className="border rounded-lg p-3 flex items-start gap-2">
           <Globe className="h-4 w-4 text-primary mt-0.5 shrink-0" />
           <div>
-            <p className="text-xs font-semibold">{regionTile?.title ?? "Global"}</p>
-            <p className="text-xs text-muted-foreground">{regionTile?.subtitle ?? "Can be activated worldwide · Check region restrictions"}</p>
+            <p className="text-xs font-semibold">{regionLabel}</p>
+            <p className="text-xs text-muted-foreground">{regionSub}</p>
           </div>
         </div>
         <div className="border rounded-lg p-3 flex items-start gap-2">

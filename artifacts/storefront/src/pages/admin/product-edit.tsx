@@ -23,6 +23,7 @@ export default function ProductEditPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const [newFeature, setNewFeature] = useState("");
   const [newReqKey, setNewReqKey] = useState("");
@@ -92,17 +93,25 @@ export default function ProductEditPage() {
   async function handleSave() {
     if (!product) return;
     setSaving(true);
-    await fetch(`${API_URL}/admin/products/${product.id}`, { method: "PUT", headers: { ...authHdr, "Content-Type": "application/json" }, body: JSON.stringify(product) });
-    if (variantDrafts.size > 0) {
-      await Promise.all(Array.from(variantDrafts.entries()).map(([variantId, patch]) =>
-        fetch(`${API_URL}/admin/variants/${variantId}`, { method: "PATCH", headers: { ...authHdr, "Content-Type": "application/json" }, body: JSON.stringify(patch) })
-      ));
-      setVariantDrafts(new Map());
+    setSaveError(null);
+    try {
+      const pr = await fetch(`${API_URL}/admin/products/${product.id}`, { method: "PUT", headers: { ...authHdr, "Content-Type": "application/json" }, body: JSON.stringify(product) });
+      if (!pr.ok) throw new Error(`Product save failed: ${pr.status}`);
+      if (variantDrafts.size > 0) {
+        await Promise.all(Array.from(variantDrafts.entries()).map(([variantId, patch]) =>
+          fetch(`${API_URL}/admin/variants/${variantId}`, { method: "PATCH", headers: { ...authHdr, "Content-Type": "application/json" }, body: JSON.stringify(patch) })
+        ));
+        setVariantDrafts(new Map());
+      }
+      await fetch(`${API_URL}/admin/products/${product.id}/tags`, { method: "PUT", headers: { ...authHdr, "Content-Type": "application/json" }, body: JSON.stringify({ tagIds: selectedTagIds }) }).catch(() => {});
+      const ar = await fetch(`${API_URL}/admin/products/${product.id}/attributes`, { method: "PUT", headers: { ...authHdr, "Content-Type": "application/json" }, body: JSON.stringify({ attributes: Array.from(attributeValues.entries()).map(([attributeId, v]) => ({ attributeId, ...v })) }) });
+      if (!ar.ok) { const e = await ar.json().catch(() => ({})); throw new Error(`Attributes save failed: ${ar.status} ${e.error ?? ""}`); }
+      setSaved(true);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Save failed");
+    } finally {
+      setSaving(false);
     }
-    await fetch(`${API_URL}/admin/products/${product.id}/tags`, { method: "PUT", headers: { ...authHdr, "Content-Type": "application/json" }, body: JSON.stringify({ tagIds: selectedTagIds }) }).catch(() => {});
-    await fetch(`${API_URL}/admin/products/${product.id}/attributes`, { method: "PUT", headers: { ...authHdr, "Content-Type": "application/json" }, body: JSON.stringify({ attributes: Array.from(attributeValues.entries()).map(([attributeId, v]) => ({ attributeId, ...v })) }) }).catch(() => {});
-    setSaving(false);
-    setSaved(true);
   }
 
   async function handleAddVariant() {
@@ -142,8 +151,8 @@ export default function ProductEditPage() {
         <span style={{ fontSize: 10, borderRadius: 3, padding: "2px 7px", background: product.isActive ? "#0a2015" : "#1f2330", color: product.isActive ? "#4ade80" : "#566070", border: `1px solid ${product.isActive ? "#166534" : "#252836"}`, flexShrink: 0 }}>
           {product.isActive ? "Active" : "Inactive"}
         </span>
-        <button onClick={handleSave} disabled={saving} style={{ display: "flex", alignItems: "center", gap: 5, background: saved ? "#0a2015" : "#1e3a8a", border: `1px solid ${saved ? "#166534" : "#2563eb"}`, color: saved ? "#4ade80" : "#93c5fd", borderRadius: 4, padding: "5px 12px", fontSize: 11, fontWeight: 600, cursor: saving ? "not-allowed" : "pointer", flexShrink: 0 }}>
-          <Save size={12} /> {saving ? "Saving…" : saved ? "Saved!" : "Save Changes"}
+        <button onClick={handleSave} disabled={saving} style={{ display: "flex", alignItems: "center", gap: 5, background: saveError ? "#2a0a0a" : saved ? "#0a2015" : "#1e3a8a", border: `1px solid ${saveError ? "#7f1d1d" : saved ? "#166534" : "#2563eb"}`, color: saveError ? "#f87171" : saved ? "#4ade80" : "#93c5fd", borderRadius: 4, padding: "5px 12px", fontSize: 11, fontWeight: 600, cursor: saving ? "not-allowed" : "pointer", flexShrink: 0 }}>
+          <Save size={12} /> {saving ? "Saving…" : saveError ? saveError : saved ? "Saved!" : "Save Changes"}
         </button>
       </div>
 
