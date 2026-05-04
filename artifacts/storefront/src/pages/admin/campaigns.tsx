@@ -46,7 +46,7 @@ function CampaignForm({ id, token, onDone }: { id: number | null; token: string;
     setSaving(true);
     const endsAtDate = form.endsAt ? new Date(form.endsAt) : null;
     const endsAt = endsAtDate && !isNaN(endsAtDate.getTime()) ? endsAtDate.toISOString() : null;
-    const body = { ...form, endsAt, couponCode: form.couponCode || null, heroImageUrl: form.heroImageUrl || null };
+    const body = { ...form, endsAt, couponCode: form.couponCode || null, heroImageUrl: form.heroImageUrl || "" };
     const url = id ? `${API}/admin/campaigns/${id}` : `${API}/admin/campaigns`;
     const r = await fetch(url, { method: id ? "PUT" : "POST", headers, body: JSON.stringify(body) });
     setSaving(false);
