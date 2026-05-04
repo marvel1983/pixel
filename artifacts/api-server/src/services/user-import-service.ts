@@ -81,6 +81,7 @@ export function parseCSV(content: string): { headers: string[]; rows: Array<{ ro
     return { headers: [], rows: [] };
   }
 
+  logger.info({ recordCount: records.length, firstLine: records[0]?.slice(0, 5) }, "csv-parse raw result");
   if (records.length === 0) return { headers: [], rows: [] };
   const headers = records[0];
   const rows = records.slice(1).map((vals, idx) => {
@@ -140,7 +141,12 @@ export async function processImportJob(jobId: number): Promise<void> {
     .set({ status: "processing", startedAt: new Date() })
     .where(eq(userImportJobs.id, jobId));
 
-  const { rows } = parseCSV(job.csvContent);
+  const csvLen = job.csvContent.length;
+  const csvPreview = job.csvContent.slice(0, 300).replace(/\n/g, "\\n").replace(/\r/g, "\\r");
+  logger.info({ jobId, csvLen, csvPreview }, "parseCSV input preview");
+
+  const { rows, headers } = parseCSV(job.csvContent);
+  logger.info({ jobId, rowCount: rows.length, headers }, "parseCSV result");
   const mapping = (job.columnMapping as Record<string, string>) ?? {};
   const policy = job.duplicatePolicy ?? "skip";
   const errors: ImportRowError[] = [];
