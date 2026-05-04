@@ -118,6 +118,28 @@ router.get("/account/affiliate", requireAuth, async (req, res) => {
   res.json({ profile, commissions });
 });
 
+const updateProfileSchema = z.object({
+  paypalEmail: z.string().email().max(255).optional(),
+  websiteUrl: z.string().url().max(500).optional(),
+  socialMedia: z.string().max(500).optional(),
+});
+
+router.put("/account/affiliate", requireAuth, async (req, res) => {
+  const parsed = updateProfileSchema.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: "Invalid data" }); return; }
+
+  const userId = req.user!.userId;
+  const [profile] = await db.select({ id: affiliateProfiles.id })
+    .from(affiliateProfiles).where(eq(affiliateProfiles.userId, userId));
+  if (!profile) { res.status(404).json({ error: "Affiliate profile not found" }); return; }
+
+  await db.update(affiliateProfiles)
+    .set({ ...parsed.data, updatedAt: new Date() })
+    .where(eq(affiliateProfiles.id, profile.id));
+
+  res.json({ success: true });
+});
+
 router.post("/account/affiliate/payout", requireAuth, async (req, res) => {
   const userId = req.user!.userId;
   const [profile] = await db.select().from(affiliateProfiles)
