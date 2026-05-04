@@ -44,7 +44,9 @@ function CampaignForm({ id, token, onDone }: { id: number | null; token: string;
   const save = async () => {
     if (!form.title || !form.slug || !form.headline) { toast({ title: "Fill in required fields", variant: "destructive" }); return; }
     setSaving(true);
-    const body = { ...form, endsAt: form.endsAt ? new Date(form.endsAt).toISOString() : null, couponCode: form.couponCode || null, heroImageUrl: form.heroImageUrl || null };
+    const endsAtDate = form.endsAt ? new Date(form.endsAt) : null;
+    const endsAt = endsAtDate && !isNaN(endsAtDate.getTime()) ? endsAtDate.toISOString() : null;
+    const body = { ...form, endsAt, couponCode: form.couponCode || null, heroImageUrl: form.heroImageUrl || null };
     const url = id ? `${API}/admin/campaigns/${id}` : `${API}/admin/campaigns`;
     const r = await fetch(url, { method: id ? "PUT" : "POST", headers, body: JSON.stringify(body) });
     setSaving(false);
