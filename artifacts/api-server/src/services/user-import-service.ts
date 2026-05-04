@@ -13,7 +13,7 @@ import { users, userImportJobs, userImportErrors, type UserImportJob } from "@wo
 import { eq, and } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
-import { getHashFormat, stripWpPrefix } from "../lib/password-verify";
+import { getHashFormat } from "../lib/password-verify";
 import { logger } from "../lib/logger";
 
 // ── Column mapping presets ────────────────────────────────────────────────────
@@ -120,9 +120,8 @@ function resolveNames(mapped: Record<string, string>): { firstName: string | nul
 
 async function resolveHash(provided?: string): Promise<{ hash: string; isKnownFormat: boolean }> {
   if (provided) {
-    const clean = stripWpPrefix(provided);
-    const fmt = getHashFormat(clean);
-    if (fmt !== "unknown") return { hash: clean, isKnownFormat: true };
+    const fmt = getHashFormat(provided);
+    if (fmt !== "unknown") return { hash: provided, isKnownFormat: true };
   }
   // No usable hash — create a random placeholder, mark account appropriately
   const placeholder = await bcrypt.hash(crypto.randomBytes(32).toString("hex"), 10);

@@ -3,7 +3,8 @@
  *
  * Supported formats:
  *   1. bcrypt     ($2a$ / $2b$ / $2y$) — native PixelCodes format
- *   2. phpass     ($P$ / $H$)          — WordPress / WooCommerce format
+ *   2. phpass     ($P$ / $H$)          — WordPress < 6.8 format
+ *   3. wp-bcrypt  ($wp$2y$)            — WordPress 6.8+ format (HMAC-SHA384 prehash + bcrypt)
  *
  * On every successful login with a non-bcrypt hash, the caller should
  * transparently re-hash to bcrypt and persist the new hash.
@@ -14,19 +15,17 @@ import crypto from "node:crypto";
 
 const ITOA64 = "./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
-export type HashFormat = "bcrypt" | "phpass" | "unknown";
-
-/** Strip WordPress's $wp$ prefix if present, returning the real hash. */
-export function stripWpPrefix(hash: string): string {
-  return hash.startsWith("$wp$") ? hash.slice(4) : hash;
-}
+export type HashFormat = "bcrypt" | "phpass" | "wp-bcrypt" | "unknown";
 
 export function getHashFormat(hash: string): HashFormat {
-  const h = stripWpPrefix(hash);
-  if (h.startsWith("$2a$") || h.startsWith("$2b$") || h.startsWith("$2y$")) {
+  // WordPress 6.8+ — must check before plain bcrypt since it starts with $wp$2y$
+  if (hash.startsWith("$wp$2y$") || hash.startsWith("$wp$2b$") || hash.startsWith("$wp$2a$")) {
+    return "wp-bcrypt";
+  }
+  if (hash.startsWith("$2a$") || hash.startsWith("$2b$") || hash.startsWith("$2y$")) {
     return "bcrypt";
   }
-  if ((h.startsWith("$P$") || h.startsWith("$H$")) && h.length >= 20) {
+  if ((hash.startsWith("$P$") || hash.startsWith("$H$")) && hash.length >= 20) {
     return "phpass";
   }
   return "unknown";
@@ -34,14 +33,26 @@ export function getHashFormat(hash: string): HashFormat {
 
 /** Verify any supported hash format. */
 export async function verifyPasswordAny(plaintext: string, storedHash: string): Promise<boolean> {
-  const hash = stripWpPrefix(storedHash);
-  const fmt = getHashFormat(hash);
-  if (fmt === "bcrypt") return bcrypt.compare(plaintext, hash);
-  if (fmt === "phpass") return verifyPhpass(plaintext, hash);
+  const fmt = getHashFormat(storedHash);
+  if (fmt === "bcrypt") return bcrypt.compare(plaintext, storedHash);
+  if (fmt === "wp-bcrypt") return verifyWpBcrypt(plaintext, storedHash);
+  if (fmt === "phpass") return verifyPhpass(plaintext, storedHash);
   return false;
 }
 
-// ── phpass (WordPress) ────────────────────────────────────────────────────────
+// ── WordPress 6.8+ ($wp$ + HMAC-SHA384 prehash + bcrypt) ─────────────────────
+
+function wpPrehash(plaintext: string): string {
+  return Buffer.from(crypto.createHmac("sha384", "wp-sha384").update(plaintext).digest()).toString("base64");
+}
+
+async function verifyWpBcrypt(plaintext: string, storedHash: string): Promise<boolean> {
+  // Strip the $wp$ prefix to get a standard bcrypt hash
+  const bcryptHash = storedHash.slice(4);
+  return bcrypt.compare(wpPrehash(plaintext), bcryptHash);
+}
+
+// ── phpass (WordPress < 6.8) ──────────────────────────────────────────────────
 
 function encode64(buf: Buffer, count: number): string {
   let out = "";
@@ -73,19 +84,12 @@ function verifyPhpass(plaintext: string, storedHash: string): boolean {
     const pwBuf = Buffer.from(plaintext, "utf8");
     const saltBuf = Buffer.from(salt, "binary");
 
-    // Initial: md5(salt + password)
-    let hash = crypto
-      .createHash("md5")
-      .update(Buffer.concat([saltBuf, pwBuf]))
-      .digest();
-
-    // Iterate: md5(prevHash + password)
+    let hash = crypto.createHash("md5").update(Buffer.concat([saltBuf, pwBuf])).digest();
     for (let i = 0; i < count; i++) {
       hash = crypto.createHash("md5").update(Buffer.concat([hash, pwBuf])).digest();
     }
 
-    const computed = encode64(hash, 16);
-    return computed === expectedEncoded;
+    return encode64(hash, 16) === expectedEncoded;
   } catch {
     return false;
   }
