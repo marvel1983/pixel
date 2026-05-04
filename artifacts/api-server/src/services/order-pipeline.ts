@@ -183,9 +183,12 @@ export async function runFulfillment(
     throw err;
   }
 
-  if (metenziResult === "skip" || metenziResult === "completed") {
-    // "skip" = no Metenzi mapping; "completed" = keys delivered immediately in POST response
+  if (metenziResult === "skip") {
+    // No Metenzi mapping — nothing to fulfill, mark complete directly
     await updateOrderStatus(orderId, "COMPLETED");
+    await triggerOrderEmails(billing, orderNumber, orderId, items, total, input.locale);
+  } else if (metenziResult === "completed") {
+    // handleWebhookEvent already set COMPLETED or PARTIALLY_DELIVERED based on actual key count — don't overwrite
     await triggerOrderEmails(billing, orderNumber, orderId, items, total, input.locale);
   } else if (metenziResult === "backordered") {
     // All items have zero stock — status already set to BACKORDERED inside fulfillFromMetenzi
