@@ -204,20 +204,21 @@ export async function processImportJob(jobId: number): Promise<void> {
         seenInBatch.add(email);
         const { hash, isKnownFormat } = resolveHash(mapped.passwordHash, placeholderHash);
         const { firstName, lastName } = resolveNames(mapped);
+        const trunc = (s: string | null | undefined, max: number) => s?.trim().slice(0, max) || null;
         toInsert.push({
           email,
           passwordHash: hash,
-          username: mapped.username?.trim() || null,
-          firstName,
-          lastName,
-          companyName: mapped.companyName?.trim() || null,
+          username: trunc(mapped.username, 50),
+          firstName: firstName?.slice(0, 100) ?? null,
+          lastName: lastName?.slice(0, 100) ?? null,
+          companyName: trunc(mapped.companyName, 255),
           role: "CUSTOMER",
           isActive: isKnownFormat,
           emailVerified: isKnownFormat,
-          billingPhone: mapped.billingPhone?.trim() || null,
-          billingAddress: mapped.billingAddress?.trim() || null,
-          billingCity: mapped.billingCity?.trim() || null,
-          billingZip: mapped.billingZip?.trim() || null,
+          billingPhone: trunc(mapped.billingPhone, 40),
+          billingAddress: trunc(mapped.billingAddress, 500),
+          billingCity: trunc(mapped.billingCity, 120),
+          billingZip: trunc(mapped.billingZip, 32),
           billingCountry: mapped.billingCountry?.trim().toUpperCase().slice(0, 3) || null,
           adminNotes: isKnownFormat ? "Imported from WooCommerce" : "Imported — no password hash provided, requires password reset",
         });
