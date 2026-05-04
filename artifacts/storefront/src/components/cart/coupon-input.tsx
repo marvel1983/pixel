@@ -55,17 +55,17 @@ export function CouponInput() {
 
   if (coupon) {
     return (
-      <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 border border-green-200">
+      <div className="flex items-center gap-2 p-3 rounded-lg bg-green-600 border border-green-700">
         <Check
-          className={`h-4 w-4 text-green-600 ${checkPop ? "animate-check-pop" : ""}`}
+          className={`h-4 w-4 text-white ${checkPop ? "animate-check-pop" : ""}`}
           onAnimationEnd={() => setCheckPop(false)}
         />
-        <span className="text-sm font-medium text-green-700 flex-1">
+        <span className="text-sm font-medium text-white flex-1">
           {coupon.code} — {coupon.label}
         </span>
         <button
           onClick={() => { setCoupon(null); setCheckPop(false); }}
-          className="text-green-600 hover:text-green-800 transition-colors"
+          className="text-white/80 hover:text-white transition-colors"
         >
           <X className="h-4 w-4" />
         </button>
