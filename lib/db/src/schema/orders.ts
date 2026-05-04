@@ -64,6 +64,7 @@ export const orders = pgTable("orders", {
   taxAmountUsd: numeric("tax_amount_usd", { precision: 10, scale: 2 }).notNull().default("0"),
   vatNumber: varchar("vat_number", { length: 50 }),
   couponId: integer("coupon_id").references(() => coupons.id),
+  couponCode: varchar("coupon_code", { length: 100 }),
   paymentIntentId: varchar("payment_intent_id", { length: 255 }),
   externalOrderId: varchar("external_order_id", { length: 255 }),
   billingSnapshot: jsonb("billing_snapshot").$type<{

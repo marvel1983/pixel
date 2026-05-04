@@ -258,6 +258,7 @@ export async function executeOrderPipeline(input: OrderInput) {
       cppAmountUsd: cppAmount.toFixed(2), taxRate: input.taxRate.toFixed(2),
       taxAmountUsd: input.taxAmount.toFixed(2), vatNumber: input.vatNumber,
       couponId: input.coupon?.id ?? null,
+      couponCode: input.coupon?.code ?? null,
       attribution: input.attribution ?? null,
     })
     .returning({ id: orders.id });
