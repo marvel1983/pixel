@@ -11,6 +11,7 @@ export function CouponInput() {
   const [checkPop, setCheckPop] = useState(false);
   const coupon = useCartStore((s) => s.coupon);
   const setCoupon = useCartStore((s) => s.setCoupon);
+  const cartItems = useCartStore((s) => s.items);
   const { toast } = useToast();
 
   async function handleApply() {
@@ -19,10 +20,11 @@ export function CouponInput() {
 
     try {
       const baseUrl = import.meta.env.VITE_API_URL ?? "/api";
+      const cartProductIds = [...new Set(cartItems.map((i) => i.productId))];
       const res = await fetch(`${baseUrl}/coupons/validate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: code.trim() }),
+        body: JSON.stringify({ code: code.trim(), cartProductIds }),
       });
       const data = await res.json();
 

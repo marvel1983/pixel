@@ -128,10 +128,24 @@ export async function calculateCheckoutTotals(input: CheckoutInput): Promise<Che
 
   let couponDiscount = 0;
   if (serverCoupon) {
+    // Compute the subtotal eligible for this coupon.
+    // If productIds is set, only items whose productId is in the list count.
+    let eligibleSubtotal = subtotal;
+    if (serverCoupon.productIds && serverCoupon.productIds.length > 0) {
+      const eligible = new Set(serverCoupon.productIds);
+      eligibleSubtotal = items.reduce((sum, it) => {
+        if (!eligible.has(it.productId)) return sum;
+        const lk = `${it.bundleId ?? "s"}-${it.variantId}`;
+        const price = it.variantId > 0 ? (effectivePrices.get(lk) ?? it.priceUsd) : it.priceUsd;
+        return sum + parseFloat(price) * it.quantity;
+      }, 0);
+      if (eligibleSubtotal === 0) return { error: "This coupon is not valid for the items in your cart." };
+    }
+
     if (serverCoupon.type === "FIXED") {
-      couponDiscount = Math.min(serverCoupon.amount, subtotal);
+      couponDiscount = Math.min(serverCoupon.amount, eligibleSubtotal);
     } else {
-      couponDiscount = subtotal * (serverCoupon.pct / 100);
+      couponDiscount = eligibleSubtotal * (serverCoupon.pct / 100);
       if (serverCoupon.maxDiscountUsd && couponDiscount > serverCoupon.maxDiscountUsd) couponDiscount = serverCoupon.maxDiscountUsd;
     }
   }

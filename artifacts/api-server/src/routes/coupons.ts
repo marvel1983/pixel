@@ -8,6 +8,7 @@ const router = Router();
 
 const validateSchema = z.object({
   code: z.string().min(1).max(50),
+  cartProductIds: z.array(z.number().int().positive()).optional(),
 });
 
 router.post("/coupons/validate", async (req, res) => {
@@ -18,6 +19,7 @@ router.post("/coupons/validate", async (req, res) => {
   }
 
   const code = parsed.data.code.trim().toUpperCase();
+  const cartProductIds = parsed.data.cartProductIds ?? [];
 
   const [dbCoupon] = await db.select().from(coupons)
     .where(and(
@@ -34,6 +36,19 @@ router.post("/coupons/validate", async (req, res) => {
       res.status(404).json({ valid: false, error: "This coupon has been fully redeemed." });
       return;
     }
+
+    // Check product restrictions against the cart when provided
+    const couponProductIds = Array.isArray(dbCoupon.productIds) && dbCoupon.productIds.length > 0
+      ? dbCoupon.productIds as number[]
+      : null;
+    if (couponProductIds && cartProductIds.length > 0) {
+      const eligible = couponProductIds.some((id) => cartProductIds.includes(id));
+      if (!eligible) {
+        res.status(404).json({ valid: false, error: "This coupon is not valid for the items in your cart." });
+        return;
+      }
+    }
+
     const discount = parseFloat(dbCoupon.discountValue);
     const isPercentage = dbCoupon.discountType === "PERCENTAGE";
     res.json({
