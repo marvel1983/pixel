@@ -116,7 +116,7 @@ async function processJob(row: ClaimedRow) {
 
 const CONCURRENCY: Record<string, number> = {
   email: 3, "product-sync": 1, "order-processing": 2,
-  "abandoned-cart": 1, alerts: 2, reports: 1,
+  "abandoned-cart": 1, alerts: 2, reports: 1, imports: 1,
 };
 
 let running = false;
