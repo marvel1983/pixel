@@ -124,6 +124,8 @@ router.post("/checkout/session", requireIdempotencyKey(), async (req, res) => {
     userId: userId ?? null, cppSelected: cppSelected ?? false, cppAmountUsd: cppAmount.toFixed(2),
     taxRate: taxRate.toFixed(2), taxAmountUsd: taxAmount.toFixed(2),
     vatNumber: vatNumber ?? null, billingSnapshot: billing,
+    couponId: serverCoupon?.id ?? null,
+    couponCode: serverCoupon?.code ?? null,
     attribution: parsed.data.attribution ?? null,
   }).returning({ id: orders.id });
 
