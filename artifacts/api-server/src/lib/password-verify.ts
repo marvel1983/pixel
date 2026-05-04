@@ -47,8 +47,8 @@ function wpPrehash(plaintext: string): string {
 }
 
 async function verifyWpBcrypt(plaintext: string, storedHash: string): Promise<boolean> {
-  // Strip the $wp$ prefix to get a standard bcrypt hash
-  const bcryptHash = storedHash.slice(4);
+  // Strip "$wp" (3 chars) — the trailing "$" is shared with the bcrypt "$2y$" format
+  const bcryptHash = storedHash.slice(3);
   return bcrypt.compare(wpPrehash(plaintext), bcryptHash);
 }
 
