@@ -6,7 +6,6 @@
  */
 
 import puppeteer from "puppeteer";
-import PDFDocument from "pdfkit";
 import { invoiceEmail } from "./invoice-template";
 import type { InvoiceData } from "./invoice-template";
 import { logger } from "../logger";
@@ -67,6 +66,7 @@ async function fetchImageBuffer(url: string): Promise<Buffer | null> {
 }
 
 async function generateViaPdfkit(data: InvoiceData): Promise<Buffer> {
+  const { default: PDFDocument } = await import("pdfkit");
   let logoBuffer: Buffer | null = null;
   if (data.logoUrl) logoBuffer = await fetchImageBuffer(data.logoUrl);
 
