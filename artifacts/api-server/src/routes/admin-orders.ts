@@ -109,9 +109,12 @@ router.get("/admin/orders", requireAuth, requireAdmin, requirePermission("manage
       userId: orders.userId, status: orders.status, paymentMethod: orders.paymentMethod,
       subtotalUsd: orders.subtotalUsd, discountUsd: orders.discountUsd, totalUsd: orders.totalUsd,
       cppSelected: orders.cppSelected, cppAmountUsd: orders.cppAmountUsd,
-      couponId: orders.couponId, currencyCode: orders.currencyCode, createdAt: orders.createdAt,
+      couponId: orders.couponId, couponCode: coupons.code,
+      currencyCode: orders.currencyCode, createdAt: orders.createdAt,
       attribution: orders.attribution,
-    }).from(orders).where(whereClause).orderBy(desc(orders.createdAt)).limit(limit).offset(offset),
+    }).from(orders)
+      .leftJoin(coupons, eq(coupons.id, orders.couponId))
+      .where(whereClause).orderBy(desc(orders.createdAt)).limit(limit).offset(offset),
   ]);
 
   const orderIds = rows.map((r) => r.id);

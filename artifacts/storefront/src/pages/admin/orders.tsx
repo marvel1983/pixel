@@ -16,7 +16,7 @@ interface OrderRow {
   id: number; orderNumber: string; guestEmail: string | null; status: string;
   subtotalUsd: string; discountUsd: string; totalUsd: string;
   cppSelected: boolean; cppAmountUsd: string;
-  couponId: number | null; createdAt: string;
+  couponId: number | null; couponCode: string | null; createdAt: string;
   items: { productName: string; quantity: number }[]; itemCount: number;
   attribution?: { utm_source?: string; utm_medium?: string; utm_campaign?: string; referrer?: string } | null;
 }
@@ -456,8 +456,8 @@ export default function AdminOrdersPage() {
                     )}
                   </td>
                   <td className={`${tableCell} text-center`}>
-                    {r.couponId ? (
-                      <span className="inline-flex items-center rounded border border-amber-300 bg-amber-500/40 px-1.5 text-[10px] font-bold text-amber-100 tracking-wider" style={{height:17}}>YES</span>
+                    {r.couponCode ? (
+                      <span className="inline-flex items-center rounded border border-amber-300 bg-amber-500/40 px-1.5 text-[10px] font-bold text-amber-100 tracking-wider font-mono" style={{height:17}}>{r.couponCode}</span>
                     ) : (
                       <span className="text-[#2e3850]">—</span>
                     )}
