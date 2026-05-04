@@ -72,7 +72,7 @@ app.use(cookieParser());
 app.use("/api/webhooks/stripe", express.raw({ type: "application/json" }));
 app.use(
   express.json({
-    limit: "10mb",
+    limit: "100mb",
     verify: (req: Request, _res, buf) => {
       // Capture raw body for non-Stripe webhooks (Metenzi, Checkout.com) that
       // still need HMAC verification against the original byte sequence.
