@@ -29,6 +29,8 @@ export default function DiscountFormPage() {
   const [codeAvailable, setCodeAvailable] = useState<boolean | null>(null);
   const [products, setProducts] = useState<{ id: number; name: string }[]>([]);
   const [categories, setCategories] = useState<{ id: number; name: string }[]>([]);
+  const [productSearch, setProductSearch] = useState("");
+  const [categorySearch, setCategorySearch] = useState("");
   const [, navigate] = useLocation();
   const token = useAuthStore((s) => s.token);
 
@@ -158,19 +160,45 @@ export default function DiscountFormPage() {
 
           <Section title="Restrictions">
             <div>
-              <label className="block text-sm font-medium mb-1">Applies to Products</label>
-              <select multiple className="w-full rounded-md border px-3 py-2 text-sm h-24"
-                value={form.productIds.map(String)} onChange={(e) => set("productIds", Array.from(e.target.selectedOptions, (o) => Number(o.value)))}>
-                {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-              <p className="text-xs text-muted-foreground mt-1">Hold Ctrl/Cmd to select multiple. Leave empty for all products.</p>
+              <div className="flex justify-between items-center mb-1">
+                <label className="text-sm font-medium">Applies to Products</label>
+                <span className="text-xs text-muted-foreground">{form.productIds.length > 0 ? `${form.productIds.length} selected` : "All products (no restriction)"}</span>
+              </div>
+              <input className="w-full rounded-md border px-3 py-2 text-sm mb-1" placeholder="Search products…" value={productSearch} onChange={(e) => setProductSearch(e.target.value)} />
+              <div className="rounded-md border h-44 overflow-y-auto divide-y">
+                {[...products.filter((p) => form.productIds.includes(p.id)), ...products.filter((p) => !form.productIds.includes(p.id))]
+                  .filter((p) => p.name.toLowerCase().includes(productSearch.toLowerCase()))
+                  .map((p) => {
+                    const checked = form.productIds.includes(p.id);
+                    return (
+                      <label key={p.id} className={`flex items-center gap-2 px-3 py-1.5 text-sm cursor-pointer hover:bg-muted ${checked ? "bg-blue-50 font-medium" : ""}`}>
+                        <input type="checkbox" checked={checked} onChange={(e) => set("productIds", e.target.checked ? [...form.productIds, p.id] : form.productIds.filter((id) => id !== p.id))} />
+                        {p.name}
+                      </label>
+                    );
+                  })}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">Selected products appear at top highlighted. Leave empty for all products.</p>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Applies to Categories</label>
-              <select multiple className="w-full rounded-md border px-3 py-2 text-sm h-24"
-                value={form.categoryIds.map(String)} onChange={(e) => set("categoryIds", Array.from(e.target.selectedOptions, (o) => Number(o.value)))}>
-                {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
+              <div className="flex justify-between items-center mb-1">
+                <label className="text-sm font-medium">Applies to Categories</label>
+                <span className="text-xs text-muted-foreground">{form.categoryIds.length > 0 ? `${form.categoryIds.length} selected` : "All categories"}</span>
+              </div>
+              <input className="w-full rounded-md border px-3 py-2 text-sm mb-1" placeholder="Search categories…" value={categorySearch} onChange={(e) => setCategorySearch(e.target.value)} />
+              <div className="rounded-md border h-32 overflow-y-auto divide-y">
+                {[...categories.filter((c) => form.categoryIds.includes(c.id)), ...categories.filter((c) => !form.categoryIds.includes(c.id))]
+                  .filter((c) => c.name.toLowerCase().includes(categorySearch.toLowerCase()))
+                  .map((c) => {
+                    const checked = form.categoryIds.includes(c.id);
+                    return (
+                      <label key={c.id} className={`flex items-center gap-2 px-3 py-1.5 text-sm cursor-pointer hover:bg-muted ${checked ? "bg-blue-50 font-medium" : ""}`}>
+                        <input type="checkbox" checked={checked} onChange={(e) => set("categoryIds", e.target.checked ? [...form.categoryIds, c.id] : form.categoryIds.filter((id) => id !== c.id))} />
+                        {c.name}
+                      </label>
+                    );
+                  })}
+              </div>
             </div>
           </Section>
 
