@@ -9,6 +9,7 @@ const STATIC_COUPONS: Record<string, { discount: number; label: string }> = {
 };
 
 export interface ValidatedCoupon {
+  id?: number;
   code: string;
   /** Percentage discount (0–100). Zero for FIXED type. */
   pct: number;
@@ -96,6 +97,7 @@ export async function validateCouponServerSide(
         : null;
 
       return {
+        id: dbCoupon.id,
         code: dbCoupon.code,
         pct,
         amount,

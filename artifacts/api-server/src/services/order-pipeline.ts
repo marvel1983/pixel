@@ -42,7 +42,7 @@ interface OrderItem {
 interface OrderInput {
   billing: BillingInfo;
   items: OrderItem[];
-  coupon: { code: string; pct: number; label: string } | null;
+  coupon: { id?: number; code: string; pct: number; label: string } | null;
   cppSelected: boolean; subtotal: number; discountAmount: number;
   taxRate: number; taxAmount: number; vatNumber: string | null;
   total: number; orderNumber: string; cardToken: string;
@@ -257,6 +257,7 @@ export async function executeOrderPipeline(input: OrderInput) {
       userId: input.userId ?? null, cppSelected: input.cppSelected,
       cppAmountUsd: cppAmount.toFixed(2), taxRate: input.taxRate.toFixed(2),
       taxAmountUsd: input.taxAmount.toFixed(2), vatNumber: input.vatNumber,
+      couponId: input.coupon?.id ?? null,
       attribution: input.attribution ?? null,
     })
     .returning({ id: orders.id });
