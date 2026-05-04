@@ -14,7 +14,11 @@
       "mcp__Claude_in_Chrome__read_console_messages",
       "mcp__Claude_in_Chrome__read_network_requests",
       "Bash(git commit -m ' *)",
-      "Bash(pnpm --filter @workspace/api-server add csv-parse)"
+      "Bash(pnpm --filter @workspace/api-server add csv-parse)",
+      "Bash(ssh -o StrictHostKeyChecking=no root@144.91.69.182 'PGPASSWORD='\\\\''PxC@db2026!Secure'\\\\'' psql -h localhost -U pixelcodes -d pixelcodes -c \" *)",
+      "Bash(sshpass -p 'PajaPatak83#' ssh -o StrictHostKeyChecking=no root@144.91.69.182 \"PGPASSWORD='PxC@db2026!Secure' psql -h localhost -U pixelcodes -d pixelcodes -c \\\\\"SELECT id, status, total_rows, processed_rows, success_count, skipped_count FROM user_import_jobs ORDER BY id DESC LIMIT 5;\\\\\"\")",
+      "Bash(pnpm --filter @workspace/api-server add papaparse)",
+      "Bash(pnpm --filter @workspace/api-server add -D @types/papaparse)"
     ]
   },
   "disabledMcpjsonServers": [
