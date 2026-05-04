@@ -1,4 +1,4 @@
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { db } from "@workspace/db";
 import { coupons } from "@workspace/db/schema";
 import { logger } from "../lib/logger";
@@ -6,7 +6,6 @@ import { logger } from "../lib/logger";
 const STATIC_COUPONS: Record<string, { discount: number; label: string }> = {
   SAVE10: { discount: 10, label: "10% off" },
   WELCOME15: { discount: 15, label: "15% off" },
-  PIXEL20: { discount: 20, label: "20% off" },
 };
 
 export interface ValidatedCoupon {
@@ -44,7 +43,7 @@ export async function validateCouponServerSide(
     const [dbCoupon] = await db
       .select()
       .from(coupons)
-      .where(and(eq(coupons.code, normalized), eq(coupons.isActive, true)))
+      .where(and(eq(sql`UPPER(${coupons.code})`, normalized), eq(coupons.isActive, true)))
       .limit(1);
 
     if (dbCoupon) {

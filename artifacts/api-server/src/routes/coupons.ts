@@ -2,15 +2,9 @@ import { Router } from "express";
 import { z } from "zod";
 import { db } from "@workspace/db";
 import { coupons } from "@workspace/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 
 const router = Router();
-
-const VALID_COUPONS: Record<string, { discount: number; label: string }> = {
-  SAVE10: { discount: 10, label: "10% off" },
-  WELCOME15: { discount: 15, label: "15% off" },
-  PIXEL20: { discount: 20, label: "20% off" },
-};
 
 const validateSchema = z.object({
   code: z.string().min(1).max(50),
@@ -24,16 +18,10 @@ router.post("/coupons/validate", async (req, res) => {
   }
 
   const code = parsed.data.code.trim().toUpperCase();
-  const hardcoded = VALID_COUPONS[code];
-
-  if (hardcoded) {
-    res.json({ valid: true, code, discount: hardcoded.discount, label: hardcoded.label });
-    return;
-  }
 
   const [dbCoupon] = await db.select().from(coupons)
     .where(and(
-      eq(coupons.code, code),
+      eq(sql`UPPER(${coupons.code})`, code),
       eq(coupons.isActive, true),
     )).limit(1);
 
