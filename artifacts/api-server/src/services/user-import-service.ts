@@ -64,15 +64,20 @@ export function parseCSV(content: string): { headers: string[]; rows: Array<{ ro
   const firstLine = firstNewline === -1 ? content : content.slice(0, firstNewline);
   const delim = detectDelimiter(firstLine);
 
+  // Strip UTF-8 BOM if present
+  const cleaned = content.charCodeAt(0) === 0xFEFF ? content.slice(1) : content;
+
   let records: string[][];
   try {
-    records = parseCsv(content, {
+    records = parseCsv(cleaned, {
       delimiter: delim,
       relax_quotes: true,
+      relax_column_count: true,
       skip_empty_lines: true,
       trim: true,
     }) as string[][];
-  } catch {
+  } catch (err) {
+    logger.error({ err }, "csv-parse failed");
     return { headers: [], rows: [] };
   }
 
