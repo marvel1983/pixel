@@ -64,6 +64,7 @@ const AccountOrdersPage = lazy(() => import("@/pages/account-orders"));
 const AccountBalancePage = lazy(() => import("@/pages/account-balance"));
 const AccountLoyaltyPage = lazy(() => import("@/pages/account-loyalty"));
 const AccountAffiliatePage = lazy(() => import("@/pages/account-affiliate"));
+const CampaignPage = lazy(() => import("@/pages/campaign"));
 const LoginPage = lazy(() => import("@/pages/login"));
 const RegisterPage = lazy(() => import("@/pages/register"));
 const ForgotPasswordPage = lazy(() => import("@/pages/forgot-password"));
@@ -136,6 +137,7 @@ function StorefrontWithMaintenance() {
           <Route path="/account/balance" component={AccountBalancePage} />
           <Route path="/account/loyalty" component={AccountLoyaltyPage} />
           <Route path="/account/affiliate" component={AccountAffiliatePage} />
+          <Route path="/campaign/:slug" component={CampaignPage} />
           <Route path="/login" component={LoginPage} />
           <Route path="/register" component={RegisterPage} />
           <Route path="/auth/google/success" component={AuthGoogleSuccessPage} />

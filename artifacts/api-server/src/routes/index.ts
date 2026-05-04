@@ -98,6 +98,7 @@ import adminMetenziWebhooksRouter from "./admin-metenzi-webhooks";
 import adminMappingConflictsRouter from "./admin-mapping-conflicts";
 import productsRouter from "./products";
 import visitorsRouter from "./visitors";
+import campaignsRouter from "./campaigns";
 
 const router: IRouter = Router();
 
@@ -200,5 +201,6 @@ router.use(adminMappingConflictsRouter);
 router.use(adminFeedsRouter);
 router.use(productsRouter);
 router.use(visitorsRouter);
+router.use(campaignsRouter);
 
 export default router;
