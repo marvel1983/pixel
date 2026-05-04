@@ -13,7 +13,7 @@ import { users, userImportJobs, userImportErrors, type UserImportJob } from "@wo
 import { eq, and, inArray } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
-import { parse as parseCsv } from "csv-parse/sync";
+import Papa from "papaparse";
 import { getHashFormat } from "../lib/password-verify";
 import { logger } from "../lib/logger";
 
@@ -67,21 +67,14 @@ export function parseCSV(content: string): { headers: string[]; rows: Array<{ ro
   // Strip UTF-8 BOM if present
   const cleaned = content.charCodeAt(0) === 0xFEFF ? content.slice(1) : content;
 
-  let records: string[][];
-  try {
-    records = parseCsv(cleaned, {
-      delimiter: delim,
-      relax_quotes: true,
-      relax_column_count: true,
-      skip_empty_lines: true,
-      trim: true,
-    }) as string[][];
-  } catch (err) {
-    logger.error({ err }, "csv-parse failed");
-    return { headers: [], rows: [] };
-  }
+  const result = Papa.parse<string[]>(cleaned, {
+    delimiter: delim,
+    header: false,
+    skipEmptyLines: true,
+  });
 
-  logger.info({ recordCount: records.length, firstLine: records[0]?.slice(0, 5) }, "csv-parse raw result");
+  const records = result.data as string[][];
+  logger.info({ recordCount: records.length, parseErrors: result.errors.length }, "papaparse result");
   if (records.length === 0) return { headers: [], rows: [] };
   const headers = records[0];
   const rows = records.slice(1).map((vals, idx) => {
