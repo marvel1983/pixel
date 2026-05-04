@@ -7,7 +7,7 @@ import {
   Bell, BarChart3, Truck, Flag, Ticket, MessageSquare,
   HelpCircle, ClipboardList, Wallet, Gift, Globe,
   Link2, Zap, BookOpen, ListTodo, Activity, ArrowLeft, Tag, Sliders, RefreshCw,
-  ChevronDown, ChevronRight, Star, Rss,
+  ChevronDown, ChevronRight, Star, Rss, Megaphone,
   type LucideIcon,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -52,6 +52,7 @@ const sections: NavSection[] = [
       { label: "Claims",            href: "/admin/claims",                   icon: Flag },
       { label: "Refunds",           href: "/admin/refunds",                  icon: Wallet },
       { label: "Flash Sales",       href: "/admin/flash-sales",              icon: Zap },
+      { label: "Campaigns",         href: "/admin/campaigns",                icon: Megaphone },
       { label: "Price Rules",       href: "/admin/price-rules",              icon: Tag },
       { label: "Discounts",         href: "/admin/discounts",                icon: Ticket },
       { label: "Checkout Upsell",   href: "/admin/checkout-upsell",         icon: Gift },
