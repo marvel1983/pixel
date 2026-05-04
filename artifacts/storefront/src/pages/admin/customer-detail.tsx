@@ -11,8 +11,12 @@ import { CustomerWallet } from "@/components/admin/customer-wallet";
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
 interface Customer {
-  id: number; email: string; firstName: string | null; lastName: string | null;
+  id: number; email: string; username: string | null;
+  firstName: string | null; lastName: string | null;
   role: string; isActive: boolean; emailVerified: boolean; adminNotes: string | null;
+  companyName: string | null; billingPhone: string | null;
+  billingAddress: string | null; billingCity: string | null;
+  billingZip: string | null; billingCountry: string | null;
   lastLoginAt: string | null; createdAt: string;
 }
 interface Order { id: number; orderNumber: string; status: string; totalUsd: string; createdAt: string }
@@ -132,9 +136,19 @@ export default function CustomerDetailPage() {
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 text-lg font-bold text-blue-700">{init}</div>
               <div className="flex-1 space-y-1 text-sm">
                 <p><strong>Email:</strong> {customer.email} {customer.emailVerified && <CheckCircle className="inline h-3.5 w-3.5 text-green-500" />}</p>
+                {customer.username && <p><strong>Username:</strong> {customer.username}</p>}
                 <p><strong>Role:</strong> <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${customer.role === "ADMIN" ? "bg-blue-100 text-blue-800" : customer.role === "SUPER_ADMIN" ? "bg-purple-100 text-purple-800" : "bg-gray-100 text-gray-700"}`}>{customer.role}</span></p>
                 <p><strong>Registered:</strong> {new Date(customer.createdAt).toLocaleDateString()}</p>
                 <p><strong>Last Login:</strong> {customer.lastLoginAt ? new Date(customer.lastLoginAt).toLocaleString() : "Never"}</p>
+                {(customer.companyName || customer.billingPhone || customer.billingAddress || customer.billingCity || customer.billingCountry) && (
+                  <div className="mt-2 pt-2 border-t space-y-0.5">
+                    {customer.companyName && <p><strong>Company:</strong> {customer.companyName}</p>}
+                    {customer.billingPhone && <p><strong>Phone:</strong> {customer.billingPhone}</p>}
+                    {(customer.billingAddress || customer.billingCity || customer.billingZip || customer.billingCountry) && (
+                      <p><strong>Address:</strong> {[customer.billingAddress, customer.billingCity, customer.billingZip, customer.billingCountry].filter(Boolean).join(", ")}</p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
             <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t">

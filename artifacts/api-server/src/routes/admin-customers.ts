@@ -74,6 +74,9 @@ router.get("/admin/customers/:id", requireAuth, requireAdmin, requirePermission(
     firstName: users.firstName, lastName: users.lastName,
     role: users.role, isActive: users.isActive, emailVerified: users.emailVerified,
     marketingConsent: users.marketingConsent, adminNotes: users.adminNotes,
+    companyName: users.companyName, billingPhone: users.billingPhone,
+    billingAddress: users.billingAddress, billingCity: users.billingCity,
+    billingZip: users.billingZip, billingCountry: users.billingCountry,
     lastLoginAt: users.lastLoginAt, createdAt: users.createdAt,
   }).from(users).where(eq(users.id, id));
   if (!customer) { res.status(404).json({ error: "Customer not found" }); return; }
