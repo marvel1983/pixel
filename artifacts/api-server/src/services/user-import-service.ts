@@ -13,6 +13,7 @@ import { users, userImportJobs, userImportErrors, type UserImportJob } from "@wo
 import { eq, and, inArray } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
+import { parse as parseCsv } from "csv-parse/sync";
 import { getHashFormat } from "../lib/password-verify";
 import { logger } from "../lib/logger";
 
@@ -63,29 +64,17 @@ export function parseCSV(content: string): { headers: string[]; rows: Array<{ ro
   const firstLine = firstNewline === -1 ? content : content.slice(0, firstNewline);
   const delim = detectDelimiter(firstLine);
 
-  const records: string[][] = [];
-  let cur: string[] = [];
-  let field = "";
-  let inQ = false;
-  let i = 0;
-
-  while (i < content.length) {
-    const ch = content[i];
-    if (ch === '"') {
-      if (inQ && content[i + 1] === '"') { field += '"'; i += 2; continue; }
-      inQ = !inQ; i++; continue;
-    }
-    if (!inQ && ch === delim) { cur.push(field.trim()); field = ""; i++; continue; }
-    if (!inQ && (ch === "\n" || ch === "\r")) {
-      cur.push(field.trim());
-      if (cur.some((f) => f.length > 0)) records.push(cur);
-      cur = []; field = "";
-      if (ch === "\r" && content[i + 1] === "\n") i++;
-      i++; continue;
-    }
-    field += ch; i++;
+  let records: string[][];
+  try {
+    records = parseCsv(content, {
+      delimiter: delim,
+      relax_quotes: true,
+      skip_empty_lines: true,
+      trim: true,
+    }) as string[][];
+  } catch {
+    return { headers: [], rows: [] };
   }
-  if (field.length > 0 || cur.length > 0) { cur.push(field.trim()); if (cur.some((f) => f.length > 0)) records.push(cur); }
 
   if (records.length === 0) return { headers: [], rows: [] };
   const headers = records[0];
