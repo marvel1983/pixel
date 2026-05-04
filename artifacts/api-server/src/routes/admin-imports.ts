@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { userImportJobs, userImportErrors } from "@workspace/db/schema";
+import { userImportJobs, userImportErrors, jobQueue } from "@workspace/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
@@ -131,13 +131,16 @@ router.delete("/admin/imports/:id", ...auth, async (req, res) => {
   const id = parseInt(req.params.id as string, 10);
   if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
 
-  const [job] = await db.select({ status: userImportJobs.status }).from(userImportJobs).where(eq(userImportJobs.id, id)).limit(1);
+  const [job] = await db.select({ status: userImportJobs.status, jobQueueId: userImportJobs.jobQueueId }).from(userImportJobs).where(eq(userImportJobs.id, id)).limit(1);
   if (!job) { res.status(404).json({ error: "Not found" }); return; }
-  if (job.status === "processing" || job.status === "queued") {
-    res.status(409).json({ error: "Cannot delete an active import job" });
+  if (job.status === "processing") {
+    res.status(409).json({ error: "Cannot delete an import job that is currently processing" });
     return;
   }
 
+  if (job.jobQueueId) {
+    await db.update(jobQueue).set({ status: "failed", lastError: "Cancelled by admin", completedAt: new Date() }).where(eq(jobQueue.id, job.jobQueueId));
+  }
   await db.delete(userImportErrors).where(eq(userImportErrors.jobId, id));
   await db.delete(userImportJobs).where(eq(userImportJobs.id, id));
   res.json({ ok: true });
