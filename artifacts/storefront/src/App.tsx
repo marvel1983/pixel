@@ -42,6 +42,7 @@ import CartPage from "@/pages/cart";
 import CheckoutPage from "@/pages/checkout";
 
 // Lazy-loaded pages
+const FromPage = lazy(() => import("@/pages/from"));
 const ShopPage = lazy(() => import("@/pages/shop"));
 const CategoryPage = lazy(() => import("@/pages/category"));
 const OutletPage = lazy(() => import("@/pages/outlet"));
@@ -164,6 +165,7 @@ function StorefrontWithMaintenance() {
           <Route path="/affiliate" component={ToAffiliates} />
           <Route path="/contact" component={ToContact} />
           <Route path="/how-to-activate" component={ToHowToBuy} />
+          <Route path="/from/:source" component={FromPage} />
           <Route component={StaticPageView} />
         </Switch>
       </Suspense>
