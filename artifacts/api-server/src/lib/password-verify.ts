@@ -16,11 +16,17 @@ const ITOA64 = "./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz
 
 export type HashFormat = "bcrypt" | "phpass" | "unknown";
 
+/** Strip WordPress's $wp$ prefix if present, returning the real hash. */
+export function stripWpPrefix(hash: string): string {
+  return hash.startsWith("$wp$") ? hash.slice(4) : hash;
+}
+
 export function getHashFormat(hash: string): HashFormat {
-  if (hash.startsWith("$2a$") || hash.startsWith("$2b$") || hash.startsWith("$2y$")) {
+  const h = stripWpPrefix(hash);
+  if (h.startsWith("$2a$") || h.startsWith("$2b$") || h.startsWith("$2y$")) {
     return "bcrypt";
   }
-  if ((hash.startsWith("$P$") || hash.startsWith("$H$")) && hash.length >= 20) {
+  if ((h.startsWith("$P$") || h.startsWith("$H$")) && h.length >= 20) {
     return "phpass";
   }
   return "unknown";
@@ -28,9 +34,10 @@ export function getHashFormat(hash: string): HashFormat {
 
 /** Verify any supported hash format. */
 export async function verifyPasswordAny(plaintext: string, storedHash: string): Promise<boolean> {
-  const fmt = getHashFormat(storedHash);
-  if (fmt === "bcrypt") return bcrypt.compare(plaintext, storedHash);
-  if (fmt === "phpass") return verifyPhpass(plaintext, storedHash);
+  const hash = stripWpPrefix(storedHash);
+  const fmt = getHashFormat(hash);
+  if (fmt === "bcrypt") return bcrypt.compare(plaintext, hash);
+  if (fmt === "phpass") return verifyPhpass(plaintext, hash);
   return false;
 }
 
@@ -45,7 +52,7 @@ function encode64(buf: Buffer, count: number): string {
     if (i < count) val |= buf[i] << 8;
     out += ITOA64[(val >> 6) & 0x3f];
     if (i++ >= count) break;
-    if (i < count) val |= buf[i] << 8;
+    if (i < count) val |= buf[i] << 16;
     out += ITOA64[(val >> 12) & 0x3f];
     if (i++ >= count) break;
     out += ITOA64[(val >> 18) & 0x3f];
