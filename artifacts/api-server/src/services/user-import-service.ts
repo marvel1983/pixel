@@ -167,15 +167,69 @@ export async function processImportJob(jobId: number): Promise<void> {
       : [];
     const existingEmails = new Set(existingRows.map((r) => r.email));
 
+    const toInsert: (typeof users.$inferInsert)[] = [];
+    const seenInBatch = new Set<string>();
+
     for (const row of batch) {
       try {
-        const result = await processRow(row, mapping, policy, placeholderHash, existingEmails);
-        if (result === "success") successCount++;
-        else if (result === "skipped") skippedCount++;
+        const mapped = mapRow(row.data, mapping);
+        if (!mapped.email) throw new Error("Missing required field: email");
+        const email = mapped.email.trim().toLowerCase();
+        if (!email.includes("@")) throw new Error(`Invalid email: ${mapped.email}`);
+
+        if (existingEmails.has(email) || seenInBatch.has(email)) {
+          if (policy === "skip") { skippedCount++; continue; }
+          if (policy === "error") throw new Error(`Duplicate email: ${email}`);
+          // update — never overwrite password
+          const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
+          if (existing) {
+            const { firstName, lastName } = resolveNames(mapped);
+            await db.update(users).set({
+              username: mapped.username?.trim() || undefined,
+              firstName: firstName ?? undefined,
+              lastName: lastName ?? undefined,
+              companyName: mapped.companyName?.trim() || undefined,
+              billingPhone: mapped.billingPhone?.trim() || undefined,
+              billingAddress: mapped.billingAddress?.trim() || undefined,
+              billingCity: mapped.billingCity?.trim() || undefined,
+              billingZip: mapped.billingZip?.trim() || undefined,
+              billingCountry: mapped.billingCountry?.trim().toUpperCase().slice(0, 3) || undefined,
+              updatedAt: new Date(),
+            }).where(eq(users.id, existing.id));
+          }
+          successCount++;
+          continue;
+        }
+
+        seenInBatch.add(email);
+        const { hash, isKnownFormat } = resolveHash(mapped.passwordHash, placeholderHash);
+        const { firstName, lastName } = resolveNames(mapped);
+        toInsert.push({
+          email,
+          passwordHash: hash,
+          username: mapped.username?.trim() || null,
+          firstName,
+          lastName,
+          companyName: mapped.companyName?.trim() || null,
+          role: "CUSTOMER",
+          isActive: isKnownFormat,
+          emailVerified: isKnownFormat,
+          billingPhone: mapped.billingPhone?.trim() || null,
+          billingAddress: mapped.billingAddress?.trim() || null,
+          billingCity: mapped.billingCity?.trim() || null,
+          billingZip: mapped.billingZip?.trim() || null,
+          billingCountry: mapped.billingCountry?.trim().toUpperCase().slice(0, 3) || null,
+          adminNotes: isKnownFormat ? "Imported from WooCommerce" : "Imported — no password hash provided, requires password reset",
+        });
       } catch (err) {
         errors.push({ rowNumber: row.rowNumber, errorCode: "PROCESSING_ERROR", errorMessage: err instanceof Error ? err.message : String(err), rawData: row.data });
         errorCount++;
       }
+    }
+
+    if (toInsert.length > 0) {
+      await db.insert(users).values(toInsert).onConflictDoNothing();
+      successCount += toInsert.length;
     }
 
     await db.update(userImportJobs)
@@ -194,62 +248,3 @@ export async function processImportJob(jobId: number): Promise<void> {
   logger.info({ jobId, successCount, errorCount, skippedCount }, "User import completed");
 }
 
-async function processRow(
-  row: { rowNumber: number; data: Record<string, string> },
-  mapping: Record<string, string>,
-  policy: string,
-  placeholderHash: string,
-  existingEmails: Set<string>,
-): Promise<"success" | "skipped"> {
-  const mapped = mapRow(row.data, mapping);
-
-  if (!mapped.email) throw new Error("Missing required field: email");
-  const email = mapped.email.trim().toLowerCase();
-  if (!email.includes("@")) throw new Error(`Invalid email: ${mapped.email}`);
-
-  if (existingEmails.has(email)) {
-    if (policy === "skip") return "skipped";
-    if (policy === "error") throw new Error(`Duplicate email: ${email}`);
-    // update — never overwrite password
-    const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
-    if (existing) {
-      const { firstName, lastName } = resolveNames(mapped);
-      await db.update(users).set({
-        username: mapped.username?.trim() || undefined,
-        firstName: firstName ?? undefined,
-        lastName: lastName ?? undefined,
-        companyName: mapped.companyName?.trim() || undefined,
-        billingPhone: mapped.billingPhone?.trim() || undefined,
-        billingAddress: mapped.billingAddress?.trim() || undefined,
-        billingCity: mapped.billingCity?.trim() || undefined,
-        billingZip: mapped.billingZip?.trim() || undefined,
-        billingCountry: mapped.billingCountry?.trim().toUpperCase().slice(0, 3) || undefined,
-        updatedAt: new Date(),
-      }).where(eq(users.id, existing.id));
-    }
-    return "success";
-  }
-
-  const { hash, isKnownFormat } = resolveHash(mapped.passwordHash, placeholderHash);
-  const { firstName, lastName } = resolveNames(mapped);
-
-  await db.insert(users).values({
-    email,
-    passwordHash: hash,
-    username: mapped.username?.trim() || null,
-    firstName: firstName,
-    lastName: lastName,
-    companyName: mapped.companyName?.trim() || null,
-    role: "CUSTOMER",
-    isActive: isKnownFormat,
-    emailVerified: isKnownFormat,
-    billingPhone: mapped.billingPhone?.trim() || null,
-    billingAddress: mapped.billingAddress?.trim() || null,
-    billingCity: mapped.billingCity?.trim() || null,
-    billingZip: mapped.billingZip?.trim() || null,
-    billingCountry: mapped.billingCountry?.trim().toUpperCase().slice(0, 3) || null,
-    adminNotes: isKnownFormat ? "Imported from WooCommerce" : "Imported — no password hash provided, requires password reset",
-  });
-
-  return "success";
-}
