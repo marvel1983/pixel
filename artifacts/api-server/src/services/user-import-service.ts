@@ -10,7 +10,7 @@
 
 import { db } from "@workspace/db";
 import { users, userImportJobs, userImportErrors, type UserImportJob } from "@workspace/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
 import { getHashFormat } from "../lib/password-verify";
@@ -118,14 +118,12 @@ function resolveNames(mapped: Record<string, string>): { firstName: string | nul
   return { firstName: null, lastName: null };
 }
 
-async function resolveHash(provided?: string): Promise<{ hash: string; isKnownFormat: boolean }> {
+function resolveHash(provided: string | undefined, placeholderHash: string): { hash: string; isKnownFormat: boolean } {
   if (provided) {
     const fmt = getHashFormat(provided);
     if (fmt !== "unknown") return { hash: provided, isKnownFormat: true };
   }
-  // No usable hash — create a random placeholder, mark account appropriately
-  const placeholder = await bcrypt.hash(crypto.randomBytes(32).toString("hex"), 10);
-  return { hash: placeholder, isKnownFormat: false };
+  return { hash: placeholderHash, isKnownFormat: false };
 }
 
 export interface ImportRowError {
@@ -134,6 +132,8 @@ export interface ImportRowError {
   errorMessage: string;
   rawData: Record<string, string>;
 }
+
+const BATCH_SIZE = 500;
 
 export async function processImportJob(jobId: number): Promise<void> {
   const [job] = await db.select().from(userImportJobs).where(eq(userImportJobs.id, jobId)).limit(1);
@@ -156,21 +156,38 @@ export async function processImportJob(jobId: number): Promise<void> {
 
   await db.update(userImportJobs).set({ totalRows: rows.length }).where(eq(userImportJobs.id, jobId));
 
-  for (const row of rows) {
-    try {
-      const result = await processRow(row, mapping, policy);
-      if (result === "success") successCount++;
-      else if (result === "skipped") skippedCount++;
-    } catch (err) {
-      errors.push({ rowNumber: row.rowNumber, errorCode: "PROCESSING_ERROR", errorMessage: err instanceof Error ? err.message : String(err), rawData: row.data });
-      errorCount++;
+  // Generate one placeholder hash for all rows that have no valid password — avoids
+  // running bcrypt N times (would take hours for large imports).
+  const placeholderHash = await bcrypt.hash(crypto.randomBytes(32).toString("hex"), 10);
+
+  for (let batchStart = 0; batchStart < rows.length; batchStart += BATCH_SIZE) {
+    const batch = rows.slice(batchStart, batchStart + BATCH_SIZE);
+
+    // Bulk-check which emails already exist in this batch
+    const emailsInBatch = batch
+      .map((r) => mapRow(r.data, mapping).email?.trim().toLowerCase())
+      .filter((e): e is string => !!e && e.includes("@"));
+
+    const existingRows = emailsInBatch.length > 0
+      ? await db.select({ email: users.email, passwordHash: users.passwordHash })
+          .from(users).where(inArray(users.email, emailsInBatch))
+      : [];
+    const existingEmails = new Set(existingRows.map((r) => r.email));
+
+    for (const row of batch) {
+      try {
+        const result = await processRow(row, mapping, policy, placeholderHash, existingEmails);
+        if (result === "success") successCount++;
+        else if (result === "skipped") skippedCount++;
+      } catch (err) {
+        errors.push({ rowNumber: row.rowNumber, errorCode: "PROCESSING_ERROR", errorMessage: err instanceof Error ? err.message : String(err), rawData: row.data });
+        errorCount++;
+      }
     }
 
-    if ((successCount + errorCount + skippedCount) % 50 === 0) {
-      await db.update(userImportJobs)
-        .set({ processedRows: successCount + errorCount + skippedCount, successCount, errorCount, skippedCount })
-        .where(eq(userImportJobs.id, jobId));
-    }
+    await db.update(userImportJobs)
+      .set({ processedRows: successCount + errorCount + skippedCount, successCount, errorCount, skippedCount })
+      .where(eq(userImportJobs.id, jobId));
   }
 
   if (errors.length > 0) {
@@ -188,6 +205,8 @@ async function processRow(
   row: { rowNumber: number; data: Record<string, string> },
   mapping: Record<string, string>,
   policy: string,
+  placeholderHash: string,
+  existingEmails: Set<string>,
 ): Promise<"success" | "skipped"> {
   const mapped = mapRow(row.data, mapping);
 
@@ -195,29 +214,30 @@ async function processRow(
   const email = mapped.email.trim().toLowerCase();
   if (!email.includes("@")) throw new Error(`Invalid email: ${mapped.email}`);
 
-  const [existing] = await db.select({ id: users.id, passwordHash: users.passwordHash }).from(users).where(eq(users.email, email)).limit(1);
-
-  if (existing) {
+  if (existingEmails.has(email)) {
     if (policy === "skip") return "skipped";
     if (policy === "error") throw new Error(`Duplicate email: ${email}`);
     // update — never overwrite password
-    const { firstName, lastName } = resolveNames(mapped);
-    await db.update(users).set({
-      username: mapped.username?.trim() || undefined,
-      firstName: firstName ?? undefined,
-      lastName: lastName ?? undefined,
-      companyName: mapped.companyName?.trim() || undefined,
-      billingPhone: mapped.billingPhone?.trim() || undefined,
-      billingAddress: mapped.billingAddress?.trim() || undefined,
-      billingCity: mapped.billingCity?.trim() || undefined,
-      billingZip: mapped.billingZip?.trim() || undefined,
-      billingCountry: mapped.billingCountry?.trim().toUpperCase().slice(0, 3) || undefined,
-      updatedAt: new Date(),
-    }).where(eq(users.id, existing.id));
+    const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
+    if (existing) {
+      const { firstName, lastName } = resolveNames(mapped);
+      await db.update(users).set({
+        username: mapped.username?.trim() || undefined,
+        firstName: firstName ?? undefined,
+        lastName: lastName ?? undefined,
+        companyName: mapped.companyName?.trim() || undefined,
+        billingPhone: mapped.billingPhone?.trim() || undefined,
+        billingAddress: mapped.billingAddress?.trim() || undefined,
+        billingCity: mapped.billingCity?.trim() || undefined,
+        billingZip: mapped.billingZip?.trim() || undefined,
+        billingCountry: mapped.billingCountry?.trim().toUpperCase().slice(0, 3) || undefined,
+        updatedAt: new Date(),
+      }).where(eq(users.id, existing.id));
+    }
     return "success";
   }
 
-  const { hash, isKnownFormat } = await resolveHash(mapped.passwordHash);
+  const { hash, isKnownFormat } = resolveHash(mapped.passwordHash, placeholderHash);
   const { firstName, lastName } = resolveNames(mapped);
 
   await db.insert(users).values({
