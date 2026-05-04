@@ -12,10 +12,13 @@
       "mcp__Claude_in_Chrome__get_page_text",
       "mcp__Claude_in_Chrome__read_page",
       "mcp__Claude_in_Chrome__read_console_messages",
-      "mcp__Claude_in_Chrome__read_network_requests"
+      "mcp__Claude_in_Chrome__read_network_requests",
+      "Bash(git commit -m ' *)"
     ]
   },
-  "disabledMcpjsonServers": ["figma"],
+  "disabledMcpjsonServers": [
+    "figma"
+  ],
   "hooks": {
     "PostToolUse": [
       {
@@ -24,10 +27,10 @@
           {
             "type": "command",
             "command": ".claude/hooks/typecheck-on-edit.sh",
-            "async": true,
-            "asyncRewake": true,
             "timeout": 120,
-            "statusMessage": "Typechecking in background…"
+            "statusMessage": "Typechecking in background…",
+            "async": true,
+            "asyncRewake": true
           }
         ]
       }
