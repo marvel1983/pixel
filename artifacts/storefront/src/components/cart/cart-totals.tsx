@@ -18,8 +18,12 @@ export function CartTotals() {
   const itemCount = useCartStore((s) => s.getItemCount());
   const { format } = useCurrencyStore();
 
+  const items = useCartStore((s) => s.items);
   const subtotal = getTotal();
-  const discountAmount = coupon ? subtotal * (coupon.pct / 100) : 0;
+  const eligibleSubtotal = coupon?.productIds
+    ? items.reduce((sum, i) => coupon.productIds!.includes(i.productId) ? sum + parseFloat(i.priceUsd) * i.quantity : sum, 0)
+    : subtotal;
+  const discountAmount = coupon ? eligibleSubtotal * (coupon.pct / 100) : 0;
   const total = subtotal - discountAmount;
 
   return (

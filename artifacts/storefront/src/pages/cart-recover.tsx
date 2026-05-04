@@ -59,7 +59,7 @@ export default function CartRecoverPage() {
             });
             if (couponRes.ok) {
               const cd = await couponRes.json();
-              setCoupon({ code: cd.code, pct: cd.discount, label: cd.label });
+              setCoupon({ code: cd.code, pct: cd.discount, label: cd.label, productIds: cd.productIds ?? null });
             }
           } catch {}
         }

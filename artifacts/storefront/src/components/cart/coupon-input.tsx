@@ -33,6 +33,7 @@ export function CouponInput() {
           code: data.code,
           pct: data.discount,
           label: data.label,
+          productIds: data.productIds ?? null,
         });
         setCheckPop(true);
         toast({ title: "Coupon applied!", description: `${data.label} discount` });

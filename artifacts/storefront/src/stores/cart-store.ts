@@ -23,6 +23,7 @@ export interface CouponData {
   code: string;
   pct: number;
   label: string;
+  productIds: number[] | null; // null = sitewide
 }
 
 interface CartState {
@@ -39,6 +40,12 @@ interface CartState {
   setCoupon: (coupon: CouponData | null) => void;
   getTotal: () => number;
   getItemCount: () => number;
+}
+
+function couponStillEligible(coupon: CouponData | null, items: CartItem[]): boolean {
+  if (!coupon) return false;
+  if (!coupon.productIds) return true; // sitewide
+  return items.some((i) => coupon.productIds!.includes(i.productId));
 }
 
 export const useCartStore = create<CartState>()(
@@ -86,9 +93,11 @@ export const useCartStore = create<CartState>()(
         })),
 
       removeItem: (variantId, bundleId) =>
-        set((state) => ({
-          items: state.items.filter((i) => !(i.variantId === variantId && i.bundleId === bundleId)),
-        })),
+        set((state) => {
+          const items = state.items.filter((i) => !(i.variantId === variantId && i.bundleId === bundleId));
+          const coupon = couponStillEligible(state.coupon, items) ? state.coupon : null;
+          return { items, coupon };
+        }),
 
       updateQuantity: (variantId, quantity, bundleId) =>
         set((state) => {
