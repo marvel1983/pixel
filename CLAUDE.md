@@ -2,6 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Task Observer (Skill Improvement)
+
+At the start of any task-oriented session — any interaction where you will use tools and produce deliverables — invoke the task-observer skill before beginning work. This ensures skill improvement opportunities are captured throughout the session.
+
+When loading any skill, check the observation log for OPEN observations tagged to that skill. Apply their insights to the current work, even if the skill file hasn't been updated yet. This enables immediate application of observations before they're permanently integrated during the weekly review.
+
 ## Project Overview
 
 **PixelCodes** is a pnpm monorepo ecommerce platform for selling digital software license keys. It is a full-stack TypeScript application.

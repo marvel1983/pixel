@@ -20,7 +20,17 @@
       "Bash(pnpm --filter @workspace/api-server add papaparse)",
       "Bash(pnpm --filter @workspace/api-server add -D @types/papaparse)",
       "Bash(sshpass -p 'PajaPatak83#' ssh -o StrictHostKeyChecking=no root@144.91.69.182 \"ls -la /tmp/finish-import.mjs && echo '--- Script exists ---'\")",
-      "Bash(ssh -o StrictHostKeyChecking=no -o BatchMode=yes root@144.91.69.182 \"ls -la /tmp/finish-import.mjs\")"
+      "Bash(ssh -o StrictHostKeyChecking=no -o BatchMode=yes root@144.91.69.182 \"ls -la /tmp/finish-import.mjs\")",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:api.github.com)",
+      "Read(//c/Users/Morningstar/.claude/**)",
+      "Bash(curl -s https://raw.githubusercontent.com/rebelytics/one-skill-to-rule-them-all/main/SKILL.md)",
+      "Read(//tmp/**)",
+      "Read(//c/tmp/**)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\Morningstar\\.claude\\commands"
     ]
   },
   "disabledMcpjsonServers": [
