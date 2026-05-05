@@ -18,7 +18,9 @@
       "Bash(ssh -o StrictHostKeyChecking=no root@144.91.69.182 'PGPASSWORD='\\\\''PxC@db2026!Secure'\\\\'' psql -h localhost -U pixelcodes -d pixelcodes -c \" *)",
       "Bash(sshpass -p 'PajaPatak83#' ssh -o StrictHostKeyChecking=no root@144.91.69.182 \"PGPASSWORD='PxC@db2026!Secure' psql -h localhost -U pixelcodes -d pixelcodes -c \\\\\"SELECT id, status, total_rows, processed_rows, success_count, skipped_count FROM user_import_jobs ORDER BY id DESC LIMIT 5;\\\\\"\")",
       "Bash(pnpm --filter @workspace/api-server add papaparse)",
-      "Bash(pnpm --filter @workspace/api-server add -D @types/papaparse)"
+      "Bash(pnpm --filter @workspace/api-server add -D @types/papaparse)",
+      "Bash(sshpass -p 'PajaPatak83#' ssh -o StrictHostKeyChecking=no root@144.91.69.182 \"ls -la /tmp/finish-import.mjs && echo '--- Script exists ---'\")",
+      "Bash(ssh -o StrictHostKeyChecking=no -o BatchMode=yes root@144.91.69.182 \"ls -la /tmp/finish-import.mjs\")"
     ]
   },
   "disabledMcpjsonServers": [
