@@ -4,6 +4,7 @@ import { Link } from "wouter";
 import { ChevronRight, ArrowRight, Tag, Zap, ShieldCheck } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProductCard } from "@/components/product/product-card";
+import { useCurrencyStore } from "@/stores/currency-store";
 import type { MockProduct } from "@/lib/mock-data";
 
 export interface CategoryTabDef {
@@ -19,6 +20,8 @@ interface BannerConfig {
   accent: string;
   eyebrow: string;
   headline: string;
+  priceFromUsd?: number;
+  priceSuffix?: string;
   sub: string;
   cta: string;
   href: string;
@@ -32,7 +35,8 @@ function getBannerConfig(categorySlug: string, href: string): BannerConfig {
         bg: "linear-gradient(120deg, #0a1628 0%, #0d2a50 60%, #1a3a6a 100%)",
         accent: "#3b82f6",
         eyebrow: "Limited time",
-        headline: "Windows 10 & 11 keys from $12.99",
+        headline: "Windows 10 & 11 keys from",
+        priceFromUsd: 12.99,
         sub: "Genuine Microsoft activation — identical to retail box.",
         cta: "Shop Windows",
         href,
@@ -76,7 +80,9 @@ function getBannerConfig(categorySlug: string, href: string): BannerConfig {
         bg: "linear-gradient(120deg, #0a1e0a 0%, #0d3a1a 60%, #0a2e14 100%)",
         accent: "#22c55e",
         eyebrow: "Full protection",
-        headline: "Top antivirus suites from $14.99/yr",
+        headline: "Top antivirus suites from",
+        priceFromUsd: 14.99,
+        priceSuffix: "/yr",
         sub: "Bitdefender, Norton, Kaspersky & more. Multi-device plans included.",
         cta: "See security deals",
         href,
@@ -140,6 +146,7 @@ function getBannerConfig(categorySlug: string, href: string): BannerConfig {
 
 function InlineBanner({ categorySlug, href }: { categorySlug: string; href: string }) {
   const cfg = getBannerConfig(categorySlug, href);
+  const format = useCurrencyStore((s) => s.format);
   return (
     <div
       className="relative my-3 overflow-hidden rounded-xl px-5 py-4 flex items-center justify-between gap-4"
@@ -165,7 +172,9 @@ function InlineBanner({ categorySlug, href }: { categorySlug: string; href: stri
               {cfg.eyebrow}
             </span>
           </div>
-          <p className="text-sm font-bold text-white leading-snug">{cfg.headline}</p>
+          <p className="text-sm font-bold text-white leading-snug">
+            {cfg.headline}{cfg.priceFromUsd != null ? <> {format(cfg.priceFromUsd)}{cfg.priceSuffix ?? ""}</> : ""}
+          </p>
           <p className="text-xs mt-0.5 text-white/50 hidden md:block">{cfg.sub}</p>
         </div>
       </div>

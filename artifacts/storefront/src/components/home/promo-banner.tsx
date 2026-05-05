@@ -34,7 +34,10 @@ export function PromoBanner() {
           ))}
         </div>
         <Link href="/shop">
-          <button className="flex shrink-0 items-center gap-1.5 rounded-lg bg-white px-4 py-2 text-sm font-bold text-slate-900 hover:bg-white/90 transition-colors">
+          <button
+            className="flex shrink-0 items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-bold transition-opacity hover:opacity-90"
+            style={{ backgroundColor: "#ffffff", color: "#1e293b" }}
+          >
             Shop now <ArrowRight className="h-4 w-4" />
           </button>
         </Link>
