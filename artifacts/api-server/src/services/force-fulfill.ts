@@ -47,7 +47,10 @@ export async function forceFulfill(orderId: number): Promise<ForceFulfillResult>
 
   if (order.status === "COMPLETED") {
     const counts = await getKeyCounts(orderId);
-    return { outcome: "already_fulfilled", keysProcessed: 0, ...counts };
+    if (counts.totalExpected === 0 || counts.totalDelivered >= counts.totalExpected) {
+      return { outcome: "already_fulfilled", keysProcessed: 0, ...counts };
+    }
+    // Status is COMPLETED but keys weren't delivered — fall through to attempt fulfillment
   }
   if (!order.externalOrderId) {
     const counts = await getKeyCounts(orderId);

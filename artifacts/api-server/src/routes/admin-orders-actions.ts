@@ -17,9 +17,19 @@ router.patch("/admin/orders/:id/status", requireAuth, requireAdmin, requirePermi
   const { status } = req.body;
   if (!validStatuses.includes(status)) { res.status(400).json({ error: "Invalid status" }); return; }
 
-  const [order] = await db.select({ id: orders.id, userId: orders.userId, totalUsd: orders.totalUsd, subtotalUsd: orders.subtotalUsd })
+  const [order] = await db.select({ id: orders.id, userId: orders.userId, totalUsd: orders.totalUsd, subtotalUsd: orders.subtotalUsd, notes: orders.notes })
     .from(orders).where(eq(orders.id, id));
   if (!order) { res.status(404).json({ error: "Order not found" }); return; }
+
+  // If the fulfillment payload is still in notes, the webhook never ran — payment was
+  // never confirmed. Block COMPLETED to prevent false-positive completions on cancelled
+  // or abandoned payments.
+  if (status === "COMPLETED" && order.notes) {
+    res.status(409).json({
+      error: "Cannot mark as COMPLETED: this order has not been fulfilled (payment webhook not received). If the payment was captured on the provider side, use Force Fulfill instead.",
+    });
+    return;
+  }
 
   await db.update(orders).set({ status, updatedAt: new Date() }).where(eq(orders.id, id));
 
