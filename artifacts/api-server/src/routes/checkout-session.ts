@@ -171,7 +171,7 @@ router.post("/checkout/session", requireIdempotencyKey(), async (req, res) => {
           line_items: [{ price_data: { currency: chargeCurrency, product_data: { name: description }, unit_amount: Math.round(cardTotal * 100) }, quantity: 1 }],
           metadata: { orderId: String(order.id), orderNumber },
           payment_intent_data: { metadata: { orderId: String(order.id), orderNumber } },
-          payment_method_options: { card: { request_three_d_secure: "any" } },
+          payment_method_options: { card: { request_three_d_secure: "automatic" } },
           success_url: successUrl, cancel_url: cancelUrl,
           expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
         }),
