@@ -9,6 +9,7 @@ import { OrderKeysCard } from "@/components/admin/order-keys-card";
 import { OrderDetailSidebar } from "@/components/admin/order-detail-sidebar";
 import { OrderTimeline } from "@/components/admin/order-timeline";
 import { RefundsCard } from "@/components/admin/refunds-card";
+import { PaymentAttemptsCard } from "@/components/admin/payment-attempts-card";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -121,7 +122,7 @@ export default function OrderDetailPage() {
 
   if (loading) return <div className="space-y-4"><Skeleton className="h-8 w-48 bg-[#1a2235]" /><Skeleton className="h-64 bg-[#1a2235]" /><Skeleton className="h-64 bg-[#1a2235]" /></div>;
   if (!data) return <div className="p-12 text-center text-[#5a6a84]">Order not found</div>;
-  const { order, items, licenseKeys, customer, coupon, timeline, stripePaymentDetails, refunds: orderRefunds } = data;
+  const { order, items, licenseKeys, customer, coupon, timeline, stripePaymentDetails, paymentAttempts, refunds: orderRefunds } = data;
   const completedRefundTotal = (orderRefunds ?? []).filter((r) => r.status === "COMPLETED").reduce((s, r) => s + parseFloat(r.amountUsd), 0);
   const isRefunded = order.status === "REFUNDED" || order.status === "PARTIALLY_REFUNDED";
   const fmtMoney = (amt: string | number) => formatMoney(amt, order.currencyRate, order.currencyCode);
@@ -232,25 +233,10 @@ export default function OrderDetailPage() {
               <InfoRow label="Currency" value={`${order.currencyCode} (×${order.currencyRate})`} />
               {parseFloat(order.walletAmountUsed ?? "0") > 0 && <InfoRow label="Wallet Used" value={`€${order.walletAmountUsed}`} />}
             </div>
-            {stripePaymentDetails?.cardLast4 && (
-              <div className="mt-3 pt-3 border-t border-[#2e3340]">
-                <div className="rounded bg-[#1e2128] px-3 py-2 flex items-center gap-2.5">
-                  <span className="text-[13px] font-semibold text-[#dde4f0] capitalize">{stripePaymentDetails.cardBrand ?? "Card"}</span>
-                  <span className="font-mono text-[13px] text-[#8fa0bb]">•••• {stripePaymentDetails.cardLast4}</span>
-                  {stripePaymentDetails.cardExpMonth && stripePaymentDetails.cardExpYear && <span className="text-[11px] text-[#5a6a84]">{String(stripePaymentDetails.cardExpMonth).padStart(2, "0")}/{stripePaymentDetails.cardExpYear}</span>}
-                  {stripePaymentDetails.cardFunding && <span className="text-[10px] uppercase tracking-widest text-[#5a6a84] bg-[#2a2e3a] px-1.5 py-0.5 rounded">{stripePaymentDetails.cardFunding}</span>}
-                  {stripePaymentDetails.cardCountry && <span className="text-[11px] text-[#5a6a84]">{stripePaymentDetails.cardCountry}</span>}
-                </div>
-                {(stripePaymentDetails.declineCode || stripePaymentDetails.declineMessage) && (
-                  <div className="mt-3 rounded border border-red-500/30 bg-red-500/10 px-3 py-2 text-[12px]">
-                    <p className="font-semibold text-red-400 mb-0.5">Payment declined</p>
-                    {stripePaymentDetails.declineCode && <p className="text-red-300">Code: <span className="font-mono">{stripePaymentDetails.declineCode}</span></p>}
-                    {stripePaymentDetails.declineMessage && <p className="text-red-300">{stripePaymentDetails.declineMessage}</p>}
-                  </div>
-                )}
-              </div>
-            )}
           </Card>
+          {(order.paymentMethod === "CARD" || order.paymentMethod === "MIXED") && (
+            <PaymentAttemptsCard attempts={paymentAttempts ?? []} />
+          )}
           {order.externalOrderId && <Card title="Metenzi Order"><InfoRow label="External Order ID" value={order.externalOrderId} mono /></Card>}
           {(orderRefunds ?? []).length > 0 && <RefundsCard refunds={orderRefunds} orderTotalUsd={order.totalUsd} currencyCode={order.currencyCode} currencyRate={order.currencyRate} />}
           <OrderKeysCard items={items} licenseKeys={licenseKeys} externalOrderId={order.externalOrderId} syncingKeys={syncingKeys} onSync={syncBackorderKeys} syncOrderIdRef={syncOrderIdRef} onManualAssign={manualAssignKeys} />

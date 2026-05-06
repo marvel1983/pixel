@@ -55,3 +55,4 @@ export * from "./metenzi-mappings";
 export * from "./metenzi-mapping-conflicts";
 export * from "./metenzi-webhook-events";
 export * from "./campaigns";
+export * from "./payment-attempts";

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { orders, orderItems, licenseKeys, users, coupons, refunds } from "@workspace/db/schema";
-import { eq, desc, sql, and, or, ilike, gte, lte, inArray, count, sum } from "drizzle-orm";
+import { orders, orderItems, licenseKeys, users, coupons, refunds, paymentAttempts } from "@workspace/db/schema";
+import { eq, desc, sql, and, or, ilike, gte, lte, inArray, count, sum, asc } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import { decrypt } from "../lib/encryption";
@@ -9,8 +9,51 @@ import { paramString } from "../lib/route-params";
 import { getActivePaymentConfig } from "../lib/payment-config";
 import { createStripeClient } from "../lib/stripe-client";
 import { logger } from "../lib/logger";
+import { recordPaymentAttempt, mapPaymentIntentStatus } from "../services/payment-attempts";
 
 const router = Router();
+
+router.post("/admin/payment-attempts/backfill", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
+  const limit = Math.min(1000, Math.max(1, Number((req.query as { limit?: string }).limit) || 500));
+
+  const candidates = await db.select({
+    id: orders.id,
+    orderNumber: orders.orderNumber,
+    paymentIntentId: orders.paymentIntentId,
+  })
+    .from(orders)
+    .where(and(
+      inArray(orders.paymentMethod, ["CARD", "MIXED"]),
+      sql`NOT EXISTS (SELECT 1 FROM ${paymentAttempts} WHERE ${paymentAttempts.orderId} = ${orders.id} AND ${paymentAttempts.eventType} = 'payment_intent.created')`,
+    ))
+    .limit(limit);
+
+  let backfilled = 0, skipped = 0, failed = 0;
+  const errors: { orderNumber: string; error: string }[] = [];
+
+  for (const o of candidates) {
+    try {
+      const before = await db.select({ id: paymentAttempts.id }).from(paymentAttempts).where(eq(paymentAttempts.orderId, o.id)).limit(1);
+      await backfillAttemptsFromStripe(o.id, o.orderNumber, o.paymentIntentId);
+      const after = await db.select({ id: paymentAttempts.id }).from(paymentAttempts).where(eq(paymentAttempts.orderId, o.id)).limit(1);
+      if (after.length > before.length) backfilled++; else skipped++;
+    } catch (err) {
+      failed++;
+      errors.push({ orderNumber: o.orderNumber, error: (err as Error).message });
+      logger.warn({ err, orderId: o.id }, "Backfill failed for order");
+    }
+    await new Promise((r) => setTimeout(r, 50));
+  }
+
+  res.json({
+    examined: candidates.length,
+    backfilled,
+    skipped,
+    failed,
+    errors: errors.slice(0, 20),
+    note: candidates.length === limit ? `Hit limit of ${limit}. Run again to continue.` : "Done.",
+  });
+});
 
 router.get("/admin/orders/export", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
   const idsParam = req.query.ids as string | undefined;
@@ -179,55 +222,94 @@ router.get("/admin/orders/:id", requireAuth, requireAdmin, requirePermission("ma
   const { buildOrderTimeline } = await import("../services/order-timeline");
   const timeline = await buildOrderTimeline(id);
 
-  let stripePaymentDetails: {
-    status: string; cardBrand?: string; cardLast4?: string;
-    cardExpMonth?: number; cardExpYear?: number; cardCountry?: string; cardFunding?: string;
-    declineCode?: string; declineMessage?: string;
-  } | null = null;
+  let attempts = await db.select()
+    .from(paymentAttempts)
+    .where(eq(paymentAttempts.orderId, id))
+    .orderBy(asc(paymentAttempts.occurredAt));
 
-  if (order.paymentMethod === "CARD" || order.paymentMethod === "MIXED") {
-    try {
-      const payConfig = await getActivePaymentConfig();
-      if (payConfig?.provider === "stripe" && payConfig.secretKey) {
-        const stripe = createStripeClient(payConfig.secretKey);
-        let pi: import("stripe").Stripe.PaymentIntent | null = null;
-
-        if (order.paymentIntentId) {
-          pi = await stripe.paymentIntents.retrieve(order.paymentIntentId, { expand: ["latest_charge"] });
-        } else {
-          const results = await stripe.paymentIntents.search({
-            query: `metadata['orderNumber']:'${order.orderNumber}'`,
-            expand: ["data.latest_charge"],
-            limit: 1,
-          });
-          if (results.data.length > 0) {
-            pi = results.data[0];
-            await db.update(orders).set({ paymentIntentId: pi.id }).where(eq(orders.id, id)).catch((err) => {
-              logger.warn({ err, orderId: id }, "Failed to cache Stripe payment intent ID (non-fatal)");
-            });
-          }
-        }
-
-        if (pi) {
-          const charge = typeof pi.latest_charge === "object" && pi.latest_charge ? pi.latest_charge as import("stripe").Stripe.Charge : null;
-          const card = charge?.payment_method_details?.card;
-          stripePaymentDetails = {
-            status: pi.status,
-            cardBrand: card?.brand ?? undefined, cardLast4: card?.last4 ?? undefined,
-            cardExpMonth: card?.exp_month, cardExpYear: card?.exp_year,
-            cardCountry: card?.country ?? undefined, cardFunding: card?.funding ?? undefined,
-            declineCode: (charge?.failure_code ?? pi.last_payment_error?.decline_code) ?? undefined,
-            declineMessage: (charge?.failure_message ?? pi.last_payment_error?.message) ?? undefined,
-          };
-        }
-      }
-    } catch (err) {
-      logger.warn({ err, orderId: id }, "Could not fetch Stripe payment details (non-fatal)");
-    }
+  if (attempts.length === 0 && (order.paymentMethod === "CARD" || order.paymentMethod === "MIXED")) {
+    await backfillAttemptsFromStripe(id, order.orderNumber, order.paymentIntentId).catch((err) => {
+      logger.warn({ err, orderId: id }, "Could not backfill payment attempts from Stripe (non-fatal)");
+    });
+    attempts = await db.select()
+      .from(paymentAttempts)
+      .where(eq(paymentAttempts.orderId, id))
+      .orderBy(asc(paymentAttempts.occurredAt));
   }
 
-  res.json({ order, items, licenseKeys: decryptedKeys, customer, coupon, timeline, stripePaymentDetails, refunds: orderRefunds });
+  const stripePaymentDetails = attemptsToLegacySummary(attempts);
+
+  res.json({ order, items, licenseKeys: decryptedKeys, customer, coupon, timeline, paymentAttempts: attempts, stripePaymentDetails, refunds: orderRefunds });
 });
+
+async function backfillAttemptsFromStripe(orderId: number, orderNumber: string, cachedPaymentIntentId: string | null): Promise<void> {
+  const payConfig = await getActivePaymentConfig();
+  if (payConfig?.provider !== "stripe" || !payConfig.secretKey) return;
+  const stripe = createStripeClient(payConfig.secretKey);
+
+  let pi: import("stripe").Stripe.PaymentIntent | null = null;
+  if (cachedPaymentIntentId) {
+    pi = await stripe.paymentIntents.retrieve(cachedPaymentIntentId, { expand: ["latest_charge"] });
+  } else {
+    const results = await stripe.paymentIntents.search({
+      query: `metadata['orderNumber']:'${orderNumber}'`,
+      expand: ["data.latest_charge"],
+      limit: 1,
+    });
+    if (results.data.length > 0) pi = results.data[0];
+  }
+  if (!pi) return;
+
+  const charge = typeof pi.latest_charge === "object" && pi.latest_charge ? pi.latest_charge as import("stripe").Stripe.Charge : null;
+
+  await recordPaymentAttempt({
+    orderId,
+    status: "PROCESSING",
+    paymentIntent: { ...pi, latest_charge: null },
+    eventType: "payment_intent.created",
+    rawEventId: `backfill:created:${pi.id}`,
+    occurredAt: new Date(pi.created * 1000),
+  });
+
+  const finalOccurredAt = charge?.created
+    ? new Date(charge.created * 1000)
+    : new Date(pi.created * 1000 + 1000);
+
+  await recordPaymentAttempt({
+    orderId,
+    status: mapPaymentIntentStatus(pi.status),
+    paymentIntent: pi,
+    charge,
+    eventType: pi.status === "succeeded" ? "payment_intent.succeeded"
+      : pi.status === "canceled" ? "payment_intent.canceled"
+      : pi.status === "requires_payment_method" ? "payment_intent.payment_failed"
+      : `payment_intent.${pi.status}`,
+    rawEventId: `backfill:final:${pi.id}`,
+    occurredAt: finalOccurredAt,
+  });
+}
+
+interface LegacySummary {
+  status: string; cardBrand?: string; cardLast4?: string;
+  cardExpMonth?: number; cardExpYear?: number; cardCountry?: string; cardFunding?: string;
+  declineCode?: string; declineMessage?: string;
+}
+
+function attemptsToLegacySummary(rows: typeof paymentAttempts.$inferSelect[]): LegacySummary | null {
+  if (rows.length === 0) return null;
+  const latest = rows[rows.length - 1];
+  return {
+    status: latest.status.toLowerCase(),
+    cardBrand: latest.cardBrand ?? undefined,
+    cardLast4: latest.cardLast4 ?? undefined,
+    cardExpMonth: latest.cardExpMonth ?? undefined,
+    cardExpYear: latest.cardExpYear ?? undefined,
+    cardCountry: latest.cardCountry ?? undefined,
+    cardFunding: latest.cardFunding ?? undefined,
+    declineCode: latest.declineCode ?? latest.failureCode ?? undefined,
+    declineMessage: latest.failureMessage ?? latest.outcomeSellerMessage ?? undefined,
+  };
+}
 
 function buildFilters(query: Record<string, unknown>) {
   const conditions = [];
