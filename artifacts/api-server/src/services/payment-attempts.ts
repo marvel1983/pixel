@@ -52,8 +52,8 @@ export async function recordPaymentAttempt(opts: RecordOptions): Promise<void> {
   const lastError = pi?.last_payment_error;
 
   const failureCode = charge?.failure_code ?? lastError?.code ?? null;
-  const declineCode = (charge as unknown as { outcome?: { network_decline_code?: string } })?.outcome?.network_decline_code
-    ?? lastError?.decline_code
+  const declineCode = lastError?.decline_code
+    ?? (charge as unknown as { outcome?: { network_decline_code?: string } })?.outcome?.network_decline_code
     ?? null;
   const failureMessage = charge?.failure_message ?? lastError?.message ?? null;
 
