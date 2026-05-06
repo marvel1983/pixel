@@ -46,7 +46,37 @@ export interface OrderDetail {
   customer: { id: number; email: string; firstName: string | null; lastName: string | null; createdAt: string } | null;
   coupon: { id: number; code: string; discountPercent: string } | null;
   timeline: { event: string; date: string; kind?: string; details?: Record<string, unknown> }[];
+  paymentAttempts: PaymentAttemptEntry[];
   refunds: RefundEntry[];
+}
+
+export interface PaymentAttemptEntry {
+  id: number;
+  provider: string;
+  paymentIntentId: string | null;
+  chargeId: string | null;
+  status: "REQUIRES_ACTION" | "PROCESSING" | "SUCCEEDED" | "FAILED" | "CANCELED";
+  amountUsd: string | null;
+  currency: string | null;
+  cardBrand: string | null;
+  cardLast4: string | null;
+  cardExpMonth: number | null;
+  cardExpYear: number | null;
+  cardCountry: string | null;
+  cardFunding: string | null;
+  failureCode: string | null;
+  declineCode: string | null;
+  failureMessage: string | null;
+  outcomeNetworkStatus: string | null;
+  outcomeReason: string | null;
+  outcomeRiskLevel: string | null;
+  outcomeSellerMessage: string | null;
+  threeDsResult: string | null;
+  threeDsAuthenticationFlow: string | null;
+  threeDsVersion: string | null;
+  eventType: string | null;
+  occurredAt: string;
+  createdAt: string;
 }
 
 export interface RefundEntry {

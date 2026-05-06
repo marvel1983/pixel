@@ -10,6 +10,7 @@ import { scoreOrder } from "../services/risk-scoring";
 import { sendOrderConfirmationOnly } from "../services/order-emails";
 import { creditWallet } from "../services/wallet-service";
 import { restorePoints } from "../services/loyalty-service";
+import { recordPaymentAttempt, mapPaymentIntentStatus, mapChargeStatus } from "../services/payment-attempts";
 import { parseFulfillmentPayload } from "./checkout-session";
 
 const router = Router();
@@ -53,11 +54,61 @@ router.post("/webhooks/stripe", async (req, res) => {
       await handleStripeSessionCompleted(event.data.object as import("stripe").Stripe.Checkout.Session);
     } else if (event.type === "checkout.session.expired") {
       await handleStripeSessionExpired(event.data.object as import("stripe").Stripe.Checkout.Session);
+    } else if (event.type === "payment_intent.created" || event.type === "payment_intent.payment_failed" || event.type === "payment_intent.succeeded" || event.type === "payment_intent.canceled" || event.type === "payment_intent.requires_action" || event.type === "payment_intent.processing") {
+      await handlePaymentIntentEvent(event);
+    } else if (event.type === "charge.failed" || event.type === "charge.succeeded") {
+      await handleChargeEvent(event);
     }
   } catch (err) {
     logger.error({ err, eventType: event.type, eventId: event.id }, "Stripe webhook handler threw");
   }
 });
+
+async function handlePaymentIntentEvent(event: import("stripe").Stripe.Event): Promise<void> {
+  const pi = event.data.object as import("stripe").Stripe.PaymentIntent;
+  const orderId = parseInt(pi.metadata?.orderId ?? "0", 10);
+  if (!orderId) {
+    logger.warn({ eventId: event.id, eventType: event.type, paymentIntentId: pi.id }, "PaymentIntent event: no orderId in metadata");
+    return;
+  }
+
+  const charge = pi.latest_charge && typeof pi.latest_charge === "object"
+    ? pi.latest_charge as import("stripe").Stripe.Charge
+    : null;
+
+  const isCreated = event.type === "payment_intent.created";
+  await recordPaymentAttempt({
+    orderId,
+    status: isCreated ? "PROCESSING" : mapPaymentIntentStatus(pi.status),
+    paymentIntent: pi,
+    charge,
+    eventType: event.type,
+    rawEventId: event.id,
+    rawPayload: event,
+    occurredAt: new Date(event.created * 1000),
+  });
+}
+
+async function handleChargeEvent(event: import("stripe").Stripe.Event): Promise<void> {
+  const charge = event.data.object as import("stripe").Stripe.Charge;
+  const orderIdStr = charge.metadata?.orderId
+    ?? (typeof charge.payment_intent === "object" && charge.payment_intent ? (charge.payment_intent as import("stripe").Stripe.PaymentIntent).metadata?.orderId : undefined);
+  const orderId = parseInt(orderIdStr ?? "0", 10);
+  if (!orderId) {
+    logger.warn({ eventId: event.id, eventType: event.type, chargeId: charge.id }, "Charge event: no orderId in metadata");
+    return;
+  }
+
+  await recordPaymentAttempt({
+    orderId,
+    status: mapChargeStatus(charge.status),
+    charge,
+    eventType: event.type,
+    rawEventId: event.id,
+    rawPayload: event,
+    occurredAt: new Date(event.created * 1000),
+  });
+}
 
 async function handleStripeSessionCompleted(session: import("stripe").Stripe.Checkout.Session) {
   const orderId = parseInt(session.metadata?.orderId ?? "0", 10);

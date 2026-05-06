@@ -221,6 +221,49 @@ jobs:
             $PSQL -c "CREATE INDEX IF NOT EXISTS metenzi_mapping_conflicts_status_idx ON metenzi_mapping_conflicts(status);" || true
             $PSQL -c "CREATE INDEX IF NOT EXISTS metenzi_mapping_conflicts_metenzi_id_idx ON metenzi_mapping_conflicts(metenzi_product_id);" || true
 
+            echo "→ Creating payment_attempt_status enum..."
+            $PSQL -c "DO \$\$ BEGIN
+              CREATE TYPE payment_attempt_status AS ENUM ('REQUIRES_ACTION', 'PROCESSING', 'SUCCEEDED', 'FAILED', 'CANCELED');
+            EXCEPTION WHEN duplicate_object THEN NULL; END \$\$;" || true
+
+            echo "→ Creating payment_attempts table..."
+            $PSQL -c "
+              CREATE TABLE IF NOT EXISTS payment_attempts (
+                id SERIAL PRIMARY KEY,
+                order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+                provider VARCHAR(32) NOT NULL DEFAULT 'stripe',
+                payment_intent_id VARCHAR(255),
+                charge_id VARCHAR(255),
+                status payment_attempt_status NOT NULL,
+                amount_usd NUMERIC(10,2),
+                currency VARCHAR(8),
+                card_brand VARCHAR(32),
+                card_last4 VARCHAR(4),
+                card_exp_month INTEGER,
+                card_exp_year INTEGER,
+                card_country VARCHAR(2),
+                card_funding VARCHAR(16),
+                failure_code VARCHAR(64),
+                decline_code VARCHAR(64),
+                failure_message TEXT,
+                outcome_network_status VARCHAR(64),
+                outcome_reason VARCHAR(64),
+                outcome_risk_level VARCHAR(32),
+                outcome_seller_message TEXT,
+                three_ds_result VARCHAR(64),
+                three_ds_authentication_flow VARCHAR(32),
+                three_ds_version VARCHAR(16),
+                event_type VARCHAR(64),
+                raw_event_id VARCHAR(255) UNIQUE,
+                raw_payload JSONB,
+                occurred_at TIMESTAMP NOT NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT NOW()
+              );" || true
+            $PSQL -c "CREATE INDEX IF NOT EXISTS payment_attempts_order_id_idx ON payment_attempts(order_id);" || true
+            $PSQL -c "CREATE INDEX IF NOT EXISTS payment_attempts_payment_intent_id_idx ON payment_attempts(payment_intent_id);" || true
+            $PSQL -c "CREATE INDEX IF NOT EXISTS payment_attempts_status_idx ON payment_attempts(status);" || true
+            $PSQL -c "CREATE INDEX IF NOT EXISTS payment_attempts_occurred_at_idx ON payment_attempts(occurred_at);" || true
+
             echo "→ Reloading PM2..."
             set -a; source /var/www/pixel-storefront/.env; set +a
             pm2 reload pixel-api --update-env
