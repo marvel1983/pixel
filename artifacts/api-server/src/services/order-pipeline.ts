@@ -10,7 +10,6 @@ import {
   metenziProductMappings,
   productVariants,
 } from "@workspace/db/schema";
-import { processPayment } from "./payment";
 import { createGiftCardForOrder, sendGiftCardEmails, redeemGiftCards } from "./gift-card-service";
 import { createCommissionForOrder } from "./affiliate-service";
 import { markCartRecovered } from "./abandoned-cart-service";
@@ -45,7 +44,7 @@ interface OrderInput {
   coupon: { id?: number; code: string; pct: number; label: string } | null;
   cppSelected: boolean; subtotal: number; discountAmount: number;
   taxRate: number; taxAmount: number; vatNumber: string | null;
-  total: number; orderNumber: string; cardToken: string;
+  total: number; orderNumber: string;
   guestPassword?: string; giftCards?: Array<{ code: string; amount: number }>;
   affiliateRefCode?: string; flashVariantMap?: Map<number, number>;
   loyaltyPointsUsed?: number; loyaltyDiscount?: number;
@@ -285,17 +284,11 @@ export async function executeOrderPipeline(input: OrderInput) {
       ? Math.max(0, total - input.walletAmountUsd) : total;
 
     let paymentIntentId = "";
-    if (cardAmount > 0.01 && input.cardToken) {
-      const paymentResult = await processPayment({
-        amount: cardAmount.toFixed(2),
-        currency: "EUR",
-        cardToken: input.cardToken,
-        email: billing.email,
-      });
-      if (!paymentResult.success) {
-        throw new Error(paymentResult.error ?? "Payment declined");
+    if (cardAmount > 0.01) {
+      if (input.paymentMethod !== "net30") {
+        throw new Error("Card payment must be completed through checkout session");
       }
-      paymentIntentId = paymentResult.paymentIntentId;
+      paymentIntentId = `net30_${Date.now()}`;
     } else if (walletDebited) {
       paymentIntentId = `wallet_${Date.now()}`;
     }

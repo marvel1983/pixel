@@ -37,7 +37,6 @@ const orderSchema = z.object({
   coupon: z.object({ code: z.string().min(1).max(50), pct: z.number(), label: z.string() }).nullable().optional(),
   cppSelected: z.boolean().optional(),
   vatNumber: z.string().max(50).optional(), total: currencyStr,
-  payment: z.object({ cardToken: z.string().optional() }),
   paymentMethod: z.enum(["card", "net30"]).optional(),
   walletAmountUsd: z.number().min(0).optional(),
   guestPassword: z.string().min(8).optional(),
@@ -61,7 +60,7 @@ router.post("/orders", checkoutLimit, requireIdempotencyKey(), async (req, res) 
     logger.warn({ issues: parsed.error.issues.map((i) => ({ path: i.path.join("."), message: i.message })) }, "orders schema validation failed");
     res.status(400).json({ error: "Invalid order data", details: parsed.error.flatten() }); return;
   }
-  const { billing, items, coupon, cppSelected, vatNumber, total, payment, giftCards: gcInput } = parsed.data;
+  const { billing, items, coupon, cppSelected, vatNumber, total, giftCards: gcInput } = parsed.data;
   let userId: number | undefined;
   let userLocale: string | undefined;
   if (typeof parsed.data.locale === "string") userLocale = parsed.data.locale.slice(0, 10);
@@ -208,7 +207,7 @@ router.post("/orders", checkoutLimit, requireIdempotencyKey(), async (req, res) 
     if (!u?.ba) { res.status(403).json({ error: "Invoice payment requires an approved business account" }); return; }
   }
   const cardTotal = Math.max(0, computedTotal - walletDeduction);
-  if (cardTotal > 0.01 && !payment.cardToken && !isNet30) { res.status(400).json({ error: "Card payment required" }); return; }
+  if (cardTotal > 0.01 && !isNet30) { res.status(400).json({ error: "Card payment must go through checkout" }); return; }
 
   try {
     const pricedItems = items.map((it) => {
@@ -223,7 +222,7 @@ router.post("/orders", checkoutLimit, requireIdempotencyKey(), async (req, res) 
       billing, items: pricedItems, coupon: serverCoupon, cppSelected: cppSelected ?? false,
       subtotal, discountAmount, taxRate, taxAmount, vatNumber: vatNumber ?? null,
       total: computedTotal, orderNumber: generateOrderNumber(),
-      cardToken: payment.cardToken ?? "", paymentMethod: isNet30 ? "net30" : "card",
+      paymentMethod: isNet30 ? "net30" : "card",
       guestPassword: parsed.data.guestPassword, giftCards: serverGiftCards,
       affiliateRefCode: getRefCookie(req),
       flashVariantMap: flashVariantMap.size > 0 ? flashVariantMap : undefined,
