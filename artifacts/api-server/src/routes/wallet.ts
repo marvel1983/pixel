@@ -47,6 +47,7 @@ const topUpSchema = z.object({
 });
 
 router.post("/wallet/topup", requireAuth, requireIdempotencyKey(), async (req, res) => {
+  res.status(503).json({ error: "Wallet top-up is temporarily unavailable" }); return;
   const parsed = topUpSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid top-up data" }); return; }
   const { amountUsd, cardToken } = parsed.data;
