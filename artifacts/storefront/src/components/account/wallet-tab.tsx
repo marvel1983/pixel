@@ -1,9 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
-import { loadStripe } from "@stripe/stripe-js";
-import { Elements } from "@stripe/react-stripe-js";
-import type { Stripe } from "@stripe/stripe-js";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -11,6 +8,7 @@ import { useAuthStore } from "@/stores/auth-store";
 import { useCurrencyStore } from "@/stores/currency-store";
 import { Wallet, ArrowUpCircle, ArrowDownCircle, Loader2, Plus, CreditCard, ExternalLink } from "lucide-react";
 import { WalletTopUpForm } from "./wallet-topup-form";
+import { uuidV4 } from "@/lib/uuid";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -35,7 +33,7 @@ export function WalletTab() {
   const [loadError, setLoadError] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showTopUp, setShowTopUp] = useState(false);
-  const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
   const TX_LIMIT = 20;
@@ -83,16 +81,43 @@ export function WalletTab() {
 
   useEffect(() => { loadData(); }, [token]);
 
-  function openTopUp() {
-    setShowTopUp(true);
-    if (!stripePromise) {
-      fetch(`${API}/wallet/topup/config`, { headers, credentials: "include" })
-        .then((r) => r.json())
-        .then((d) => {
-          if (d.publishableKey) setStripePromise(loadStripe(d.publishableKey));
-          else toast({ title: "Wallet top-up is not available", variant: "destructive" });
-        })
-        .catch(() => toast({ title: "Could not load payment form", variant: "destructive" }));
+  // Handle return from Stripe Checkout after top-up
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get("topup_session");
+    if (!sessionId || !token) return;
+    window.history.replaceState({}, "", window.location.pathname);
+    fetch(`${API}/wallet/topup/confirm-session`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", "X-Idempotency-Key": uuidV4() },
+      credentials: "include",
+      body: JSON.stringify({ sessionId }),
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.balanceUsd !== undefined) {
+          toast({ title: "Wallet topped up successfully" });
+          void loadData();
+        } else {
+          toast({ title: d.error ?? "Failed to confirm top-up", variant: "destructive" });
+        }
+      })
+      .catch(() => toast({ title: "Failed to confirm top-up", variant: "destructive" }));
+  }, [token]);
+
+  async function createSession(amt: number) {
+    setSubmitting(true);
+    try {
+      const res = await fetch(`${API}/wallet/topup/session`, {
+        method: "POST", headers, credentials: "include",
+        body: JSON.stringify({ amountUsd: amt }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Failed to initiate payment");
+      window.location.href = data.url;
+    } catch (err) {
+      toast({ title: err instanceof Error ? err.message : "Top-up failed", variant: "destructive" });
+      setSubmitting(false);
     }
   }
 
@@ -138,7 +163,7 @@ export function WalletTab() {
               </div>
             </div>
             {!showTopUp && (
-              <Button onClick={openTopUp} className="gap-1.5">
+              <Button onClick={() => setShowTopUp(true)} className="gap-1.5">
                 <Plus className="h-4 w-4" /> {t("wallet.addFunds")}
               </Button>
             )}
@@ -164,18 +189,11 @@ export function WalletTab() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {stripePromise ? (
-              <Elements stripe={stripePromise}>
-                <WalletTopUpForm
-                  onSuccess={() => { setShowTopUp(false); void loadData(); }}
-                  onCancel={() => setShowTopUp(false)}
-                />
-              </Elements>
-            ) : (
-              <div className="flex justify-center py-6">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-              </div>
-            )}
+            <WalletTopUpForm
+              onSubmit={createSession}
+              onCancel={() => setShowTopUp(false)}
+              processing={submitting}
+            />
           </CardContent>
         </Card>
       )}
