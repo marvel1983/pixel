@@ -130,8 +130,8 @@ router.patch("/admin/customers/:id/role", requireAuth, requireAdmin, requirePerm
   }
   const [target] = await db.select({ role: users.role }).from(users).where(eq(users.id, id));
   if (!target) { res.status(404).json({ error: "Not found" }); return; }
-  if (target.role === "SUPER_ADMIN" && caller.role !== "SUPER_ADMIN") {
-    res.status(403).json({ error: "Only Super Admins can modify a Super Admin's role" }); return;
+  if ((target.role === "SUPER_ADMIN" || target.role === "ADMIN") && caller.role !== "SUPER_ADMIN") {
+    res.status(403).json({ error: "Only Super Admins can modify another admin's role" }); return;
   }
   await db.update(users).set({ role, updatedAt: new Date() }).where(eq(users.id, id));
   res.json({ success: true });

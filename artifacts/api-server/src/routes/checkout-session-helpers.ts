@@ -64,7 +64,8 @@ export function isAllowedRedirectUrl(url: string): boolean {
     const { origin } = new URL(url);
     const storeUrl = process.env.STORE_PUBLIC_URL ?? process.env.APP_PUBLIC_URL;
     if (storeUrl) return origin === new URL(storeUrl).origin;
-    return url.startsWith("https://");
+    // No store URL configured — only allow localhost (dev environments)
+    return origin === "http://localhost:18539" || origin === "http://localhost:3000";
   } catch {
     return false;
   }
