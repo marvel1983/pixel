@@ -113,10 +113,21 @@ router.post("/orders", checkoutLimit, requireIdempotencyKey(), async (req, res) 
 
   let couponDiscount = 0;
   if (serverCoupon) {
+    let eligibleSubtotal = subtotal;
+    if (serverCoupon.productIds && serverCoupon.productIds.length > 0) {
+      const eligible = new Set(serverCoupon.productIds);
+      eligibleSubtotal = items.reduce((sum, it) => {
+        if (!eligible.has(it.productId)) return sum;
+        const lk = `${it.bundleId ?? "s"}-${it.variantId}`;
+        const price = (serverPrices && it.variantId > 0) ? serverPrices.get(lk) ?? it.priceUsd : it.priceUsd;
+        return sum + parseFloat(price) * it.quantity;
+      }, 0);
+      if (eligibleSubtotal === 0) { res.status(400).json({ error: "This coupon is not valid for the items in your cart." }); return; }
+    }
     if (serverCoupon.type === "FIXED") {
-      couponDiscount = Math.min(serverCoupon.amount, subtotal);
+      couponDiscount = Math.min(serverCoupon.amount, eligibleSubtotal);
     } else {
-      couponDiscount = subtotal * (serverCoupon.pct / 100);
+      couponDiscount = eligibleSubtotal * (serverCoupon.pct / 100);
       if (serverCoupon.maxDiscountUsd && couponDiscount > serverCoupon.maxDiscountUsd) {
         couponDiscount = serverCoupon.maxDiscountUsd;
       }

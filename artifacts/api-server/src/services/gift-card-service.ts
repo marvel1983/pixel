@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { giftCards, giftCardRedemptions } from "@workspace/db/schema";
 import { logger } from "../lib/logger";
 import { sendEmail } from "../lib/email/mailer";
+import { he } from "../lib/html-escape";
 import crypto from "crypto";
 
 interface GiftCardApply {
@@ -112,9 +113,9 @@ async function sendGiftCardEmail(
   recipientName: string, senderName: string, personalMessage: string,
 ) {
   if (!card.recipientEmail) return;
-  const name = recipientName || "there";
-  const from = senderName || "Someone";
-  const msgHtml = personalMessage ? `<p style="margin:16px 0;padding:12px 16px;background:#f0f4ff;border-radius:8px;font-style:italic;">"${personalMessage}"</p>` : "";
+  const name = he(recipientName || "there");
+  const from = he(senderName || "Someone");
+  const msgHtml = personalMessage ? `<p style="margin:16px 0;padding:12px 16px;background:#f0f4ff;border-radius:8px;font-style:italic;">"${he(personalMessage)}"</p>` : "";
 
   const html = `
 <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;">

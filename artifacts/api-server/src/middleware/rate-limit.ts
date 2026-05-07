@@ -146,6 +146,9 @@ export const adminLimit = dynamicLimit("admin", "admin");
 /** Strict limit for guest order lookup — prevents license key enumeration */
 export const orderLookupLimit = rateLimit({ name: "order-lookup", windowMs: 15 * 60_000, max: 10 });
 
+/** Gift card balance check — prevents code enumeration */
+export const giftCardCheckLimit = rateLimit({ name: "gift-card-check", windowMs: 60_000, max: 15 });
+
 /**
  * Checkout / order creation: max 5 orders per 10 minutes.
  * Keyed by userId when the request carries a valid JWT, otherwise by IP.

@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { giftCards, giftCardRedemptions, users } from "@workspace/db/schema";
 import { eq, or } from "drizzle-orm";
 import { requireAuth } from "../middleware/auth";
+import { giftCardCheckLimit } from "../middleware/rate-limit";
 import crypto from "crypto";
 
 const router = Router();
@@ -44,7 +45,7 @@ router.get("/account/gift-cards", requireAuth, async (req, res) => {
   res.json({ giftCards: purchased });
 });
 
-router.post("/account/gift-cards/check-balance", requireAuth, async (req, res) => {
+router.post("/account/gift-cards/check-balance", requireAuth, giftCardCheckLimit, async (req, res) => {
   const { code } = req.body;
   if (!code) { res.status(400).json({ error: "Code required" }); return; }
   const [card] = await db.select({
