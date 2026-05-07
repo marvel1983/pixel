@@ -28,7 +28,8 @@
       "Bash(curl -s https://raw.githubusercontent.com/rebelytics/one-skill-to-rule-them-all/main/SKILL.md)",
       "Read(//tmp/**)",
       "Read(//c/tmp/**)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(pnpm --filter @workspace/storefront add @stripe/stripe-js @stripe/react-stripe-js)"
     ],
     "additionalDirectories": [
       "C:\\Users\\Morningstar\\.claude\\commands"

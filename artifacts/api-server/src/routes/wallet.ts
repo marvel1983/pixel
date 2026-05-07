@@ -9,6 +9,7 @@ import { logger } from "../lib/logger";
 import { requireIdempotencyKey } from "../middleware/idempotency";
 import { getActivePaymentConfig } from "../lib/payment-config";
 import { createStripeClient } from "../lib/stripe-client";
+import { siteSettings } from "@workspace/db/schema";
 
 const router = Router();
 
@@ -65,9 +66,11 @@ router.post("/wallet/topup/intent", requireAuth, async (req, res) => {
 
   try {
     const stripe = createStripeClient(config.secretKey);
+    const [settings] = await db.select({ defaultCurrency: siteSettings.defaultCurrency }).from(siteSettings);
+    const currency = (settings?.defaultCurrency ?? "EUR").toLowerCase();
     const pi = await stripe.paymentIntents.create({
       amount: Math.round(parsed.data.amountUsd * 100),
-      currency: "usd",
+      currency,
       metadata: {
         userId: String(req.user!.userId),
         type: "wallet_topup",
