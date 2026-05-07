@@ -27,7 +27,8 @@
       "Read(//c/Users/Morningstar/.claude/**)",
       "Bash(curl -s https://raw.githubusercontent.com/rebelytics/one-skill-to-rule-them-all/main/SKILL.md)",
       "Read(//tmp/**)",
-      "Read(//c/tmp/**)"
+      "Read(//c/tmp/**)",
+      "Bash(git commit *)"
     ],
     "additionalDirectories": [
       "C:\\Users\\Morningstar\\.claude\\commands"
