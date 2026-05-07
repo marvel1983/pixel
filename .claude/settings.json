@@ -30,7 +30,8 @@
       "Read(//c/tmp/**)",
       "Bash(git commit *)",
       "Bash(pnpm --filter @workspace/storefront add @stripe/stripe-js @stripe/react-stripe-js)",
-      "Bash(PORT=3000 pnpm --filter @workspace/storefront run build)"
+      "Bash(PORT=3000 pnpm --filter @workspace/storefront run build)",
+      "Bash(curl -sI https://pixelcodes.com)"
     ],
     "additionalDirectories": [
       "C:\\Users\\Morningstar\\.claude\\commands"
