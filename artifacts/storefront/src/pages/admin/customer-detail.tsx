@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthStore } from "@/stores/auth-store";
 import { CustomerWallet } from "@/components/admin/customer-wallet";
+import { CustomerSessionsCard } from "@/components/admin/customer-sessions-card";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -183,6 +184,8 @@ export default function CustomerDetailPage() {
               </table>
             ) : <p className="text-sm text-muted-foreground py-4 text-center">No orders yet</p>}
           </Section>
+
+          <CustomerSessionsCard customerId={customer!.id} token={token} />
 
           <Section title={`Wishlist (${wishlist.length})`}>
             {wishlist.length > 0 ? (
