@@ -1,5 +1,6 @@
 import { useCookieConsentStore } from "../../stores/cookie-consent-store";
 import { getSessionId, touchSession } from "./session";
+import { sanitizeMetadata } from "./sanitize";
 import type {
   TrackingEvent,
   TrackingEventType,
@@ -145,7 +146,7 @@ export function track(
     eventType,
     occurredAt: new Date().toISOString(),
     pagePath: window.location.pathname || null,
-    metadata: metadata ?? null,
+    metadata: sanitizeMetadata(metadata),
   });
 
   if (eventBuffer.length + snapshotBuffer.length >= MAX_BUFFER) {

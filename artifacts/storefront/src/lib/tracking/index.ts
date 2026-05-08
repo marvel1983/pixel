@@ -1,5 +1,8 @@
 export { getSessionId, touchSession } from "./session";
 export { track, captureSnapshot, flush, flushNowWithBeacon } from "./client";
+export { bootstrapTracking } from "./bootstrap";
+export { usePageViewTracker } from "./use-page-view";
+export { captureCartSnapshotForTrigger } from "./cart-tracker";
 export type {
   TrackingEventType,
   TrackingEvent,

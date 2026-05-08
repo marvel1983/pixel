@@ -29,6 +29,7 @@ import {
 } from "@/pages/legacy-routes";
 import { useReferralTracking } from "@/hooks/use-referral";
 import { useVisitorPing } from "@/hooks/use-visitor-ping";
+import { bootstrapTracking, usePageViewTracker } from "@/lib/tracking";
 import { ExitIntentPopup } from "@/components/newsletter/exit-intent-popup";
 import { PurchaseToastProvider } from "@/components/social-proof/purchase-toast";
 import { CompareBar } from "@/components/product/compare-bar";
@@ -96,6 +97,7 @@ const queryClient = new QueryClient({
 
 function GlobalBreadcrumbs() {
   const [location] = useLocation();
+  usePageViewTracker();
   return <RouteBreadcrumbJsonLd path={location} />;
 }
 
@@ -213,6 +215,7 @@ function AppInitEffect() {
       }
     }
     captureAttribution();
+    bootstrapTracking();
     useCurrencyStore.getState().fetchRates();
     useFlashSaleStore.getState().load();
     useLoyaltyStore.getState().load();
