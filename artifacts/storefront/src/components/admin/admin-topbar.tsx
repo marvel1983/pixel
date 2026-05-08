@@ -16,6 +16,7 @@ interface NotifTicket { id: number; ticketNumber: string; subject: string; prior
 const breadcrumbMap: Record<string, string> = {
   "/admin": "Dashboard",
   "/admin/analytics": "Analytics",
+  "/admin/analytics/funnel": "Checkout Funnel",
   "/admin/products": "Products",
   "/admin/bundles": "Bundles",
   "/admin/categories": "Categories",

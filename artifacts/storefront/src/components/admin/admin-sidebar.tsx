@@ -7,7 +7,7 @@ import {
   Bell, BarChart3, Truck, Flag, Ticket, MessageSquare,
   HelpCircle, ClipboardList, Wallet, Gift, Globe,
   Link2, Zap, BookOpen, ListTodo, Activity, ArrowLeft, Tag, Sliders, RefreshCw,
-  ChevronDown, ChevronRight, Star, Rss, Megaphone,
+  ChevronDown, ChevronRight, Star, Rss, Megaphone, Funnel,
   type LucideIcon,
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -26,6 +26,7 @@ const sections: NavSection[] = [
     items: [
       { label: "Dashboard",  href: "/admin",           icon: LayoutDashboard },
       { label: "Analytics",  href: "/admin/analytics", icon: BarChart3 },
+      { label: "Funnel",     href: "/admin/analytics/funnel", icon: Funnel },
     ],
   },
   {

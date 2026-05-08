@@ -5,6 +5,7 @@ import { AdminGuard } from "@/components/admin/admin-guard";
 import { useThemeStore } from "@/stores/theme-store";
 import AdminDashboard from "./dashboard";
 import AnalyticsPage from "./analytics";
+import AnalyticsFunnelPage from "./analytics-funnel";
 import AdminProductsPage from "./products";
 import ProductEditPage from "./product-edit";
 import AdminCategoriesPage from "./categories";
@@ -93,6 +94,7 @@ export default function AdminRoot() {
       <AdminLayout>
         <Switch>
           <Route path="/admin" component={AdminDashboard} />
+          <Route path="/admin/analytics/funnel" component={AnalyticsFunnelPage} />
           <Route path="/admin/analytics" component={AnalyticsPage} />
           <Route path="/admin/products/:id" component={ProductEditPage} />
           <Route path="/admin/products" component={AdminProductsPage} />
