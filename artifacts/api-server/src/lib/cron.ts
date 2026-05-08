@@ -10,6 +10,7 @@ import { logger } from "./logger";
 import { syncMetenziStock } from "./metenzi-stock-sync";
 import { pollMetenziFulfillment } from "../services/metenzi-fulfillment-poll";
 import { escalateStuckFulfillments } from "../services/stuck-fulfillment-escalation";
+import { cleanupExpiredTracking } from "../services/tracking-retention";
 
 let syncTask: ScheduledTask | null = null;
 let metenziStockTask: ScheduledTask | null = null;
@@ -20,6 +21,7 @@ let abandonedCartTask: ScheduledTask | null = null;
 let trustpilotTask: ScheduledTask | null = null;
 let surveyTask: ScheduledTask | null = null;
 let feedTask: ScheduledTask | null = null;
+let trackingRetentionTask: ScheduledTask | null = null;
 
 export function startCronJobs(): void {
   if (syncTask) return;
@@ -134,7 +136,18 @@ export function startCronJobs(): void {
     }
   });
 
-  logger.info("Cron jobs started (product sync 30m, email 1m, affiliate 6h, abandoned cart 15m, trustpilot 30m, survey 4h, metenzi-stock 15m, metenzi-poll 10m, feeds 1h)");
+  // Tracking retention — daily at 03:00 UTC. Drops events / snapshots older
+  // than 180 days and anonymous sessions older than 180 days; named sessions
+  // are kept for 365 days for customer-support lookups.
+  trackingRetentionTask = cron.schedule("0 3 * * *", async () => {
+    try {
+      await cleanupExpiredTracking();
+    } catch (error) {
+      logger.error({ error }, "Cron: tracking retention cleanup failed");
+    }
+  });
+
+  logger.info("Cron jobs started (product sync 30m, email 1m, affiliate 6h, abandoned cart 15m, trustpilot 30m, survey 4h, metenzi-stock 15m, metenzi-poll 10m, feeds 1h, tracking-retention 24h)");
 }
 
 export function stopCronJobs(): void {
@@ -173,6 +186,10 @@ export function stopCronJobs(): void {
   if (feedTask) {
     feedTask.stop();
     feedTask = null;
+  }
+  if (trackingRetentionTask) {
+    trackingRetentionTask.stop();
+    trackingRetentionTask = null;
   }
   logger.info("Cron jobs stopped");
 }
