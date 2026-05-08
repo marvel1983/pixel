@@ -24,6 +24,7 @@ import { CardPaymentSection } from "@/components/checkout/payment-icons";
 import { setSeoMeta, clearSeoMeta } from "@/lib/seo";
 import { useCheckoutSetup } from "@/hooks/use-checkout-setup";
 import { useCheckoutSubmit } from "@/hooks/use-checkout-submit";
+import { track, captureCartSnapshotForTrigger } from "@/lib/tracking";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -47,6 +48,13 @@ export default function CheckoutPage() {
     setSeoMeta({ title: t("seo.checkoutTitle"), description: t("seo.checkoutDescription") });
     return () => { clearSeoMeta(); };
   }, [t]);
+
+  useEffect(() => {
+    track("enter_checkout", { itemCount: items.length });
+    captureCartSnapshotForTrigger("enter_checkout");
+    // Only fire once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [billing, setBilling] = useState<BillingData>(INITIAL_BILLING);
   const [billingErrors, setBillingErrors] = useState<Partial<Record<keyof BillingData, string>>>({});
@@ -163,11 +171,11 @@ export default function CheckoutPage() {
               <p className="text-sm font-semibold">Payment Method</p>
               <div className="flex gap-3">
                 <label className={`flex-1 border rounded-lg p-3 cursor-pointer text-center text-sm transition-colors ${paymentMethod === "card" ? "border-primary bg-primary/5" : ""}`}>
-                  <input type="radio" name="payMethod" className="sr-only" checked={paymentMethod === "card"} onChange={() => setPaymentMethod("card")} />
+                  <input type="radio" name="payMethod" className="sr-only" checked={paymentMethod === "card"} onChange={() => { setPaymentMethod("card"); track("payment_method_selected", { method: "card" }); }} />
                   <span className="font-medium">Credit Card</span>
                 </label>
                 <label className={`flex-1 border rounded-lg p-3 cursor-pointer text-center text-sm transition-colors ${paymentMethod === "invoice" ? "border-primary bg-primary/5" : ""}`}>
-                  <input type="radio" name="payMethod" className="sr-only" checked={paymentMethod === "invoice"} onChange={() => setPaymentMethod("invoice")} />
+                  <input type="radio" name="payMethod" className="sr-only" checked={paymentMethod === "invoice"} onChange={() => { setPaymentMethod("invoice"); track("payment_method_selected", { method: "invoice" }); }} />
                   <span className="font-medium">Invoice (Net 30)</span>
                 </label>
               </div>

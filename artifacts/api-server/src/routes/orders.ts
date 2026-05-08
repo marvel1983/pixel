@@ -242,6 +242,7 @@ router.post("/orders", checkoutLimit, requireIdempotencyKey(), async (req, res) 
       userId, services: validatedServices.length > 0 ? validatedServices : undefined,
       locale: userLocale, clientIp: req.ip ?? (req.headers["x-real-ip"] as string) ?? "",
       attribution: parsed.data.attribution ?? undefined,
+      sessionId: req.sessionId ?? null,
     });
     res.status(201).json({ orderNumber: result.orderNumber, status: result.status, message: "Order placed successfully" });
   } catch (err) {

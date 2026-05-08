@@ -10,6 +10,7 @@ import { redeemPoints, restorePoints } from "../services/loyalty-service";
 import { getWalletBalance, debitWallet, creditWallet } from "../services/wallet-service";
 import { requireIdempotencyKey } from "../middleware/idempotency";
 import bcrypt from "bcryptjs";
+import { recordServerEvent } from "../services/tracking-server-events";
 import { createStripeClient } from "../lib/stripe-client";
 import { stripeCircuit, checkoutComCircuit } from "../lib/circuit-instances";
 import { getActivePaymentConfig } from "../lib/payment-config";
@@ -127,6 +128,7 @@ router.post("/checkout/session", requireIdempotencyKey(), async (req, res) => {
     couponId: serverCoupon?.id ?? null,
     couponCode: serverCoupon?.code ?? null,
     attribution: parsed.data.attribution ?? null,
+    sessionId: req.sessionId ?? null,
   }).returning({ id: orders.id });
 
   let loyaltyRedeemed = false;
@@ -206,6 +208,12 @@ router.post("/checkout/session", requireIdempotencyKey(), async (req, res) => {
       });
     }
     await db.update(orders).set({ status: "FAILED", notes: null, updatedAt: new Date() }).where(eq(orders.id, order.id));
+    await recordServerEvent({
+      sessionId: req.sessionId ?? null,
+      userId: userId ?? null,
+      eventType: "order_failed",
+      metadata: { orderId: order.id, orderNumber, stage: "checkout_session", reason: err instanceof Error ? err.message : "unknown" },
+    });
     logger.error({ err, orderNumber }, "Failed to create Stripe checkout session");
     res.status(500).json({ error: "Failed to create checkout session" });
   }

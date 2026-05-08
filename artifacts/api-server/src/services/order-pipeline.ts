@@ -24,6 +24,7 @@ import { sendOrderConfirmationOnly, triggerOrderEmails } from "./order-emails";
 import { scheduleTrustpilotInvite } from "./trustpilot-service";
 import { recordPurchaseEvents } from "./social-proof-service";
 import { scoreOrder } from "./risk-scoring";
+import { recordServerEvent } from "./tracking-server-events";
 import bcrypt from "bcryptjs";
 
 type OrderStatus = (typeof orderStatusEnum.enumValues)[number];
@@ -54,6 +55,7 @@ interface OrderInput {
   locale?: string;
   clientIp?: string;
   attribution?: { utm_source?: string; utm_medium?: string; utm_campaign?: string; referrer?: string };
+  sessionId?: string | null;
 }
 
 export interface FulfillmentInput {
@@ -259,6 +261,7 @@ export async function executeOrderPipeline(input: OrderInput) {
       couponId: input.coupon?.id ?? null,
       couponCode: input.coupon?.code ?? null,
       attribution: input.attribution ?? null,
+      sessionId: input.sessionId ?? null,
     })
     .returning({ id: orders.id });
 
@@ -330,8 +333,20 @@ export async function executeOrderPipeline(input: OrderInput) {
     }, total);
 
     logger.info({ orderNumber, total: total.toFixed(2) }, "Order pipeline complete");
+    await recordServerEvent({
+      sessionId: input.sessionId ?? null,
+      userId: input.userId ?? null,
+      eventType: "order_created",
+      metadata: { orderId: order.id, orderNumber, totalUsd: total.toFixed(2), paymentMethod: payMethod },
+    });
     return { orderNumber, status: "COMPLETED" };
   } catch (err) {
+    await recordServerEvent({
+      sessionId: input.sessionId ?? null,
+      userId: input.userId ?? null,
+      eventType: "order_failed",
+      metadata: { orderId: order.id, orderNumber, reason: err instanceof Error ? err.message : "unknown" },
+    });
     if (walletDebited && input.userId && input.walletAmountUsd) {
       await creditWallet(input.userId, input.walletAmountUsd, "REFUND",
         `Reversed: order ${orderNumber} failed`, `reversal:${order.id}`).catch((wErr) => {
