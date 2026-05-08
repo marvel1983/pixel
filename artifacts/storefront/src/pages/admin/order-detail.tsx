@@ -10,6 +10,7 @@ import { OrderDetailSidebar } from "@/components/admin/order-detail-sidebar";
 import { OrderTimeline } from "@/components/admin/order-timeline";
 import { RefundsCard } from "@/components/admin/refunds-card";
 import { PaymentAttemptsCard } from "@/components/admin/payment-attempts-card";
+import { CustomerJourneyCard } from "@/components/admin/customer-journey-card";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -249,6 +250,7 @@ export default function OrderDetailPage() {
           <Card title="Timeline">
             <OrderTimeline entries={timeline} />
           </Card>
+          <CustomerJourneyCard orderId={order.id} token={token} />
         </div>
         <OrderDetailSidebar order={order} coupon={coupon} customer={customer} refunds={orderRefunds ?? []} />
       </div>
