@@ -3,7 +3,7 @@ import { jobQueue, jobFailures, type Job } from "@workspace/db/schema";
 import { eq, and, sql, desc, count } from "drizzle-orm";
 import { logger } from "./logger";
 
-export type QueueName = "email" | "product-sync" | "order-processing" | "abandoned-cart" | "alerts" | "reports" | "imports";
+export type QueueName = "email" | "product-sync" | "order-processing" | "abandoned-cart" | "alerts" | "reports" | "imports" | "analytics";
 export type Priority = 0 | 1 | 2 | 3;
 export const PRIORITY = { LOW: 0 as Priority, NORMAL: 1 as Priority, HIGH: 2 as Priority, CRITICAL: 3 as Priority };
 
@@ -116,7 +116,7 @@ async function processJob(row: ClaimedRow) {
 
 const CONCURRENCY: Record<string, number> = {
   email: 3, "product-sync": 1, "order-processing": 2,
-  "abandoned-cart": 1, alerts: 2, reports: 1, imports: 1,
+  "abandoned-cart": 1, alerts: 2, reports: 1, imports: 1, analytics: 2,
 };
 
 let running = false;

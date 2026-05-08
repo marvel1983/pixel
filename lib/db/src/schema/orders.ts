@@ -74,6 +74,7 @@ export const orders = pgTable("orders", {
   }>(),
   ipAddress: varchar("ip_address", { length: 45 }),
   userAgent: text("user_agent"),
+  sessionId: varchar("session_id", { length: 36 }),
   attribution: jsonb("attribution").$type<{
     utm_source?: string;
     utm_medium?: string;
@@ -94,6 +95,7 @@ export const orders = pgTable("orders", {
   userIdIdx: index("orders_user_id_idx").on(t.userId),
   statusIdx: index("orders_status_idx").on(t.status),
   createdAtIdx: index("orders_created_at_idx").on(t.createdAt),
+  sessionIdIdx: index("orders_session_id_idx").on(t.sessionId),
 }));
 
 export const orderItems = pgTable("order_items", {

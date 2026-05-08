@@ -99,6 +99,7 @@ import adminMappingConflictsRouter from "./admin-mapping-conflicts";
 import productsRouter from "./products";
 import visitorsRouter from "./visitors";
 import campaignsRouter from "./campaigns";
+import trackingRouter from "./tracking";
 
 const router: IRouter = Router();
 
@@ -202,5 +203,6 @@ router.use(adminFeedsRouter);
 router.use(productsRouter);
 router.use(visitorsRouter);
 router.use(campaignsRouter);
+router.use(trackingRouter);
 
 export default router;

@@ -9,6 +9,7 @@ import { logger } from "./lib/logger";
 import { initSentry, Sentry } from "./lib/sentry";
 import { maintenanceMiddleware } from "./middleware/maintenance";
 import { referralTracking } from "./middleware/referral";
+import { trackingSession } from "./middleware/tracking-session";
 import { securityHeaders } from "./middleware/security-headers";
 import { csrfProtection, csrfTokenEndpoint } from "./middleware/csrf";
 import { publicLimit, adminLimit } from "./middleware/rate-limit";
@@ -99,7 +100,7 @@ function categoryRateLimit(req: express.Request, res: express.Response, next: ex
   return publicLimit(req, res, next);
 }
 
-app.use("/api", categoryRateLimit, csrfProtection, referralTracking, maintenanceMiddleware, router);
+app.use("/api", categoryRateLimit, csrfProtection, trackingSession, referralTracking, maintenanceMiddleware, router);
 
 // Global error handler — must have 4 params for Express to treat it as an error handler
 // eslint-disable-next-line @typescript-eslint/no-unused-vars

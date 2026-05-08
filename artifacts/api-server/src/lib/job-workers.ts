@@ -214,6 +214,11 @@ export function registerAllWorkers() {
     await processImportJob(importJobId);
   });
 
+  registerWorker("analytics", "ingest-events", async (payload) => {
+    const { ingestBatch } = await import("../services/tracking-ingest");
+    await ingestBatch(payload as unknown as Parameters<typeof ingestBatch>[0]);
+  });
+
   logger.info("All job workers registered");
 }
 
