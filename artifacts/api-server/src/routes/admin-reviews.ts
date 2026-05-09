@@ -81,14 +81,14 @@ router.patch("/admin/reviews/:id/status", requireAuth, requireAdmin, requirePerm
   const { status } = req.body;
   if (!["PENDING", "APPROVED", "REJECTED"].includes(status)) { res.status(400).json({ error: "Invalid status" }); return; }
   const isApproved = status === "APPROVED";
+  const [target] = await db.select({ productId: reviews.productId, userId: reviews.userId }).from(reviews).where(eq(reviews.id, id)).limit(1);
+  if (!target) { res.status(404).json({ error: "Review not found" }); return; }
   await db.update(reviews).set({ status, isApproved, updatedAt: new Date() }).where(eq(reviews.id, id));
-  if (isApproved) {
-    const [review] = await db.select({ userId: reviews.userId }).from(reviews).where(eq(reviews.id, id)).limit(1);
-    if (review?.userId) {
-      awardReviewBonus(review.userId, id).catch((err) =>
-        logger.error({ err, reviewId: id }, "Failed to award review loyalty bonus (non-fatal)"),
-      );
-    }
+  await refreshProductReviewAggregate(target.productId);
+  if (isApproved && target.userId) {
+    awardReviewBonus(target.userId, id).catch((err) =>
+      logger.error({ err, reviewId: id }, "Failed to award review loyalty bonus (non-fatal)"),
+    );
   }
   res.json({ success: true });
 });
@@ -107,7 +107,9 @@ router.patch("/admin/reviews/:id/reply", requireAuth, requireAdmin, requirePermi
 router.delete("/admin/reviews/:id", requireAuth, requireAdmin, requirePermission("manageProducts"), async (req, res) => {
   const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
+  const [target] = await db.select({ productId: reviews.productId }).from(reviews).where(eq(reviews.id, id)).limit(1);
   await db.delete(reviews).where(eq(reviews.id, id));
+  if (target) await refreshProductReviewAggregate(target.productId);
   res.json({ success: true });
 });
 
@@ -116,6 +118,9 @@ router.post("/admin/reviews/bulk", requireAuth, requireAdmin, requirePermission(
   if (!Array.isArray(ids) || ids.length === 0) { res.status(400).json({ error: "No IDs provided" }); return; }
   const intIds = ids.map(Number).filter(Number.isInteger);
   if (intIds.length === 0) { res.status(400).json({ error: "Invalid IDs" }); return; }
+
+  const targets = await db.select({ productId: reviews.productId }).from(reviews).where(inArray(reviews.id, intIds));
+  const productIds = Array.from(new Set(targets.map((t) => t.productId)));
 
   if (action === "approve") {
     await db.update(reviews).set({ status: "APPROVED", isApproved: true, updatedAt: new Date() }).where(inArray(reviews.id, intIds));
@@ -126,8 +131,23 @@ router.post("/admin/reviews/bulk", requireAuth, requireAdmin, requirePermission(
   } else {
     res.status(400).json({ error: "Invalid action. Use: approve, reject, delete" }); return;
   }
+  await Promise.all(productIds.map(refreshProductReviewAggregate));
   res.json({ success: true, affected: intIds.length });
 });
+
+async function refreshProductReviewAggregate(productId: number) {
+  const [agg] = await db
+    .select({
+      avg: sql<string>`COALESCE(ROUND(AVG(${reviews.rating})::numeric, 2), 0)`,
+      cnt: count(),
+    })
+    .from(reviews)
+    .where(and(eq(reviews.productId, productId), eq(reviews.status, "APPROVED")));
+  await db
+    .update(products)
+    .set({ avgRating: agg?.avg ?? "0", reviewCount: Number(agg?.cnt ?? 0) })
+    .where(eq(products.id, productId));
+}
 
 function buildFilters(query: Record<string, unknown>) {
   const conditions = [];
