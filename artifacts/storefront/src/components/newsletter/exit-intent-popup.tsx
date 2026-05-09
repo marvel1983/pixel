@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { X, Mail, Loader2, Gift } from "lucide-react";
+import { X, Mail, Loader2, Sparkles, ArrowRight, ShieldCheck, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -72,54 +72,114 @@ export function ExitIntentPopup() {
   if (!show || !settings) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60" onClick={dismiss}>
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+      onClick={dismiss}
+    >
       <div
-        className="relative bg-card rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden animate-in zoom-in-95 duration-200"
+        className="relative bg-card rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 fade-in duration-200"
         onClick={(e) => e.stopPropagation()}
       >
-        <button onClick={dismiss} className="absolute top-3 right-3 p-1 rounded-full hover:bg-gray-100 z-10">
-          <X className="h-5 w-5 text-gray-400" />
-        </button>
+        <div className="relative bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 px-6 pt-6 pb-7 text-white overflow-hidden">
+          <div className="absolute -top-12 -right-12 h-44 w-44 rounded-full bg-cyan-400/20 blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-12 -left-12 h-36 w-36 rounded-full bg-blue-300/20 blur-2xl pointer-events-none" />
 
-        <div className="bg-gradient-to-br from-blue-600 to-blue-800 px-6 py-8 text-center text-white">
-          <Gift className="h-12 w-12 mx-auto mb-3 opacity-90" />
-          <h2 className="text-xl font-bold mb-1">{settings.exitIntentHeadline}</h2>
-          <p className="text-blue-100 text-sm">{settings.exitIntentBody}</p>
+          <button
+            type="button"
+            onClick={dismiss}
+            aria-label="Close"
+            className="absolute top-3 right-3 p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors z-10"
+          >
+            <X className="h-4 w-4" />
+          </button>
+
+          <div className="relative flex flex-col items-center text-center">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-sm text-[11px] font-semibold tracking-wider uppercase">
+              <Sparkles className="h-3 w-3" />
+              Limited time offer
+            </div>
+            <div className="flex items-baseline gap-0.5 mt-3">
+              <span className="text-6xl font-black leading-none tabular-nums">{settings.exitIntentDiscount}</span>
+              <span className="text-3xl font-black">%</span>
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-[0.25em] mt-1 text-blue-100">
+              Off Your First Order
+            </span>
+          </div>
         </div>
 
-        <div className="px-6 py-6">
+        <div className="px-6 pt-5 pb-5">
           {result ? (
             <div className="text-center space-y-3">
-              <p className="text-green-600 font-medium">{result.message}</p>
+              <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
+                <Check className="h-6 w-6 text-green-600 dark:text-green-400" />
+              </div>
+              <p className="text-foreground font-semibold">{result.message}</p>
               {result.discountCode && (
-                <div className="bg-green-50 rounded-lg p-4">
-                  <p className="text-sm text-gray-500 mb-1">Your discount code:</p>
-                  <p className="text-2xl font-bold text-green-700 tracking-widest">{result.discountCode}</p>
+                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
+                  <p className="text-[10px] uppercase tracking-wider text-green-700 dark:text-green-400 font-semibold mb-1">
+                    Your code
+                  </p>
+                  <p className="text-2xl font-black text-green-700 dark:text-green-400 tracking-widest">
+                    {result.discountCode}
+                  </p>
                 </div>
               )}
-              <Button variant="outline" size="sm" onClick={dismiss}>Close</Button>
+              <Button variant="outline" size="sm" onClick={dismiss} className="w-full">
+                Continue shopping
+              </Button>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-3">
-              <Input
-                type="email"
-                placeholder="Enter your email address"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="h-11"
-              />
-              <Button type="submit" className="w-full h-11" disabled={loading}>
-                {loading ? (
-                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Subscribing...</>
-                ) : (
-                  <><Mail className="h-4 w-4 mr-2" />Get My {settings.exitIntentDiscount}% Discount</>
-                )}
-              </Button>
-              <p className="text-xs text-center text-gray-400">
-                No spam. Unsubscribe anytime.
+            <>
+              <h2 className="text-lg font-bold text-center text-foreground leading-snug">
+                {settings.exitIntentHeadline}
+              </h2>
+              <p className="text-sm text-muted-foreground text-center mt-1.5 mb-4 leading-relaxed">
+                {settings.exitIntentBody}
               </p>
-            </form>
+
+              <form onSubmit={handleSubmit} className="space-y-2.5">
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                  <Input
+                    type="email"
+                    placeholder="your@email.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    className="h-12 pl-10 text-sm"
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  className="w-full h-12 font-bold gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-md text-white border-0"
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <><Loader2 className="h-4 w-4 animate-spin" />Subscribing...</>
+                  ) : (
+                    <>Claim My {settings.exitIntentDiscount}% Discount<ArrowRight className="h-4 w-4" /></>
+                  )}
+                </Button>
+              </form>
+
+              <div className="flex items-center justify-center gap-2 mt-3 text-[11px] text-muted-foreground">
+                <ShieldCheck className="h-3 w-3" />
+                <span>Secure</span>
+                <span className="opacity-50">•</span>
+                <span>No spam</span>
+                <span className="opacity-50">•</span>
+                <span>Unsubscribe anytime</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={dismiss}
+                className="block mx-auto mt-2.5 text-xs text-muted-foreground/70 hover:text-foreground transition-colors"
+              >
+                No thanks, I'll pay full price
+              </button>
+            </>
           )}
         </div>
       </div>
