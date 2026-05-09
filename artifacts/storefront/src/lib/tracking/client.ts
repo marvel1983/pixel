@@ -10,7 +10,7 @@ import type {
 } from "./types";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "/api";
-const FLUSH_DELAY_MS = 5000;
+const FLUSH_DELAY_MS = 2000;
 const MAX_BUFFER = 20;
 const SESSION_INIT_KEY = "pixelcodes_session_init_sent";
 

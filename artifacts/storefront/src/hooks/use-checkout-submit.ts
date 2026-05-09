@@ -6,7 +6,7 @@ import { validateBilling } from "@/lib/checkout-validation";
 import { uuidV4 } from "@/lib/uuid";
 import { hasRegionMismatch } from "@/components/cart/region-warning";
 import { getAttribution } from "@/lib/attribution";
-import { track, captureCartSnapshotForTrigger } from "@/lib/tracking";
+import { track, captureCartSnapshotForTrigger, suppressNextCartChange } from "@/lib/tracking";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -151,6 +151,7 @@ export function useCheckoutSubmit(params: Params) {
         subscribeNewsletter();
         setIdempotencyKey(uuidV4());
         sessionStorage.setItem("checkout_email", billing.email);
+        suppressNextCartChange();
         clearCart();
         setLocation(`/order-complete/${data.orderNumber}`);
       }

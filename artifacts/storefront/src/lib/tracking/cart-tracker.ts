@@ -1,6 +1,6 @@
 import { useCartStore, type CartItem, type CouponData } from "../../stores/cart-store";
 import { useCurrencyStore } from "../../stores/currency-store";
-import { track, captureSnapshot } from "./client";
+import { track, captureSnapshot, flush } from "./client";
 import type { CartSnapshotPayload } from "./types";
 
 interface SnapshotKey {
@@ -52,6 +52,16 @@ function buildSnapshot(
 let prevItems: CartItem[] = [];
 let prevCoupon: CouponData | null = null;
 let started = false;
+let suppressNext = false;
+
+/**
+ * Tells the cart tracker to skip the next subscribe firing — used after
+ * a successful checkout to avoid recording the post-success clearCart()
+ * as a user-initiated remove_from_cart.
+ */
+export function suppressNextCartChange(): void {
+  suppressNext = true;
+}
 
 export function startCartTracker(): void {
   if (started) return;
@@ -62,6 +72,13 @@ export function startCartTracker(): void {
   useCartStore.subscribe((state) => {
     const nextItems = state.items;
     const nextCoupon = state.coupon;
+
+    if (suppressNext) {
+      suppressNext = false;
+      prevItems = nextItems;
+      prevCoupon = nextCoupon;
+      return;
+    }
 
     const prevMap = new Map(prevItems.map((i) => [keyOf(i), i]));
     const nextMap = new Map(nextItems.map((i) => [keyOf(i), i]));
@@ -106,6 +123,10 @@ export function startCartTracker(): void {
 
     if (trigger) {
       captureSnapshot(buildSnapshot(trigger, nextItems, nextCoupon));
+      // Cart events are high-value and often happen right before navigation.
+      // Flush immediately rather than waiting on the buffer timer so events
+      // aren't lost if sendBeacon fails during teardown.
+      void flush(false);
     }
 
     prevItems = nextItems;
