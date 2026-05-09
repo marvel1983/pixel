@@ -1,70 +1,12 @@
-import { useEffect, useState } from "react";
-import {
-  Eye, ShoppingCart, CreditCard, Edit3, AlertTriangle,
-  CheckCircle, LogOut, Camera, Globe, Smartphone, Monitor, Tablet,
-} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Smartphone, Monitor, Tablet, Globe, Clock, Hash } from "lucide-react";
 import { Card } from "@/components/admin/order-detail-ui";
-
-interface SessionSummary {
-  id: string;
-  ipAddress: string | null;
-  userAgent: string | null;
-  geoCountry: string | null;
-  deviceType: string | null;
-  referrer: string | null;
-  utmSource: string | null;
-  utmMedium: string | null;
-  utmCampaign: string | null;
-  startedAt: string;
-  lastSeenAt: string;
-}
-
-interface JourneyEvent {
-  id: number;
-  eventType: string;
-  pagePath: string | null;
-  metadata: Record<string, unknown> | null;
-  occurredAt: string;
-}
-
-interface JourneySnapshot {
-  id: number;
-  triggerEvent: string;
-  items: Array<{ productName: string; variantName: string; quantity: number; priceUsd: string }>;
-  totals: { subtotalUsd: string; totalUsd: string; currency: string; couponCode?: string };
-  capturedAt: string;
-}
-
-interface JourneyResponse {
-  session: SessionSummary | null;
-  events: JourneyEvent[];
-  snapshots: JourneySnapshot[];
-  message?: string;
-}
-
-const KIND_FOR_EVENT: Record<string, string> = {
-  page_view: "view", product_view: "view",
-  add_to_cart: "cart", remove_from_cart: "cart", update_cart_qty: "cart", apply_coupon: "cart",
-  enter_checkout: "checkout", checkout_step: "checkout",
-  form_field_focus: "form", form_field_blur: "form", form_validation_error: "form",
-  payment_method_selected: "payment", place_order_clicked: "payment", stripe_redirect: "payment",
-  stripe_error: "error", js_error: "error", order_failed: "error",
-  order_created: "success",
-  page_unload: "exit",
-  custom_click: "view",
-};
-
-const KIND_STYLE: Record<string, { ring: string; bg: string; iconColor: string; Icon: typeof Eye }> = {
-  view:     { ring: "border-sky-500/40",     bg: "bg-sky-500/10",     iconColor: "text-sky-400",     Icon: Eye },
-  cart:     { ring: "border-emerald-500/40", bg: "bg-emerald-500/10", iconColor: "text-emerald-400", Icon: ShoppingCart },
-  checkout: { ring: "border-cyan-500/40",    bg: "bg-cyan-500/10",    iconColor: "text-cyan-400",    Icon: CreditCard },
-  form:     { ring: "border-amber-500/40",   bg: "bg-amber-500/10",   iconColor: "text-amber-400",   Icon: Edit3 },
-  payment:  { ring: "border-violet-500/40",  bg: "bg-violet-500/10",  iconColor: "text-violet-400",  Icon: CreditCard },
-  error:    { ring: "border-rose-500/40",    bg: "bg-rose-500/10",    iconColor: "text-rose-400",    Icon: AlertTriangle },
-  success:  { ring: "border-emerald-500/40", bg: "bg-emerald-500/10", iconColor: "text-emerald-400", Icon: CheckCircle },
-  exit:     { ring: "border-fuchsia-500/40", bg: "bg-fuchsia-500/10", iconColor: "text-fuchsia-400", Icon: LogOut },
-  snapshot: { ring: "border-slate-500/40",   bg: "bg-slate-500/10",   iconColor: "text-slate-300",   Icon: Camera },
-};
+import {
+  PHASE_COLOR, PHASE_LABEL, getPhase,
+  type JourneyResponse, type JourneyEvent, type Phase,
+} from "./customer-journey-types";
+import { CustomerJourneyTimeline } from "./customer-journey-timeline";
+import { CustomerJourneyDetail } from "./customer-journey-detail";
 
 function deviceIcon(type: string | null) {
   if (type === "mobile") return Smartphone;
@@ -72,43 +14,92 @@ function deviceIcon(type: string | null) {
   return Monitor;
 }
 
-function eventLabel(e: JourneyEvent): string {
-  const t = e.eventType;
-  if (t === "checkout_step" && typeof (e.metadata as { step?: unknown })?.step === "string") {
-    return `Checkout step: ${(e.metadata as { step: string }).step}`;
-  }
-  if (t === "payment_method_selected" && typeof (e.metadata as { method?: unknown })?.method === "string") {
-    return `Payment method: ${(e.metadata as { method: string }).method}`;
-  }
-  return t.replace(/_/g, " ");
+function fmtDuration(startIso: string, endIso: string): string {
+  const ms = new Date(endIso).getTime() - new Date(startIso).getTime();
+  const s = Math.max(0, Math.floor(ms / 1000));
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  const rem = s % 60;
+  if (m < 60) return `${m}m ${rem}s`;
+  const h = Math.floor(m / 60);
+  return `${h}h ${m % 60}m`;
 }
 
-interface Row {
-  kind: "event" | "snapshot";
-  ts: number;
-  event?: JourneyEvent;
-  snapshot?: JourneySnapshot;
+const PHASE_ORDER: Phase[] = ["browse", "cart", "checkout", "form", "payment", "error", "success", "exit"];
+
+function PhaseSummary({ events }: { events: JourneyEvent[] }) {
+  const counts = useMemo(() => {
+    const m = new Map<Phase, number>();
+    for (const e of events) {
+      const p = getPhase(e.eventType);
+      m.set(p, (m.get(p) ?? 0) + 1);
+    }
+    return m;
+  }, [events]);
+
+  const visible = PHASE_ORDER.filter((p) => (counts.get(p) ?? 0) > 0);
+  if (visible.length === 0) return null;
+
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-1.5">
+      {visible.map((phase) => {
+        const c = PHASE_COLOR[phase];
+        const n = counts.get(phase) ?? 0;
+        return (
+          <div key={phase} className={`rounded border ${c.ring.replace("ring-", "border-")} ${c.bg} px-2 py-1.5`}>
+            <p className={`text-[9.5px] font-bold uppercase tracking-wider ${c.text}`}>{PHASE_LABEL[phase]}</p>
+            <p className="mt-0.5 font-mono tabular-nums text-[16px] font-bold text-white leading-none">{n}</p>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
-function mergeRows(events: JourneyEvent[], snapshots: JourneySnapshot[]): Row[] {
-  const out: Row[] = [
-    ...events.map((e) => ({ kind: "event" as const, ts: new Date(e.occurredAt).getTime(), event: e })),
-    ...snapshots.map((s) => ({ kind: "snapshot" as const, ts: new Date(s.capturedAt).getTime(), snapshot: s })),
-  ];
-  out.sort((a, b) => a.ts - b.ts);
-  return out;
+interface SessionHeaderProps { data: JourneyResponse }
+function SessionHeader({ data }: SessionHeaderProps) {
+  const s = data.session!;
+  const DeviceIcon = deviceIcon(s.deviceType);
+  const source = s.utmSource
+    ? `${s.utmSource}${s.utmMedium ? ` / ${s.utmMedium}` : ""}`
+    : (s.referrer ? (() => { try { return new URL(s.referrer!).hostname.replace(/^www\./, ""); } catch { return s.referrer; } })() : "Direct");
+  const duration = fmtDuration(s.startedAt, s.lastSeenAt);
+
+  return (
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] text-[#8fa0bb] pb-3 border-b border-[#1f2840]">
+      <span className="flex items-center gap-1.5"><Hash className="h-3 w-3" /><span className="font-mono text-[#5b9fd4]">{s.id.slice(0, 8)}…</span></span>
+      <span className="flex items-center gap-1.5"><DeviceIcon className="h-3 w-3" /><span className="text-[#dde4f0]">{s.deviceType ?? "unknown"}</span></span>
+      {s.geoCountry && <span className="flex items-center gap-1.5"><Globe className="h-3 w-3" />{s.geoCountry}</span>}
+      <span>Source: <span className="text-[#dde4f0]">{source}</span></span>
+      {s.utmCampaign && <span>Campaign: <span className="text-[#dde4f0]">{s.utmCampaign}</span></span>}
+      <span className="flex items-center gap-1.5"><Clock className="h-3 w-3" />{new Date(s.startedAt).toLocaleString()}</span>
+      <span>Duration: <span className="text-[#dde4f0]">{duration}</span></span>
+      <span>Events: <span className="text-[#dde4f0] font-mono">{data.events.length}</span></span>
+    </div>
+  );
 }
 
-export function CustomerJourneyCard({ orderId, token }: { orderId: number; token: string | null }) {
+interface Props { orderId: number; token: string | null }
+
+export function CustomerJourneyCard({ orderId, token }: Props) {
   const [data, setData] = useState<JourneyResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [openIdx, setOpenIdx] = useState<Record<number, boolean>>({});
+  const [selectedEventId, setSelectedEventId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!token) return;
     const API = import.meta.env.VITE_API_URL ?? "/api";
     fetch(`${API}/admin/orders/${orderId}/journey`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => r.json()).then(setData).catch(() => {}).finally(() => setLoading(false));
+      .then((r) => r.json())
+      .then((d: JourneyResponse) => {
+        setData(d);
+        // Auto-select the most relevant event: order_created if present, else last event
+        const orderCreated = d.events?.find((e) => e.eventType === "order_created");
+        if (orderCreated) setSelectedEventId(orderCreated.id);
+        else if (d.events?.length) setSelectedEventId(d.events[d.events.length - 1].id);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, [orderId, token]);
 
   if (loading) return <Card title="Customer Journey"><p className="text-[12px] text-[#5a6a84]">Loading…</p></Card>;
@@ -118,82 +109,30 @@ export function CustomerJourneyCard({ orderId, token }: { orderId: number; token
     return <Card title="Customer Journey"><p className="text-[12px] text-[#5a6a84]">{data.message ?? "No session linked."}</p></Card>;
   }
 
-  const s = data.session;
-  const DeviceIcon = deviceIcon(s.deviceType);
-  const rows = mergeRows(data.events, data.snapshots);
-  const source = s.utmSource ? `${s.utmSource}${s.utmMedium ? ` / ${s.utmMedium}` : ""}` : (s.referrer || "Direct");
+  const selectedEvent = data.events.find((e) => e.id === selectedEventId) ?? null;
 
   return (
     <Card title="Customer Journey">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11.5px] text-[#8fa0bb] pb-3 border-b border-[#1f2840] mb-3">
-        <span className="font-mono text-[#5b9fd4]">{s.id.slice(0, 8)}…</span>
-        <span className="flex items-center gap-1"><DeviceIcon className="h-3 w-3" /> {s.deviceType ?? "unknown"}</span>
-        {s.geoCountry && <span className="flex items-center gap-1"><Globe className="h-3 w-3" /> {s.geoCountry}</span>}
-        <span>Source: <span className="text-[#dde4f0]">{source}</span></span>
-        {s.utmCampaign && <span>Campaign: <span className="text-[#dde4f0]">{s.utmCampaign}</span></span>}
-        <span>Started: {new Date(s.startedAt).toLocaleString()}</span>
-        <span>Events: {data.events.length}</span>
-      </div>
+      <div className="space-y-3">
+        <SessionHeader data={data} />
+        <PhaseSummary events={data.events} />
 
-      <div className="space-y-2.5">
-        {rows.map((r, i) => {
-          if (r.kind === "snapshot" && r.snapshot) {
-            const sn = r.snapshot;
-            const style = KIND_STYLE.snapshot;
-            const { Icon } = style;
-            return (
-              <div key={`s${sn.id}`} className="flex items-start gap-3">
-                <div className={`mt-0.5 h-5 w-5 shrink-0 rounded-full border ${style.ring} ${style.bg} flex items-center justify-center`}>
-                  <Icon className={`h-3 w-3 ${style.iconColor}`} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[12.5px] text-[#a8b3c8]">Cart snapshot · {sn.items.length} item(s) · {sn.totals.totalUsd} {sn.totals.currency}</p>
-                  <p className="text-[11px] text-[#5a6a84]">trigger: {sn.triggerEvent} · {new Date(sn.capturedAt).toLocaleString()}</p>
-                  <button onClick={() => setOpenIdx((o) => ({ ...o, [i]: !o[i] }))} className="mt-0.5 text-[10.5px] text-[#5b9fd4] hover:underline">
-                    {openIdx[i] ? "Hide cart" : "Show cart"}
-                  </button>
-                  {openIdx[i] && (
-                    <pre className="mt-1.5 rounded border border-[#2e3340] bg-[#0a0d12] px-2 py-1.5 font-mono text-[10.5px] text-[#a8d4f5] whitespace-pre-wrap break-all max-h-[180px] overflow-y-auto">
-{JSON.stringify({ items: sn.items, totals: sn.totals }, null, 2)}
-                    </pre>
-                  )}
-                </div>
-              </div>
-            );
-          }
-          if (!r.event) return null;
-          const ev = r.event;
-          const kind = KIND_FOR_EVENT[ev.eventType] ?? "view";
-          const style = KIND_STYLE[kind];
-          const { Icon } = style;
-          const hasMeta = ev.metadata && Object.keys(ev.metadata).length > 0;
-          return (
-            <div key={`e${ev.id}`} className="flex items-start gap-3">
-              <div className={`mt-0.5 h-5 w-5 shrink-0 rounded-full border ${style.ring} ${style.bg} flex items-center justify-center`}>
-                <Icon className={`h-3 w-3 ${style.iconColor}`} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-[12.5px] font-medium text-[#dde4f0]">{eventLabel(ev)}</p>
-                <p className="text-[11px] text-[#5a6a84]">
-                  {ev.pagePath ? <span className="font-mono">{ev.pagePath}</span> : null}
-                  {ev.pagePath ? " · " : ""}
-                  {new Date(ev.occurredAt).toLocaleString()}
-                </p>
-                {hasMeta && (
-                  <button onClick={() => setOpenIdx((o) => ({ ...o, [i]: !o[i] }))} className="mt-0.5 text-[10.5px] text-[#5b9fd4] hover:underline">
-                    {openIdx[i] ? "Hide details" : "Show details"}
-                  </button>
-                )}
-                {hasMeta && openIdx[i] && (
-                  <pre className="mt-1.5 rounded border border-[#2e3340] bg-[#0a0d12] px-2 py-1.5 font-mono text-[10.5px] text-[#a8d4f5] whitespace-pre-wrap break-all max-h-[180px] overflow-y-auto">
-{JSON.stringify(ev.metadata, null, 2)}
-                  </pre>
-                )}
-              </div>
-            </div>
-          );
-        })}
-        {rows.length === 0 && <p className="text-[12px] text-[#5a6a84]">No events recorded for this session.</p>}
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+          <div className="lg:max-h-[640px] lg:overflow-y-auto lg:pr-1">
+            <CustomerJourneyTimeline
+              events={data.events}
+              snapshots={data.snapshots}
+              selectedEventId={selectedEventId}
+              onSelectEvent={setSelectedEventId}
+            />
+          </div>
+          <div className="lg:sticky lg:top-2 lg:self-start">
+            <CustomerJourneyDetail
+              selectedEvent={selectedEvent}
+              snapshots={data.snapshots}
+            />
+          </div>
+        </div>
       </div>
     </Card>
   );
