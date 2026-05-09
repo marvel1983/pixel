@@ -207,7 +207,7 @@ export function QuickViewModal({ product, open, onClose }: QuickViewModalProps) 
             >
               {inStock ? t("product.inStock") : canOrder ? "Pre-order" : t("product.outOfStock")}
             </span>
-            <RegionBadge regions={product.regionRestrictions ?? []} compact />
+            <RegionBadge product={product} compact />
             <StockUrgencyBadge stockCount={variant.stockCount} compact />
           </div>
 

@@ -216,7 +216,7 @@ export function ProductCard({ product, flashSalePrice: flashSalePriceProp }: Pro
             <span className={`text-xs ${inStock ? "text-green-600" : canOrder ? "text-amber-600" : "text-destructive"}`}>
               {inStock ? t("product.inStock") : canOrder ? "Pre-order" : t("product.outOfStock")}
             </span>
-            <RegionBadge regions={product.regionRestrictions ?? []} compact />
+            <RegionBadge product={product} compact />
             <StockUrgencyBadge stockCount={variant.stockCount} compact />
             <SoldBadge productId={product.id} compact />
           </div>

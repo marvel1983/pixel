@@ -221,7 +221,7 @@ export function ProductInfo({ product }: ProductInfoProps) {
       )}
 
       <div className="flex items-center gap-2 flex-wrap">
-        <RegionBadge regions={product.regionRestrictions ?? []} />
+        <RegionBadge product={product} />
         <PlatformBadge platformType={product.platformType} />
       </div>
       <ActivationGuideLink platformType={product.platformType} />

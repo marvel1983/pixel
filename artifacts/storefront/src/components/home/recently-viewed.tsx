@@ -16,6 +16,8 @@ interface ApiProduct {
   avgRating: string | null; reviewCount: number; isFeatured: boolean;
   categorySlug: string | null; regionRestrictions?: string[];
   platformType?: string | null; variants: ApiVariant[];
+  productAttributes?: Array<{ attrName?: string; attrSlug: string; optValue: string | null }>;
+  customInfoTiles?: Array<{ icon: string; title: string; subtitle: string }>;
 }
 
 function toMock(p: ApiProduct): MockProduct {
@@ -24,6 +26,12 @@ function toMock(p: ApiProduct): MockProduct {
     categorySlug: p.categorySlug ?? "", avgRating: Number(p.avgRating ?? 0),
     reviewCount: p.reviewCount, isFeatured: p.isFeatured, isNew: false,
     regionRestrictions: p.regionRestrictions ?? [], platformType: p.platformType ?? null,
+    productAttributes: (p.productAttributes ?? []).map((a) => ({
+      attrName: a.attrName ?? a.attrSlug,
+      attrSlug: a.attrSlug,
+      optValue: a.optValue,
+    })),
+    customInfoTiles: p.customInfoTiles ?? [],
     variants: p.variants.map((v) => ({
       id: v.id, name: v.name, sku: v.sku, platform: v.platform ?? "",
       priceUsd: v.priceUsd, compareAtPriceUsd: v.compareAtPriceUsd, stockCount: v.stockCount,

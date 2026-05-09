@@ -191,6 +191,9 @@ router.get("/products", async (req: Request, res: Response) => {
       reviewCount: products.reviewCount,
       isFeatured: products.isFeatured,
       categorySlug: categories.slug,
+      regionRestrictions: products.regionRestrictions,
+      platformType: products.platformType,
+      customInfoTiles: products.customInfoTiles,
     })
     .from(products)
     .leftJoin(categories, eq(products.categoryId, categories.id))
@@ -208,9 +211,11 @@ router.get("/products", async (req: Request, res: Response) => {
     backorderEta: string | null;
   }[] = [];
 
+  let regionAttrs: { productId: number; attrSlug: string; optValue: string | null }[] = [];
+
   if (productIds.length > 0) {
-    variants = await db
-      .select({
+    [variants, regionAttrs] = await Promise.all([
+      db.select({
         id: productVariants.id,
         productId: productVariants.productId,
         name: productVariants.name,
@@ -224,7 +229,18 @@ router.get("/products", async (req: Request, res: Response) => {
         backorderEta: productVariants.backorderEta,
       })
       .from(productVariants)
-      .where(and(eq(productVariants.isActive, true), inArray(productVariants.productId, productIds)));
+      .where(and(eq(productVariants.isActive, true), inArray(productVariants.productId, productIds))),
+
+      db.select({
+        productId: productAttributes.productId,
+        attrSlug: attributeDefinitions.slug,
+        optValue: attributeOptions.value,
+      })
+      .from(productAttributes)
+      .innerJoin(attributeDefinitions, eq(productAttributes.attributeId, attributeDefinitions.id))
+      .leftJoin(attributeOptions, eq(productAttributes.optionId, attributeOptions.id))
+      .where(and(inArray(productAttributes.productId, productIds), eq(attributeDefinitions.slug, "region"))),
+    ]);
   }
 
   const items = results.map((p) => ({
@@ -235,6 +251,9 @@ router.get("/products", async (req: Request, res: Response) => {
         ...v,
         priceUsd: priceOverrideUsd ?? v.priceUsd,
       })),
+    productAttributes: regionAttrs
+      .filter((a) => a.productId === p.id)
+      .map(({ productId: _pid, ...a }) => a),
   }));
 
 

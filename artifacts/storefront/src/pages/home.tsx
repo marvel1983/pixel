@@ -37,6 +37,8 @@ interface ApiProduct {
   avgRating: string | null; reviewCount: number; isFeatured: boolean;
   categorySlug: string | null; regionRestrictions?: string[];
   platformType?: string | null; variants: ApiVariant[];
+  productAttributes?: Array<{ attrName?: string; attrSlug: string; optValue: string | null }>;
+  customInfoTiles?: Array<{ icon: string; title: string; subtitle: string }>;
 }
 
 function toMockProduct(p: ApiProduct): MockProduct {
@@ -52,6 +54,12 @@ function toMockProduct(p: ApiProduct): MockProduct {
     isNew: false,
     regionRestrictions: p.regionRestrictions ?? [],
     platformType: p.platformType ?? null,
+    productAttributes: (p.productAttributes ?? []).map((a) => ({
+      attrName: a.attrName ?? a.attrSlug,
+      attrSlug: a.attrSlug,
+      optValue: a.optValue,
+    })),
+    customInfoTiles: p.customInfoTiles ?? [],
     variants: p.variants.map((v) => ({
       id: v.id,
       name: v.name,

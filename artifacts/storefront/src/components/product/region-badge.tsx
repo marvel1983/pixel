@@ -18,13 +18,27 @@ function getRegionInfo(regions: string[]) {
   return { label: regions.join(", "), emoji: "\u{26A0}\u{FE0F}", color: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 border-amber-200 dark:border-amber-800", description: `This key can only be activated in: ${regions.join(", ")}.` };
 }
 
+interface ProductRegionShape {
+  productAttributes?: Array<{ attrSlug: string; optValue: string | null }>;
+  customInfoTiles?: Array<{ icon: string; title: string }>;
+  regionRestrictions?: string[];
+}
+
+export function deriveRegions(p: ProductRegionShape): string[] {
+  const attr = p.productAttributes?.find((a) => a.attrSlug === "region");
+  const tile = p.customInfoTiles?.find((t) => t.icon === "Globe");
+  const raw = attr?.optValue ?? tile?.title;
+  if (raw) return [raw.toUpperCase()];
+  return p.regionRestrictions ?? [];
+}
+
 interface RegionBadgeProps {
-  regions: string[];
+  product: ProductRegionShape;
   compact?: boolean;
 }
 
-export function RegionBadge({ regions, compact }: RegionBadgeProps) {
-  const info = getRegionInfo(regions);
+export function RegionBadge({ product, compact }: RegionBadgeProps) {
+  const info = getRegionInfo(deriveRegions(product));
   if (compact) {
     return (
       <TooltipProvider>

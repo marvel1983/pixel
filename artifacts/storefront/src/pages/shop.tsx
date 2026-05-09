@@ -31,8 +31,14 @@ export default function ShopPage() {
       reviewCount: p.reviewCount,
       isFeatured: p.isFeatured,
       isNew: false,
-      regionRestrictions: [],
-      platformType: null,
+      regionRestrictions: (p as unknown as { regionRestrictions?: string[] }).regionRestrictions ?? [],
+      platformType: (p as unknown as { platformType?: string | null }).platformType ?? null,
+      productAttributes: (p as unknown as { productAttributes?: Array<{ attrName?: string; attrSlug: string; optValue: string | null }> }).productAttributes?.map((a) => ({
+        attrName: a.attrName ?? a.attrSlug,
+        attrSlug: a.attrSlug,
+        optValue: a.optValue,
+      })) ?? [],
+      customInfoTiles: (p as unknown as { customInfoTiles?: Array<{ icon: string; title: string; subtitle: string }> }).customInfoTiles ?? [],
       variants: p.variants.map((v) => ({
         id: v.id,
         name: v.name,
