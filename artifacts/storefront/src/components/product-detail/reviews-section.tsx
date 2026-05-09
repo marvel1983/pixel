@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
-import { Star, ThumbsUp, MessageSquarePlus } from "lucide-react";
+import { Star, ThumbsUp, MessageSquarePlus, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -33,11 +33,14 @@ const SUB_RATINGS = [
 
 interface ReviewsSectionProps { productId: number; avgRating: number; reviewCount: number; }
 
+const PREVIEW_COUNT = 3;
+
 export function ReviewsSection({ productId, avgRating, reviewCount }: ReviewsSectionProps) {
   const [list, setList] = useState<ApiReview[]>([]);
   const [apiAvg, setApiAvg] = useState<number | null>(null);
   const [apiCount, setApiCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState(false);
 
   const load = () => {
     setLoading(true);
@@ -77,7 +80,20 @@ export function ReviewsSection({ productId, avgRating, reviewCount }: ReviewsSec
         <div className="grid gap-6 md:grid-cols-[220px_1fr]">
           <RatingSummary avgRating={displayAvg} reviewCount={displayCount} />
           <div className="space-y-3">
-            {list.map((r) => <ReviewCard key={r.id} review={r} />)}
+            {(expanded ? list : list.slice(0, PREVIEW_COUNT)).map((r) => <ReviewCard key={r.id} review={r} />)}
+            {list.length > PREVIEW_COUNT && (
+              <button
+                type="button"
+                onClick={() => setExpanded((e) => !e)}
+                className="group relative w-full mt-2 flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl border-2 border-primary/25 bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 hover:from-primary/10 hover:via-primary/15 hover:to-primary/10 hover:border-primary/50 text-primary font-semibold text-sm shadow-sm transition-all"
+              >
+                {expanded ? (
+                  <>Show less <ChevronUp className="h-4 w-4 transition-transform group-hover:-translate-y-0.5" /></>
+                ) : (
+                  <>Show all {list.length} reviews <ChevronDown className="h-4 w-4 transition-transform group-hover:translate-y-0.5" /></>
+                )}
+              </button>
+            )}
           </div>
         </div>
       ) : (
