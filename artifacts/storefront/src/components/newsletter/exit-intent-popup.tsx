@@ -80,9 +80,9 @@ export function ExitIntentPopup() {
         className="relative bg-card rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 fade-in duration-200"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="relative bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 px-6 pt-6 pb-7 text-white overflow-hidden">
-          <div className="absolute -top-12 -right-12 h-44 w-44 rounded-full bg-cyan-400/20 blur-3xl pointer-events-none" />
-          <div className="absolute -bottom-12 -left-12 h-36 w-36 rounded-full bg-blue-300/20 blur-2xl pointer-events-none" />
+        <div className="relative bg-gradient-to-br from-primary via-[hsl(208,74%,40%)] to-[hsl(208,74%,28%)] px-6 pt-6 pb-7 text-white overflow-hidden">
+          <div className="absolute -top-12 -right-12 h-44 w-44 rounded-full bg-[hsl(36,100%,55%)]/25 blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-12 -left-12 h-36 w-36 rounded-full bg-white/15 blur-2xl pointer-events-none" />
 
           <button
             type="button"
@@ -95,14 +95,14 @@ export function ExitIntentPopup() {
 
           <div className="relative flex flex-col items-center text-center">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-sm text-[11px] font-semibold tracking-wider uppercase">
-              <Sparkles className="h-3 w-3" />
+              <Sparkles className="h-3 w-3 text-[hsl(36,100%,65%)]" />
               Limited time offer
             </div>
             <div className="flex items-baseline gap-0.5 mt-3">
               <span className="text-6xl font-black leading-none tabular-nums">{settings.exitIntentDiscount}</span>
-              <span className="text-3xl font-black">%</span>
+              <span className="text-4xl font-black text-[hsl(36,100%,60%)]!">%</span>
             </div>
-            <span className="text-[10px] font-bold uppercase tracking-[0.25em] mt-1 text-blue-100">
+            <span className="text-[10px] font-bold uppercase tracking-[0.25em] mt-1 text-white/80">
               Off Your First Order
             </span>
           </div>
@@ -152,7 +152,7 @@ export function ExitIntentPopup() {
                 </div>
                 <Button
                   type="submit"
-                  className="w-full h-12 font-bold gap-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-md text-white border-0"
+                  className="w-full h-12 font-bold gap-2 bg-gradient-to-r from-primary to-[hsl(208,74%,32%)] hover:from-[hsl(208,74%,40%)] hover:to-[hsl(208,74%,26%)] shadow-md text-white border-0"
                   disabled={loading}
                 >
                   {loading ? (
