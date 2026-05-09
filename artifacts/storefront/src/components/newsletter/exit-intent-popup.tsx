@@ -81,7 +81,7 @@ export function ExitIntentPopup() {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="relative bg-gradient-to-br from-primary via-[hsl(208,74%,40%)] to-[hsl(208,74%,28%)] px-6 pt-6 pb-7 text-white overflow-hidden">
-          <div className="absolute -top-12 -right-12 h-44 w-44 rounded-full bg-[hsl(36,100%,55%)]/25 blur-3xl pointer-events-none" />
+          <div className="absolute -top-12 -right-12 h-44 w-44 rounded-full bg-accent/25 blur-3xl pointer-events-none" />
           <div className="absolute -bottom-12 -left-12 h-36 w-36 rounded-full bg-white/15 blur-2xl pointer-events-none" />
 
           <button
@@ -95,12 +95,12 @@ export function ExitIntentPopup() {
 
           <div className="relative flex flex-col items-center text-center">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-sm text-[11px] font-semibold tracking-wider uppercase">
-              <Sparkles className="h-3 w-3 text-[hsl(36,100%,65%)]" />
+              <Sparkles className="h-3 w-3 text-accent" />
               Limited time offer
             </div>
             <div className="flex items-baseline gap-0.5 mt-3">
               <span className="text-6xl font-black leading-none tabular-nums">{settings.exitIntentDiscount}</span>
-              <span className="text-4xl font-black text-[hsl(36,100%,60%)]!">%</span>
+              <span className="text-4xl font-black text-accent!">%</span>
             </div>
             <span className="text-[10px] font-bold uppercase tracking-[0.25em] mt-1 text-white/80">
               Off Your First Order
