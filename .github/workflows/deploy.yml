@@ -264,6 +264,74 @@ jobs:
             $PSQL -c "CREATE INDEX IF NOT EXISTS payment_attempts_status_idx ON payment_attempts(status);" || true
             $PSQL -c "CREATE INDEX IF NOT EXISTS payment_attempts_occurred_at_idx ON payment_attempts(occurred_at);" || true
 
+            echo "→ Creating tracking_sessions table (customer journey)..."
+            $PSQL -c "
+              CREATE TABLE IF NOT EXISTS tracking_sessions (
+                id VARCHAR(36) PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                ip_address VARCHAR(45),
+                user_agent TEXT,
+                geo_country VARCHAR(2),
+                device_type VARCHAR(20),
+                referrer TEXT,
+                utm_source VARCHAR(100),
+                utm_medium VARCHAR(100),
+                utm_campaign VARCHAR(100),
+                started_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                last_seen_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                ended_at TIMESTAMP
+              );" || true
+            $PSQL -c "CREATE INDEX IF NOT EXISTS tracking_sessions_user_idx ON tracking_sessions(user_id);" || true
+            $PSQL -c "CREATE INDEX IF NOT EXISTS tracking_sessions_last_seen_idx ON tracking_sessions(last_seen_at);" || true
+
+            echo "→ Creating tracking_events table (customer journey)..."
+            $PSQL -c "
+              CREATE TABLE IF NOT EXISTS tracking_events (
+                id SERIAL PRIMARY KEY,
+                session_id VARCHAR(36) NOT NULL,
+                user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                event_type VARCHAR(50) NOT NULL,
+                page_path TEXT,
+                metadata JSONB,
+                occurred_at TIMESTAMP NOT NULL,
+                received_at TIMESTAMP NOT NULL DEFAULT NOW()
+              );" || true
+            $PSQL -c "CREATE INDEX IF NOT EXISTS tracking_events_session_time_idx ON tracking_events(session_id, occurred_at);" || true
+            $PSQL -c "CREATE INDEX IF NOT EXISTS tracking_events_type_time_idx ON tracking_events(event_type, occurred_at);" || true
+            $PSQL -c "CREATE INDEX IF NOT EXISTS tracking_events_user_time_idx ON tracking_events(user_id, occurred_at);" || true
+
+            echo "→ Creating cart_state_snapshots table (customer journey)..."
+            $PSQL -c "
+              CREATE TABLE IF NOT EXISTS cart_state_snapshots (
+                id SERIAL PRIMARY KEY,
+                session_id VARCHAR(36) NOT NULL,
+                user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                trigger_event VARCHAR(50) NOT NULL,
+                items JSONB NOT NULL,
+                totals JSONB NOT NULL,
+                captured_at TIMESTAMP NOT NULL DEFAULT NOW()
+              );" || true
+            $PSQL -c "CREATE INDEX IF NOT EXISTS cart_snapshots_session_time_idx ON cart_state_snapshots(session_id, captured_at);" || true
+
+            echo "→ Adding session_id to orders (customer journey)..."
+            $PSQL -c "ALTER TABLE orders ADD COLUMN IF NOT EXISTS session_id VARCHAR(36);" || true
+            $PSQL -c "CREATE INDEX IF NOT EXISTS orders_session_id_idx ON orders(session_id);" || true
+
+            echo "→ Adding billing + referral columns to users (idempotent)..."
+            $PSQL -c "ALTER TABLE users ADD COLUMN IF NOT EXISTS date_of_birth DATE;" || true
+            $PSQL -c "ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by_user_id INTEGER;" || true
+            $PSQL -c "ALTER TABLE users ADD COLUMN IF NOT EXISTS billing_country VARCHAR(3);" || true
+            $PSQL -c "ALTER TABLE users ADD COLUMN IF NOT EXISTS billing_city VARCHAR(120);" || true
+            $PSQL -c "ALTER TABLE users ADD COLUMN IF NOT EXISTS billing_address VARCHAR(500);" || true
+            $PSQL -c "ALTER TABLE users ADD COLUMN IF NOT EXISTS billing_zip VARCHAR(32);" || true
+            $PSQL -c "ALTER TABLE users ADD COLUMN IF NOT EXISTS billing_vat_number VARCHAR(50);" || true
+            $PSQL -c "ALTER TABLE users ADD COLUMN IF NOT EXISTS billing_phone VARCHAR(40);" || true
+
+            echo "→ Adding loyalty_settings columns (idempotent)..."
+            $PSQL -c "ALTER TABLE loyalty_settings ADD COLUMN IF NOT EXISTS expiry_warning_days INTEGER NOT NULL DEFAULT 30;" || true
+            $PSQL -c "ALTER TABLE loyalty_settings ADD COLUMN IF NOT EXISTS birthday_bonus INTEGER NOT NULL DEFAULT 200;" || true
+            $PSQL -c "ALTER TABLE loyalty_settings ADD COLUMN IF NOT EXISTS referral_bonus INTEGER NOT NULL DEFAULT 500;" || true
+
             echo "→ Reloading PM2..."
             set -a; source /var/www/pixel-storefront/.env; set +a
             pm2 reload pixel-api --update-env
