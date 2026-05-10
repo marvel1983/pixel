@@ -25,11 +25,15 @@ const TIER_ICONS: Record<string, string> = {
   BRONZE: "🥉", SILVER: "🥈", GOLD: "🥇", PLATINUM: "💎",
 };
 
-const DISTRIBUTION = [5,4,3,2,1].map((s) => ({ stars: s, pct: [68,20,7,3,2][[5,4,3,2,1].indexOf(s)] }));
-const SUB_RATINGS = [
-  { label: "Value for Money", score: 4.7 }, { label: "Delivery Speed", score: 4.9 },
-  { label: "Activation Ease", score: 4.6 }, { label: "Product Quality", score: 4.8 },
-];
+function buildDistribution(reviews: ApiReview[]) {
+  const total = reviews.length;
+  const counts = new Map<number, number>();
+  for (const r of reviews) counts.set(r.rating, (counts.get(r.rating) ?? 0) + 1);
+  return [5, 4, 3, 2, 1].map((stars) => {
+    const cnt = counts.get(stars) ?? 0;
+    return { stars, pct: total > 0 ? Math.round((cnt / total) * 100) : 0 };
+  });
+}
 
 interface ReviewsSectionProps { productId: number; avgRating: number; reviewCount: number; }
 
@@ -78,7 +82,7 @@ export function ReviewsSection({ productId, avgRating, reviewCount }: ReviewsSec
         <p className="text-sm text-muted-foreground">Loading reviews…</p>
       ) : hasReviews ? (
         <div className="grid gap-6 md:grid-cols-[220px_1fr]">
-          <RatingSummary avgRating={displayAvg} reviewCount={displayCount} />
+          <RatingSummary avgRating={displayAvg} reviewCount={displayCount} reviews={list} />
           <div className="space-y-3">
             {(expanded ? list : list.slice(0, PREVIEW_COUNT)).map((r) => <ReviewCard key={r.id} review={r} />)}
             {list.length > PREVIEW_COUNT && (
@@ -130,7 +134,8 @@ function Stars({ rating, size = "sm" }: { rating: number; size?: "sm" | "md" }) 
   );
 }
 
-function RatingSummary({ avgRating, reviewCount }: { avgRating: number; reviewCount: number }) {
+function RatingSummary({ avgRating, reviewCount, reviews }: { avgRating: number; reviewCount: number; reviews: ApiReview[] }) {
+  const distribution = buildDistribution(reviews);
   return (
     <div className="rounded-xl border border-border bg-card p-5 space-y-4 text-center">
       <div>
@@ -139,7 +144,7 @@ function RatingSummary({ avgRating, reviewCount }: { avgRating: number; reviewCo
         <p className="text-xs text-muted-foreground">{reviewCount} verified reviews</p>
       </div>
       <div className="space-y-1.5 text-left">
-        {DISTRIBUTION.map((d) => (
+        {distribution.map((d) => (
           <div key={d.stars} className="flex items-center gap-2 text-xs">
             <span className="w-2 text-right text-muted-foreground">{d.stars}</span>
             <Star className="h-3 w-3 fill-yellow-400 text-yellow-400 shrink-0" />
@@ -147,19 +152,6 @@ function RatingSummary({ avgRating, reviewCount }: { avgRating: number; reviewCo
               <div className="h-full bg-yellow-400 rounded-full transition-all" style={{ width: `${d.pct}%` }} />
             </div>
             <span className="w-7 text-right text-muted-foreground">{d.pct}%</span>
-          </div>
-        ))}
-      </div>
-      <div className="pt-2 border-t border-border space-y-2 text-left">
-        {SUB_RATINGS.map((sr) => (
-          <div key={sr.label} className="flex items-center justify-between text-xs gap-2">
-            <span className="text-muted-foreground truncate">{sr.label}</span>
-            <div className="flex items-center gap-1.5 shrink-0">
-              <div className="w-14 h-1.5 bg-muted rounded-full overflow-hidden">
-                <div className="h-full bg-primary rounded-full" style={{ width: `${(sr.score / 5) * 100}%` }} />
-              </div>
-              <span className="font-semibold w-6 text-right">{sr.score}</span>
-            </div>
           </div>
         ))}
       </div>
