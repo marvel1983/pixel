@@ -12,7 +12,7 @@ const router = Router();
 
 router.get("/admin/products", requireAuth, requireAdmin, requirePermission("manageProducts"), async (req, res) => {
   const page = Math.max(1, Number(req.query.page) || 1);
-  const limit = 25;
+  const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 25));
   const offset = (page - 1) * limit;
   const q = (req.query.q as string) ?? "";
   const cat = (req.query.cat as string) ?? "";

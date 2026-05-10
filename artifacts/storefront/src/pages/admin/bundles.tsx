@@ -38,6 +38,7 @@ export default function AdminBundlesPage() {
   const [products, setProducts] = useState<ProductOption[]>([]);
   const [productSearch, setProductSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [productCache, setProductCache] = useState<Map<number, ProductOption>>(new Map());
   const [analytics, setAnalytics] = useState<BundleAnalytics | null>(null);
 
   const h = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
@@ -52,23 +53,40 @@ export default function AdminBundlesPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  async function loadProducts() {
-    const r = await fetch(`${API}/admin/products?limit=200`, { headers: h });
+  const loadProducts = useCallback(async (q: string) => {
+    const r = await fetch(`${API}/admin/products?q=${encodeURIComponent(q)}&limit=50`, { headers: h });
     const data = await r.json();
-    setProducts((data.products || []).map((p: ProductOption) => ({ id: p.id, name: p.name, imageUrl: p.imageUrl })));
-  }
+    const list: ProductOption[] = (data.products || []).map((p: ProductOption) => ({ id: p.id, name: p.name, imageUrl: p.imageUrl }));
+    setProducts(list);
+    setProductCache((prev) => {
+      const next = new Map(prev);
+      for (const p of list) next.set(p.id, p);
+      return next;
+    });
+  }, [token]);
+
+  useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(() => loadProducts(productSearch), 250);
+    return () => clearTimeout(t);
+  }, [open, productSearch, loadProducts]);
 
   function openNew() {
     setEditing({ id: 0, name: "", slug: "", bundlePriceUsd: "0", isActive: true, isFeatured: false, createdAt: "", shortDescription: null, description: null, imageUrl: null, metaTitle: null, metaDescription: null, sortOrder: 0, items: [] });
     setSelectedIds([]);
-    loadProducts();
+    setProductSearch("");
     setOpen(true);
   }
 
   function openEdit(b: AdminBundle) {
     setEditing(b);
     setSelectedIds(b.items.map((i) => i.productId));
-    loadProducts();
+    setProductCache((prev) => {
+      const next = new Map(prev);
+      for (const it of b.items) next.set(it.productId, { id: it.productId, name: it.productName, imageUrl: it.productImage });
+      return next;
+    });
+    setProductSearch("");
     setOpen(true);
   }
 
@@ -119,10 +137,6 @@ export default function AdminBundlesPage() {
       return arr;
     });
   }
-
-  const filteredProducts = products.filter((p) =>
-    !productSearch || p.name.toLowerCase().includes(productSearch.toLowerCase()),
-  );
 
   return (
     <div className="space-y-4">
@@ -225,18 +239,19 @@ export default function AdminBundlesPage() {
         open={open} onOpenChange={setOpen} editing={editing} setEditing={setEditing}
         saving={saving} onSave={save} selectedIds={selectedIds}
         toggleProduct={toggleProduct} moveProduct={moveProduct}
-        products={filteredProducts} productSearch={productSearch}
-        setProductSearch={setProductSearch}
+        products={products} productCache={productCache}
+        productSearch={productSearch} setProductSearch={setProductSearch}
       />
     </div>
   );
 }
 
-function BundleDialog({ open, onOpenChange, editing, setEditing, saving, onSave, selectedIds, toggleProduct, moveProduct, products, productSearch, setProductSearch }: {
+function BundleDialog({ open, onOpenChange, editing, setEditing, saving, onSave, selectedIds, toggleProduct, moveProduct, products, productCache, productSearch, setProductSearch }: {
   open: boolean; onOpenChange: (v: boolean) => void; editing: AdminBundle | null;
   setEditing: (b: AdminBundle | null) => void; saving: boolean; onSave: () => void;
   selectedIds: number[]; toggleProduct: (id: number) => void;
   moveProduct: (idx: number, dir: -1 | 1) => void; products: ProductOption[];
+  productCache: Map<number, ProductOption>;
   productSearch: string; setProductSearch: (v: string) => void;
 }) {
   if (!editing) return null;
@@ -279,7 +294,7 @@ function BundleDialog({ open, onOpenChange, editing, setEditing, saving, onSave,
             {selectedIds.length > 0 && (
               <div className="space-y-1 mb-3 p-2 bg-[#0f1117] rounded border border-[#2e3340]">
                 {selectedIds.map((id, i) => {
-                  const p = products.find((x) => x.id === id);
+                  const p = productCache.get(id);
                   return (
                     <div key={id} className="flex items-center justify-between text-sm py-1">
                       <span className="text-[#dde4f0]">{i + 1}. {p?.name || `Product #${id}`}</span>
