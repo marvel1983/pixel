@@ -336,6 +336,17 @@ jobs:
             $PSQL -c "UPDATE products p SET review_count = COALESCE(s.cnt, 0), avg_rating = COALESCE(s.avg, 0) FROM (SELECT product_id, COUNT(*)::int AS cnt, ROUND(AVG(rating)::numeric, 2) AS avg FROM reviews WHERE status = 'APPROVED' GROUP BY product_id) s WHERE p.id = s.product_id;" || true
             $PSQL -c "UPDATE products SET review_count = 0, avg_rating = 0 WHERE id NOT IN (SELECT product_id FROM reviews WHERE status = 'APPROVED');" || true
 
+            echo "→ Adding bundle pricing columns + bundle_discount_type enum (idempotent)..."
+            $PSQL -c "DO \$\$ BEGIN CREATE TYPE bundle_discount_type AS ENUM ('PERCENTAGE', 'FIXED', 'BUY_X_GET_Y_FREE'); EXCEPTION WHEN duplicate_object THEN null; END \$\$;" || true
+            $PSQL -c "ALTER TABLE bundles ADD COLUMN IF NOT EXISTS primary_product_id INTEGER REFERENCES products(id) ON DELETE SET NULL;" || true
+            $PSQL -c "ALTER TABLE bundles ADD COLUMN IF NOT EXISTS discount_type bundle_discount_type NOT NULL DEFAULT 'FIXED';" || true
+            $PSQL -c "ALTER TABLE bundles ADD COLUMN IF NOT EXISTS discount_value NUMERIC(10,2) NOT NULL DEFAULT 0;" || true
+            $PSQL -c "ALTER TABLE bundles ADD COLUMN IF NOT EXISTS min_primary_qty INTEGER NOT NULL DEFAULT 1;" || true
+
+            echo "→ Backfilling existing bundles (FIXED type with discount = sumOfItems - bundlePriceUsd)..."
+            $PSQL -c "UPDATE bundles b SET discount_value = GREATEST(0, COALESCE(s.sum_prices, 0) - b.bundle_price_usd) FROM (SELECT bi.bundle_id, SUM(COALESCE(p.avg_rating, 0) * 0 + (SELECT MIN(pv.price_usd::numeric) FROM product_variants pv WHERE pv.product_id = bi.product_id AND pv.is_active = true)) AS sum_prices FROM bundle_items bi JOIN products p ON p.id = bi.product_id GROUP BY bi.bundle_id) s WHERE b.id = s.bundle_id AND b.discount_value = 0;" || true
+            $PSQL -c "UPDATE bundles b SET primary_product_id = (SELECT product_id FROM bundle_items WHERE bundle_id = b.id ORDER BY sort_order ASC LIMIT 1) WHERE primary_product_id IS NULL;" || true
+
             echo "→ Reloading PM2..."
             set -a; source /var/www/pixel-storefront/.env; set +a
             pm2 reload pixel-api --update-env

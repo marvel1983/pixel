@@ -1,30 +1,35 @@
 import { useState, useEffect, useCallback } from "react";
-import { Package, Plus, Search, Copy, Trash2, Pencil, Star, Tag, BarChart3 } from "lucide-react";
+import { Package, Plus, Search, Copy, Trash2, Pencil, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useAuthStore } from "@/stores/auth-store";
 import { Skeleton } from "@/components/ui/skeleton";
+import { BundleDialog, type BundleFormState, type ProductOption, type PricingPreview, type DiscountType } from "./bundle-dialog";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
-const inputCls = "w-full rounded border border-[#2e3340] bg-[#0f1117] px-3 py-2 text-[13px] text-[#dde4f0] placeholder:text-[#3d5070] focus:border-sky-500/60 focus:outline-none focus:ring-1 focus:ring-sky-500/30";
-const labelCls = "block text-[11.5px] font-medium text-[#8fa0bb] mb-1";
-
 interface BundleProduct { productId: number; productName: string; productImage: string | null; sortOrder: number; }
-interface AdminBundle {
-  id: number; name: string; slug: string; bundlePriceUsd: string;
-  isActive: boolean; isFeatured: boolean; createdAt: string;
-  shortDescription: string | null; description: string | null;
-  imageUrl: string | null; metaTitle: string | null; metaDescription: string | null;
-  sortOrder: number; items: BundleProduct[];
-  productIds?: number[];
+interface AdminBundle extends Omit<BundleFormState, "id"> {
+  id: number; bundlePriceUsd: string; createdAt: string; items: BundleProduct[];
 }
-
-interface ProductOption { id: number; name: string; imageUrl: string | null; }
 interface BundleAnalytics { bundleId: number; name: string; itemCount: number; purchases: number; revenue: string; }
+
+const emptyBundle = (): BundleFormState => ({
+  id: 0, name: "", slug: "", description: null, shortDescription: null, imageUrl: null,
+  isActive: true, isFeatured: false, metaTitle: null, metaDescription: null, sortOrder: 0,
+  primaryProductId: null, discountType: "PERCENTAGE", discountValue: "0", minPrimaryQty: 1,
+});
+
+const toFormState = (b: AdminBundle): BundleFormState => ({
+  id: b.id, name: b.name, slug: b.slug,
+  description: b.description, shortDescription: b.shortDescription, imageUrl: b.imageUrl,
+  isActive: b.isActive, isFeatured: b.isFeatured,
+  metaTitle: b.metaTitle, metaDescription: b.metaDescription, sortOrder: b.sortOrder,
+  primaryProductId: b.primaryProductId, discountType: b.discountType,
+  discountValue: b.discountValue, minPrimaryQty: b.minPrimaryQty,
+});
 
 export default function AdminBundlesPage() {
   const token = useAuthStore((s) => s.token);
@@ -32,13 +37,14 @@ export default function AdminBundlesPage() {
   const [bundles, setBundles] = useState<AdminBundle[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [editing, setEditing] = useState<AdminBundle | null>(null);
+  const [editing, setEditing] = useState<BundleFormState>(emptyBundle());
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [products, setProducts] = useState<ProductOption[]>([]);
   const [productSearch, setProductSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [productCache, setProductCache] = useState<Map<number, ProductOption>>(new Map());
+  const [pricing, setPricing] = useState<PricingPreview | null>(null);
   const [analytics, setAnalytics] = useState<BundleAnalytics | null>(null);
 
   const h = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
@@ -71,15 +77,36 @@ export default function AdminBundlesPage() {
     return () => clearTimeout(t);
   }, [open, productSearch, loadProducts]);
 
+  // Live pricing preview — debounced refetch when rule or items change
+  useEffect(() => {
+    if (!open || selectedIds.length < 2 || !editing.primaryProductId) { setPricing(null); return; }
+    const t = setTimeout(async () => {
+      const r = await fetch(`${API}/admin/bundles/preview`, {
+        method: "POST", headers: h,
+        body: JSON.stringify({
+          productIds: selectedIds, primaryProductId: editing.primaryProductId,
+          discountType: editing.discountType, discountValue: editing.discountValue,
+          minPrimaryQty: editing.minPrimaryQty,
+        }),
+      });
+      if (r.ok) {
+        const data = await r.json();
+        setPricing({ sumOriginalUsd: data.sumOriginalUsd, finalUsd: data.finalUsd, savingsUsd: data.savingsUsd });
+      }
+    }, 200);
+    return () => clearTimeout(t);
+  }, [open, selectedIds, editing.primaryProductId, editing.discountType, editing.discountValue, editing.minPrimaryQty, token]);
+
   function openNew() {
-    setEditing({ id: 0, name: "", slug: "", bundlePriceUsd: "0", isActive: true, isFeatured: false, createdAt: "", shortDescription: null, description: null, imageUrl: null, metaTitle: null, metaDescription: null, sortOrder: 0, items: [] });
+    setEditing(emptyBundle());
     setSelectedIds([]);
     setProductSearch("");
+    setPricing(null);
     setOpen(true);
   }
 
   function openEdit(b: AdminBundle) {
-    setEditing(b);
+    setEditing(toFormState(b));
     setSelectedIds(b.items.map((i) => i.productId));
     setProductCache((prev) => {
       const next = new Map(prev);
@@ -91,15 +118,19 @@ export default function AdminBundlesPage() {
   }
 
   async function save() {
-    if (!editing || selectedIds.length < 2) { toast({ title: "Select at least 2 products", variant: "destructive" }); return; }
+    if (selectedIds.length < 2) { toast({ title: "Select at least 2 products", variant: "destructive" }); return; }
+    if (!editing.primaryProductId || !selectedIds.includes(editing.primaryProductId)) { toast({ title: "Pick an anchor product", variant: "destructive" }); return; }
     setSaving(true);
     const body = {
-      name: editing.name, slug: editing.slug, description: editing.description,
-      shortDescription: editing.shortDescription, imageUrl: editing.imageUrl,
-      bundlePriceUsd: editing.bundlePriceUsd, isActive: editing.isActive,
-      isFeatured: editing.isFeatured, metaTitle: editing.metaTitle,
-      metaDescription: editing.metaDescription, sortOrder: editing.sortOrder,
+      name: editing.name, slug: editing.slug,
+      description: editing.description, shortDescription: editing.shortDescription, imageUrl: editing.imageUrl,
+      isActive: editing.isActive, isFeatured: editing.isFeatured,
+      metaTitle: editing.metaTitle, metaDescription: editing.metaDescription, sortOrder: editing.sortOrder,
       productIds: selectedIds,
+      primaryProductId: editing.primaryProductId,
+      discountType: editing.discountType,
+      discountValue: editing.discountValue || "0",
+      minPrimaryQty: editing.minPrimaryQty,
     };
     const url = editing.id ? `${API}/admin/bundles/${editing.id}` : `${API}/admin/bundles`;
     const r = await fetch(url, { method: editing.id ? "PUT" : "POST", headers: h, body: JSON.stringify(body) });
@@ -136,6 +167,10 @@ export default function AdminBundlesPage() {
       [arr[idx], arr[newIdx]] = [arr[newIdx], arr[idx]];
       return arr;
     });
+  }
+
+  function setPrimary(id: number) {
+    setSelectedIds((prev) => prev.includes(id) ? prev : [...prev, id]);
   }
 
   return (
@@ -238,103 +273,11 @@ export default function AdminBundlesPage() {
       <BundleDialog
         open={open} onOpenChange={setOpen} editing={editing} setEditing={setEditing}
         saving={saving} onSave={save} selectedIds={selectedIds}
-        toggleProduct={toggleProduct} moveProduct={moveProduct}
+        toggleProduct={toggleProduct} moveProduct={moveProduct} setPrimary={setPrimary}
         products={products} productCache={productCache}
         productSearch={productSearch} setProductSearch={setProductSearch}
+        pricing={pricing}
       />
-    </div>
-  );
-}
-
-function BundleDialog({ open, onOpenChange, editing, setEditing, saving, onSave, selectedIds, toggleProduct, moveProduct, products, productCache, productSearch, setProductSearch }: {
-  open: boolean; onOpenChange: (v: boolean) => void; editing: AdminBundle | null;
-  setEditing: (b: AdminBundle | null) => void; saving: boolean; onSave: () => void;
-  selectedIds: number[]; toggleProduct: (id: number) => void;
-  moveProduct: (idx: number, dir: -1 | 1) => void; products: ProductOption[];
-  productCache: Map<number, ProductOption>;
-  productSearch: string; setProductSearch: (v: string) => void;
-}) {
-  if (!editing) return null;
-  const upd = (field: keyof AdminBundle, val: string | number | boolean | null) => setEditing({ ...editing, [field]: val });
-
-  const bundlePrice = parseFloat(editing.bundlePriceUsd) || 0;
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-[#181c24] border-[#2e3340] text-[#dde4f0]">
-        <DialogHeader><DialogTitle className="text-[#dde4f0]">{editing.id ? "Edit" : "Create"} Bundle</DialogTitle></DialogHeader>
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div><label className={labelCls}>Name</label><input className={inputCls} value={editing.name} onChange={(e) => upd("name", e.target.value)} /></div>
-            <div><label className={labelCls}>Slug</label><input className={inputCls} value={editing.slug} onChange={(e) => upd("slug", e.target.value)} /></div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div><label className={labelCls}>Bundle Price (EUR)</label><input className={inputCls} type="number" step="0.01" value={editing.bundlePriceUsd} onChange={(e) => upd("bundlePriceUsd", e.target.value)} /></div>
-            <div><label className={labelCls}>Sort Order</label><input className={inputCls} type="number" value={editing.sortOrder} onChange={(e) => upd("sortOrder", parseInt(e.target.value) || 0)} /></div>
-          </div>
-          {selectedIds.length >= 2 && bundlePrice > 0 && (
-            <div className="p-3 bg-green-950/30 border border-green-800 rounded text-sm flex items-center gap-2">
-              <Tag className="h-4 w-4 text-green-400" />
-              <span className="text-green-300">Bundle: <strong>{selectedIds.length} products</strong> at <strong>€{bundlePrice.toFixed(2)}</strong>. Savings auto-calculated from individual product prices on storefront.</span>
-            </div>
-          )}
-          <div><label className={labelCls}>Short Description</label><input className={inputCls} value={editing.shortDescription ?? ""} onChange={(e) => upd("shortDescription", e.target.value)} /></div>
-          <div><label className={labelCls}>Description</label><textarea rows={3} className={inputCls + " resize-y"} value={editing.description ?? ""} onChange={(e) => upd("description", e.target.value)} /></div>
-          <div><label className={labelCls}>Image URL</label><input className={inputCls} value={editing.imageUrl ?? ""} onChange={(e) => upd("imageUrl", e.target.value)} /></div>
-          <div className="grid grid-cols-2 gap-4">
-            <div><label className={labelCls}>SEO Title</label><input className={inputCls} value={editing.metaTitle ?? ""} onChange={(e) => upd("metaTitle", e.target.value)} /></div>
-            <div><label className={labelCls}>SEO Description</label><input className={inputCls} value={editing.metaDescription ?? ""} onChange={(e) => upd("metaDescription", e.target.value)} /></div>
-          </div>
-          <div className="flex gap-6">
-            <div className="flex items-center gap-2"><Switch checked={editing.isActive} onCheckedChange={(v) => upd("isActive", v)} /><label className={labelCls + " mb-0"}>Active</label></div>
-            <div className="flex items-center gap-2"><Switch checked={editing.isFeatured} onCheckedChange={(v) => upd("isFeatured", v)} /><label className={labelCls + " mb-0"}>Featured</label></div>
-          </div>
-          <div className="border-t border-[#2a2e3a] pt-4">
-            <label className={labelCls + " mb-2"}>Products in Bundle ({selectedIds.length} selected)</label>
-            {selectedIds.length > 0 && (
-              <div className="space-y-1 mb-3 p-2 bg-[#0f1117] rounded border border-[#2e3340]">
-                {selectedIds.map((id, i) => {
-                  const p = productCache.get(id);
-                  return (
-                    <div key={id} className="flex items-center justify-between text-sm py-1">
-                      <span className="text-[#dde4f0]">{i + 1}. {p?.name || `Product #${id}`}</span>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => moveProduct(i, -1)} disabled={i === 0}>↑</Button>
-                        <Button variant="ghost" size="sm" onClick={() => moveProduct(i, 1)} disabled={i === selectedIds.length - 1}>↓</Button>
-                        <Button variant="ghost" size="sm" onClick={() => toggleProduct(id)}>✕</Button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-            <input className={inputCls + " mb-2"} placeholder="Search products..." value={productSearch} onChange={(e) => setProductSearch(e.target.value)} />
-            <div className="max-h-40 overflow-y-auto border border-[#2e3340] rounded p-1 space-y-0.5 bg-[#0f1117]">
-              {products.filter((p) => !selectedIds.includes(p.id)).map((p) => (
-                <div key={p.id} onClick={() => toggleProduct(p.id)} className="flex items-center gap-2 p-1.5 rounded cursor-pointer hover:bg-[#1e2128] text-sm text-[#dde4f0]">
-                  <Package className="h-4 w-4 text-[#5a6a84]" /> {p.name}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={onSave} disabled={saving}>{saving ? "Saving..." : "Save Bundle"}</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function DarkCard({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-lg border border-[#2e3340] bg-[#181c24]" style={{boxShadow:"0 2px 8px rgba(0,0,0,0.35)"}}>
-      <div className="border-b border-[#2a2e3a] px-4 py-3 bg-[#1e2128]">
-        <p className="card-title text-[13px] font-bold uppercase tracking-widest">{title}</p>
-        {description && <p className="mt-0.5 text-[11px] text-[#5a6a84]">{description}</p>}
-      </div>
-      <div className="px-4 py-4 space-y-4">{children}</div>
     </div>
   );
 }

@@ -1,29 +1,70 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { bundles, bundleItems, products, orderItems } from "@workspace/db/schema";
-import { eq, asc, ilike, sql, and, desc } from "drizzle-orm";
+import { bundles, bundleItems, products, productVariants, orderItems } from "@workspace/db/schema";
+import { eq, asc, ilike, sql, and, desc, inArray } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import { z } from "zod/v4";
 import { paramString } from "../lib/route-params";
+import { computeBundlePrice, type BundleComponentInput, type BundleDiscountType } from "../services/bundle-pricing";
 
 const router = Router();
 const auth = [requireAuth, requireAdmin, requirePermission("manageProducts")];
 
+const nullishStr = z.string().nullish().transform((v) => v ?? null);
+
 const bundleSchema = z.object({
   name: z.string().min(1),
   slug: z.string().min(1),
-  description: z.string().optional(),
-  shortDescription: z.string().optional(),
-  imageUrl: z.string().optional(),
-  bundlePriceUsd: z.string(),
+  description: nullishStr,
+  shortDescription: nullishStr,
+  imageUrl: nullishStr,
   isActive: z.boolean().optional(),
   isFeatured: z.boolean().optional(),
-  metaTitle: z.string().optional(),
-  metaDescription: z.string().optional(),
+  metaTitle: nullishStr,
+  metaDescription: nullishStr,
   sortOrder: z.number().optional(),
   productIds: z.array(z.number()).min(2),
+  primaryProductId: z.number().int().positive(),
+  discountType: z.enum(["PERCENTAGE", "FIXED", "BUY_X_GET_Y_FREE"]),
+  discountValue: z.string().default("0"),
+  minPrimaryQty: z.number().int().min(1).default(1),
 });
+
+type BundleFormData = z.infer<typeof bundleSchema>;
+
+function validateRule(d: BundleFormData): string | null {
+  if (!d.productIds.includes(d.primaryProductId)) {
+    return "Primary product must be included in productIds";
+  }
+  const v = Number(d.discountValue);
+  if (!Number.isFinite(v) || v < 0) return "discountValue must be non-negative";
+  if (d.discountType === "PERCENTAGE" && v > 100) return "Percentage discount must be 0–100";
+  return null;
+}
+
+async function pricePreviewFor(productIds: number[], primaryProductId: number, rule: { discountType: BundleDiscountType; discountValue: string; minPrimaryQty: number }) {
+  const variants = await db.select({
+    productId: productVariants.productId,
+    priceUsd: productVariants.priceUsd,
+  })
+    .from(productVariants)
+    .where(and(inArray(productVariants.productId, productIds), eq(productVariants.isActive, true)));
+
+  const minByProduct = new Map<number, string>();
+  for (const v of variants) {
+    const cur = minByProduct.get(v.productId);
+    if (cur === undefined || Number(v.priceUsd) < Number(cur)) minByProduct.set(v.productId, v.priceUsd);
+  }
+
+  const components: BundleComponentInput[] = productIds.map((pid) => ({
+    productId: pid,
+    unitPriceUsd: minByProduct.get(pid) ?? "0",
+    isPrimary: pid === primaryProductId,
+  }));
+
+  return computeBundlePrice(components, rule);
+}
 
 router.get("/admin/bundles", ...auth, async (req, res) => {
   const search = (req.query.search as string) || "";
@@ -80,31 +121,63 @@ router.get("/admin/bundles/:id", ...auth, async (req, res) => {
   res.json({ ...bundle, productIds: items.map((i) => i.productId), items });
 });
 
+router.post("/admin/bundles/preview", ...auth, async (req, res) => {
+  const parsed = bundleSchema.pick({ productIds: true, primaryProductId: true, discountType: true, discountValue: true, minPrimaryQty: true }).safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+  const d = parsed.data;
+  if (!d.productIds.includes(d.primaryProductId)) { res.status(400).json({ error: "Primary product must be in productIds" }); return; }
+  const pricing = await pricePreviewFor(d.productIds, d.primaryProductId, { discountType: d.discountType, discountValue: d.discountValue, minPrimaryQty: d.minPrimaryQty });
+  res.json(pricing);
+});
+
 router.post("/admin/bundles", ...auth, async (req, res) => {
   const parsed = bundleSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
-  const { productIds, ...data } = parsed.data;
+  const data = parsed.data;
+  const ruleError = validateRule(data);
+  if (ruleError) { res.status(400).json({ error: ruleError }); return; }
+
+  const pricing = await pricePreviewFor(data.productIds, data.primaryProductId, {
+    discountType: data.discountType, discountValue: data.discountValue, minPrimaryQty: data.minPrimaryQty,
+  });
+
+  const { productIds, primaryProductId, discountType, discountValue, minPrimaryQty, ...rest } = data;
 
   const [bundle] = await db.insert(bundles).values({
-    ...data,
-    bundlePriceUsd: data.bundlePriceUsd,
+    ...rest,
+    primaryProductId, discountType, discountValue, minPrimaryQty,
+    bundlePriceUsd: pricing.finalUsd,
   }).returning();
 
   await db.insert(bundleItems).values(
-    productIds.map((pid, i) => ({ bundleId: bundle.id, productId: pid, sortOrder: i })),
+    productIds.map((pid, i) => ({
+      bundleId: bundle.id,
+      productId: pid,
+      sortOrder: pid === primaryProductId ? 0 : i + 1,
+    })),
   );
 
-  res.json(bundle);
+  res.json({ ...bundle, pricing });
 });
 
 router.put("/admin/bundles/:id", ...auth, async (req, res) => {
   const id = parseInt(paramString(req.params, "id"));
   const parsed = bundleSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
-  const { productIds, ...data } = parsed.data;
+  const data = parsed.data;
+  const ruleError = validateRule(data);
+  if (ruleError) { res.status(400).json({ error: ruleError }); return; }
+
+  const pricing = await pricePreviewFor(data.productIds, data.primaryProductId, {
+    discountType: data.discountType, discountValue: data.discountValue, minPrimaryQty: data.minPrimaryQty,
+  });
+
+  const { productIds, primaryProductId, discountType, discountValue, minPrimaryQty, ...rest } = data;
 
   const [updated] = await db.update(bundles).set({
-    ...data,
+    ...rest,
+    primaryProductId, discountType, discountValue, minPrimaryQty,
+    bundlePriceUsd: pricing.finalUsd,
     updatedAt: new Date(),
   }).where(eq(bundles.id, id)).returning();
 
@@ -112,10 +185,14 @@ router.put("/admin/bundles/:id", ...auth, async (req, res) => {
 
   await db.delete(bundleItems).where(eq(bundleItems.bundleId, id));
   await db.insert(bundleItems).values(
-    productIds.map((pid, i) => ({ bundleId: id, productId: pid, sortOrder: i })),
+    productIds.map((pid, i) => ({
+      bundleId: id,
+      productId: pid,
+      sortOrder: pid === primaryProductId ? 0 : i + 1,
+    })),
   );
 
-  res.json(updated);
+  res.json({ ...updated, pricing });
 });
 
 router.delete("/admin/bundles/:id", ...auth, async (req, res) => {
@@ -137,6 +214,10 @@ router.post("/admin/bundles/:id/duplicate", ...auth, async (req, res) => {
     shortDescription: original.shortDescription,
     imageUrl: original.imageUrl,
     bundlePriceUsd: original.bundlePriceUsd,
+    primaryProductId: original.primaryProductId,
+    discountType: original.discountType,
+    discountValue: original.discountValue,
+    minPrimaryQty: original.minPrimaryQty,
     isActive: false,
     isFeatured: false,
     metaTitle: original.metaTitle,

@@ -7,10 +7,17 @@ import {
   boolean,
   numeric,
   timestamp,
+  pgEnum,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { products } from "./products";
+
+export const bundleDiscountTypeEnum = pgEnum("bundle_discount_type", [
+  "PERCENTAGE",
+  "FIXED",
+  "BUY_X_GET_Y_FREE",
+]);
 
 export const bundles = pgTable("bundles", {
   id: serial("id").primaryKey(),
@@ -20,6 +27,10 @@ export const bundles = pgTable("bundles", {
   shortDescription: varchar("short_description", { length: 500 }),
   imageUrl: text("image_url"),
   bundlePriceUsd: numeric("bundle_price_usd", { precision: 10, scale: 2 }).notNull(),
+  primaryProductId: integer("primary_product_id").references(() => products.id, { onDelete: "set null" }),
+  discountType: bundleDiscountTypeEnum("discount_type").notNull().default("FIXED"),
+  discountValue: numeric("discount_value", { precision: 10, scale: 2 }).notNull().default("0"),
+  minPrimaryQty: integer("min_primary_qty").notNull().default(1),
   isActive: boolean("is_active").notNull().default(true),
   isFeatured: boolean("is_featured").notNull().default(false),
   metaTitle: varchar("meta_title", { length: 300 }),
