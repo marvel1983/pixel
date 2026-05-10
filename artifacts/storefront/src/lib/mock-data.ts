@@ -25,10 +25,13 @@ export interface MockProduct {
 
 export interface PublicBundleComponent {
   productId: number;
+  variantId: number;
   name: string;
   slug: string;
   imageUrl: string | null;
+  platform: string | null;
   unitPriceUsd: string;
+  allocatedPriceUsd: string;
   isFree: boolean;
 }
 

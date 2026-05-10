@@ -13,7 +13,7 @@ interface Props {
 
 export function BundleHero({ product, bundle }: Props) {
   const format = useCurrencyStore((s) => s.format);
-  const addItem = useCartStore((s) => s.addItem);
+  const addBundleItems = useCartStore((s) => s.addBundleItems);
   const { toast } = useToast();
 
   const sum = parseFloat(bundle.pricing.sumOriginalUsd);
@@ -34,22 +34,24 @@ export function BundleHero({ product, bundle }: Props) {
   })();
 
   function handleAdd() {
-    const variant = product.variants[0];
-    addItem({
-      variantId: variant?.id ?? -bundle.id,
-      productId: product.id,
-      productName: product.name,
-      variantName: "Bundle",
-      imageUrl: product.imageUrl,
-      priceUsd: bundle.pricing.finalUsd,
-      platform: variant?.platform ?? "OTHER",
-      regionRestrictions: product.regionRestrictions,
-      stockCount: 999,
-      backorderAllowed: false,
-      backorderEta: null,
-      bundleId: bundle.id,
-      bundleSnapshot: bundle,
-    });
+    addBundleItems(
+      bundle.id,
+      product.name,
+      bundle.components.map((c) => ({
+        variantId: c.variantId,
+        productId: c.productId,
+        productName: c.name,
+        variantName: c.name,
+        imageUrl: c.imageUrl,
+        priceUsd: c.allocatedPriceUsd,
+        platform: c.platform ?? undefined,
+        originalPriceUsd: c.unitPriceUsd,
+        regionRestrictions: product.regionRestrictions,
+        stockCount: 999,
+        backorderAllowed: false,
+        backorderEta: null,
+      })),
+    );
     toast({ title: `${product.name} added to cart` });
   }
 
