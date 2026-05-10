@@ -388,8 +388,9 @@ nav button:active {
 .dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 { color: #ffffff !important; }
 .dark p, .dark span, .dark td, .dark th, .dark label, .dark li { color: #e8edf5 !important; }
 /* Light-themed regions inside the dark admin shell (bundle customer preview, picker overlay).
-   The .dark span/h1 overrides above force white text; inside .bundle-light-scope we
-   explicitly remap Tailwind slate / brand classes so the scope reads as a light surface. */
+   The .dark span/h1 + .dark .bg-* overrides above force dark theme everywhere; inside
+   .bundle-light-scope we explicitly remap Tailwind slate / brand classes and background
+   utilities so the scope reads as a true light surface. */
 .dark .bundle-light-scope { color: rgb(15 23 42); }
 .dark .bundle-light-scope .text-slate-900 { color: rgb(15 23 42) !important; }
 .dark .bundle-light-scope .text-slate-700 { color: rgb(51 65 85) !important; }
@@ -404,6 +405,17 @@ nav button:active {
 .dark .bundle-light-scope h1,
 .dark .bundle-light-scope h2,
 .dark .bundle-light-scope h3 { color: rgb(15 23 42) !important; }
+/* Background overrides — the dark admin remaps .bg-white → #1a1d28 etc. */
+.dark .bundle-light-scope.bg-white,
+.dark .bundle-light-scope .bg-white       { background-color: rgb(255 255 255) !important; }
+.dark .bundle-light-scope.bg-slate-50,
+.dark .bundle-light-scope .bg-slate-50    { background-color: rgb(248 250 252) !important; }
+.dark .bundle-light-scope .bg-slate-100   { background-color: rgb(241 245 249) !important; }
+.dark .bundle-light-scope .bg-slate-200   { background-color: rgb(226 232 240) !important; }
+.dark .bundle-light-scope .hover\:bg-slate-100:hover { background-color: rgb(241 245 249) !important; }
+/* Borders inside the scope should stay light too */
+.dark .bundle-light-scope .border-slate-200 { border-color: rgb(226 232 240) !important; }
+.dark .bundle-light-scope .border-slate-300 { border-color: rgb(203 213 225) !important; }
 /* Metenzi HTML descriptions have their own embedded <style> — don't override their colors */
 .dark .metenzi-html p,
 .dark .metenzi-html span,
