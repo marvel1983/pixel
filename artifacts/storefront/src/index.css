@@ -387,20 +387,23 @@ nav button:active {
 /* ── White text everywhere in admin dark theme ─────────────── */
 .dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 { color: #ffffff !important; }
 .dark p, .dark span, .dark td, .dark th, .dark label, .dark li { color: #e8edf5 !important; }
-/* Light-themed regions inside the dark admin shell (bundle customer preview, picker overlay)
-   need to render their own colors. The override above forces white on every span/p/li/etc;
-   inside .bundle-light-scope we unset color so Tailwind's text-slate-* utilities apply. */
-.dark .bundle-light-scope p,
-.dark .bundle-light-scope span,
-.dark .bundle-light-scope li,
-.dark .bundle-light-scope td,
-.dark .bundle-light-scope th,
-.dark .bundle-light-scope label,
+/* Light-themed regions inside the dark admin shell (bundle customer preview, picker overlay).
+   The .dark span/h1 overrides above force white text; inside .bundle-light-scope we
+   explicitly remap Tailwind slate / brand classes so the scope reads as a light surface. */
+.dark .bundle-light-scope { color: rgb(15 23 42); }
+.dark .bundle-light-scope .text-slate-900 { color: rgb(15 23 42) !important; }
+.dark .bundle-light-scope .text-slate-700 { color: rgb(51 65 85) !important; }
+.dark .bundle-light-scope .text-slate-600 { color: rgb(71 85 105) !important; }
+.dark .bundle-light-scope .text-slate-500 { color: rgb(100 116 139) !important; }
+.dark .bundle-light-scope .text-slate-400 { color: rgb(148 163 184) !important; }
+.dark .bundle-light-scope .text-slate-300 { color: rgb(203 213 225) !important; }
+.dark .bundle-light-scope .text-emerald-600 { color: rgb(5 150 105) !important; }
+.dark .bundle-light-scope .text-amber-600 { color: rgb(217 119 6) !important; }
+.dark .bundle-light-scope .text-amber-900 { color: rgb(120 53 15) !important; }
+.dark .bundle-light-scope .text-primary { color: hsl(208 74% 46%) !important; }
 .dark .bundle-light-scope h1,
 .dark .bundle-light-scope h2,
-.dark .bundle-light-scope h3 {
-  color: unset !important;
-}
+.dark .bundle-light-scope h3 { color: rgb(15 23 42) !important; }
 /* Metenzi HTML descriptions have their own embedded <style> — don't override their colors */
 .dark .metenzi-html p,
 .dark .metenzi-html span,
