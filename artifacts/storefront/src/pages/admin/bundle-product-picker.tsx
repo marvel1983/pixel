@@ -133,7 +133,7 @@ export function BundleProductPicker(p: Props) {
 
   return (
     <Dialog open={p.open} onOpenChange={(v) => !v && p.onClose()}>
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col bg-white text-slate-900 p-0 gap-0">
+      <DialogContent className="bundle-light-scope max-w-2xl max-h-[85vh] flex flex-col bg-white text-slate-900 p-0 gap-0">
         <DialogHeader className="px-5 py-3 border-b">
           <DialogTitle className="text-base">{p.title}</DialogTitle>
         </DialogHeader>

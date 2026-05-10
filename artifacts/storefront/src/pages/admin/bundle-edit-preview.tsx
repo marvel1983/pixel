@@ -35,7 +35,7 @@ export function BundleEditPreview({ form, componentIds, freeIds, productCache, p
   })();
 
   return (
-    <aside className="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden flex flex-col h-fit sticky top-4">
+    <aside className="bundle-light-scope bg-slate-50 border border-slate-200 rounded-xl overflow-hidden flex flex-col h-fit sticky top-4">
       <div className="bg-white border-b border-slate-200 px-4 py-2.5 flex items-center gap-2 text-[12px] text-slate-500">
         <Eye className="h-3.5 w-3.5" />
         <span className="font-medium">Customer preview</span>

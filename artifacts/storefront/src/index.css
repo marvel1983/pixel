@@ -387,6 +387,20 @@ nav button:active {
 /* ── White text everywhere in admin dark theme ─────────────── */
 .dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 { color: #ffffff !important; }
 .dark p, .dark span, .dark td, .dark th, .dark label, .dark li { color: #e8edf5 !important; }
+/* Light-themed regions inside the dark admin shell (bundle customer preview, picker overlay)
+   need to render their own colors. The override above forces white on every span/p/li/etc;
+   inside .bundle-light-scope we unset color so Tailwind's text-slate-* utilities apply. */
+.dark .bundle-light-scope p,
+.dark .bundle-light-scope span,
+.dark .bundle-light-scope li,
+.dark .bundle-light-scope td,
+.dark .bundle-light-scope th,
+.dark .bundle-light-scope label,
+.dark .bundle-light-scope h1,
+.dark .bundle-light-scope h2,
+.dark .bundle-light-scope h3 {
+  color: unset !important;
+}
 /* Metenzi HTML descriptions have their own embedded <style> — don't override their colors */
 .dark .metenzi-html p,
 .dark .metenzi-html span,
