@@ -12,11 +12,33 @@ export interface CartItem {
   platform?: string;
   bundleId?: number;
   bundleName?: string;
+  /** Frozen at add-to-cart for the new anchor-as-wrapper bundle model (§3.4) */
+  bundleSnapshot?: BundleCartSnapshot;
   originalPriceUsd?: string;
   regionRestrictions?: string[];
   stockCount?: number;
   backorderAllowed?: boolean;
   backorderEta?: string | null;
+}
+
+export interface BundleCartSnapshot {
+  id: number;
+  slug: string;
+  discountType: "PERCENTAGE" | "FIXED" | "BUY_X_GET_Y_FREE";
+  discountValue: string;
+  components: Array<{
+    productId: number;
+    name: string;
+    slug: string;
+    imageUrl: string | null;
+    unitPriceUsd: string;
+    isFree: boolean;
+  }>;
+  pricing: {
+    sumOriginalUsd: string;
+    finalUsd: string;
+    savingsUsd: string;
+  };
 }
 
 export interface CouponData {

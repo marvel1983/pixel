@@ -5,6 +5,7 @@ import { Breadcrumbs } from "@/components/shop/breadcrumbs";
 import { ProductImage } from "@/components/product-detail/product-image";
 import { ProductMeta } from "@/components/product-detail/product-meta";
 import { ProductPurchaseCard } from "@/components/product-detail/product-purchase-card";
+import { BundleHero } from "@/components/product-detail/bundle-hero";
 import { CrossSell } from "@/components/product-detail/cross-sell";
 import { TrustBadges } from "@/components/product-detail/trust-badges";
 import { SocialShare } from "@/components/product-detail/social-share";
@@ -102,7 +103,17 @@ export default function ProductDetailPage() {
     );
   }
 
-  if (!product || !selectedVariant) {
+  if (!product) {
+    return (
+      <div className="container mx-auto px-4 py-16 text-center">
+        <h1 className="text-2xl font-bold mb-2">Product Not Found</h1>
+        <p className="text-muted-foreground">The product you're looking for doesn't exist.</p>
+      </div>
+    );
+  }
+
+  // Bundle anchors don't have own variants — skip variant requirement
+  if (!product.bundle && !selectedVariant) {
     return (
       <div className="container mx-auto px-4 py-16 text-center">
         <h1 className="text-2xl font-bold mb-2">Product Not Found</h1>
@@ -125,11 +136,18 @@ export default function ProductDetailPage() {
       <BreadcrumbJsonLd items={breadcrumbs} />
       <Breadcrumbs crumbs={breadcrumbs} />
 
-      <div className="grid gap-6 lg:grid-cols-[320px_1fr_300px] lg:items-start">
-        <ProductImage imageUrl={product.imageUrl} productName={product.name} additionalImages={product.additionalImages} />
-        <ProductMeta product={product} selectedVariant={selectedVariant} onVariantChange={setSelectedVariant} />
-        <ProductPurchaseCard product={product} selectedVariant={selectedVariant} quantity={quantity} onQuantityChange={setQuantity} />
-      </div>
+      {product.bundle ? (
+        <div className="grid gap-6 lg:grid-cols-[1fr_1fr] lg:items-start">
+          <ProductImage imageUrl={product.imageUrl} productName={product.name} additionalImages={product.additionalImages} />
+          <BundleHero product={product} bundle={product.bundle} />
+        </div>
+      ) : selectedVariant ? (
+        <div className="grid gap-6 lg:grid-cols-[320px_1fr_300px] lg:items-start">
+          <ProductImage imageUrl={product.imageUrl} productName={product.name} additionalImages={product.additionalImages} />
+          <ProductMeta product={product} selectedVariant={selectedVariant} onVariantChange={setSelectedVariant} />
+          <ProductPurchaseCard product={product} selectedVariant={selectedVariant} quantity={quantity} onQuantityChange={setQuantity} />
+        </div>
+      ) : null}
 
       <SocialShare productName={product.name} />
       <Separator />

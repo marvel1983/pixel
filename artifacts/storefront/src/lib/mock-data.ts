@@ -20,6 +20,29 @@ export interface MockProduct {
   tags?: Array<{ id: number; name: string; slug: string; colorHex: string | null }>;
   productAttributes?: Array<{ attrName: string; attrSlug: string; optValue: string | null }>;
   customInfoTiles?: Array<{ icon: string; title: string; subtitle: string }>;
+  bundle?: PublicBundle | null;
+}
+
+export interface PublicBundleComponent {
+  productId: number;
+  name: string;
+  slug: string;
+  imageUrl: string | null;
+  unitPriceUsd: string;
+  isFree: boolean;
+}
+
+export interface PublicBundle {
+  id: number;
+  slug: string;
+  discountType: "PERCENTAGE" | "FIXED" | "BUY_X_GET_Y_FREE";
+  discountValue: string;
+  components: PublicBundleComponent[];
+  pricing: {
+    sumOriginalUsd: string;
+    finalUsd: string;
+    savingsUsd: string;
+  };
 }
 
 export interface MockVariant {

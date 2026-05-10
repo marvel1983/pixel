@@ -10,6 +10,7 @@ import {
 } from "drizzle-orm";
 import { z } from "zod";
 import { paramString } from "../lib/route-params";
+import { loadBundleForAnchor } from "../services/bundle-public";
 
 const router = Router();
 
@@ -277,6 +278,7 @@ router.get("/products/:slug", async (req: Request, res: Response) => {
       reviewCount: products.reviewCount,
       isFeatured: products.isFeatured,
       isNew: sql<boolean>`false`,
+      isBundleAnchor: products.isBundleAnchor,
       regionRestrictions: products.regionRestrictions,
       platformType: products.platformType,
       customInfoTiles: products.customInfoTiles,
@@ -328,6 +330,8 @@ router.get("/products/:slug", async (req: Request, res: Response) => {
       .orderBy(asc(attributeDefinitions.sortOrder)),
   ]);
 
+  const bundle = product.isBundleAnchor ? await loadBundleForAnchor(product.id) : null;
+
   res.json({
     ...product,
     avgRating: Number(product.avgRating),
@@ -339,6 +343,7 @@ router.get("/products/:slug", async (req: Request, res: Response) => {
     })),
     tags: productTagRows,
     productAttributes: productAttrRows,
+    bundle,
   });
 });
 
