@@ -48,6 +48,7 @@ import AdminQAPage from "./qa";
 import AdminNewsletterPage from "./newsletter";
 import AdminFlashSalesPage from "./flash-sales";
 import AdminBundlesPage from "./bundles";
+import BundleEditPage from "./bundle-edit";
 import AdminPlatformsPage from "./platforms";
 import AdminSupportPage from "./support";
 import AdminSupportDetailPage from "./support-detail";
@@ -138,6 +139,8 @@ export default function AdminRoot() {
           <Route path="/admin/flash-sales" component={AdminFlashSalesPage} />
           <Route path="/admin/campaigns" component={AdminCampaignsPage} />
           <Route path="/admin/price-rules" component={AdminPriceRulesPage} />
+          <Route path="/admin/bundles/new" component={BundleEditPage} />
+          <Route path="/admin/bundles/:id/edit" component={BundleEditPage} />
           <Route path="/admin/bundles" component={AdminBundlesPage} />
           <Route path="/admin/quotes" component={AdminQuotesPage} />
           <Route path="/admin/surveys" component={AdminSurveysPage} />

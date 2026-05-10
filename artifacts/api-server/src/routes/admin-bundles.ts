@@ -88,6 +88,7 @@ router.get("/admin/bundles", ...auth, async (req, res) => {
           productId: bundleItems.productId,
           productName: products.name,
           productImage: products.imageUrl,
+          productPrice: sql<string | null>`(SELECT MIN(price_usd::numeric)::text FROM product_variants WHERE product_id = ${bundleItems.productId} AND is_active = true)`,
           sortOrder: bundleItems.sortOrder,
         })
         .from(bundleItems)
@@ -111,6 +112,7 @@ router.get("/admin/bundles/:id", ...auth, async (req, res) => {
       productId: bundleItems.productId,
       productName: products.name,
       productImage: products.imageUrl,
+      productPrice: sql<string | null>`(SELECT MIN(price_usd::numeric)::text FROM product_variants WHERE product_id = ${bundleItems.productId} AND is_active = true)`,
       sortOrder: bundleItems.sortOrder,
     })
     .from(bundleItems)
