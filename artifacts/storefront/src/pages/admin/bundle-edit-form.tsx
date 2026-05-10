@@ -1,10 +1,10 @@
 import { useRef, useState } from "react";
-import { Package, X, ArrowUp, ArrowDown, Plus, Upload, ChevronDown, ChevronRight, Sparkles } from "lucide-react";
+import { Package, X, ArrowUp, ArrowDown, Plus, Upload, ChevronDown, ChevronRight, Gift } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { useAuthStore } from "@/stores/auth-store";
 import { useToast } from "@/hooks/use-toast";
-import type { BundleFormState, ProductOption, DiscountType } from "./bundle-types";
+import type { BundleFormState, ProductOption } from "./bundle-types";
 import { slugify } from "./bundle-types";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
@@ -15,8 +15,10 @@ const lbl = "block text-[11px] font-semibold uppercase tracking-wider text-[#8fa
 interface Props {
   form: BundleFormState;
   setForm: (f: BundleFormState) => void;
-  selectedIds: number[];
+  componentIds: number[];
+  freeIds: Set<number>;
   productCache: Map<number, ProductOption>;
+  onToggleFree: (id: number) => void;
   onMoveCompanion: (idx: number, dir: -1 | 1) => void;
   onRemoveCompanion: (id: number) => void;
   onPickAnchor: () => void;
@@ -28,7 +30,6 @@ export function BundleEditForm(p: Props) {
     p.setForm({ ...p.form, [field]: val });
 
   const anchor = p.form.primaryProductId ? p.productCache.get(p.form.primaryProductId) ?? null : null;
-  const companions = p.selectedIds.filter((id) => id !== p.form.primaryProductId);
 
   return (
     <div className="space-y-4">
@@ -44,12 +45,12 @@ export function BundleEditForm(p: Props) {
                 upd("name", name);
                 if (!p.form.id && (!p.form.slug || p.form.slug === slugify(p.form.name))) upd("slug", slugify(name));
               }}
-              placeholder="e.g. Office Productivity 4-Pack"
+              placeholder="e.g. Bundle of 3 best antivirus"
             />
           </div>
           <div>
             <label className={lbl}>URL slug</label>
-            <input className={inp} value={p.form.slug} onChange={(e) => upd("slug", e.target.value)} placeholder="office-productivity-4-pack" />
+            <input className={inp} value={p.form.slug} onChange={(e) => upd("slug", e.target.value)} placeholder="bundle-of-3-best-antivirus" />
           </div>
         </div>
         <div className="flex items-center gap-6 pt-3">
@@ -58,30 +59,42 @@ export function BundleEditForm(p: Props) {
         </div>
       </Card>
 
-      <Card title="Anchor product" hint="The bundle is built around this product. Customers will see it as the headline.">
+      <Card title="Bundle product page" hint="The catalog product customers will land on when they click this bundle. Anchor for the URL, image and description.">
         {anchor ? (
           <ProductRow item={anchor} badge="Anchor" right={<Button variant="ghost" size="sm" onClick={p.onPickAnchor}>Change</Button>} />
         ) : (
           <button type="button" onClick={p.onPickAnchor} className="w-full rounded-md border-2 border-dashed border-[#2e3340] hover:border-sky-500/40 hover:bg-sky-500/5 px-4 py-6 text-sm text-[#8fa0bb] flex flex-col items-center gap-2 transition-colors">
             <Package className="h-5 w-5" />
-            <span>Pick the anchor product</span>
+            <span>Pick an existing product, or create a new bundle product</span>
           </button>
         )}
       </Card>
 
-      <Card title={`Companion products (${companions.length})`} hint="What's included alongside the anchor.">
-        {companions.length > 0 && (
+      <Card title={`What's in this bundle (${p.componentIds.length})`} hint="The real products whose keys customers receive. Anchor's price = sum of these − discount.">
+        {p.componentIds.length > 0 && (
           <ul className="space-y-1.5 mb-2">
-            {companions.map((id, i) => {
+            {p.componentIds.map((id, i) => {
               const it = p.productCache.get(id);
               if (!it) return null;
+              const isFree = p.freeIds.has(id);
               return (
                 <li key={id}>
                   <ProductRow
                     item={it}
+                    badge={isFree ? "FREE" : undefined}
+                    badgeAccent={isFree ? "green" : "sky"}
                     right={<>
+                      <button
+                        type="button"
+                        onClick={() => p.onToggleFree(id)}
+                        className={`shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider transition-colors ${isFree ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/40" : "bg-[#1e2128] text-[#5a6a84] border border-[#2e3340] hover:text-emerald-300 hover:border-emerald-500/30"}`}
+                        title="Toggle: this component is free in the bundle"
+                      >
+                        <Gift className="h-2.5 w-2.5" />
+                        Free
+                      </button>
                       <IconBtn icon={<ArrowUp className="h-3.5 w-3.5" />} onClick={() => p.onMoveCompanion(i, -1)} disabled={i === 0} />
-                      <IconBtn icon={<ArrowDown className="h-3.5 w-3.5" />} onClick={() => p.onMoveCompanion(i, 1)} disabled={i === companions.length - 1} />
+                      <IconBtn icon={<ArrowDown className="h-3.5 w-3.5" />} onClick={() => p.onMoveCompanion(i, 1)} disabled={i === p.componentIds.length - 1} />
                       <IconBtn icon={<X className="h-3.5 w-3.5" />} onClick={() => p.onRemoveCompanion(id)} />
                     </>}
                   />
@@ -90,33 +103,26 @@ export function BundleEditForm(p: Props) {
             })}
           </ul>
         )}
-        <Button variant="outline" size="sm" onClick={p.onAddCompanions} className="w-full gap-1.5"><Plus className="h-4 w-4" />Add companion products</Button>
+        <Button variant="outline" size="sm" onClick={p.onAddCompanions} className="w-full gap-1.5"><Plus className="h-4 w-4" />Add components</Button>
       </Card>
 
       <Card title="Discount rule" hint="How the bundle saves the customer money.">
         <div className="grid grid-cols-3 gap-2 mb-3">
-          <RuleCard checked={p.form.discountType === "PERCENTAGE"} onClick={() => upd("discountType", "PERCENTAGE")} title="Percentage off" subtitle="e.g. 25%" />
-          <RuleCard checked={p.form.discountType === "FIXED"} onClick={() => upd("discountType", "FIXED")} title="Fixed amount" subtitle="e.g. €15" />
-          <RuleCard checked={p.form.discountType === "BUY_X_GET_Y_FREE"} onClick={() => upd("discountType", "BUY_X_GET_Y_FREE")} title="Buy X, get rest free" subtitle="anchor at full" />
+          <RuleCard checked={p.form.discountType === "PERCENTAGE"} onClick={() => upd("discountType", "PERCENTAGE")} title="Percentage off" subtitle="e.g. 25% off the sum" />
+          <RuleCard checked={p.form.discountType === "FIXED"} onClick={() => upd("discountType", "FIXED")} title="Fixed amount off" subtitle="e.g. €15 off the sum" />
+          <RuleCard checked={p.form.discountType === "BUY_X_GET_Y_FREE"} onClick={() => upd("discountType", "BUY_X_GET_Y_FREE")} title="Free components" subtitle="flagged items are free" />
         </div>
-        <div className="flex items-end gap-3">
-          {p.form.discountType !== "BUY_X_GET_Y_FREE" && (
-            <div className="w-32">
-              <label className={lbl}>{p.form.discountType === "PERCENTAGE" ? "Discount %" : "Discount €"}</label>
-              <input className={inp} type="number" step="0.01" min="0" value={p.form.discountValue} onChange={(e) => upd("discountValue", e.target.value)} />
-            </div>
-          )}
+        {p.form.discountType !== "BUY_X_GET_Y_FREE" && (
           <div className="w-32">
-            <label className={lbl}>Min anchor qty</label>
-            <input className={inp} type="number" min="1" step="1" value={p.form.minPrimaryQty} onChange={(e) => upd("minPrimaryQty", Math.max(1, parseInt(e.target.value) || 1))} />
+            <label className={lbl}>{p.form.discountType === "PERCENTAGE" ? "Discount %" : "Discount €"}</label>
+            <input className={inp} type="number" step="0.01" min="0" value={p.form.discountValue} onChange={(e) => upd("discountValue", e.target.value)} />
           </div>
-          {p.form.minPrimaryQty > 1 && (
-            <p className="flex-1 text-[11.5px] text-amber-400/90 leading-snug pb-2">
-              <Sparkles className="h-3 w-3 inline mr-1" />
-              Storefront will require {p.form.minPrimaryQty} copies of the anchor to qualify.
-            </p>
-          )}
-        </div>
+        )}
+        {p.form.discountType === "BUY_X_GET_Y_FREE" && p.freeIds.size === 0 && (
+          <p className="text-[11.5px] text-amber-400/90 leading-snug">
+            Mark at least one component above as <strong>Free</strong> for this rule.
+          </p>
+        )}
       </Card>
 
       <Card title="Cover image">
@@ -127,7 +133,7 @@ export function BundleEditForm(p: Props) {
         <div className="space-y-3">
           <div>
             <label className={lbl}>Short hook <span className="text-[#5a6a84] font-normal normal-case tracking-normal">(one line, shows in cards)</span></label>
-            <input className={inp} value={p.form.shortDescription ?? ""} onChange={(e) => upd("shortDescription", e.target.value || null)} placeholder="Save big on the complete Office suite" />
+            <input className={inp} value={p.form.shortDescription ?? ""} onChange={(e) => upd("shortDescription", e.target.value || null)} placeholder="The complete protection suite" />
           </div>
           <div>
             <label className={lbl}>Full description</label>
@@ -182,15 +188,15 @@ function ToggleRow({ label, hint, checked, onChange }: { label: string; hint: st
   return (
     <div className="flex items-center gap-2">
       <Switch checked={checked} onCheckedChange={onChange} />
-      <div>
-        <div className="text-[12px] font-medium text-[#dde4f0]">{label}</div>
-        <div className="text-[10.5px] text-[#5a6a84]">{hint}</div>
-      </div>
+      <div><div className="text-[12px] font-medium text-[#dde4f0]">{label}</div><div className="text-[10.5px] text-[#5a6a84]">{hint}</div></div>
     </div>
   );
 }
 
-function ProductRow({ item, badge, right }: { item: ProductOption; badge?: string; right?: React.ReactNode }) {
+function ProductRow({ item, badge, badgeAccent, right }: { item: ProductOption; badge?: string; badgeAccent?: "sky" | "green"; right?: React.ReactNode }) {
+  const accent = badgeAccent === "green"
+    ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/40"
+    : "bg-sky-500/15 text-sky-300 border-sky-500/30";
   return (
     <div className="flex items-center gap-3 rounded-md border border-[#2e3340] bg-[#0f1117] px-2.5 py-2">
       <div className="w-10 h-10 rounded bg-[#1e2128] flex items-center justify-center overflow-hidden shrink-0">
@@ -199,21 +205,18 @@ function ProductRow({ item, badge, right }: { item: ProductOption; badge?: strin
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <span className="text-[13px] text-[#dde4f0] truncate">{item.name}</span>
-          {badge && <span className="text-[9.5px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-300 border border-sky-500/30">{badge}</span>}
+          {badge && <span className={`text-[9.5px] uppercase tracking-wider px-1.5 py-0.5 rounded border ${accent}`}>{badge}</span>}
         </div>
         {item.priceUsd && <div className="text-[11px] text-[#5a6a84]">€{parseFloat(item.priceUsd).toFixed(2)}</div>}
       </div>
-      <div className="flex shrink-0 gap-0.5">{right}</div>
+      <div className="flex shrink-0 gap-0.5 items-center">{right}</div>
     </div>
   );
 }
 
 function IconBtn({ icon, onClick, disabled }: { icon: React.ReactNode; onClick: () => void; disabled?: boolean }) {
-  return (
-    <Button variant="ghost" size="icon" className="h-7 w-7 text-[#8fa0bb] hover:text-[#dde4f0]" onClick={onClick} disabled={disabled}>{icon}</Button>
-  );
+  return <Button variant="ghost" size="icon" className="h-7 w-7 text-[#8fa0bb] hover:text-[#dde4f0]" onClick={onClick} disabled={disabled}>{icon}</Button>;
 }
-
 function RuleCard({ checked, onClick, title, subtitle }: { checked: boolean; onClick: () => void; title: string; subtitle: string }) {
   return (
     <button type="button" onClick={onClick} className={`text-left rounded-md p-2.5 border transition-colors ${checked ? "border-sky-500/60 bg-sky-500/10" : "border-[#2e3340] bg-[#0f1117] hover:border-[#3d5070]"}`}>

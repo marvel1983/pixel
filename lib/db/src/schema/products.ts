@@ -38,6 +38,7 @@ export const products = pgTable("products", {
   metaDescription: varchar("meta_description", { length: 500 }),
   isFeatured: boolean("is_featured").notNull().default(false),
   isActive: boolean("is_active").notNull().default(true),
+  isBundleAnchor: boolean("is_bundle_anchor").notNull().default(false),
   keyFeatures: jsonb("key_features").$type<string[]>().default([]),
   systemRequirements: jsonb("system_requirements").$type<Record<string, string>>().default({}),
   relatedProductIds: jsonb("related_product_ids").$type<number[]>().default([]),

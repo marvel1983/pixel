@@ -3,11 +3,13 @@ import { db } from "@workspace/db";
 import { bundles, bundleItems, productVariants } from "@workspace/db/schema";
 
 /**
- * --- Bundle pricing engine (new) ---
+ * --- Bundle pricing engine (rev 2: anchor-as-wrapper) ---
  *
- * Single source of truth for how a bundle's final price is computed from
- * its components and rule. Stacking order in the wider cart pipeline
- * (Donnie-locked):
+ * The anchor product is NEVER an input here. Components are the products
+ * that fill the bundle; the anchor's displayed price IS the engine's
+ * `finalUsd`.
+ *
+ * Stacking order in the wider cart pipeline (Donnie-locked):
  *   1. per-line bundle adjustment (this engine)
  *   2. cart subtotal
  *   3. loyalty / gift-card deductions
@@ -23,17 +25,17 @@ export type BundleDiscountType = "PERCENTAGE" | "FIXED" | "BUY_X_GET_Y_FREE";
 export interface BundleComponentInput {
   productId: number;
   unitPriceUsd: string;
-  isPrimary: boolean;
+  isFree: boolean;
 }
 
 export interface BundleRuleInput {
   discountType: BundleDiscountType;
   discountValue: string;
-  minPrimaryQty: number;
+  // NOTE: minPrimaryQty intentionally absent — engine ignores quantity gates.
+  // See docs/bundles-feature-spec.md §3.2.
 }
 
 export interface BundleComponentLine extends BundleComponentInput {
-  quantity: number;
   lineTotalUsd: string;
 }
 
@@ -54,51 +56,46 @@ function parseAmount(value: string): number {
 }
 
 /**
- * Computes the price for ONE bundle unit. Cart quantity scaling is handled
- * by the caller — multiplying every component's `quantity` and `lineTotalUsd`
- * by the cart-line qty.
+ * Computes the price the anchor will display from its components + rule.
+ *
+ *   sumOriginal = Σ component.unitPriceUsd
+ *   sumPaid     = Σ component.unitPriceUsd  (where !isFree)
+ *
+ *   PERCENTAGE       → final = sumPaid × (1 − pct/100)
+ *   FIXED            → final = max(0, sumPaid − discountValue)
+ *   BUY_X_GET_Y_FREE → final = sumPaid       (the rule IS the is_free flags)
  */
 export function computeBundlePrice(
   components: BundleComponentInput[],
   rule: BundleRuleInput,
 ): BundlePricing {
-  const minPrimaryQty = Math.max(1, Math.floor(rule.minPrimaryQty));
   const discountValue = parseAmount(rule.discountValue);
 
   const lines: BundleComponentLine[] = components.map((c) => {
-    const quantity = c.isPrimary ? minPrimaryQty : 1;
     const unitPrice = parseAmount(c.unitPriceUsd);
     return {
       ...c,
-      quantity,
-      lineTotalUsd: roundMoney(unitPrice * quantity),
+      lineTotalUsd: c.isFree ? "0.00" : roundMoney(unitPrice),
     };
   });
 
-  const sumOriginal = lines.reduce((acc, l) => acc + parseAmount(l.lineTotalUsd), 0);
+  const sumOriginal = components.reduce((acc, c) => acc + parseAmount(c.unitPriceUsd), 0);
+  const sumPaid = lines.reduce((acc, l) => acc + parseAmount(l.lineTotalUsd), 0);
 
   let final: number;
-  let adjustedLines: BundleComponentLine[] = lines;
-
   switch (rule.discountType) {
     case "PERCENTAGE": {
       const pct = Math.min(100, Math.max(0, discountValue));
-      final = sumOriginal * (1 - pct / 100);
+      final = sumPaid * (1 - pct / 100);
       break;
     }
     case "FIXED": {
-      final = Math.max(0, sumOriginal - Math.max(0, discountValue));
+      final = Math.max(0, sumPaid - Math.max(0, discountValue));
       break;
     }
-    case "BUY_X_GET_Y_FREE": {
-      const primary = lines.find((l) => l.isPrimary);
-      const primaryTotal = primary ? parseAmount(primary.lineTotalUsd) : 0;
-      final = primaryTotal;
-      adjustedLines = lines.map((l) =>
-        l.isPrimary ? l : { ...l, lineTotalUsd: "0.00" },
-      );
+    case "BUY_X_GET_Y_FREE":
+      final = sumPaid;
       break;
-    }
   }
 
   const finalRounded = roundMoney(final);
@@ -108,7 +105,7 @@ export function computeBundlePrice(
     sumOriginalUsd: roundMoney(sumOriginal),
     finalUsd: finalRounded,
     savingsUsd: savings,
-    components: adjustedLines,
+    components: lines,
   };
 }
 
@@ -120,7 +117,7 @@ export interface BundleCartSnapshot {
   bundleId: number;
   bundleSlug: string;
   bundleName: string;
-  primaryProductId: number;
+  anchorProductId: number;
   rule: BundleRuleInput;
   components: BundleComponentLine[];
   pricing: { sumOriginalUsd: string; finalUsd: string; savingsUsd: string };
@@ -128,17 +125,16 @@ export interface BundleCartSnapshot {
 }
 
 export function buildSnapshot(
-  bundle: { id: number; slug: string; name: string; primaryProductId: number | null },
+  bundle: { id: number; slug: string; name: string; anchorProductId: number },
   rule: BundleRuleInput,
   components: BundleComponentInput[],
 ): BundleCartSnapshot {
   const pricing = computeBundlePrice(components, rule);
-  const fallbackPrimary = components.find((c) => c.isPrimary)?.productId ?? components[0]?.productId ?? 0;
   return {
     bundleId: bundle.id,
     bundleSlug: bundle.slug,
     bundleName: bundle.name,
-    primaryProductId: bundle.primaryProductId ?? fallbackPrimary,
+    anchorProductId: bundle.anchorProductId,
     rule,
     components: pricing.components,
     pricing: {

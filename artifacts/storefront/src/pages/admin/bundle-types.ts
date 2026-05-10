@@ -22,7 +22,6 @@ export interface BundleFormState {
   primaryProductId: number | null;
   discountType: DiscountType;
   discountValue: string;
-  minPrimaryQty: number;
 }
 
 export interface PricingPreview {
@@ -36,6 +35,7 @@ export interface BundleProduct {
   productName: string;
   productImage: string | null;
   productPrice: string | null;
+  isFree: boolean;
   sortOrder: number;
 }
 
@@ -44,6 +44,7 @@ export interface AdminBundle extends Omit<BundleFormState, "id"> {
   bundlePriceUsd: string;
   createdAt: string;
   items: BundleProduct[];
+  freeProductIds: number[];
 }
 
 export const emptyBundle = (): BundleFormState => ({
@@ -52,7 +53,7 @@ export const emptyBundle = (): BundleFormState => ({
   isActive: true, isFeatured: false,
   metaTitle: null, metaDescription: null, sortOrder: 0,
   primaryProductId: null,
-  discountType: "PERCENTAGE", discountValue: "10", minPrimaryQty: 1,
+  discountType: "PERCENTAGE", discountValue: "10",
 });
 
 export const toFormState = (b: AdminBundle): BundleFormState => ({
@@ -61,7 +62,7 @@ export const toFormState = (b: AdminBundle): BundleFormState => ({
   isActive: b.isActive, isFeatured: b.isFeatured,
   metaTitle: b.metaTitle, metaDescription: b.metaDescription, sortOrder: b.sortOrder,
   primaryProductId: b.primaryProductId, discountType: b.discountType,
-  discountValue: b.discountValue, minPrimaryQty: b.minPrimaryQty,
+  discountValue: b.discountValue,
 });
 
 export function slugify(name: string): string {

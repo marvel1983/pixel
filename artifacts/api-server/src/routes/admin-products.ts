@@ -236,6 +236,8 @@ router.post("/admin/products", requireAuth, requireAdmin, requirePermission("man
     return;
   }
 
+  const isBundleAnchor = body.isBundleAnchor === true;
+
   const [created] = await db
     .insert(products)
     .values({
@@ -249,7 +251,8 @@ router.post("/admin/products", requireAuth, requireAdmin, requirePermission("man
       metaTitle: body.metaTitle || null,
       metaDescription: body.metaDescription || null,
       isFeatured: body.isFeatured ?? false,
-      isActive: body.isActive ?? false,
+      isActive: isBundleAnchor ? (body.isActive ?? true) : (body.isActive ?? false),
+      isBundleAnchor,
       keyFeatures: body.keyFeatures ?? [],
       systemRequirements: body.systemRequirements ?? {},
       relatedProductIds: body.relatedProductIds ?? [],
@@ -259,9 +262,9 @@ router.post("/admin/products", requireAuth, requireAdmin, requirePermission("man
       sortOrder: body.sortOrder ?? 0,
       customInfoTiles: body.customInfoTiles ?? [],
     })
-    .returning({ id: products.id });
+    .returning({ id: products.id, name: products.name, slug: products.slug, imageUrl: products.imageUrl });
 
-  res.status(201).json({ id: created.id });
+  res.status(201).json(created);
 });
 
 router.put("/admin/products/:id", requireAuth, requireAdmin, requirePermission("manageProducts"), async (req, res) => {

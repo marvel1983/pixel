@@ -49,6 +49,7 @@ export const bundleItems = pgTable("bundle_items", {
     .notNull()
     .references(() => products.id, { onDelete: "cascade" }),
   sortOrder: integer("sort_order").notNull().default(0),
+  isFree: boolean("is_free").notNull().default(false),
 });
 
 export const insertBundleSchema = createInsertSchema(bundles).omit({

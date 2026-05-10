@@ -347,6 +347,14 @@ jobs:
             $PSQL -c "UPDATE bundles b SET discount_value = GREATEST(0, COALESCE(s.sum_prices, 0) - b.bundle_price_usd) FROM (SELECT bi.bundle_id, SUM(COALESCE(p.avg_rating, 0) * 0 + (SELECT MIN(pv.price_usd::numeric) FROM product_variants pv WHERE pv.product_id = bi.product_id AND pv.is_active = true)) AS sum_prices FROM bundle_items bi JOIN products p ON p.id = bi.product_id GROUP BY bi.bundle_id) s WHERE b.id = s.bundle_id AND b.discount_value = 0;" || true
             $PSQL -c "UPDATE bundles b SET primary_product_id = (SELECT product_id FROM bundle_items WHERE bundle_id = b.id ORDER BY sort_order ASC LIMIT 1) WHERE primary_product_id IS NULL;" || true
 
+            echo "→ Bundles rev-2: anchor-as-wrapper model migrations..."
+            $PSQL -c "ALTER TABLE products ADD COLUMN IF NOT EXISTS is_bundle_anchor BOOLEAN NOT NULL DEFAULT false;" || true
+            $PSQL -c "ALTER TABLE bundle_items ADD COLUMN IF NOT EXISTS is_free BOOLEAN NOT NULL DEFAULT false;" || true
+            echo "→ Removing anchor rows from bundle_items (anchor is wrapper, not a component)..."
+            $PSQL -c "DELETE FROM bundle_items bi USING bundles b WHERE bi.bundle_id = b.id AND bi.product_id = b.primary_product_id;" || true
+            echo "→ Marking anchor products with is_bundle_anchor = true..."
+            $PSQL -c "UPDATE products SET is_bundle_anchor = true WHERE id IN (SELECT DISTINCT primary_product_id FROM bundles WHERE primary_product_id IS NOT NULL) AND is_bundle_anchor = false;" || true
+
             echo "→ Reloading PM2..."
             set -a; source /var/www/pixel-storefront/.env; set +a
             pm2 reload pixel-api --update-env

@@ -25,7 +25,9 @@ export default function BundleEditPage() {
   const bundleId = isNew ? null : params?.id ? parseInt(params.id) : null;
 
   const [form, setForm] = useState<BundleFormState>(emptyBundle());
-  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  /** Component product IDs only — anchor (primaryProductId) is NEVER here. */
+  const [componentIds, setComponentIds] = useState<number[]>([]);
+  const [freeIds, setFreeIds] = useState<Set<number>>(new Set());
   const [productCache, setProductCache] = useState<Map<number, ProductOption>>(new Map());
   const [pricing, setPricing] = useState<PricingPreview | null>(null);
   const [loading, setLoading] = useState(!isNew);
@@ -35,7 +37,6 @@ export default function BundleEditPage() {
 
   const h = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 
-  // Load existing bundle if editing
   useEffect(() => {
     if (isNew || !bundleId) return;
     setLoading(true);
@@ -44,25 +45,37 @@ export default function BundleEditPage() {
       if (!r.ok) { toast({ title: "Bundle not found", variant: "destructive" }); setLocation("/admin/bundles"); return; }
       const b = (await r.json()) as AdminBundle;
       setForm(toFormState(b));
-      setSelectedIds(b.items.map((it) => it.productId));
-      setProductCache(new Map(b.items.map((it) => [
+      setComponentIds(b.items.map((it) => it.productId));
+      setFreeIds(new Set(b.items.filter((it) => it.isFree).map((it) => it.productId)));
+      const cache = new Map<number, ProductOption>(b.items.map((it) => [
         it.productId,
         { id: it.productId, name: it.productName, imageUrl: it.productImage, priceUsd: it.productPrice ?? null },
-      ])));
+      ]));
+      // Anchor product is not in items — fetch it separately if we have one
+      if (b.primaryProductId) {
+        const ar = await fetch(`${API}/admin/products?ids=${b.primaryProductId}&limit=1`, { headers: h });
+        if (ar.ok) {
+          const ad = await ar.json();
+          const anchor = (ad.products ?? [])[0];
+          if (anchor) cache.set(anchor.id, { id: anchor.id, name: anchor.name, imageUrl: anchor.imageUrl, priceUsd: null });
+        }
+      }
+      setProductCache(cache);
       setLoading(false);
     })();
   }, [bundleId, isNew]);
 
   // Live pricing preview
   useEffect(() => {
-    if (selectedIds.length < 2 || !form.primaryProductId) { setPricing(null); return; }
+    if (componentIds.length < 1 || !form.primaryProductId) { setPricing(null); return; }
     const t = setTimeout(async () => {
       const r = await fetch(`${API}/admin/bundles/preview`, {
         method: "POST", headers: h,
         body: JSON.stringify({
-          productIds: selectedIds, primaryProductId: form.primaryProductId,
+          primaryProductId: form.primaryProductId,
+          productIds: componentIds,
+          freeProductIds: Array.from(freeIds).filter((id) => componentIds.includes(id)),
           discountType: form.discountType, discountValue: form.discountValue || "0",
-          minPrimaryQty: form.minPrimaryQty,
         }),
       });
       if (r.ok) {
@@ -71,12 +84,18 @@ export default function BundleEditPage() {
       }
     }, 200);
     return () => clearTimeout(t);
-  }, [selectedIds, form.primaryProductId, form.discountType, form.discountValue, form.minPrimaryQty, token]);
+  }, [componentIds, freeIds, form.primaryProductId, form.discountType, form.discountValue, token]);
 
   function pickAnchor(prod: ProductOption) {
     setProductCache((prev) => new Map(prev).set(prod.id, prod));
     setForm((f) => ({ ...f, primaryProductId: prod.id }));
-    setSelectedIds((prev) => prev.includes(prod.id) ? prev : [prod.id, ...prev]);
+    // If anchor was previously a component, remove from components
+    setComponentIds((prev) => prev.filter((id) => id !== prod.id));
+    setFreeIds((prev) => {
+      const next = new Set(prev);
+      next.delete(prod.id);
+      return next;
+    });
   }
 
   function addCompanions(prods: ProductOption[]) {
@@ -85,38 +104,57 @@ export default function BundleEditPage() {
       for (const p of prods) next.set(p.id, p);
       return next;
     });
-    setSelectedIds((prev) => {
+    setComponentIds((prev) => {
       const set = new Set(prev);
-      for (const p of prods) set.add(p.id);
+      for (const p of prods) if (p.id !== form.primaryProductId) set.add(p.id);
       return Array.from(set);
     });
   }
 
   function moveCompanion(idx: number, dir: -1 | 1) {
-    setSelectedIds((prev) => {
-      const companions = prev.filter((id) => id !== form.primaryProductId);
+    setComponentIds((prev) => {
+      const arr = [...prev];
       const newIdx = idx + dir;
-      if (newIdx < 0 || newIdx >= companions.length) return prev;
-      [companions[idx], companions[newIdx]] = [companions[newIdx], companions[idx]];
-      return form.primaryProductId ? [form.primaryProductId, ...companions] : companions;
+      if (newIdx < 0 || newIdx >= arr.length) return prev;
+      [arr[idx], arr[newIdx]] = [arr[newIdx], arr[idx]];
+      return arr;
     });
   }
 
   function removeCompanion(id: number) {
-    setSelectedIds((prev) => prev.filter((x) => x !== id));
+    setComponentIds((prev) => prev.filter((x) => x !== id));
+    setFreeIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  }
+
+  function toggleFree(id: number) {
+    setFreeIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
 
   async function save(action: "draft" | "publish") {
     if (!form.name.trim()) { toast({ title: "Name is required", variant: "destructive" }); return; }
     if (!form.slug.trim()) { toast({ title: "Slug is required", variant: "destructive" }); return; }
     if (!form.primaryProductId) { toast({ title: "Pick an anchor product", variant: "destructive" }); return; }
-    if (selectedIds.length < 2) { toast({ title: "Add at least one companion product", variant: "destructive" }); return; }
+    if (componentIds.length < 1) { toast({ title: "Add at least one component product", variant: "destructive" }); return; }
+    if (form.discountType === "BUY_X_GET_Y_FREE" && freeIds.size === 0) {
+      toast({ title: "Mark at least one component as free", variant: "destructive" });
+      return;
+    }
 
     setSaving(true);
     const body = {
       ...form,
       isActive: action === "publish" ? true : form.isActive,
-      productIds: selectedIds,
+      productIds: componentIds,
+      freeProductIds: Array.from(freeIds).filter((id) => componentIds.includes(id)),
       discountValue: form.discountValue || "0",
     };
     const url = form.id ? `${API}/admin/bundles/${form.id}` : `${API}/admin/bundles`;
@@ -171,26 +209,29 @@ export default function BundleEditPage() {
         <BundleEditForm
           form={form}
           setForm={setForm}
-          selectedIds={selectedIds}
+          componentIds={componentIds}
+          freeIds={freeIds}
           productCache={productCache}
+          onToggleFree={toggleFree}
           onMoveCompanion={moveCompanion}
           onRemoveCompanion={removeCompanion}
           onPickAnchor={() => setAnchorPickerOpen(true)}
           onAddCompanions={() => setCompanionPickerOpen(true)}
         />
-        <BundleEditPreview form={form} selectedIds={selectedIds} productCache={productCache} pricing={pricing} />
+        <BundleEditPreview form={form} componentIds={componentIds} freeIds={freeIds} productCache={productCache} pricing={pricing} />
       </div>
 
       <BundleProductPicker
         open={anchorPickerOpen} onClose={() => setAnchorPickerOpen(false)}
-        mode="single" title="Pick the anchor product"
-        excludedIds={selectedIds.filter((id) => id !== form.primaryProductId)}
+        mode="single" title="Pick the bundle product (anchor)"
+        excludedIds={componentIds}
+        allowCreate
         onConfirmSingle={pickAnchor}
       />
       <BundleProductPicker
         open={companionPickerOpen} onClose={() => setCompanionPickerOpen(false)}
-        mode="multi" title="Add companion products"
-        excludedIds={selectedIds}
+        mode="multi" title="Add components to this bundle"
+        excludedIds={[...componentIds, ...(form.primaryProductId ? [form.primaryProductId] : [])]}
         onConfirmMulti={addCompanions}
       />
     </div>
