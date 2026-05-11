@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { Search, Package, ArrowRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import type { SearchResponse, SearchProduct } from "@/lib/search-types";
+import type { SearchResponse, SearchProduct, SearchBundleHit } from "@/lib/search-types";
 import { useCurrencyStore } from "@/stores/currency-store";
 
 const MAX_SUGGESTIONS = 6;

@@ -23,9 +23,19 @@ export interface SearchProduct {
   variants: SearchVariant[];
 }
 
+export interface SearchBundleHit {
+  id: number;
+  name: string;
+  slug: string;
+  imageUrl: string | null;
+  bundlePriceUsd: string;
+  itemCount: number;
+}
+
 export interface SearchResponse {
   items: SearchProduct[];
   total: number;
   limit: number;
   offset: number;
+  bundleHits?: SearchBundleHit[];
 }

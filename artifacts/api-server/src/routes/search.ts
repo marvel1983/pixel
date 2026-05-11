@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from "express";
 import { db } from "@workspace/db";
-import { products, productVariants, categories, tags, productTags, attributeDefinitions, attributeOptions, productAttributes } from "@workspace/db/schema";
+import { products, productVariants, categories, tags, productTags, attributeDefinitions, attributeOptions, productAttributes, bundles, bundleItems } from "@workspace/db/schema";
 import { loadBundleForAnchor } from "../services/bundle-public";
 import { eq, ilike, or, and, sql, inArray, gt, asc, desc, count, type SQL } from "drizzle-orm";
 import { z } from "zod";
@@ -236,7 +236,33 @@ router.get("/search", async (req: Request, res: Response) => {
   const allIds = items.map((p: { id: number }) => p.id);
   const facets = await computeFacets(allIds);
 
-  res.json({ items, total, limit, offset, facets });
+  // Bundle hits — search bundles by name/description, max 6
+  const bundleTextConditions = tokens.map((tok) => {
+    const p = `%${tok}%`;
+    return or(ilike(bundles.name, p), ilike(bundles.description, p), ilike(bundles.shortDescription, p));
+  });
+  const bundleRows = await db
+    .select({
+      id: bundles.id,
+      name: bundles.name,
+      slug: bundles.slug,
+      imageUrl: bundles.imageUrl,
+      bundlePriceUsd: bundles.bundlePriceUsd,
+    })
+    .from(bundles)
+    .where(and(eq(bundles.isActive, true), ...bundleTextConditions))
+    .orderBy(asc(bundles.name))
+    .limit(6);
+
+  const bundleIds = bundleRows.map((b) => b.id);
+  const itemCounts = bundleIds.length > 0
+    ? await db.select({ bundleId: bundleItems.bundleId, cnt: sql<number>`count(*)::int` })
+        .from(bundleItems).where(inArray(bundleItems.bundleId, bundleIds)).groupBy(bundleItems.bundleId)
+    : [];
+  const itemCountMap = new Map(itemCounts.map((r) => [r.bundleId, r.cnt]));
+  const bundleHits = bundleRows.map((b) => ({ ...b, itemCount: itemCountMap.get(b.id) ?? 0 }));
+
+  res.json({ items, total, limit, offset, facets, bundleHits });
 });
 
 async function computeFacets(productIds: number[]) {

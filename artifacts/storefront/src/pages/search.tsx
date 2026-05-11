@@ -3,13 +3,14 @@ import { useSearch } from "wouter";
 import { Link } from "wouter";
 import { useTranslation } from "react-i18next";
 import type { MockProduct } from "@/lib/mock-data";
-import type { SearchResponse, SearchProduct } from "@/lib/search-types";
+import type { SearchResponse, SearchProduct, SearchBundleHit } from "@/lib/search-types";
 import { useListingFilters } from "@/lib/use-listing-filters";
 import { Breadcrumbs } from "@/components/shop/breadcrumbs";
 import { FilterSidebar } from "@/components/shop/filter-sidebar";
 import { ProductGrid } from "@/components/shop/product-grid";
 import { ProductCard } from "@/components/product/product-card";
-import { SearchX, ArrowRight, Loader2 } from "lucide-react";
+import { SearchX, ArrowRight, Loader2, Package } from "lucide-react";
+import { useCurrencyStore } from "@/stores/currency-store";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -64,6 +65,7 @@ export default function SearchPage() {
   const { filters, setFilters, perPage } = useListingFilters();
   const [items, setItems] = useState<MockProduct[]>([]);
   const [total, setTotal] = useState(0);
+  const [bundleHits, setBundleHits] = useState<SearchBundleHit[]>([]);
   const [loading, setLoading] = useState(false);
   const [popularProducts, setPopularProducts] = useState<MockProduct[]>([]);
 
@@ -94,6 +96,7 @@ export default function SearchPage() {
         const list = Array.isArray(data.items) ? data.items : [];
         setItems(list.map(toMockProduct));
         setTotal(typeof data.total === "number" ? data.total : 0);
+        setBundleHits(data.bundleHits ?? []);
       })
       .catch((err) => {
         if ((err as Error).name === "AbortError") return;
@@ -127,6 +130,10 @@ export default function SearchPage() {
             )}
           </h1>
 
+          {!loading && bundleHits.length > 0 && (
+            <BundleHitsSection bundles={bundleHits} />
+          )}
+
           {!loading && items.length === 0 ? (
             <NoResultsState query={query} suggestions={popularProducts} t={t} />
           ) : !loading ? (
@@ -147,6 +154,43 @@ export default function SearchPage() {
       ) : (
         <NoResultsState query="" suggestions={popularProducts} t={t} />
       )}
+    </div>
+  );
+}
+
+function BundleHitsSection({ bundles }: { bundles: SearchBundleHit[] }) {
+  const format = useCurrencyStore((s) => s.format);
+  return (
+    <div className="mb-6">
+      <h2 className="text-base font-semibold mb-3 flex items-center gap-2">
+        <Package className="h-4 w-4 text-primary" /> Bundles
+      </h2>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+        {bundles.map((b) => (
+          <Link key={b.id} href={`/bundles/${b.slug}`}>
+            <div className="group bg-card border border-border rounded-lg hover:shadow-lg hover:-translate-y-0.5 transition-[shadow,transform] duration-150 h-full flex flex-col">
+              <div className="relative aspect-[3/4] shrink-0 rounded-t-lg">
+                <div className="absolute inset-0 overflow-hidden rounded-t-lg bg-white">
+                  {b.imageUrl ? (
+                    <img src={b.imageUrl} alt={b.name} className="h-full w-full object-contain p-3" loading="lazy" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center">
+                      <Package className="h-12 w-12 text-muted-foreground/30" />
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-1 flex-col items-center p-3 text-center">
+                <h3 className="text-sm font-medium line-clamp-2 mb-1 group-hover:text-primary transition-colors">{b.name}</h3>
+                <p className="text-xs text-muted-foreground mb-2">{b.itemCount} products</p>
+                <div className="mt-auto">
+                  <span className="text-base font-bold">{format(parseFloat(b.bundlePriceUsd))}</span>
+                </div>
+              </div>
+            </div>
+          </Link>
+        ))}
+      </div>
     </div>
   );
 }
