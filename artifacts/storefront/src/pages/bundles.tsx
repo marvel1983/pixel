@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { useTranslation } from "react-i18next";
 import { Package, Tag, ArrowRight, Loader2 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useCurrencyStore } from "@/stores/currency-store";
@@ -71,61 +70,59 @@ export default function BundlesPage() {
         <p className="text-muted-foreground mt-1">{t("bundles.subtitle")}</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
         {bundles.map((b) => {
           const savings = parseFloat(b.individualTotal) - parseFloat(b.bundlePriceUsd);
           const savingsPct = Math.round((savings / parseFloat(b.individualTotal)) * 100);
           return (
             <Link key={b.id} href={`/bundles/${b.slug}`}>
-              <Card className="h-full hover:shadow-lg transition-shadow cursor-pointer group overflow-hidden">
-                <div className="relative aspect-[4/3] bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
-                  {b.imageUrl ? (
-                    <img src={b.imageUrl} alt={b.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <Package className="h-16 w-16 text-blue-300" />
-                  )}
+              <div className="group bg-card border border-border rounded-lg hover:shadow-lg hover:-translate-y-0.5 transition-[shadow,transform] duration-150 h-full flex flex-col">
+                <div className="relative aspect-[3/4] shrink-0 rounded-t-lg">
+                  <div className="absolute inset-0 overflow-hidden rounded-t-lg bg-white">
+                    {b.imageUrl ? (
+                      <img src={b.imageUrl} alt={b.name} className="h-full w-full object-contain p-3" loading="lazy" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center">
+                        <Package className="h-12 w-12 text-muted-foreground/30" />
+                      </div>
+                    )}
+                  </div>
                   {savingsPct > 0 && (
-                    <Badge className="absolute top-3 right-3 bg-green-600 text-white text-sm px-2 py-1">
-                      {t("bundles.save", { pct: savingsPct })}
+                    <Badge className="absolute left-2 top-2 z-10 bg-green-600 text-white text-[10px] px-1.5 py-0.5 pointer-events-none">
+                      -{savingsPct}%
                     </Badge>
                   )}
                   {b.isFeatured && (
-                    <Badge className="absolute top-3 left-3 bg-amber-500 text-white">{t("bundles.featured")}</Badge>
+                    <Badge className="absolute right-2 top-2 z-10 bg-amber-500 text-white text-[10px] px-1.5 py-0.5 pointer-events-none">{t("bundles.featured")}</Badge>
                   )}
                 </div>
-                <CardContent className="p-4 space-y-3">
-                  <h3 className="font-semibold text-lg group-hover:text-blue-600 transition-colors line-clamp-1">{b.name}</h3>
-                  {b.shortDescription && (
-                    <p className="text-sm text-muted-foreground line-clamp-2">{b.shortDescription}</p>
-                  )}
-                  <div className="flex items-center gap-2">
-                    <div className="flex -space-x-2">
-                      {b.items.slice(0, 4).map((item) => (
-                        <div key={item.productId} className="w-9 h-9 rounded-full border-2 border-white bg-muted flex items-center justify-center overflow-hidden" title={item.productName}>
-                          {item.productImage ? (
-                            <img src={item.productImage} alt={item.productName} className="w-full h-full object-cover" />
-                          ) : (
-                            <Package className="h-4 w-4 text-muted-foreground" />
-                          )}
-                        </div>
-                      ))}
-                    </div>
+                <div className="flex flex-1 flex-col items-center p-3 text-center">
+                  <h3 className="text-sm font-medium text-foreground line-clamp-2 mb-1 group-hover:text-primary transition-colors">{b.name}</h3>
+                  <div className="flex -space-x-1.5 mb-2">
+                    {b.items.slice(0, 4).map((item) => (
+                      <div key={item.productId} className="w-6 h-6 rounded-full border border-white bg-muted flex items-center justify-center overflow-hidden" title={item.productName}>
+                        {item.productImage ? (
+                          <img src={item.productImage} alt={item.productName} className="w-full h-full object-cover" />
+                        ) : (
+                          <Package className="h-3 w-3 text-muted-foreground" />
+                        )}
+                      </div>
+                    ))}
                     {b.items.length > 4 && (
-                      <span className="text-xs text-muted-foreground">{t("bundles.moreItems", { count: b.items.length - 4 })}</span>
+                      <span className="text-[10px] text-muted-foreground self-center pl-1">+{b.items.length - 4}</span>
                     )}
-                    <Badge variant="secondary" className="text-xs ml-auto">{t("bundles.productCount", { count: b.items.length })}</Badge>
                   </div>
-                  <div className="flex items-center justify-between pt-2 border-t">
-                    <div>
-                      <span className="text-lg font-bold text-blue-600">{format(parseFloat(b.bundlePriceUsd))}</span>
-                      <span className="text-sm text-muted-foreground line-through ml-2">{format(parseFloat(b.individualTotal))}</span>
+                  <div className="mt-auto flex flex-col gap-2 pt-2 w-full">
+                    <div className="flex items-baseline justify-center gap-1.5">
+                      <span className="text-lg font-bold leading-tight text-foreground">{format(parseFloat(b.bundlePriceUsd))}</span>
+                      <span className="text-xs leading-tight text-muted-foreground line-through">{format(parseFloat(b.individualTotal))}</span>
                     </div>
-                    <Button variant="ghost" size="sm" className="text-blue-600">
-                      {t("bundles.view")} <ArrowRight className="h-4 w-4 ml-1" />
+                    <Button variant="default" size="sm" className="h-9 w-full gap-2 rounded-lg border-0 px-3 text-xs font-semibold text-white bg-primary hover:bg-primary/90">
+                      {t("bundles.view")} <ArrowRight className="h-3.5 w-3.5" />
                     </Button>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </Link>
           );
         })}
