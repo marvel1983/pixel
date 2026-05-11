@@ -190,40 +190,64 @@ function BundleGroup({ bundleId, items, format, onRemoveBundle, onRemoveItem }: 
         </Button>
         {expanded ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
       </div>
-      {expanded && items.map((item) => (
-        <div
-          key={`${bundleId}-${item.variantId}`}
-          className="grid grid-cols-1 sm:grid-cols-[1fr_100px_140px_100px_44px] gap-3 sm:gap-4 px-6 pl-14 py-3 items-center border-t border-border/50 bg-blue-50/20"
-        >
-          <div className="flex items-center gap-3">
+      {expanded && items.map((item) => {
+        const allocated = parseFloat(item.priceUsd);
+        const original = parseFloat(item.originalPriceUsd ?? item.priceUsd);
+        const hasSavings = original > allocated + 0.005;
+        return (
+          <div
+            key={`${bundleId}-${item.variantId}`}
+            className="hidden sm:grid sm:grid-cols-[1fr_100px_140px_100px_44px] gap-4 px-5 py-3 items-center border-t border-border/50 bg-blue-50/20"
+          >
+            <div className="flex items-center gap-3 pl-9">
+              <div className="w-10 h-10 rounded-lg border border-border bg-muted flex items-center justify-center shrink-0 overflow-hidden">
+                {item.imageUrl
+                  ? <img src={item.imageUrl} alt={item.productName} className="w-full h-full object-contain" />
+                  : <Package className="h-4 w-4 text-muted-foreground/40" />}
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium truncate">{item.productName}</p>
+                <p className="text-xs text-muted-foreground">{item.variantName}</p>
+              </div>
+            </div>
+            <div className="text-sm text-center leading-tight">
+              {hasSavings && (
+                <span className="text-[11px] text-muted-foreground line-through block">{format(original)}</span>
+              )}
+              <span className="font-medium">{format(allocated)}</span>
+            </div>
+            <div className="text-sm text-center text-muted-foreground">×{item.quantity}</div>
+            <div className="text-sm text-right font-semibold">{format(allocated * item.quantity)}</div>
+            <div className="flex justify-end">
+              <button
+                className="h-7 w-7 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                onClick={() => onRemoveItem(item.variantId, item.bundleId)}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+        );
+      })}
+      {expanded && items.map((item) => {
+        const allocated = parseFloat(item.priceUsd);
+        const original = parseFloat(item.originalPriceUsd ?? item.priceUsd);
+        const hasSavings = original > allocated + 0.005;
+        return (
+          <div key={`m-${bundleId}-${item.variantId}`} className="sm:hidden flex items-center gap-3 px-4 py-3 border-t border-border/50 bg-blue-50/20">
             <div className="w-10 h-10 rounded-lg border border-border bg-muted flex items-center justify-center shrink-0 overflow-hidden">
               {item.imageUrl
                 ? <img src={item.imageUrl} alt={item.productName} className="w-full h-full object-contain" />
                 : <Package className="h-4 w-4 text-muted-foreground/40" />}
             </div>
-            <div className="min-w-0">
+            <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{item.productName}</p>
-              <p className="text-xs text-muted-foreground">{item.variantName}</p>
+              <p className="text-xs text-muted-foreground">×{item.quantity}{hasSavings ? ` · was ${format(original)}` : ""}</p>
             </div>
+            <span className="text-sm font-semibold">{format(allocated * item.quantity)}</span>
           </div>
-          <div className="text-sm text-center">
-            {item.originalPriceUsd && parseFloat(item.originalPriceUsd) > parseFloat(item.priceUsd) && (
-              <span className="text-xs text-muted-foreground line-through block">{format(parseFloat(item.originalPriceUsd))}</span>
-            )}
-            <span className="font-medium">{format(parseFloat(item.priceUsd))}</span>
-          </div>
-          <div className="text-sm text-center text-muted-foreground">×{item.quantity}</div>
-          <div className="text-sm text-right font-semibold">{format(parseFloat(item.priceUsd) * item.quantity)}</div>
-          <div className="flex justify-end">
-            <button
-              className="h-7 w-7 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-              onClick={() => onRemoveItem(item.variantId, item.bundleId)}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

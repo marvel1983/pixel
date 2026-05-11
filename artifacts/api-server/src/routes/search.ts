@@ -1,6 +1,6 @@
 import { Router, type Request, type Response } from "express";
 import { db } from "@workspace/db";
-import { products, productVariants, categories, tags, productTags, attributeDefinitions, attributeOptions, productAttributes } from "@workspace/db/schema";
+import { products, productVariants, categories, tags, productTags, attributeDefinitions, attributeOptions, productAttributes, bundles as bundlesTable } from "@workspace/db/schema";
 import { eq, ilike, or, and, sql, inArray, gt, asc, desc, count, type SQL } from "drizzle-orm";
 import { z } from "zod";
 
@@ -114,6 +114,7 @@ router.get("/search", async (req: Request, res: Response) => {
       avgRating: products.avgRating,
       reviewCount: products.reviewCount,
       isFeatured: products.isFeatured,
+      isBundleAnchor: products.isBundleAnchor,
       categorySlug: categories.slug,
     })
     .from(products)
@@ -204,10 +205,41 @@ router.get("/search", async (req: Request, res: Response) => {
   }
 
   const total = countResult?.count ?? 0;
-  const items = results.map((p) => ({
-    ...p,
-    variants: variants.filter((v) => v.productId === p.id),
-  }));
+
+  // Bundle-price override for anchor products: listing card should show the
+  // computed bundle price, not the anchor variant's catalog price.
+  const anchorIds = results.filter((r) => r.isBundleAnchor).map((r) => r.id);
+  const anchorBundlePrice = new Map<number, { bundlePriceUsd: string; useAnchorPrice: boolean }>();
+  if (anchorIds.length > 0) {
+    const bundleRows = await db
+      .select({
+        primaryProductId: bundlesTable.primaryProductId,
+        bundlePriceUsd: bundlesTable.bundlePriceUsd,
+        useAnchorPrice: bundlesTable.useAnchorPrice,
+      })
+      .from(bundlesTable)
+      .where(and(inArray(bundlesTable.primaryProductId, anchorIds), eq(bundlesTable.isActive, true)));
+    for (const b of bundleRows) {
+      if (b.primaryProductId !== null) {
+        anchorBundlePrice.set(b.primaryProductId, {
+          bundlePriceUsd: b.bundlePriceUsd,
+          useAnchorPrice: b.useAnchorPrice,
+        });
+      }
+    }
+  }
+
+  const items = results.map((p) => {
+    const anchorPrice = anchorBundlePrice.get(p.id);
+    const overrideToBundle = p.isBundleAnchor && anchorPrice && !anchorPrice.useAnchorPrice;
+    return {
+      ...p,
+      variants: variants.filter((v) => v.productId === p.id).map((v) => ({
+        ...v,
+        priceUsd: overrideToBundle ? anchorPrice.bundlePriceUsd : v.priceUsd,
+      })),
+    };
+  });
 
   const allIds = items.map((p: { id: number }) => p.id);
   const facets = await computeFacets(allIds);
