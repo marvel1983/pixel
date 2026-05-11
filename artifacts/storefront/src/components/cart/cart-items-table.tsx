@@ -169,26 +169,43 @@ function BundleGroup({ bundleId, items, format, onRemoveBundle, onRemoveItem }: 
   return (
     <div className="border-t border-border">
       <div
-        className="flex items-center gap-3 px-6 py-3 bg-blue-50/60 dark:bg-blue-950/20 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
+        className="hidden sm:grid sm:grid-cols-[1fr_100px_140px_100px_44px] gap-4 items-center px-5 py-3 bg-blue-50/60 dark:bg-blue-950/20 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          {expanded
+            ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
+            : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
+          <Package className="h-4 w-4 text-blue-500 shrink-0" />
+          <span className="font-semibold text-sm truncate">{bundleName}</span>
+          {savings > 0 && (
+            <Badge className="bg-green-100 text-green-700 border-green-200 text-[10px] gap-1 shrink-0">
+              <Tag className="h-2.5 w-2.5" /> Saves {format(savings)}
+            </Badge>
+          )}
+        </div>
+        <span className="text-xs text-muted-foreground text-center">Bundle</span>
+        <span />
+        <span className="text-right font-bold text-sm">{format(bundleTotal)}</span>
+        <div className="flex justify-end">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
+            onClick={(e) => { e.stopPropagation(); onRemoveBundle(bundleId); }}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </div>
+      <div
+        className="sm:hidden flex items-center gap-3 px-4 py-3 bg-blue-50/60 dark:bg-blue-950/20 cursor-pointer"
         onClick={() => setExpanded(!expanded)}
       >
         <Package className="h-4 w-4 text-blue-500 shrink-0" />
-        <span className="font-semibold text-sm flex-1">{bundleName}</span>
-        {savings > 0 && (
-          <Badge className="bg-green-100 text-green-700 border-green-200 text-[10px] gap-1">
-            <Tag className="h-2.5 w-2.5" /> Saves {format(savings)}
-          </Badge>
-        )}
+        <span className="font-semibold text-sm flex-1 truncate">{bundleName}</span>
         <span className="font-bold text-sm">{format(bundleTotal)}</span>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
-          onClick={(e) => { e.stopPropagation(); onRemoveBundle(bundleId); }}
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
-        {expanded ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
+        {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
       </div>
       {expanded && items.map((item) => {
         const allocated = parseFloat(item.priceUsd);
