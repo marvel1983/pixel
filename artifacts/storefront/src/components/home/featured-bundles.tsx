@@ -66,7 +66,7 @@ export function FeaturedBundles() {
           return (
             <Link key={b.id} href={`/bundles/${b.slug}`} className="block h-full">
               <Card className="group flex h-full flex-col cursor-pointer overflow-hidden transition-shadow hover:shadow-lg">
-                <div className="relative aspect-[3/2]">
+                <div className="relative aspect-[4/3]">
                   <div className="absolute inset-0 flex items-center justify-center overflow-hidden bg-gradient-to-br from-primary/10 to-primary/5">
                     {b.imageUrl ? (
                       <img src={b.imageUrl} alt={b.name} className="h-full w-full object-cover" />
