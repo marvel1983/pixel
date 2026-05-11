@@ -6,7 +6,7 @@ import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import { z } from "zod/v4";
 import { paramString } from "../lib/route-params";
-import { validateBundleRule, pricePreviewFor } from "../services/bundle-admin-helpers";
+import { validateBundleRule, pricePreviewFor, anchorCatalogPrice } from "../services/bundle-admin-helpers";
 
 const router = Router();
 const auth = [requireAuth, requireAdmin, requirePermission("manageProducts")];
@@ -29,6 +29,7 @@ const bundleSchema = z.object({
   freeProductIds: z.array(z.number()).default([]),
   discountType: z.enum(["PERCENTAGE", "FIXED", "BUY_X_GET_Y_FREE"]),
   discountValue: z.string().default("0"),
+  useAnchorPrice: z.boolean().optional().default(false),
 });
 
 router.get("/admin/bundles", ...auth, async (req, res) => {
@@ -115,13 +116,14 @@ router.post("/admin/bundles", ...auth, async (req, res) => {
     discountType: data.discountType, discountValue: data.discountValue,
   });
 
-  const { productIds, freeProductIds, primaryProductId, discountType, discountValue, ...rest } = data;
+  const { productIds, freeProductIds, primaryProductId, discountType, discountValue, useAnchorPrice, ...rest } = data;
   const freeSet = new Set(freeProductIds);
+  const cachedPrice = useAnchorPrice ? (await anchorCatalogPrice(primaryProductId)) ?? pricing.finalUsd : pricing.finalUsd;
 
   const [bundle] = await db.insert(bundles).values({
     ...rest,
-    primaryProductId, discountType, discountValue,
-    bundlePriceUsd: pricing.finalUsd,
+    primaryProductId, discountType, discountValue, useAnchorPrice,
+    bundlePriceUsd: cachedPrice,
   }).returning();
 
   await db.update(products).set({ isBundleAnchor: true, updatedAt: new Date() }).where(eq(products.id, primaryProductId));
@@ -153,13 +155,14 @@ router.put("/admin/bundles/:id", ...auth, async (req, res) => {
   });
 
   const [oldBundle] = await db.select({ primaryProductId: bundles.primaryProductId }).from(bundles).where(eq(bundles.id, id)).limit(1);
-  const { productIds, freeProductIds, primaryProductId, discountType, discountValue, ...rest } = data;
+  const { productIds, freeProductIds, primaryProductId, discountType, discountValue, useAnchorPrice, ...rest } = data;
   const freeSet = new Set(freeProductIds);
+  const cachedPrice = useAnchorPrice ? (await anchorCatalogPrice(primaryProductId)) ?? pricing.finalUsd : pricing.finalUsd;
 
   const [updated] = await db.update(bundles).set({
     ...rest,
-    primaryProductId, discountType, discountValue,
-    bundlePriceUsd: pricing.finalUsd,
+    primaryProductId, discountType, discountValue, useAnchorPrice,
+    bundlePriceUsd: cachedPrice,
     updatedAt: new Date(),
   }).where(eq(bundles.id, id)).returning();
 

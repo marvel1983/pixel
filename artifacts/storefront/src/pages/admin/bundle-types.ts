@@ -22,6 +22,7 @@ export interface BundleFormState {
   primaryProductId: number | null;
   discountType: DiscountType;
   discountValue: string;
+  useAnchorPrice: boolean;
 }
 
 export interface PricingPreview {
@@ -54,6 +55,7 @@ export const emptyBundle = (): BundleFormState => ({
   metaTitle: null, metaDescription: null, sortOrder: 0,
   primaryProductId: null,
   discountType: "PERCENTAGE", discountValue: "10",
+  useAnchorPrice: false,
 });
 
 export const toFormState = (b: AdminBundle): BundleFormState => ({
@@ -63,6 +65,7 @@ export const toFormState = (b: AdminBundle): BundleFormState => ({
   metaTitle: b.metaTitle, metaDescription: b.metaDescription, sortOrder: b.sortOrder,
   primaryProductId: b.primaryProductId, discountType: b.discountType,
   discountValue: b.discountValue,
+  useAnchorPrice: b.useAnchorPrice ?? false,
 });
 
 export function slugify(name: string): string {

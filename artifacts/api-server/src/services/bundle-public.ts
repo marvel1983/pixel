@@ -21,6 +21,7 @@ export interface PublicBundle {
   slug: string;
   discountType: BundleDiscountType;
   discountValue: string;
+  useAnchorPrice: boolean;
   components: PublicBundleComponent[];
   pricing: {
     sumOriginalUsd: string;
@@ -42,6 +43,8 @@ export async function loadBundleForAnchor(anchorProductId: number): Promise<Publ
       isActive: bundles.isActive,
       discountType: bundles.discountType,
       discountValue: bundles.discountValue,
+      useAnchorPrice: bundles.useAnchorPrice,
+      bundlePriceUsd: bundles.bundlePriceUsd,
     })
     .from(bundles)
     .where(eq(bundles.primaryProductId, anchorProductId))
@@ -99,10 +102,31 @@ export async function loadBundleForAnchor(anchorProductId: number): Promise<Publ
     isFree: it.isFree,
   }));
 
-  const pricing = computeBundlePrice(componentInputs, {
+  let pricing = computeBundlePrice(componentInputs, {
     discountType: bundle.discountType,
     discountValue: bundle.discountValue,
   });
+
+  // §useAnchorPrice override — admin opted to display the anchor's catalog price
+  // (cheapest active variant) instead of the computed bundle price.
+  if (bundle.useAnchorPrice) {
+    const anchorVariants = await db
+      .select({ priceUsd: productVariants.priceUsd })
+      .from(productVariants)
+      .where(and(eq(productVariants.productId, anchorProductId), eq(productVariants.isActive, true)));
+    const anchorMin = anchorVariants.reduce<number | null>((acc, v) => {
+      const n = Number(v.priceUsd);
+      return Number.isFinite(n) && (acc === null || n < acc) ? n : acc;
+    }, null);
+    if (anchorMin !== null) {
+      const sumOrig = parseFloat(pricing.sumOriginalUsd);
+      pricing = {
+        ...pricing,
+        finalUsd: anchorMin.toFixed(2),
+        savingsUsd: Math.max(0, sumOrig - anchorMin).toFixed(2),
+      };
+    }
+  }
 
   // Allocate the bundle's final price across PAID components proportionally to their
   // unit price, so the sum of allocations = pricing.finalUsd. Free components stay at 0.
@@ -145,6 +169,7 @@ export async function loadBundleForAnchor(anchorProductId: number): Promise<Publ
     slug: bundle.slug,
     discountType: bundle.discountType,
     discountValue: bundle.discountValue,
+    useAnchorPrice: bundle.useAnchorPrice,
     components,
     pricing: {
       sumOriginalUsd: pricing.sumOriginalUsd,

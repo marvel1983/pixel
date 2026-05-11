@@ -123,6 +123,10 @@ export function BundleEditForm(p: Props) {
             Mark at least one component above as <strong>Free</strong> for this rule.
           </p>
         )}
+        <label className="mt-3 pt-3 border-t border-[#2a2e3a] flex items-start gap-2 cursor-pointer">
+          <input type="checkbox" checked={p.form.useAnchorPrice} onChange={(e) => upd("useAnchorPrice", e.target.checked)} className="mt-0.5 h-4 w-4 rounded border-[#2e3340] bg-[#0f1117] text-sky-500 focus:ring-sky-500/30" />
+          <span className="text-[11.5px] text-[#8fa0bb] leading-snug"><span className="text-[#dde4f0] font-medium">Use anchor's catalog price instead.</span> Override the computed sum-minus-discount with the anchor's own variant price.</span>
+        </label>
       </Card>
 
       <Card title="Cover image">
@@ -214,14 +218,11 @@ function ProductRow({ item, badge, badgeAccent, right }: { item: ProductOption; 
   );
 }
 
-function IconBtn({ icon, onClick, disabled }: { icon: React.ReactNode; onClick: () => void; disabled?: boolean }) {
-  return <Button variant="ghost" size="icon" className="h-7 w-7 text-[#8fa0bb] hover:text-[#dde4f0]" onClick={onClick} disabled={disabled}>{icon}</Button>;
-}
+function IconBtn({ icon, onClick, disabled }: { icon: React.ReactNode; onClick: () => void; disabled?: boolean }) { return <Button variant="ghost" size="icon" className="h-7 w-7 text-[#8fa0bb] hover:text-[#dde4f0]" onClick={onClick} disabled={disabled}>{icon}</Button>; }
 function RuleCard({ checked, onClick, title, subtitle }: { checked: boolean; onClick: () => void; title: string; subtitle: string }) {
   return (
     <button type="button" onClick={onClick} className={`text-left rounded-md p-2.5 border transition-colors ${checked ? "border-sky-500/60 bg-sky-500/10" : "border-[#2e3340] bg-[#0f1117] hover:border-[#3d5070]"}`}>
-      <div className="text-[12.5px] font-semibold text-[#dde4f0]">{title}</div>
-      <div className="text-[10.5px] text-[#5a6a84]">{subtitle}</div>
+      <div className="text-[12.5px] font-semibold text-[#dde4f0]">{title}</div><div className="text-[10.5px] text-[#5a6a84]">{subtitle}</div>
     </button>
   );
 }

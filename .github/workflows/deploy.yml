@@ -354,6 +354,8 @@ jobs:
             $PSQL -c "DELETE FROM bundle_items bi USING bundles b WHERE bi.bundle_id = b.id AND bi.product_id = b.primary_product_id;" || true
             echo "→ Marking anchor products with is_bundle_anchor = true..."
             $PSQL -c "UPDATE products SET is_bundle_anchor = true WHERE id IN (SELECT DISTINCT primary_product_id FROM bundles WHERE primary_product_id IS NOT NULL) AND is_bundle_anchor = false;" || true
+            echo "→ Adding use_anchor_price column to bundles (default false)..."
+            $PSQL -c "ALTER TABLE bundles ADD COLUMN IF NOT EXISTS use_anchor_price BOOLEAN NOT NULL DEFAULT false;" || true
 
             echo "→ Reloading PM2..."
             set -a; source /var/www/pixel-storefront/.env; set +a

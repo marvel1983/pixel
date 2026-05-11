@@ -31,6 +31,7 @@ export const bundles = pgTable("bundles", {
   discountType: bundleDiscountTypeEnum("discount_type").notNull().default("FIXED"),
   discountValue: numeric("discount_value", { precision: 10, scale: 2 }).notNull().default("0"),
   minPrimaryQty: integer("min_primary_qty").notNull().default(1),
+  useAnchorPrice: boolean("use_anchor_price").notNull().default(false),
   isActive: boolean("is_active").notNull().default(true),
   isFeatured: boolean("is_featured").notNull().default(false),
   metaTitle: varchar("meta_title", { length: 300 }),

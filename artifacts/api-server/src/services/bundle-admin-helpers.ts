@@ -50,6 +50,22 @@ export async function validateBundleRule(d: BundleSaveInput): Promise<string | n
 }
 
 /**
+ * If admin enabled "use anchor's catalog price", return the anchor product's cheapest
+ * active variant price. Otherwise null. Used to cache bundles.bundle_price_usd on save.
+ */
+export async function anchorCatalogPrice(anchorProductId: number): Promise<string | null> {
+  const variants = await db
+    .select({ priceUsd: productVariants.priceUsd })
+    .from(productVariants)
+    .where(and(eq(productVariants.productId, anchorProductId), eq(productVariants.isActive, true)));
+  const min = variants.reduce<number | null>((acc, v) => {
+    const n = Number(v.priceUsd);
+    return Number.isFinite(n) && (acc === null || n < acc) ? n : acc;
+  }, null);
+  return min !== null ? min.toFixed(2) : null;
+}
+
+/**
  * Compute a live preview price using the cheapest active variant per component.
  */
 export async function pricePreviewFor(

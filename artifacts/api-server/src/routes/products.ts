@@ -4,6 +4,7 @@ import {
   products, productVariants, categories,
   tags, productTags,
   attributeDefinitions, attributeOptions, productAttributes,
+  bundles as bundlesTable,
 } from "@workspace/db/schema";
 import {
   eq, ilike, and, sql, inArray, gt, asc, desc, count, or, type SQL,
@@ -195,6 +196,7 @@ router.get("/products", async (req: Request, res: Response) => {
       regionRestrictions: products.regionRestrictions,
       platformType: products.platformType,
       customInfoTiles: products.customInfoTiles,
+      isBundleAnchor: products.isBundleAnchor,
     })
     .from(products)
     .leftJoin(categories, eq(products.categoryId, categories.id))
@@ -204,6 +206,30 @@ router.get("/products", async (req: Request, res: Response) => {
     .offset(offset);
 
   const productIds = results.map((r) => r.id);
+  const anchorIds = results.filter((r) => r.isBundleAnchor).map((r) => r.id);
+
+  // For anchor products, the listing card should show the bundle price (or the anchor's
+  // catalog price if useAnchorPrice was set). Look those up so we can override variant
+  // priceUsd downstream.
+  const anchorBundlePrice = new Map<number, { bundlePriceUsd: string; useAnchorPrice: boolean }>();
+  if (anchorIds.length > 0) {
+    const bundleRows = await db
+      .select({
+        primaryProductId: bundlesTable.primaryProductId,
+        bundlePriceUsd: bundlesTable.bundlePriceUsd,
+        useAnchorPrice: bundlesTable.useAnchorPrice,
+      })
+      .from(bundlesTable)
+      .where(and(inArray(bundlesTable.primaryProductId, anchorIds), eq(bundlesTable.isActive, true)));
+    for (const b of bundleRows) {
+      if (b.primaryProductId !== null) {
+        anchorBundlePrice.set(b.primaryProductId, {
+          bundlePriceUsd: b.bundlePriceUsd,
+          useAnchorPrice: b.useAnchorPrice,
+        });
+      }
+    }
+  }
 
   let variants: {
     id: number; productId: number; name: string; sku: string;
@@ -244,18 +270,25 @@ router.get("/products", async (req: Request, res: Response) => {
     ]);
   }
 
-  const items = results.map((p) => ({
-    ...p,
-    variants: variants
-      .filter((v) => v.productId === p.id)
-      .map(({ priceOverrideUsd, ...v }) => ({
-        ...v,
-        priceUsd: priceOverrideUsd ?? v.priceUsd,
-      })),
-    productAttributes: regionAttrs
-      .filter((a) => a.productId === p.id)
-      .map(({ productId: _pid, ...a }) => a),
-  }));
+  const items = results.map((p) => {
+    const anchorPrice = anchorBundlePrice.get(p.id);
+    // When the product is a bundle anchor (and admin didn't opt for "use anchor's catalog
+    // price"), the listing card price should be the computed bundle price, not the anchor's
+    // variant price. Override variant.priceUsd here for listing-side display.
+    const overrideToBundle = p.isBundleAnchor && anchorPrice && !anchorPrice.useAnchorPrice;
+    return {
+      ...p,
+      variants: variants
+        .filter((v) => v.productId === p.id)
+        .map(({ priceOverrideUsd, ...v }) => ({
+          ...v,
+          priceUsd: overrideToBundle ? anchorPrice.bundlePriceUsd : (priceOverrideUsd ?? v.priceUsd),
+        })),
+      productAttributes: regionAttrs
+        .filter((a) => a.productId === p.id)
+        .map(({ productId: _pid, ...a }) => a),
+    };
+  });
 
 
   const facets = await computeFacets(allMatchingIds);

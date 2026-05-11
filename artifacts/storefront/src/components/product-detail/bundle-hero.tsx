@@ -73,7 +73,10 @@ export function BundleHero({ product, bundle }: Props) {
         </div>
         <ul className="space-y-2">
           {bundle.components.map((c) => {
-            const price = parseFloat(c.unitPriceUsd);
+            const original = parseFloat(c.unitPriceUsd);
+            const allocated = parseFloat(c.allocatedPriceUsd);
+            const itemSavings = Math.max(0, original - allocated);
+            const showSavings = !c.isFree && itemSavings > 0.005;
             return (
               <li key={c.productId}>
                 <Link
@@ -89,14 +92,22 @@ export function BundleHero({ product, bundle }: Props) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-foreground truncate">{c.name}</div>
+                    {showSavings && (
+                      <div className="text-[11px] text-emerald-600 font-medium">−{format(itemSavings)} in bundle</div>
+                    )}
                   </div>
                   {c.isFree ? (
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <span className="text-xs text-muted-foreground line-through">{format(price)}</span>
+                    <div className="flex flex-col items-end shrink-0 leading-tight">
+                      <span className="text-[11px] text-muted-foreground line-through">{format(original)}</span>
                       <span className="text-xs font-bold text-emerald-600">FREE</span>
                     </div>
+                  ) : showSavings ? (
+                    <div className="flex flex-col items-end shrink-0 leading-tight">
+                      <span className="text-[11px] text-muted-foreground line-through">{format(original)}</span>
+                      <span className="text-sm font-semibold text-foreground">{format(allocated)}</span>
+                    </div>
                   ) : (
-                    <span className="text-sm font-medium text-foreground shrink-0">{format(price)}</span>
+                    <span className="text-sm font-medium text-foreground shrink-0">{format(original)}</span>
                   )}
                 </Link>
               </li>
