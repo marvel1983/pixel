@@ -112,6 +112,14 @@ router.post("/admin/bundles", ...auth, async (req, res) => {
   const ruleError = await validateBundleRule(data);
   if (ruleError) { res.status(400).json({ error: ruleError }); return; }
 
+  // One bundle per anchor — prevent accidental duplicates that diverge over time.
+  const [existing] = await db.select({ id: bundles.id }).from(bundles)
+    .where(eq(bundles.primaryProductId, data.primaryProductId)).limit(1);
+  if (existing) {
+    res.status(409).json({ error: `This anchor product already has a bundle (id ${existing.id}). Edit that one instead.` });
+    return;
+  }
+
   const pricing = await pricePreviewFor(data.productIds, data.freeProductIds, {
     discountType: data.discountType, discountValue: data.discountValue,
   });

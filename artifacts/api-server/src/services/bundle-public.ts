@@ -1,6 +1,6 @@
 import { db } from "@workspace/db";
 import { bundles, bundleItems, products, productVariants } from "@workspace/db/schema";
-import { eq, asc, desc, and, inArray } from "drizzle-orm";
+import { eq, asc, and, inArray } from "drizzle-orm";
 import { computeBundlePrice, type BundleComponentInput, type BundleDiscountType } from "./bundle-pricing";
 
 export interface PublicBundleComponent {
@@ -48,7 +48,7 @@ export async function loadBundleForAnchor(anchorProductId: number): Promise<Publ
     })
     .from(bundles)
     .where(eq(bundles.primaryProductId, anchorProductId))
-    .orderBy(desc(bundles.updatedAt), desc(bundles.id))
+    .orderBy(asc(bundles.id))
     .limit(1);
 
   if (!bundle || !bundle.isActive) return null;
