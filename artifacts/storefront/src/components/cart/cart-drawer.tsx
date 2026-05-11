@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useCartStore } from "@/stores/cart-store";
 import { useCartDrawerStore } from "@/stores/cart-drawer-store";
 import { useCurrencyStore } from "@/stores/currency-store";
+import { useToast } from "@/hooks/use-toast";
 
 export function CartDrawer() {
   const isOpen = useCartDrawerStore((s) => s.isOpen);
@@ -12,8 +13,15 @@ export function CartDrawer() {
   const items = useCartStore((s) => s.items);
   const removeItem = useCartStore((s) => s.removeItem);
   const format = useCurrencyStore((s) => s.format);
+  const { dismiss } = useToast();
 
   const subtotal = items.reduce((sum, item) => sum + parseFloat(item.priceUsd) * item.quantity, 0);
+
+  // Opening the drawer is itself confirmation an item was added — dismiss any
+  // "added to cart" toast so it doesn't cover View Cart / Checkout buttons.
+  useEffect(() => {
+    if (isOpen) dismiss();
+  }, [isOpen, dismiss]);
 
   useEffect(() => {
     if (!isOpen) return;
