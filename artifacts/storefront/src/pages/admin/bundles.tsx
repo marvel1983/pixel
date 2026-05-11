@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
-import { Package, Plus, Search, Copy, Trash2, Pencil, BarChart3 } from "lucide-react";
+import { Package, Plus, Search, Copy, Trash2, Pencil, BarChart3, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -20,17 +20,24 @@ export default function AdminBundlesPage() {
   const [bundles, setBundles] = useState<AdminBundle[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   const [analytics, setAnalytics] = useState<BundleAnalytics | null>(null);
 
   const h = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 
   const load = useCallback(async () => {
     setLoading(true);
-    const r = await fetch(`${API}/admin/bundles?search=${search}`, { headers: h });
+    const params = new URLSearchParams({ page: String(page) });
+    if (search) params.set("search", search);
+    const r = await fetch(`${API}/admin/bundles?${params}`, { headers: h });
     const data = await r.json();
     setBundles(data.bundles || []);
+    setTotal(data.total ?? 0);
+    setTotalPages(data.pages ?? 1);
     setLoading(false);
-  }, [search, token]);
+  }, [search, page, token]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -69,7 +76,7 @@ export default function AdminBundlesPage() {
             className="w-full rounded border border-[#2e3340] bg-[#0f1117] pl-9 pr-3 py-2 text-[13px] text-[#dde4f0] placeholder:text-[#3d5070] focus:border-sky-500/60 focus:outline-none focus:ring-1 focus:ring-sky-500/30"
             placeholder="Search bundles..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           />
         </div>
       </div>
@@ -128,6 +135,20 @@ export default function AdminBundlesPage() {
           </tbody>
         </table>
       </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-muted-foreground">Page {page} of {totalPages} ({total} bundles)</span>
+          <div className="flex gap-1">
+            <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button size="sm" variant="outline" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       {analytics && (
         <Dialog open={!!analytics} onOpenChange={() => setAnalytics(null)}>
