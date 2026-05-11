@@ -4,6 +4,7 @@ import { orders, orderItems, products, productVariants, categories, users } from
 import { eq, sql, and, gte, lte, count, sum, desc } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
+import { startOfLocalDay, endOfLocalDay } from "../lib/date-range";
 
 const router = Router();
 
@@ -16,16 +17,16 @@ router.get(
     const from = req.query.from as string | undefined;
     const to = req.query.to as string | undefined;
 
-    const startDate = from ? new Date(from) : new Date(Date.now() - 30 * 86400000);
-    const endDate = to ? new Date(to) : new Date();
+    const startDate = from ? startOfLocalDay(from) : new Date(Date.now() - 30 * 86400000);
+    const endDate = to ? endOfLocalDay(to) : new Date();
 
-    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+    if (!startDate || !endDate || isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
       res.status(400).json({ error: "Invalid date format. Use YYYY-MM-DD." });
       return;
     }
 
-    startDate.setHours(0, 0, 0, 0);
-    endDate.setHours(23, 59, 59, 999);
+    if (!from) startDate.setHours(0, 0, 0, 0);
+    if (!to) endDate.setHours(23, 59, 59, 999);
 
     const [summary] = await db
       .select({

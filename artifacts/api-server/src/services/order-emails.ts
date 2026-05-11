@@ -3,7 +3,7 @@ import { db } from "@workspace/db";
 import { orderItems, licenseKeys, orders, productVariants, products } from "@workspace/db/schema";
 import { decrypt } from "../lib/encryption";
 import { logger } from "../lib/logger";
-import { sendOrderConfirmationEmail, sendKeyDeliveryEmail, sendInvoiceEmail } from "../lib/email";
+import { sendOrderConfirmationEmail, sendOrderUnderReviewEmail, sendKeyDeliveryEmail, sendInvoiceEmail } from "../lib/email";
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
   EUR: "€", USD: "$", GBP: "£", PLN: "zł", CZK: "Kč", HUF: "Ft",
@@ -131,6 +131,25 @@ export async function sendOrderConfirmationOnly(
     await sendOrderInvoice(billing, orderNumber, orderId, items);
   } catch (err) {
     logger.error({ err, orderNumber }, "Failed to enqueue confirmation email (non-fatal)");
+  }
+}
+
+// HELD orders: payment captured but pending risk review. Send a clear
+// "under review" email instead of the misleading "Order Confirmed!" one.
+// Invoice is skipped here — issued on release via runFulfillment.
+export async function sendOrderUnderReviewOnly(
+  billing: BillingInfo,
+  orderNumber: string,
+  locale?: string,
+) {
+  try {
+    await sendOrderUnderReviewEmail(billing.email, {
+      orderRef: orderNumber,
+      customerName: billing.firstName,
+      locale,
+    });
+  } catch (err) {
+    logger.error({ err, orderNumber }, "Failed to enqueue under-review email (non-fatal)");
   }
 }
 

@@ -7,6 +7,7 @@ import { requirePermission } from "../middleware/permissions";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { paramString } from "../lib/route-params";
+import { startOfLocalDay, endOfLocalDay } from "../lib/date-range";
 
 const router = Router();
 
@@ -201,9 +202,9 @@ function buildFilters(query: Record<string, unknown>) {
   const role = query.role as string | undefined;
   if (role && role !== "ALL") conditions.push(eq(users.role, role as "CUSTOMER" | "ADMIN" | "SUPER_ADMIN"));
   const from = query.from as string | undefined;
-  if (from) conditions.push(gte(users.createdAt, new Date(from)));
+  if (from) { const s = startOfLocalDay(from); if (s) conditions.push(gte(users.createdAt, s)); }
   const to = query.to as string | undefined;
-  if (to) { const d = new Date(to); d.setHours(23, 59, 59, 999); conditions.push(lte(users.createdAt, d)); }
+  if (to) { const e = endOfLocalDay(to); if (e) conditions.push(lte(users.createdAt, e)); }
   const hasOrders = query.hasOrders as string | undefined;
   if (hasOrders === "true") conditions.push(sql`${users.id} IN (SELECT DISTINCT user_id FROM orders WHERE user_id IS NOT NULL)`);
   return conditions;

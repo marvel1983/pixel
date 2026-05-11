@@ -8,6 +8,7 @@ import { getMetenziConfig } from "../lib/metenzi-config";
 import { metenziRequest } from "../lib/metenzi-client";
 import { logger } from "../lib/logger";
 import { paramString } from "../lib/route-params";
+import { startOfLocalDay, endOfLocalDay } from "../lib/date-range";
 
 const router = Router();
 
@@ -278,12 +279,14 @@ function buildFilters(query: Record<string, unknown>) {
     conditions.push(eq(claims.reason, reason as typeof claims.$inferSelect.reason));
   }
   const from = query.from as string | undefined;
-  if (from) conditions.push(gte(claims.createdAt, new Date(from)));
+  if (from) {
+    const start = startOfLocalDay(from);
+    if (start) conditions.push(gte(claims.createdAt, start));
+  }
   const to = query.to as string | undefined;
   if (to) {
-    const endOfDay = new Date(to);
-    endOfDay.setHours(23, 59, 59, 999);
-    conditions.push(lte(claims.createdAt, endOfDay));
+    const end = endOfLocalDay(to);
+    if (end) conditions.push(lte(claims.createdAt, end));
   }
   return conditions;
 }

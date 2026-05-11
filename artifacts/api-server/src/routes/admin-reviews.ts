@@ -7,6 +7,7 @@ import { requirePermission } from "../middleware/permissions";
 import { awardReviewBonus } from "../services/loyalty-service";
 import { logger } from "../lib/logger";
 import { paramString } from "../lib/route-params";
+import { startOfLocalDay, endOfLocalDay } from "../lib/date-range";
 
 const router = Router();
 
@@ -158,9 +159,9 @@ function buildFilters(query: Record<string, unknown>) {
   const search = query.search as string | undefined;
   if (search?.trim()) conditions.push(or(ilike(products.name, `%${search}%`), ilike(reviews.title, `%${search}%`), ilike(reviews.body, `%${search}%`)));
   const from = query.from as string | undefined;
-  if (from) conditions.push(gte(reviews.createdAt, new Date(from)));
+  if (from) { const s = startOfLocalDay(from); if (s) conditions.push(gte(reviews.createdAt, s)); }
   const to = query.to as string | undefined;
-  if (to) { const d = new Date(to); d.setHours(23, 59, 59, 999); conditions.push(lte(reviews.createdAt, d)); }
+  if (to) { const e = endOfLocalDay(to); if (e) conditions.push(lte(reviews.createdAt, e)); }
   const verified = query.verified as string | undefined;
   if (verified === "true") conditions.push(eq(reviews.isVerifiedPurchase, true));
   return conditions;

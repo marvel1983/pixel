@@ -7,7 +7,7 @@ import { getActivePaymentConfig } from "../lib/payment-config";
 import { verifyCheckoutSignature } from "../lib/checkout-com-client";
 import { runFulfillment } from "../services/order-pipeline";
 import { scoreOrder } from "../services/risk-scoring";
-import { sendOrderConfirmationOnly } from "../services/order-emails";
+import { sendOrderUnderReviewOnly } from "../services/order-emails";
 import { creditWallet } from "../services/wallet-service";
 import { restorePoints } from "../services/loyalty-service";
 import { parseFulfillmentPayload } from "./checkout-session";
@@ -101,8 +101,8 @@ async function handleCheckoutPaymentApproved(data: Record<string, unknown>) {
       status: "HELD", riskHold: true, riskScore: risk.score, riskReasons: risk.reasons,
       paymentIntentId: paymentId, updatedAt: new Date(),
     }).where(eq(orders.id, orderId));
-    sendOrderConfirmationOnly(payload.billing, orderNumber || order.orderNumber, orderId, payload.items, payload.total, payload.locale).catch((err) => {
-      logger.error({ err, orderId }, "Checkout.com: failed to send hold confirmation email (non-fatal)");
+    sendOrderUnderReviewOnly(payload.billing, orderNumber || order.orderNumber, payload.locale).catch((err) => {
+      logger.error({ err, orderId }, "Checkout.com: failed to send under-review email (non-fatal)");
     });
     logger.warn({ orderId, score: risk.score, reasons: risk.reasons }, "Checkout.com: order held for risk review");
     return;

@@ -3,6 +3,7 @@ export { enqueueEmail, processEmailQueue } from "./queue";
 export {
   sendWelcomeEmail,
   sendOrderConfirmationEmail,
+  sendOrderUnderReviewEmail,
   sendKeyDeliveryEmail,
   sendPasswordResetEmail,
   sendInvoiceEmail,

@@ -5,6 +5,7 @@ import { sendEmail } from "./mailer";
 import {
   welcomeEmail,
   orderConfirmationEmail,
+  orderUnderReviewEmail,
   keyDeliveryEmail,
   passwordResetEmail,
   adminInviteEmail,
@@ -13,6 +14,7 @@ import { invoiceEmail } from "./invoice-template";
 import { generateInvoicePdf } from "./invoice-pdf";
 import type {
   OrderConfirmationData,
+  OrderUnderReviewData,
   KeyDeliveryData,
   PasswordResetData,
 } from "./templates";
@@ -81,6 +83,15 @@ export async function sendOrderConfirmationEmail(
   const brand = await getSiteBrand();
   const { subject, html } = orderConfirmationEmail({ ...data, ...brand });
   await enqueueEmail(to, subject, html, { type: "order_confirmation", orderId: data.orderId });
+}
+
+export async function sendOrderUnderReviewEmail(
+  to: string,
+  data: Omit<OrderUnderReviewData, "siteName" | "logoUrl">,
+): Promise<void> {
+  const brand = await getSiteBrand();
+  const { subject, html } = orderUnderReviewEmail({ ...data, ...brand });
+  await enqueueEmail(to, subject, html, { type: "order_under_review", orderRef: data.orderRef });
 }
 
 export async function sendKeyDeliveryEmail(

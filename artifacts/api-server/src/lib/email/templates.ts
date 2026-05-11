@@ -126,6 +126,27 @@ ${et(lang, "email.order.keysNote")}
   };
 }
 
+export interface OrderUnderReviewData {
+  siteName: string;
+  logoUrl?: string | null;
+  orderRef: string;
+  customerName: string;
+  locale?: string;
+}
+
+export function orderUnderReviewEmail(data: OrderUnderReviewData): { subject: string; html: string } {
+  const lang = data.locale ?? "en";
+  const content = `
+<h2 style="margin:0 0 16px;color:#212529;font-size:20px;">${et(lang, "email.review.title")}</h2>
+<p style="color:#495057;line-height:1.6;margin:0 0 16px;">
+${et(lang, "email.review.body", { name: data.customerName, orderRef: data.orderRef })}
+</p>`;
+  return {
+    subject: et(lang, "email.review.subject", { orderRef: data.orderRef, siteName: data.siteName }),
+    html: layout({ siteName: data.siteName, logoUrl: data.logoUrl, locale: lang }, content),
+  };
+}
+
 export interface KeyDeliveryData {
   siteName: string;
   logoUrl?: string | null;

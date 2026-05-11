@@ -9,6 +9,7 @@ import { rateLimit } from "../middleware/rate-limit";
 import { paramString } from "../lib/route-params";
 import { z } from "zod/v4";
 import { logger } from "../lib/logger";
+import { startOfLocalDay, endOfLocalDay } from "../lib/date-range";
 
 const router = Router();
 
@@ -398,12 +399,14 @@ function buildFilters(query: Record<string, unknown>) {
   const productId = query.productId as string | undefined;
   if (productId) conditions.push(eq(products.id, Number(productId)));
   const from = query.from as string | undefined;
-  if (from) conditions.push(gte(licenseKeys.createdAt, new Date(from)));
+  if (from) {
+    const start = startOfLocalDay(from);
+    if (start) conditions.push(gte(licenseKeys.createdAt, start));
+  }
   const to = query.to as string | undefined;
   if (to) {
-    const endOfDay = new Date(to);
-    endOfDay.setHours(23, 59, 59, 999);
-    conditions.push(lte(licenseKeys.createdAt, endOfDay));
+    const end = endOfLocalDay(to);
+    if (end) conditions.push(lte(licenseKeys.createdAt, end));
   }
   return conditions;
 }

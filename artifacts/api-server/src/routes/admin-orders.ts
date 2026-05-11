@@ -10,6 +10,7 @@ import { getActivePaymentConfig } from "../lib/payment-config";
 import { createStripeClient } from "../lib/stripe-client";
 import { logger } from "../lib/logger";
 import { recordPaymentAttempt, mapPaymentIntentStatus } from "../services/payment-attempts";
+import { startOfLocalDay, endOfLocalDay } from "../lib/date-range";
 
 const router = Router();
 
@@ -318,12 +319,14 @@ function buildFilters(query: Record<string, unknown>) {
   const status = query.status as string | undefined;
   if (status && status !== "ALL") conditions.push(eq(orders.status, status as typeof orders.$inferSelect.status));
   const from = query.from as string | undefined;
-  if (from) conditions.push(gte(orders.createdAt, new Date(from)));
+  if (from) {
+    const start = startOfLocalDay(from);
+    if (start) conditions.push(gte(orders.createdAt, start));
+  }
   const to = query.to as string | undefined;
   if (to) {
-    const endOfDay = new Date(to);
-    endOfDay.setHours(23, 59, 59, 999);
-    conditions.push(lte(orders.createdAt, endOfDay));
+    const end = endOfLocalDay(to);
+    if (end) conditions.push(lte(orders.createdAt, end));
   }
   const hasCoupon = query.hasCoupon as string | undefined;
   if (hasCoupon === "true") conditions.push(sql`${orders.couponId} IS NOT NULL`);
