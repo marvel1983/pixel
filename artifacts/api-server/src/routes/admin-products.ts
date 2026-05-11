@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { products, productVariants, categories } from "@workspace/db/schema";
-import { eq, sql, and, ilike, count, asc, desc, inArray } from "drizzle-orm";
+import { eq, sql, and, ilike, count, asc, desc, inArray, notExists } from "drizzle-orm";
+import { orderItems } from "@workspace/db/schema";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import { syncProducts } from "../lib/product-sync";
@@ -115,6 +116,21 @@ router.post("/admin/products/bulk", requireAuth, requireAdmin, requirePermission
     await db.update(products).set({ isActive: true, updatedAt: new Date() }).where(inArray(products.id, ids));
   } else if (action === "deactivate") {
     await db.update(products).set({ isActive: false, updatedAt: new Date() }).where(inArray(products.id, ids));
+  } else if (action === "delete") {
+    const variantIds = (await db.select({ id: productVariants.id }).from(productVariants).where(inArray(productVariants.productId, ids))).map((v) => v.id);
+    const blocked = variantIds.length > 0
+      ? (await db.select({ variantId: orderItems.variantId }).from(orderItems).where(inArray(orderItems.variantId, variantIds))).map((r) => r.variantId)
+      : [];
+    const blockedProductIds = blocked.length > 0
+      ? (await db.select({ productId: productVariants.productId }).from(productVariants).where(inArray(productVariants.id, blocked))).map((r) => r.productId)
+      : [];
+    const safeIds = ids.filter((id) => !blockedProductIds.includes(id));
+    if (safeIds.length > 0) {
+      await db.delete(productVariants).where(inArray(productVariants.productId, safeIds));
+      await db.delete(products).where(inArray(products.id, safeIds));
+    }
+    res.json({ success: true, deleted: safeIds.length, skipped: ids.length - safeIds.length });
+    return;
   } else {
     res.status(400).json({ error: "Invalid action" });
     return;
@@ -378,6 +394,22 @@ router.delete("/admin/variants/:id", requireAuth, requireAdmin, requirePermissio
   const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid variant ID" }); return; }
   await db.delete(productVariants).where(eq(productVariants.id, id));
+  res.json({ success: true });
+});
+
+router.delete("/admin/products/:id", requireAuth, requireAdmin, requirePermission("manageProducts"), async (req, res) => {
+  const id = Number(paramString(req.params, "id"));
+  if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid product ID" }); return; }
+  const variantIds = (await db.select({ id: productVariants.id }).from(productVariants).where(eq(productVariants.productId, id))).map((v) => v.id);
+  if (variantIds.length > 0) {
+    const usedInOrders = await db.select({ id: orderItems.id }).from(orderItems).where(inArray(orderItems.variantId, variantIds)).limit(1);
+    if (usedInOrders.length > 0) {
+      res.status(409).json({ error: "Cannot delete: this product has existing orders. Deactivate it instead." });
+      return;
+    }
+    await db.delete(productVariants).where(eq(productVariants.productId, id));
+  }
+  await db.delete(products).where(eq(products.id, id));
   res.json({ success: true });
 });
 

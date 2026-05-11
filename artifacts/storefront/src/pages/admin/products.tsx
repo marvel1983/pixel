@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useLocation } from "wouter";
 import {
-  Search, RefreshCw, Download, ChevronLeft, ChevronRight, Plus, X,
+  Search, RefreshCw, Download, ChevronLeft, ChevronRight, Plus, X, Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -128,12 +128,31 @@ export default function AdminProductsPage() {
   const handleBulk = async (action: string) => {
     const ids = Array.from(selected);
     if (ids.length === 0) return;
-    await fetch(`${API_URL}/admin/products/bulk`, {
+    if (action === "delete" && !confirm(`Delete ${ids.length} product(s)? Products with existing orders will be skipped.`)) return;
+    const res = await fetch(`${API_URL}/admin/products/bulk`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify({ ids, action }),
     });
+    if (action === "delete") {
+      const data = await res.json().catch(() => ({}));
+      if (data.skipped > 0) alert(`Deleted ${data.deleted}, skipped ${data.skipped} (have orders).`);
+    }
     setSelected(new Set());
+    fetchProducts();
+  };
+
+  const handleDelete = async (id: number, name: string) => {
+    if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+    const res = await fetch(`${API_URL}/admin/products/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      alert(data.error || "Delete failed");
+      return;
+    }
     fetchProducts();
   };
 
@@ -219,6 +238,9 @@ export default function AdminProductsPage() {
           <Button size="sm" variant="outline" onClick={() => handleExport(Array.from(selected))}>
             <Download className="mr-1 h-3 w-3" /> Export Selected
           </Button>
+          <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => handleBulk("delete")}>
+            <Trash2 className="mr-1 h-3 w-3" /> Delete Selected
+          </Button>
         </div>
       )}
 
@@ -239,6 +261,7 @@ export default function AdminProductsPage() {
                 <th className="px-4 py-3 text-[10.5px] font-bold uppercase tracking-widest">Price</th>
                 <th className="px-4 py-3 text-[10.5px] font-bold uppercase tracking-widest">Stock</th>
                 <th className="px-4 py-3 text-[10.5px] font-bold uppercase tracking-widest">Status</th>
+                <th className="px-4 py-3 w-10" aria-label="Actions"></th>
               </tr>
             </thead>
             <tbody>
@@ -269,6 +292,15 @@ export default function AdminProductsPage() {
                       <button onClick={() => handleToggle(p.id)}
                         className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors ${p.isActive ? "bg-green-100 text-green-800 hover:bg-green-200" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
                         {p.isActive ? "Active" : "Inactive"}
+                      </button>
+                    </td>
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={() => handleDelete(p.id, p.name)}
+                        className="text-muted-foreground hover:text-red-600 transition-colors"
+                        title="Delete product"
+                      >
+                        <Trash2 className="h-4 w-4" />
                       </button>
                     </td>
                   </tr>
