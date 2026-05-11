@@ -102,7 +102,7 @@ export function CartItemsTable() {
   return (
     <div className="rounded-xl border border-border bg-card overflow-hidden">
       {/* Header */}
-      <div className="hidden sm:grid grid-cols-[1fr_100px_140px_100px_44px] gap-4 px-5 py-2.5 bg-muted/40 border-b border-border">
+      <div className="hidden sm:grid grid-cols-[minmax(0,1fr)_100px_140px_100px_44px] gap-4 px-5 py-2.5 bg-muted/40 border-b border-border">
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("cart.product")}</span>
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right">{t("cart.price")}</span>
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center">{t("cart.quantity")}</span>
@@ -169,7 +169,7 @@ function BundleGroup({ bundleId, items, format, onRemoveBundle, onRemoveItem }: 
   return (
     <div className="border-t border-border">
       <div
-        className="hidden sm:grid sm:grid-cols-[1fr_100px_140px_100px_44px] gap-4 items-center px-5 py-3 bg-blue-50/60 dark:bg-blue-950/20 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
+        className="hidden sm:grid sm:grid-cols-[minmax(0,1fr)_100px_140px_100px_44px] gap-4 items-center px-5 py-3 bg-blue-50/60 dark:bg-blue-950/20 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors"
         onClick={() => setExpanded(!expanded)}
       >
         <div className="flex items-center gap-2 min-w-0">
@@ -214,7 +214,7 @@ function BundleGroup({ bundleId, items, format, onRemoveBundle, onRemoveItem }: 
         return (
           <div
             key={`${bundleId}-${item.variantId}`}
-            className="hidden sm:grid sm:grid-cols-[1fr_100px_140px_100px_44px] gap-4 px-5 py-3 items-center border-t border-border/50 bg-blue-50/20"
+            className="hidden sm:grid sm:grid-cols-[minmax(0,1fr)_100px_140px_100px_44px] gap-4 px-5 py-3 items-center border-t border-border/50 bg-blue-50/20"
           >
             <div className="flex items-center gap-3 pl-9">
               <div className="w-10 h-10 rounded-lg border border-border bg-muted flex items-center justify-center shrink-0 overflow-hidden">
@@ -303,7 +303,7 @@ function CartRow({ item, format, onUpdateQuantity, onRemove }: CartRowProps) {
 
   return (
     <div
-      className="grid gap-x-3 gap-y-3 px-4 py-4 border-t border-border items-center grid-cols-[auto_1fr_auto] [grid-template-areas:'product_product_remove'_'qty_._total'] sm:grid-cols-[1fr_100px_140px_100px_44px] sm:gap-4 sm:px-5 sm:py-3 sm:[grid-template-areas:'product_price_qty_total_remove']"
+      className="grid gap-x-3 gap-y-3 px-4 py-4 border-t border-border items-center grid-cols-[auto_1fr_auto] [grid-template-areas:'product_product_remove'_'qty_._total'] sm:grid-cols-[minmax(0,1fr)_100px_140px_100px_44px] sm:gap-4 sm:px-5 sm:py-3 sm:[grid-template-areas:'product_price_qty_total_remove']"
     >
       <div className="[grid-area:product] flex items-center gap-3 min-w-0">
         <div className="w-14 h-14 sm:w-12 sm:h-12 rounded-xl border border-border bg-muted flex items-center justify-center shrink-0 overflow-hidden">
