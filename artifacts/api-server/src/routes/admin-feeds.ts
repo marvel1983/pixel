@@ -8,6 +8,7 @@ import { productFeeds, products, productVariants, categories } from "@workspace/
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import { runFeedGeneration } from "../services/feed-generator";
+import { scheduleFirstRun } from "../services/feed-scheduler";
 import { evaluateFilters } from "../services/feed-engine/filter-evaluator";
 import { enrichProduct } from "../services/feed-engine/transformer";
 import { CHANNEL_PRESETS, PRODUCT_ATTRIBUTES, FILTER_FIELDS } from "../services/feed-engine/channel-presets";
@@ -81,6 +82,7 @@ router.put("/admin/feeds/:id", requireAuth, requireAdmin, requirePermission("man
     updatedAt: new Date(),
   }).where(eq(productFeeds.id, id)).returning();
   if (!feed) { res.status(404).json({ error: "Feed not found" }); return; }
+  if (refreshInterval) await scheduleFirstRun(feed.id, refreshInterval);
   res.json({ feed });
 });
 
