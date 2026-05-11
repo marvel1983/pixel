@@ -11,6 +11,7 @@ import { createStripeClient } from "../lib/stripe-client";
 import { logger } from "../lib/logger";
 import { recordPaymentAttempt, mapPaymentIntentStatus } from "../services/payment-attempts";
 import { startOfLocalDay, endOfLocalDay } from "../lib/date-range";
+import { parseFulfillmentPayload } from "./checkout-session";
 
 const router = Router();
 
@@ -174,6 +175,23 @@ router.get("/admin/orders", requireAuth, requireAdmin, requirePermission("manage
     }
   }
 
+  // For pre-fulfillment orders (HELD/PENDING) order_items is empty;
+  // pull items out of the stashed checkout payload so the list still
+  // shows what was ordered.
+  const missingIds = orderIds.filter((oid) => !itemsByOrder[oid]);
+  if (missingIds.length > 0) {
+    const notesRows = await db
+      .select({ id: orders.id, notes: orders.notes })
+      .from(orders).where(inArray(orders.id, missingIds));
+    for (const row of notesRows) {
+      const payload = parseFulfillmentPayload(row.notes);
+      if (!payload) continue;
+      itemsByOrder[row.id] = payload.items.map((it) => ({
+        productName: it.productName, quantity: it.quantity,
+      }));
+    }
+  }
+
   const result = rows.map((r) => ({
     ...r,
     items: itemsByOrder[r.id] ?? [],
@@ -190,7 +208,7 @@ router.get("/admin/orders/:id", requireAuth, requireAdmin, requirePermission("ma
   const [order] = await db.select().from(orders).where(eq(orders.id, id));
   if (!order) { res.status(404).json({ error: "Order not found" }); return; }
 
-  const [items, customerRows, couponRows, orderRefunds] = await Promise.all([
+  const [dbItems, customerRows, couponRows, orderRefunds] = await Promise.all([
     db.select().from(orderItems).where(eq(orderItems.orderId, id)),
     order.userId
       ? db.select({ id: users.id, email: users.email, firstName: users.firstName, lastName: users.lastName, createdAt: users.createdAt })
@@ -207,7 +225,11 @@ router.get("/admin/orders/:id", requireAuth, requireAdmin, requirePermission("ma
     }).from(refunds).where(eq(refunds.orderId, id)).orderBy(desc(refunds.createdAt)),
   ]);
 
-  const itemIds = items.map((i) => i.id);
+  // Pre-fulfillment orders (HELD, PENDING) store items in orders.notes payload
+  // instead of order_items. Synthesize rows so admin can see what was ordered.
+  const items = dbItems.length > 0 ? dbItems : payloadItemsToRows(order.notes, id, order.createdAt);
+
+  const itemIds = dbItems.map((i) => i.id);
   let keys: { orderItemId: number | null; id: number; keyValue: string; status: string; soldAt: Date | null }[] = [];
   if (itemIds.length > 0) {
     keys = await db
@@ -337,6 +359,25 @@ function buildFilters(query: Record<string, unknown>) {
 
 function safeDecrypt(value: string): string {
   try { return decrypt(value); } catch { return value; }
+}
+
+// Build OrderItem-shaped rows from the stashed checkout payload. Used when
+// no row exists in order_items yet (HELD/PENDING pre-fulfillment orders).
+// Synthetic negative ids so callers can tell these aren't real DB rows.
+function payloadItemsToRows(notes: string | null, orderId: number, createdAt: Date): typeof orderItems.$inferSelect[] {
+  const payload = parseFulfillmentPayload(notes);
+  if (!payload) return [];
+  return payload.items.map((it, idx) => ({
+    id: -(idx + 1),
+    orderId,
+    variantId: it.variantId,
+    productName: it.productName,
+    variantName: it.variantName,
+    priceUsd: it.priceUsd,
+    quantity: it.quantity,
+    bundleId: it.bundleId ?? null,
+    createdAt,
+  }));
 }
 
 export default router;
