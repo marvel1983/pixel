@@ -65,9 +65,6 @@ export function BundleHero({ product, bundle }: Props) {
       )}
 
       <h1 className="text-2xl font-bold text-foreground leading-tight">{product.name}</h1>
-      {product.description && (
-        <p className="text-sm text-muted-foreground leading-relaxed">{product.description}</p>
-      )}
 
       <div className="rounded-xl border border-border bg-card p-4 space-y-3">
         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
