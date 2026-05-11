@@ -31,7 +31,9 @@
       "Bash(git commit *)",
       "Bash(pnpm --filter @workspace/storefront add @stripe/stripe-js @stripe/react-stripe-js)",
       "Bash(PORT=3000 pnpm --filter @workspace/storefront run build)",
-      "Bash(curl -sI https://pixelcodes.com)"
+      "Bash(curl -sI https://pixelcodes.com)",
+      "Bash(ssh -o StrictHostKeyChecking=no root@144.91.69.182 \"cd /var/www/pixel-storefront && git log --oneline -3 && echo '---' && pm2 status\")",
+      "Bash(sshpass -p 'PajaPatak83#' ssh -o StrictHostKeyChecking=no root@144.91.69.182 \"cd /var/www/pixel-storefront && git log --oneline -3 && echo '---' && pm2 status\")"
     ],
     "additionalDirectories": [
       "C:\\Users\\Morningstar\\.claude\\commands"
