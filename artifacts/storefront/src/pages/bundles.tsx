@@ -78,7 +78,7 @@ export default function BundlesPage() {
           return (
             <Link key={b.id} href={`/bundles/${b.slug}`}>
               <Card className="h-full hover:shadow-lg transition-shadow cursor-pointer group overflow-hidden">
-                <div className="relative aspect-video bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+                <div className="relative aspect-[3/2] bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
                   {b.imageUrl ? (
                     <img src={b.imageUrl} alt={b.name} className="w-full h-full object-cover" />
                   ) : (

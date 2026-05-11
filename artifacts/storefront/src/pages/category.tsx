@@ -1,5 +1,5 @@
 import { useMemo, useEffect } from "react";
-import { useParams } from "wouter";
+import { useParams, useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { useListingFilters } from "@/lib/use-listing-filters";
 import { useProducts, toMockProduct } from "@/lib/use-products";
@@ -22,6 +22,11 @@ export default function CategoryPage() {
   const { t } = useTranslation();
   const params = useParams<{ slug: string }>();
   const slug = params.slug ?? "";
+  const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    if (slug === "bundles") setLocation("/bundles", { replace: true });
+  }, [slug, setLocation]);
   const categoryName = CATEGORY_KEYS[slug] ? t(CATEGORY_KEYS[slug]) : slug;
   const { filters, setFilters, perPage } = useListingFilters();
 
