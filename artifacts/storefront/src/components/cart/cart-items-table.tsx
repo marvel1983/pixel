@@ -104,7 +104,7 @@ export function CartItemsTable() {
       {/* Header */}
       <div className="hidden sm:grid grid-cols-[1fr_100px_140px_100px_44px] gap-4 px-5 py-2.5 bg-muted/40 border-b border-border">
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("cart.product")}</span>
-        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center">{t("cart.price")}</span>
+        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right">{t("cart.price")}</span>
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-center">{t("cart.quantity")}</span>
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right">{t("cart.subtotal")}</span>
         <span />
@@ -184,9 +184,9 @@ function BundleGroup({ bundleId, items, format, onRemoveBundle, onRemoveItem }: 
             </Badge>
           )}
         </div>
-        <span className="text-xs text-muted-foreground text-center">Bundle</span>
+        <span className="text-xs text-muted-foreground text-right">Bundle</span>
         <span />
-        <span className="text-right font-bold text-sm">{format(bundleTotal)}</span>
+        <span className="text-right font-bold text-sm tabular-nums">{format(bundleTotal)}</span>
         <div className="flex justify-end">
           <Button
             variant="ghost"
@@ -227,14 +227,14 @@ function BundleGroup({ bundleId, items, format, onRemoveBundle, onRemoveItem }: 
                 <p className="text-xs text-muted-foreground">{item.variantName}</p>
               </div>
             </div>
-            <div className="text-sm text-center leading-tight">
+            <div className="flex flex-col items-end text-sm leading-tight tabular-nums">
               {hasSavings && (
-                <span className="text-[11px] text-muted-foreground line-through block">{format(original)}</span>
+                <span className="text-[11px] text-muted-foreground line-through">{format(original)}</span>
               )}
               <span className="font-medium">{format(allocated)}</span>
             </div>
-            <div className="text-sm text-center text-muted-foreground">×{item.quantity}</div>
-            <div className="text-sm text-right font-semibold">{format(allocated * item.quantity)}</div>
+            <div className="text-sm text-center text-muted-foreground tabular-nums">×{item.quantity}</div>
+            <div className="text-sm text-right font-semibold tabular-nums">{format(allocated * item.quantity)}</div>
             <div className="flex justify-end">
               <button
                 className="h-7 w-7 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
@@ -330,7 +330,7 @@ function CartRow({ item, format, onUpdateQuantity, onRemove }: CartRowProps) {
         </div>
       </div>
 
-      <div className="[grid-area:price] hidden sm:block text-sm text-center font-medium text-foreground">{format(price)}</div>
+      <div className="[grid-area:price] hidden sm:block text-sm text-right font-medium text-foreground tabular-nums">{format(price)}</div>
 
       <div className="[grid-area:qty] flex items-center sm:justify-center">
         <div className="flex items-center rounded-lg border border-border bg-background overflow-hidden">
@@ -351,7 +351,7 @@ function CartRow({ item, format, onUpdateQuantity, onRemove }: CartRowProps) {
         </div>
       </div>
 
-      <div className="[grid-area:total] text-right">
+      <div className="[grid-area:total] text-right tabular-nums">
         <span className="sm:hidden block text-[11px] text-muted-foreground">{format(price)} each</span>
         <span className="text-base sm:text-sm font-bold text-foreground">{format(subtotal)}</span>
       </div>
