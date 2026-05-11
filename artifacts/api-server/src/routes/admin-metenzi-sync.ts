@@ -1,13 +1,12 @@
 import { Router } from "express";
 import { z } from "zod";
-import { eq, inArray } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   metenziProductMappings, products, productVariants,
   tags, productTags, attributeDefinitions, attributeOptions, productAttributes,
-  productFeeds,
 } from "@workspace/db/schema";
-import { runFeedGeneration } from "../services/feed-generator";
+import { triggerFeedRefresh } from "../services/feed-scheduler";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import { getMetenziConfig } from "../lib/metenzi-config";
@@ -103,6 +102,7 @@ router.post("/admin/metenzi/sync-field", ...guard, async (req, res) => {
   }
 
   await db.update(metenziProductMappings).set({ lastSyncedAt: new Date(), updatedAt: new Date() }).where(eq(metenziProductMappings.id, mappingId));
+  if (Object.keys(variantCols).length > 0) triggerFeedRefresh();
   res.json({ success: true, synced });
 });
 
@@ -203,17 +203,7 @@ router.post("/admin/metenzi/import", ...guard, async (req, res) => {
   res.json({ success: true, pixelProduct: product, mappingId: mapping.id });
 
   // Regenerate all active feeds so new product URLs appear immediately
-  triggerFeedRegeneration().catch(() => {});
+  triggerFeedRefresh();
 });
-
-async function triggerFeedRegeneration(): Promise<void> {
-  const feeds = await db
-    .select({ id: productFeeds.id })
-    .from(productFeeds)
-    .where(inArray(productFeeds.status, ["active", "inactive"]));
-  for (const feed of feeds) {
-    runFeedGeneration(feed.id).catch(() => {});
-  }
-}
 
 export default router;

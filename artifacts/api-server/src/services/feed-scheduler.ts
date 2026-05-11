@@ -4,6 +4,21 @@ import { productFeeds } from "@workspace/db/schema";
 import { runFeedGeneration } from "./feed-generator";
 import { logger } from "../lib/logger";
 
+// Regenerate all active/inactive feeds immediately — call after any price change
+export function triggerFeedRefresh(): void {
+  db.select({ id: productFeeds.id })
+    .from(productFeeds)
+    .where(inArray(productFeeds.status, ["active", "inactive"]))
+    .then((feeds) => {
+      for (const feed of feeds) {
+        runFeedGeneration(feed.id).catch((err) =>
+          logger.error({ err, feedId: feed.id }, "triggerFeedRefresh: generation failed"),
+        );
+      }
+    })
+    .catch((err) => logger.error({ err }, "triggerFeedRefresh: failed to query feeds"));
+}
+
 // Called by cron every hour — picks feeds whose nextRunAt is due
 export async function scheduledFeedRun(): Promise<void> {
   const now = new Date();

@@ -22,6 +22,7 @@ import { paramString } from "../lib/route-params";
 import { insertPriceRuleSchema, updatePriceRuleSchema } from "@workspace/db/schema";
 import { resolvePrice } from "../services/resolve-price";
 import { logger } from "../lib/logger";
+import { triggerFeedRefresh } from "../services/feed-scheduler";
 
 const router = Router();
 
@@ -81,6 +82,7 @@ router.post("/admin/price-rules", requireAuth, requireAdmin, async (req, res) =>
     .returning();
 
   logger.info({ ruleId: created?.id, adminId }, "admin: price rule created");
+  triggerFeedRefresh();
   res.status(201).json({ rule: created });
 });
 
@@ -105,6 +107,7 @@ router.put("/admin/price-rules/:id", requireAuth, requireAdmin, async (req, res)
   if (!updated) { res.status(404).json({ error: "Rule not found" }); return; }
 
   logger.info({ ruleId: id }, "admin: price rule updated");
+  triggerFeedRefresh();
   res.json({ rule: updated });
 });
 
@@ -124,6 +127,7 @@ router.patch("/admin/price-rules/:id/toggle", requireAuth, requireAdmin, async (
     .where(eq(priceRules.id, id))
     .returning();
 
+  triggerFeedRefresh();
   res.json({ rule: updated });
 });
 
@@ -141,6 +145,7 @@ router.delete("/admin/price-rules/:id", requireAuth, requireAdmin, async (req, r
   if (!deleted) { res.status(404).json({ error: "Rule not found" }); return; }
 
   logger.info({ ruleId: id }, "admin: price rule deleted");
+  triggerFeedRefresh();
   res.json({ success: true });
 });
 

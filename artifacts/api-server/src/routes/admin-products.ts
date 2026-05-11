@@ -7,6 +7,7 @@ import { requirePermission } from "../middleware/permissions";
 import { syncProducts } from "../lib/product-sync";
 import { getMetenziConfig } from "../lib/metenzi-config";
 import { paramString } from "../lib/route-params";
+import { triggerFeedRefresh } from "../services/feed-scheduler";
 
 const router = Router();
 
@@ -368,6 +369,7 @@ router.patch("/admin/variants/:id", requireAuth, requireAdmin, requirePermission
     ...(isActive !== undefined && { isActive }),
     updatedAt: new Date(),
   }).where(eq(productVariants.id, id));
+  triggerFeedRefresh();
   res.json({ success: true });
 });
 
@@ -389,6 +391,7 @@ router.patch("/admin/variants/:id/price-override", requireAuth, requireAdmin, re
     .update(productVariants)
     .set({ priceOverrideUsd: priceOverrideUsd || null, updatedAt: new Date() })
     .where(eq(productVariants.id, id));
+  triggerFeedRefresh();
   res.json({ success: true });
 });
 

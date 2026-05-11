@@ -5,6 +5,7 @@ import { eq, desc, sql, and, inArray } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middleware/auth";
 import { z } from "zod";
 import { paramString } from "../lib/route-params";
+import { triggerFeedRefresh } from "../services/feed-scheduler";
 
 const router = Router();
 const guard = [requireAuth, requireAdmin];
@@ -94,6 +95,7 @@ router.post("/admin/flash-sales", ...guard, async (req, res) => {
     );
   }
 
+  triggerFeedRefresh();
   res.json(sale);
 });
 
@@ -121,6 +123,7 @@ router.put("/admin/flash-sales/:id", ...guard, async (req, res) => {
     );
   }
 
+  triggerFeedRefresh();
   res.json(sale);
 });
 
@@ -128,6 +131,7 @@ router.delete("/admin/flash-sales/:id", ...guard, async (req, res) => {
   const id = parseInt(paramString(req.params, "id"));
   if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
   await db.delete(flashSales).where(eq(flashSales.id, id));
+  triggerFeedRefresh();
   res.json({ success: true });
 });
 
