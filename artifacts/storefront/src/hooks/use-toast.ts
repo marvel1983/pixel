@@ -168,6 +168,10 @@ function toast({ ...props }: Toast) {
   }
 }
 
+// Stable module-level dismiss so consumers can safely put it in useEffect deps
+// without triggering infinite loops (the function identity never changes).
+const dismissToast = (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId })
+
 function useToast() {
   const [state, setState] = React.useState<State>(memoryState)
 
@@ -184,7 +188,7 @@ function useToast() {
   return {
     ...state,
     toast,
-    dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
+    dismiss: dismissToast,
   }
 }
 
