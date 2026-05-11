@@ -35,6 +35,7 @@ function apiItemToSuggestion(p: SearchProduct): SuggestionItem {
 export function SearchAutocomplete() {
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<SuggestionItem[]>([]);
+  const [bundleSuggestions, setBundleSuggestions] = useState<SearchBundleHit[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [activeIdx, setActiveIdx] = useState(-1);
@@ -48,6 +49,7 @@ export function SearchAutocomplete() {
   useEffect(() => {
     if (!query.trim()) {
       setSuggestions([]);
+      setBundleSuggestions([]);
       setTotalCount(0);
       return;
     }
@@ -61,9 +63,11 @@ export function SearchAutocomplete() {
         .then((r) => r.json())
         .then((data: SearchResponse) => {
           const items = data.items.map(apiItemToSuggestion);
+          const bundles = data.bundleHits ?? [];
           setSuggestions(items);
+          setBundleSuggestions(bundles);
           setTotalCount(data.total);
-          if (items.length > 0) setIsOpen(true);
+          if (items.length > 0 || bundles.length > 0) setIsOpen(true);
         })
         .catch(() => {});
     }, DEBOUNCE_MS);
@@ -111,16 +115,17 @@ export function SearchAutocomplete() {
       return;
     }
 
-    if (!isOpen || suggestions.length === 0) return;
+    const totalItems = suggestions.length + bundleSuggestions.length;
+    if (!isOpen || totalItems === 0) return;
 
     switch (e.key) {
       case "ArrowDown":
         e.preventDefault();
-        setActiveIdx((prev) => (prev < suggestions.length ? prev + 1 : 0));
+        setActiveIdx((prev) => (prev < totalItems ? prev + 1 : 0));
         break;
       case "ArrowUp":
         e.preventDefault();
-        setActiveIdx((prev) => (prev <= 0 ? suggestions.length : prev - 1));
+        setActiveIdx((prev) => (prev <= 0 ? totalItems : prev - 1));
         break;
       case "Escape":
         setIsOpen(false);
@@ -153,7 +158,7 @@ export function SearchAutocomplete() {
         aria-haspopup="listbox"
       />
 
-      {isOpen && suggestions.length > 0 && (
+      {isOpen && (suggestions.length > 0 || bundleSuggestions.length > 0) && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg z-50 overflow-hidden">
           <ul role="listbox" className="py-1">
             {suggestions.map((item, idx) => (
@@ -200,9 +205,61 @@ export function SearchAutocomplete() {
             ))}
           </ul>
 
+          {bundleSuggestions.length > 0 && (
+            <>
+              <div className="px-3 py-1.5 border-t border-border">
+                <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground flex items-center gap-1">
+                  <Package className="h-3 w-3" /> Bundles
+                </span>
+              </div>
+              <ul role="listbox" aria-label="Bundle suggestions">
+                {bundleSuggestions.map((bundle, i) => {
+                  const idx = suggestions.length + i;
+                  return (
+                    <li
+                      key={bundle.id}
+                      role="option"
+                      aria-selected={idx === activeIdx ? true : false}
+                      className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-colors ${
+                        idx === activeIdx ? "bg-primary/5" : "hover:bg-muted/50"
+                      }`}
+                      onMouseEnter={() => setActiveIdx(idx)}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setIsOpen(false);
+                        setQuery("");
+                        setSuggestions([]);
+                        setBundleSuggestions([]);
+                        inputRef.current?.blur();
+                        setLocation(`/bundles/${bundle.slug}`);
+                      }}
+                    >
+                      <div className="w-10 h-10 rounded bg-muted flex items-center justify-center shrink-0 overflow-hidden">
+                        {bundle.imageUrl ? (
+                          <img src={bundle.imageUrl} alt={bundle.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <Package className="h-5 w-5 text-muted-foreground/40" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{bundle.name}</p>
+                        <p className="text-[10px] text-muted-foreground">{bundle.itemCount} products</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className="text-sm font-bold text-foreground">
+                          {format(parseFloat(bundle.bundlePriceUsd))}
+                        </span>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
+          )}
+
           <div
             className={`border-t border-border px-3 py-2.5 cursor-pointer transition-colors flex items-center justify-center gap-1.5 ${
-              activeIdx === suggestions.length
+              activeIdx === suggestions.length + bundleSuggestions.length
                 ? "bg-primary/5"
                 : "hover:bg-muted/50"
             }`}
