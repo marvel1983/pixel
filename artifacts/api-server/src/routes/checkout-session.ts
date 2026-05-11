@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { db } from "@workspace/db";
-import { users, orders } from "@workspace/db/schema";
+import { users, orders, orderItems } from "@workspace/db/schema";
 import { getRefCookie } from "../middleware/referral";
 import { verifyToken } from "../middleware/auth";
 import { logger } from "../lib/logger";
@@ -130,6 +130,19 @@ router.post("/checkout/session", requireIdempotencyKey(), async (req, res) => {
     attribution: parsed.data.attribution ?? null,
     sessionId: req.sessionId ?? null,
   }).returning({ id: orders.id });
+
+  // Persist line items now so admin can see what was ordered even before
+  // fulfillment runs (HELD/PENDING/FAILED). runFulfillment is idempotent —
+  // it reuses these rows instead of inserting duplicates.
+  const realItemsForInsert = pricedItems.filter((i) => i.variantId > 0);
+  if (realItemsForInsert.length > 0) {
+    await db.insert(orderItems).values(realItemsForInsert.map((item) => ({
+      orderId: order.id, variantId: item.variantId,
+      productName: item.productName, variantName: item.variantName,
+      priceUsd: item.priceUsd, quantity: item.quantity,
+      bundleId: item.bundleId ?? null,
+    })));
+  }
 
   let loyaltyRedeemed = false;
   let walletDebited = false;
