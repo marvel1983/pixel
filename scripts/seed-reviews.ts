@@ -327,8 +327,9 @@ async function seedForProduct(p: ProductRow, reviewerIds: number[], seed: number
   const bucket = bucketFor(p.categorySlug);
   const pool = TEMPLATES[bucket];
 
-  // Track which reviewers we've used for THIS product to avoid duplicates
+  // Track which reviewers and templates we've used for THIS product
   const usedReviewers = new Set<number>();
+  const usedTemplates = new Set<Template>();
 
   const rows: typeof reviews.$inferInsert[] = [];
   for (let i = 0; i < n; i++) {
@@ -342,7 +343,13 @@ async function seedForProduct(p: ProductRow, reviewerIds: number[], seed: number
     usedReviewers.add(userId);
 
     const isNonEnglish = r() < 0.05;
-    const template = isNonEnglish ? pick(NON_ENGLISH, r) : pick(pool, r);
+    const sourcePool = isNonEnglish ? NON_ENGLISH : pool;
+    // Avoid repeating the same template within a single product.
+    const availableTemplates = sourcePool.filter((t) => !usedTemplates.has(t));
+    const template = availableTemplates.length > 0
+      ? pick(availableTemplates, r)
+      : pick(sourcePool, r); // fallback when pool exhausted
+    usedTemplates.add(template);
     const rating = pickRating(r);
     const createdAt = randomDateInRange(r);
 
