@@ -136,7 +136,13 @@ router.post("/admin/orders/:id/sync-backorder-keys", requireAuth, requireAdmin, 
     ? await db.select({ metenziProductId: metenziProductMappings.metenziProductId, pixelProductId: metenziProductMappings.pixelProductId })
         .from(metenziProductMappings).where(inArray(metenziProductMappings.metenziProductId, metenziProductIds))
     : [];
-  const mappingByMetenziId = new Map(mappings.map((m) => [m.metenziProductId, m.pixelProductId]));
+  // One Metenzi product can map to multiple pixel products — collect all IDs per Metenzi ID
+  const mappingByMetenziId = new Map<string, number[]>();
+  for (const m of mappings) {
+    const list = mappingByMetenziId.get(m.metenziProductId) ?? [];
+    if (m.pixelProductId != null) list.push(m.pixelProductId);
+    mappingByMetenziId.set(m.metenziProductId, list);
+  }
 
   const itemsWithProduct = itemIds.length
     ? await db.select({ id: orderItems.id, variantId: orderItems.variantId, quantity: orderItems.quantity, productId: productVariants.productId })
@@ -170,10 +176,11 @@ router.post("/admin/orders/:id/sync-backorder-keys", requireAuth, requireAdmin, 
     let dbItem: typeof itemsWithProduct[0] | undefined;
 
     if (mk.metenziProductId) {
-      const pixelProductId = mappingByMetenziId.get(mk.metenziProductId);
-      if (!pixelProductId) { skipReasons.push(`no mapping for Metenzi productId=${mk.metenziProductId}`); continue; }
-      dbItem = itemByProductId.get(pixelProductId);
-      if (!dbItem) { skipReasons.push(`no order item for pixelProductId=${pixelProductId}`); continue; }
+      const pixelProductIds = mappingByMetenziId.get(mk.metenziProductId);
+      if (!pixelProductIds?.length) { skipReasons.push(`no mapping for Metenzi productId=${mk.metenziProductId}`); continue; }
+      // Try each mapped pixel product until we find one in this order
+      dbItem = pixelProductIds.map((pid) => itemByProductId.get(pid)).find(Boolean);
+      if (!dbItem) { skipReasons.push(`no order item for any mapped pixelProductId=[${pixelProductIds.join(",")}]`); continue; }
     } else {
       // No productId — assign to next unfulfilled item sequentially
       dbItem = fallbackItems.find((i) => (deliveredByItem[i.id] ?? 0) < i.quantity);
