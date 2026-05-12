@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import "./win-pro-hero-slide.css";
 
-const PRODUCT_HREF = "/product/microsoft-windows-11-pro-retail-key";
+const PRODUCT_HREF = "/product/microsoft-windows-11-pro-retail-6a26fc";
 
 export function WinProHeroSlide() {
   return (
