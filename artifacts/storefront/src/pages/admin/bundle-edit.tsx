@@ -52,11 +52,12 @@ export default function BundleEditPage() {
         { id: it.productId, name: it.productName, imageUrl: it.productImage, priceUsd: it.productPrice ?? null },
       ]));
       // Anchor product is not in items — fetch it separately if we have one.
-      // (The list endpoint doesn't filter by id, so use the single-product route.)
+      // /api/admin/products/:id returns { product, variants, ... } so unwrap.
       if (b.primaryProductId) {
         const ar = await fetch(`${API}/admin/products/${b.primaryProductId}`, { headers: h });
         if (ar.ok) {
-          const anchor = await ar.json();
+          const data = await ar.json();
+          const anchor = data?.product;
           if (anchor && anchor.id) {
             cache.set(anchor.id, { id: anchor.id, name: anchor.name, imageUrl: anchor.imageUrl, priceUsd: null });
           }
