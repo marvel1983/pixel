@@ -87,8 +87,39 @@ router.post("/admin/orders/:id/sync-backorder-keys", requireAuth, requireAdmin, 
   const metenziOrder = await getOrderById(config, metenziOrderId);
   if (!metenziOrder) { res.status(404).json({ error: `Metenzi order ${metenziOrderId} not found` }); return; }
 
-  const metenziKeys = metenziOrder.keys ?? [];
-  if (metenziKeys.length === 0) { res.json({ keysAdded: 0, message: "Metenzi order has no keys yet" }); return; }
+  // Collect all key codes from the Metenzi order — handle two formats:
+  //   1. order.keys: MetenziKeyItem[] — { code, productId } objects (primary path)
+  //   2. order.keys: string[] — bare key strings (some Metenzi versions)
+  //   3. order.items[].keys: string[] per item — fallback when keys are inline per item
+  type NormalizedKey = { code: string; metenziProductId: string | null };
+  const rawKeys: NormalizedKey[] = [];
+
+  const rawOrderKeys = (metenziOrder.keys ?? []) as unknown[];
+  for (const k of rawOrderKeys) {
+    if (typeof k === "string") {
+      rawKeys.push({ code: k, metenziProductId: null });
+    } else if (k && typeof k === "object") {
+      const obj = k as Record<string, unknown>;
+      const code = typeof obj.code === "string" ? obj.code : null;
+      const productId = typeof obj.productId === "string" ? obj.productId : null;
+      if (code) rawKeys.push({ code, metenziProductId: productId });
+    }
+  }
+
+  // Fallback: per-item inline keys
+  if (rawKeys.length === 0 && metenziOrder.items) {
+    for (const item of metenziOrder.items) {
+      const inlineKeys = (item as unknown as Record<string, unknown>).keys as string[] | undefined;
+      const pid = ((item as unknown as Record<string, unknown>).productId as string | undefined) ?? null;
+      if (Array.isArray(inlineKeys)) {
+        for (const code of inlineKeys) {
+          if (typeof code === "string") rawKeys.push({ code, metenziProductId: pid });
+        }
+      }
+    }
+  }
+
+  if (rawKeys.length === 0) { res.json({ keysAdded: 0, message: "Metenzi order has no keys yet" }); return; }
 
   const items = await db.select({ id: orderItems.id, variantId: orderItems.variantId, quantity: orderItems.quantity })
     .from(orderItems).where(eq(orderItems.orderId, id));
@@ -100,7 +131,7 @@ router.post("/admin/orders/:id/sync-backorder-keys", requireAuth, requireAdmin, 
   const deliveredByItem: Record<number, number> = {};
   for (const k of existingKeys) deliveredByItem[k.orderItemId!] = (deliveredByItem[k.orderItemId!] ?? 0) + 1;
 
-  const metenziProductIds = [...new Set(metenziKeys.map((k) => k.productId).filter(Boolean))].map(String);
+  const metenziProductIds = [...new Set(rawKeys.map((k) => k.metenziProductId).filter(Boolean))].map(String);
   const mappings = metenziProductIds.length
     ? await db.select({ metenziProductId: metenziProductMappings.metenziProductId, pixelProductId: metenziProductMappings.pixelProductId })
         .from(metenziProductMappings).where(inArray(metenziProductMappings.metenziProductId, metenziProductIds))
@@ -128,19 +159,32 @@ router.post("/admin/orders/:id/sync-backorder-keys", requireAuth, requireAdmin, 
     }
   }
 
+  // When keys have no productId (bare strings), fall back to sequential assignment
+  // across all unfulfilled order items (works correctly when order has one product type)
+  const fallbackItems = [...itemsWithProduct].sort((a, b) => a.id - b.id);
+
   const toInsert: Array<{ variantId: number; keyValue: string; keyMask: string; orderItemId: number }> = [];
   let keysAdded = 0;
-  for (const mk of metenziKeys) {
-    if (!mk.code || !mk.productId) continue;
-    const pixelProductId = mappingByMetenziId.get(mk.productId);
-    if (!pixelProductId) continue;
-    const dbItem = itemByProductId.get(pixelProductId);
-    if (!dbItem) continue;
+  const skipReasons: string[] = [];
+  for (const mk of rawKeys) {
+    let dbItem: typeof itemsWithProduct[0] | undefined;
+
+    if (mk.metenziProductId) {
+      const pixelProductId = mappingByMetenziId.get(mk.metenziProductId);
+      if (!pixelProductId) { skipReasons.push(`no mapping for Metenzi productId=${mk.metenziProductId}`); continue; }
+      dbItem = itemByProductId.get(pixelProductId);
+      if (!dbItem) { skipReasons.push(`no order item for pixelProductId=${pixelProductId}`); continue; }
+    } else {
+      // No productId — assign to next unfulfilled item sequentially
+      dbItem = fallbackItems.find((i) => (deliveredByItem[i.id] ?? 0) < i.quantity);
+      if (!dbItem) { skipReasons.push("no unfulfilled order item for key without productId"); continue; }
+    }
+
     const alreadyDelivered = deliveredByItem[dbItem.id] ?? 0;
-    if (alreadyDelivered >= dbItem.quantity) continue;
+    if (alreadyDelivered >= dbItem.quantity) { skipReasons.push(`already delivered ${alreadyDelivered}/${dbItem.quantity} for orderItemId=${dbItem.id}`); continue; }
     const keyMask = mk.code.length <= 8 ? mk.code.slice(0, 2) + "****" : mk.code.slice(0, 4) + "****" + mk.code.slice(-4);
     const seenForItem = existingMaskByItem.get(dbItem.id) ?? new Set<string>();
-    if (seenForItem.has(keyMask)) continue;
+    if (seenForItem.has(keyMask)) { skipReasons.push(`duplicate key mask ${keyMask} for orderItemId=${dbItem.id}`); continue; }
     seenForItem.add(keyMask);
     existingMaskByItem.set(dbItem.id, seenForItem);
     const encryptedKey = encrypt(mk.code);
@@ -169,7 +213,21 @@ router.post("/admin/orders/:id/sync-backorder-keys", requireAuth, requireAdmin, 
     logger.info({ orderId: id, orderNumber: order.orderNumber, keysAdded, metenziOrderId }, "Admin: sync-backorder-keys added keys");
   }
 
-  res.json({ keysAdded, totalDelivered, totalExpected, message: keysAdded > 0 ? `${keysAdded} key(s) added` : "No new keys found" });
+  if (skipReasons.length > 0) {
+    logger.warn({ orderId: id, metenziOrderId, skipReasons, rawKeyCount: rawKeys.length }, "Admin: sync-backorder-keys skipped keys");
+  }
+
+  const uniqueSkipReasons = [...new Set(skipReasons)];
+  res.json({
+    keysAdded,
+    totalDelivered,
+    totalExpected,
+    message: keysAdded > 0
+      ? `${keysAdded} key(s) added`
+      : uniqueSkipReasons.length > 0
+        ? `No new keys found. Reasons: ${uniqueSkipReasons.join("; ")}`
+        : "No new keys found",
+  });
 });
 
 router.post("/admin/orders/:id/resend-email", requireAuth, requireAdmin, requirePermission("manageOrders"), async (req, res) => {
