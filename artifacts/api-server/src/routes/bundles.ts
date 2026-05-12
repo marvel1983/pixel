@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { bundles, bundleItems, products, productVariants } from "@workspace/db/schema";
 import { eq, and, asc, inArray } from "drizzle-orm";
 import { paramString } from "../lib/route-params";
+import { loadBundleForAnchor } from "../services/bundle-public";
 
 const router = Router();
 
@@ -45,13 +46,44 @@ router.get("/bundles/:slug", async (req, res) => {
     return;
   }
 
-  const items = await getBundleProducts(bundle.id);
-  const individualTotal = items.reduce((s, i) => s + parseFloat(i.minPrice || "0"), 0);
+  // Anchor product info — used by the storefront to render the bundle's hero
+  // (image, name fallback, breadcrumbs) with the same layout as the PDP.
+  const anchorId = bundle.primaryProductId;
+  if (anchorId == null) {
+    res.status(404).json({ error: "Bundle has no anchor product" });
+    return;
+  }
+  const [anchor] = await db
+    .select({
+      id: products.id,
+      name: products.name,
+      slug: products.slug,
+      imageUrl: products.imageUrl,
+      galleryImages: products.galleryImages,
+      description: products.description,
+      shortDescription: products.shortDescription,
+      regionRestrictions: products.regionRestrictions,
+    })
+    .from(products)
+    .where(eq(products.id, anchorId))
+    .limit(1);
+
+  // Rich public bundle (components with allocated prices, savings, etc.)
+  const publicBundle = await loadBundleForAnchor(anchorId);
 
   res.json({
-    ...bundle,
-    items,
-    individualTotal: individualTotal.toFixed(2),
+    bundle: {
+      id: bundle.id,
+      slug: bundle.slug,
+      name: bundle.name,
+      description: bundle.description,
+      shortDescription: bundle.shortDescription,
+      imageUrl: bundle.imageUrl,
+      metaTitle: bundle.metaTitle,
+      metaDescription: bundle.metaDescription,
+      public: publicBundle,
+    },
+    anchor: anchor ?? null,
   });
 });
 
