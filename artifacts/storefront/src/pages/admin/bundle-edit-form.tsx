@@ -65,7 +65,7 @@ export function BundleEditForm(p: Props) {
         ) : (
           <button type="button" onClick={p.onPickAnchor} className="w-full rounded-md border-2 border-dashed border-[#2e3340] hover:border-sky-500/40 hover:bg-sky-500/5 px-4 py-6 text-sm text-[#8fa0bb] flex flex-col items-center gap-2 transition-colors">
             <Package className="h-5 w-5" />
-            <span>Pick an existing product, or create a new bundle product</span>
+            <span>Pick an existing product as the bundle anchor</span>
           </button>
         )}
       </Card>

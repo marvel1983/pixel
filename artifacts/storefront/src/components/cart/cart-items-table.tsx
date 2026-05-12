@@ -118,7 +118,6 @@ export function CartItemsTable() {
           items={bundleItems}
           format={format}
           onRemoveBundle={removeBundleItems}
-          onRemoveItem={handleRemove}
         />
       ))}
 
@@ -153,12 +152,11 @@ export function CartItemsTable() {
   );
 }
 
-function BundleGroup({ bundleId, items, format, onRemoveBundle, onRemoveItem }: {
+function BundleGroup({ bundleId, items, format, onRemoveBundle }: {
   bundleId: number;
   items: CartItem[];
   format: (usd: number) => string;
   onRemoveBundle: (id: number) => void;
-  onRemoveItem: (id: number, bundleId?: number) => void;
 }) {
   const [expanded, setExpanded] = useState(true);
   const bundleName = items[0]?.bundleName || "Bundle";
@@ -235,14 +233,8 @@ function BundleGroup({ bundleId, items, format, onRemoveBundle, onRemoveItem }: 
             </div>
             <div className="text-sm text-center text-muted-foreground tabular-nums">×{item.quantity}</div>
             <div className="text-sm text-right font-semibold tabular-nums">{format(allocated * item.quantity)}</div>
-            <div className="flex justify-end">
-              <button
-                className="h-7 w-7 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                onClick={() => onRemoveItem(item.variantId, item.bundleId)}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-            </div>
+            {/* No per-child remove — bundle is atomic; only the whole-bundle trash icon at the top removes it */}
+            <div />
           </div>
         );
       })}

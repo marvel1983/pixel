@@ -225,7 +225,6 @@ export default function BundleEditPage() {
         open={anchorPickerOpen} onClose={() => setAnchorPickerOpen(false)}
         mode="single" title="Pick the bundle product (anchor)"
         excludedIds={componentIds}
-        allowCreate
         onConfirmSingle={pickAnchor}
       />
       <BundleProductPicker

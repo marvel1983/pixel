@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
-import { Search, Package, X, Check, Plus, Loader2 } from "lucide-react";
+import { Search, Package, X, Check } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/stores/auth-store";
-import { useToast } from "@/hooks/use-toast";
-import { slugify, type ProductOption } from "./bundle-types";
+import type { ProductOption } from "./bundle-types";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -23,8 +22,6 @@ interface Props {
   excludedIds?: number[];
   /** Selected on this picker session — only used for `multi` mode */
   initialSelectedIds?: number[];
-  /** Show "+ Create new bundle product" affordance (single mode only — for anchors) */
-  allowCreate?: boolean;
   onConfirmSingle?: (product: ProductOption) => void;
   onConfirmMulti?: (products: ProductOption[]) => void;
   title: string;
@@ -32,25 +29,17 @@ interface Props {
 
 export function BundleProductPicker(p: Props) {
   const token = useAuthStore((s) => s.token);
-  const { toast } = useToast();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<ProductOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [picked, setPicked] = useState<Set<number>>(new Set());
   const [pickedCache, setPickedCache] = useState<Map<number, ProductOption>>(new Map());
-  const [creating, setCreating] = useState(false);
-  const [createName, setCreateName] = useState("");
-  const [createSlug, setCreateSlug] = useState("");
-  const [createImageUrl, setCreateImageUrl] = useState("");
-  const [createSubmitting, setCreateSubmitting] = useState(false);
 
   useEffect(() => {
     if (!p.open) return;
     setPicked(new Set(p.initialSelectedIds ?? []));
     setPickedCache(new Map());
     setQuery("");
-    setCreating(false);
-    setCreateName(""); setCreateSlug(""); setCreateImageUrl("");
   }, [p.open]);
 
   useEffect(() => {
@@ -102,33 +91,6 @@ export function BundleProductPicker(p: Props) {
     p.onClose();
   }
 
-  async function submitCreate() {
-    if (!createName.trim()) { toast({ title: "Name is required", variant: "destructive" }); return; }
-    setCreateSubmitting(true);
-    const slug = createSlug.trim() || slugify(createName);
-    const r = await fetch(`${API}/admin/products`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: createName.trim(),
-        slug,
-        imageUrl: createImageUrl.trim() || null,
-        isBundleAnchor: true,
-        isActive: true,
-      }),
-    });
-    setCreateSubmitting(false);
-    if (!r.ok) {
-      const err = await r.json().catch(() => ({}));
-      toast({ title: err.error ?? "Could not create anchor", variant: "destructive" });
-      return;
-    }
-    const created = await r.json();
-    toast({ title: "Anchor product created" });
-    p.onConfirmSingle?.({ id: created.id, name: created.name, imageUrl: created.imageUrl ?? null, priceUsd: null });
-    p.onClose();
-  }
-
   const filtered = results.filter((r) => !(p.excludedIds ?? []).includes(r.id));
 
   return (
@@ -138,7 +100,7 @@ export function BundleProductPicker(p: Props) {
           <DialogTitle className="text-base">{p.title}</DialogTitle>
         </DialogHeader>
 
-        <div className="px-5 py-3 border-b space-y-2">
+        <div className="px-5 py-3 border-b">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
@@ -149,56 +111,6 @@ export function BundleProductPicker(p: Props) {
               onChange={(e) => setQuery(e.target.value)}
             />
           </div>
-          {p.allowCreate && !creating && (
-            <button
-              type="button"
-              onClick={() => { setCreating(true); setCreateName(query); setCreateSlug(slugify(query)); }}
-              className="w-full inline-flex items-center justify-center gap-1.5 rounded-md border-2 border-dashed border-slate-300 hover:border-primary/50 hover:bg-primary/5 px-3 py-2 text-sm font-medium text-primary transition-colors"
-            >
-              <Plus className="h-4 w-4" /> Create new bundle product{query ? ` "${query}"` : ""}
-            </button>
-          )}
-          {p.allowCreate && creating && (
-            <div className="rounded-md border border-slate-200 bg-slate-50 p-3 space-y-2">
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-[10.5px] font-semibold uppercase tracking-wider text-slate-500 mb-1">Name</label>
-                  <input
-                    autoFocus
-                    className="w-full rounded border border-slate-300 bg-white px-2 py-1.5 text-sm"
-                    value={createName}
-                    onChange={(e) => { setCreateName(e.target.value); setCreateSlug(slugify(e.target.value)); }}
-                    placeholder="Bundle of 3 best antivirus"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10.5px] font-semibold uppercase tracking-wider text-slate-500 mb-1">Slug</label>
-                  <input
-                    className="w-full rounded border border-slate-300 bg-white px-2 py-1.5 text-sm"
-                    value={createSlug}
-                    onChange={(e) => setCreateSlug(e.target.value)}
-                    placeholder="bundle-of-3-best-antivirus"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-[10.5px] font-semibold uppercase tracking-wider text-slate-500 mb-1">Image URL <span className="text-slate-400 font-normal normal-case">(optional)</span></label>
-                <input
-                  className="w-full rounded border border-slate-300 bg-white px-2 py-1.5 text-sm"
-                  value={createImageUrl}
-                  onChange={(e) => setCreateImageUrl(e.target.value)}
-                  placeholder="https://…"
-                />
-              </div>
-              <div className="flex items-center justify-end gap-2">
-                <Button variant="ghost" size="sm" onClick={() => setCreating(false)} disabled={createSubmitting}>Cancel</Button>
-                <Button size="sm" onClick={submitCreate} disabled={createSubmitting} className="gap-1.5">
-                  {createSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-                  Create & use as anchor
-                </Button>
-              </div>
-            </div>
-          )}
         </div>
 
         <div className="flex-1 overflow-y-auto px-3 py-2">
