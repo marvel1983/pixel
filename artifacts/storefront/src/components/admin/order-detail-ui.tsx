@@ -111,7 +111,7 @@ export function InfoRow({ label, value, mono, highlight }: { label: string; valu
   );
 }
 
-export function SummaryRow({ label, value, labelClass, valueClass }: { label: string; value: string; labelClass?: string; valueClass?: string }) {
+export function SummaryRow({ label, value, labelClass, valueClass }: { label: string; value: ReactNode; labelClass?: string; valueClass?: string }) {
   return (
     <div className="flex items-center justify-between gap-2">
       <span className={`text-[#8fa0bb] ${labelClass ?? ""}`}>{label}</span>

@@ -26,7 +26,7 @@ interface Review {
   id: number; productId: number; productName: string; rating: number; title: string | null;
   body: string | null; isApproved: boolean; isVerifiedPurchase: boolean; helpfulCount: number; createdAt: string;
 }
-interface Stats { totalSpent: string; orderCount: number; avgRating: number }
+interface Stats { totalSpent: string; orderCount: number; totalSpent30d: string; orderCount30d: number; avgRating: number }
 interface LoyaltyAccount { pointsBalance: number; lifetimePoints: number; tier: string; tierMultiplier: string }
 interface LoyaltyTx { id: number; type: string; points: number; balance: number; description: string; createdAt: string }
 
@@ -44,7 +44,7 @@ export default function CustomerDetailPage() {
   const [customerOrders, setOrders] = useState<Order[]>([]);
   const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
   const [customerReviews, setReviews] = useState<Review[]>([]);
-  const [stats, setStats] = useState<Stats>({ totalSpent: "0", orderCount: 0, avgRating: 0 });
+  const [stats, setStats] = useState<Stats>({ totalSpent: "0", orderCount: 0, totalSpent30d: "0", orderCount30d: 0, avgRating: 0 });
   const [loading, setLoading] = useState(true);
   const [notes, setNotes] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
@@ -202,10 +202,16 @@ export default function CustomerDetailPage() {
         <div className="space-y-4">
           <Section title="Stats">
             <div className="space-y-3 text-sm">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80 -mb-1">Lifetime</div>
               <div className="flex justify-between"><span className="text-muted-foreground">Total Spent</span><span className="font-bold">€{parseFloat(stats.totalSpent).toFixed(2)}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Orders</span><span className="font-bold">{stats.orderCount}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Avg Rating</span><span className="font-bold">{stats.avgRating > 0 ? stats.avgRating.toFixed(1) : "—"}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Avg Order Value</span><span className="font-bold">{stats.orderCount > 0 ? `€${(parseFloat(stats.totalSpent) / stats.orderCount).toFixed(2)}` : "—"}</span></div>
+              <div className="border-t border-border my-1" />
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80 -mb-1">Last 30 days</div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Spent (30d)</span><span className="font-bold">€{parseFloat(stats.totalSpent30d).toFixed(2)}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Orders (30d)</span><span className="font-bold">{stats.orderCount30d}</span></div>
+              <div className="border-t border-border my-1" />
+              <div className="flex justify-between"><span className="text-muted-foreground">Avg Rating</span><span className="font-bold">{stats.avgRating > 0 ? stats.avgRating.toFixed(1) : "—"}</span></div>
             </div>
           </Section>
 

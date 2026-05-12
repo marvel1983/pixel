@@ -90,6 +90,17 @@ router.get("/admin/customers/:id", requireAuth, requireAdmin, requirePermission(
   const [{ totalSpent }] = await db.select({ totalSpent: sum(orders.totalUsd) }).from(orders).where(eq(orders.userId, id));
   const [{ orderCount }] = await db.select({ orderCount: count() }).from(orders).where(eq(orders.userId, id));
 
+  // Last-30-days rolling window — a quick "is this customer still active?" view.
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const [{ totalSpent30d }] = await db
+    .select({ totalSpent30d: sum(orders.totalUsd) })
+    .from(orders)
+    .where(and(eq(orders.userId, id), gte(orders.createdAt, thirtyDaysAgo)));
+  const [{ orderCount30d }] = await db
+    .select({ orderCount30d: count() })
+    .from(orders)
+    .where(and(eq(orders.userId, id), gte(orders.createdAt, thirtyDaysAgo)));
+
   const wishlistItems = await db.select({
     id: wishlists.id, productId: wishlists.productId,
     productName: products.name, createdAt: wishlists.createdAt,
@@ -113,7 +124,13 @@ router.get("/admin/customers/:id", requireAuth, requireAdmin, requirePermission(
 
   res.json({
     customer, orders: customerOrders, wishlist: wishlistItems, reviews: customerReviews,
-    stats: { totalSpent: totalSpent ?? "0", orderCount: Number(orderCount), avgRating: parseFloat(avgRating) },
+    stats: {
+      totalSpent: totalSpent ?? "0",
+      orderCount: Number(orderCount),
+      totalSpent30d: totalSpent30d ?? "0",
+      orderCount30d: Number(orderCount30d),
+      avgRating: parseFloat(avgRating),
+    },
   });
 });
 
@@ -197,7 +214,17 @@ function buildFilters(query: Record<string, unknown>) {
   const conditions = [];
   const search = query.search as string | undefined;
   if (search?.trim()) {
-    conditions.push(or(ilike(users.email, `%${search}%`), ilike(users.firstName, `%${search}%`), ilike(users.lastName, `%${search}%`)));
+    // Match against email, first name, last name, AND the concatenated full
+    // name so a query like "Giuliano Magro" finds users whose first/last name
+    // are stored separately (without the concat clause, the multi-word search
+    // would never match either column individually).
+    const pat = `%${search.trim()}%`;
+    conditions.push(or(
+      ilike(users.email, pat),
+      ilike(users.firstName, pat),
+      ilike(users.lastName, pat),
+      sql`(COALESCE(${users.firstName}, '') || ' ' || COALESCE(${users.lastName}, '')) ILIKE ${pat}`,
+    ));
   }
   const role = query.role as string | undefined;
   if (role && role !== "ALL") conditions.push(eq(users.role, role as "CUSTOMER" | "ADMIN" | "SUPER_ADMIN"));

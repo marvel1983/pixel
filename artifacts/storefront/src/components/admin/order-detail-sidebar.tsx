@@ -1,3 +1,4 @@
+import { Link } from "wouter";
 import { Card, SummaryRow, formatMoney } from "./order-detail-ui";
 import type { OrderDetail } from "./order-detail-ui";
 
@@ -34,7 +35,17 @@ export function OrderDetailSidebar({ order, coupon, customer, refunds }: Sidebar
       <Card title="Customer">
         {customer ? (
           <div className="space-y-2 text-[12.5px]">
-            <SummaryRow label="Name" value={`${customer.firstName ?? ""} ${customer.lastName ?? ""}`.trim() || "—"} />
+            <SummaryRow
+              label="Name"
+              value={
+                <Link
+                  href={`/admin/customers/${customer.id}`}
+                  className="text-sky-300 hover:text-sky-200 hover:underline transition-colors"
+                >
+                  {`${customer.firstName ?? ""} ${customer.lastName ?? ""}`.trim() || "—"}
+                </Link>
+              }
+            />
             <SummaryRow label="Email" value={customer.email} valueClass="text-sky-300" />
             <SummaryRow label="Since" value={new Date(customer.createdAt).toLocaleDateString()} />
           </div>
