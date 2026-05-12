@@ -1,7 +1,6 @@
 import { Router, type Request, type Response } from "express";
 import { db } from "@workspace/db";
 import { products, productVariants, categories, tags, productTags, attributeDefinitions, attributeOptions, productAttributes, bundles, bundleItems } from "@workspace/db/schema";
-import { loadBundleForAnchor } from "../services/bundle-public";
 import { eq, ilike, or, and, sql, inArray, gt, asc, desc, count, type SQL } from "drizzle-orm";
 import { z } from "zod";
 
@@ -207,31 +206,10 @@ router.get("/search", async (req: Request, res: Response) => {
 
   const total = countResult?.count ?? 0;
 
-  // Bundle-price override for anchor products: listing card should show the
-  // computed bundle price, not the anchor variant's catalog price. Compute LIVE
-  // via loadBundleForAnchor so listing and PDP stay consistent even if the
-  // cached bundles.bundle_price_usd is stale.
-  const anchorIds = results.filter((r) => r.isBundleAnchor).map((r) => r.id);
-  const anchorBundlePrice = new Map<number, { finalUsd: string; useAnchorPrice: boolean }>();
-  if (anchorIds.length > 0) {
-    const loaded = await Promise.all(anchorIds.map((aid) => loadBundleForAnchor(aid)));
-    anchorIds.forEach((aid, i) => {
-      const b = loaded[i];
-      if (b) anchorBundlePrice.set(aid, { finalUsd: b.pricing.finalUsd, useAnchorPrice: b.useAnchorPrice });
-    });
-  }
-
-  const items = results.map((p) => {
-    const anchorPrice = anchorBundlePrice.get(p.id);
-    const overrideToBundle = p.isBundleAnchor && anchorPrice && !anchorPrice.useAnchorPrice;
-    return {
-      ...p,
-      variants: variants.filter((v) => v.productId === p.id).map((v) => ({
-        ...v,
-        priceUsd: overrideToBundle ? anchorPrice.finalUsd : v.priceUsd,
-      })),
-    };
-  });
+  const items = results.map((p) => ({
+    ...p,
+    variants: variants.filter((v) => v.productId === p.id),
+  }));
 
   const allIds = items.map((p: { id: number }) => p.id);
   const facets = await computeFacets(allIds);

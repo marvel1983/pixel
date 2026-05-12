@@ -59,14 +59,26 @@ router.get("/bundles/by-product/:productId", async (req, res) => {
   const productId = parseInt(paramString(req.params, "productId"));
   if (isNaN(productId)) { res.json([]); return; }
 
-  const rows = await db
-    .select({ bundleId: bundleItems.bundleId })
-    .from(bundleItems)
-    .where(eq(bundleItems.productId, productId));
+  // Bundles to surface as an upsell on this product's PDP:
+  //   1. bundles where this product is a component (bundle_items.product_id)
+  //   2. bundles where this product is the anchor (bundles.primary_product_id)
+  // Both need to surface so a standalone product page can still pitch the bundle.
+  const [componentRows, anchorRows] = await Promise.all([
+    db.select({ bundleId: bundleItems.bundleId })
+      .from(bundleItems)
+      .where(eq(bundleItems.productId, productId)),
+    db.select({ id: bundles.id })
+      .from(bundles)
+      .where(eq(bundles.primaryProductId, productId)),
+  ]);
 
-  if (!rows.length) { res.json([]); return; }
+  const bundleIds = [...new Set([
+    ...componentRows.map((r) => r.bundleId),
+    ...anchorRows.map((r) => r.id),
+  ])];
 
-  const bundleIds = [...new Set(rows.map((r) => r.bundleId))];
+  if (!bundleIds.length) { res.json([]); return; }
+
   const activeBundles = await db
     .select()
     .from(bundles)

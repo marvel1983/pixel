@@ -205,19 +205,6 @@ router.get("/products", async (req: Request, res: Response) => {
     .offset(offset);
 
   const productIds = results.map((r) => r.id);
-  const anchorIds = results.filter((r) => r.isBundleAnchor).map((r) => r.id);
-
-  // For anchor products, compute the bundle price LIVE via loadBundleForAnchor so the
-  // listing card stays consistent with the PDP even if bundle_price_usd cache is stale
-  // (e.g. component prices changed after the last bundle save).
-  const anchorBundlePrice = new Map<number, { finalUsd: string; useAnchorPrice: boolean }>();
-  if (anchorIds.length > 0) {
-    const loaded = await Promise.all(anchorIds.map((aid) => loadBundleForAnchor(aid)));
-    anchorIds.forEach((aid, i) => {
-      const b = loaded[i];
-      if (b) anchorBundlePrice.set(aid, { finalUsd: b.pricing.finalUsd, useAnchorPrice: b.useAnchorPrice });
-    });
-  }
 
   let variants: {
     id: number; productId: number; name: string; sku: string;
@@ -258,22 +245,18 @@ router.get("/products", async (req: Request, res: Response) => {
     ]);
   }
 
-  const items = results.map((p) => {
-    const anchorPrice = anchorBundlePrice.get(p.id);
-    const overrideToBundle = p.isBundleAnchor && anchorPrice && !anchorPrice.useAnchorPrice;
-    return {
-      ...p,
-      variants: variants
-        .filter((v) => v.productId === p.id)
-        .map(({ priceOverrideUsd, ...v }) => ({
-          ...v,
-          priceUsd: overrideToBundle ? anchorPrice.finalUsd : (priceOverrideUsd ?? v.priceUsd),
-        })),
-      productAttributes: regionAttrs
-        .filter((a) => a.productId === p.id)
-        .map(({ productId: _pid, ...a }) => a),
-    };
-  });
+  const items = results.map((p) => ({
+    ...p,
+    variants: variants
+      .filter((v) => v.productId === p.id)
+      .map(({ priceOverrideUsd, ...v }) => ({
+        ...v,
+        priceUsd: priceOverrideUsd ?? v.priceUsd,
+      })),
+    productAttributes: regionAttrs
+      .filter((a) => a.productId === p.id)
+      .map(({ productId: _pid, ...a }) => a),
+  }));
 
 
   const facets = await computeFacets(allMatchingIds);
