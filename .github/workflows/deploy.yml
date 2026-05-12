@@ -357,6 +357,16 @@ jobs:
             echo "→ Adding use_anchor_price column to bundles (default false)..."
             $PSQL -c "ALTER TABLE bundles ADD COLUMN IF NOT EXISTS use_anchor_price BOOLEAN NOT NULL DEFAULT false;" || true
 
+            echo "→ Metenzi mappings: allow 1 Metenzi product → N Pixel products..."
+            # Drop the old single-column unique constraint (and its auto-named index)
+            # in either form Postgres might have stored it under.
+            $PSQL -c "ALTER TABLE metenzi_product_mappings DROP CONSTRAINT IF EXISTS metenzi_product_mappings_metenzi_product_id_unique;" || true
+            $PSQL -c "ALTER TABLE metenzi_product_mappings DROP CONSTRAINT IF EXISTS metenzi_product_mappings_metenzi_product_id_key;" || true
+            $PSQL -c "DROP INDEX IF EXISTS metenzi_product_mappings_metenzi_product_id_unique;" || true
+            $PSQL -c "DROP INDEX IF EXISTS metenzi_product_mappings_metenzi_product_id_key;" || true
+            # Add the new composite unique on (metenzi_product_id, pixel_product_id).
+            $PSQL -c "CREATE UNIQUE INDEX IF NOT EXISTS metenzi_product_mappings_pair_uq ON metenzi_product_mappings (metenzi_product_id, pixel_product_id);" || true
+
             echo "→ Reloading PM2..."
             set -a; source /var/www/pixel-storefront/.env; set +a
             pm2 reload pixel-api --update-env

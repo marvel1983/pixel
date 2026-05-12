@@ -8,17 +8,31 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
+interface PixelMapping {
+  mappingId: number;
+  autoSyncStock: boolean;
+  pixelProductId: number | null;
+  name: string | null;
+  slug: string | null;
+}
 interface MetenziProduct {
   id: string; sku: string; name: string; category: string; platform: string;
   b2bPrice: string; retailPrice: string; currency: string; stock: number;
   status: string; imageUrl: string | null; description: string; shortDescription: string;
-  mapped: boolean; mappingId: number | null; autoSyncStock: boolean;
+  mapped: boolean;
+  /** All Pixel products this Metenzi product is linked to (1:N). */
+  pixelProducts: PixelMapping[];
+  // Back-compat fields (first mapping only):
+  mappingId: number | null;
+  autoSyncStock: boolean;
   pixelProduct: { id: number; name: string; slug: string } | null;
 }
 interface PixelSearch { id: number; name: string; slug: string }
 
 const SYNC_FIELDS = [
-  { key: "name",             label: "Name" },
+  // "name" intentionally omitted — admin owns the Pixel product's brand name,
+  // never overwritten from Metenzi (one Metenzi product can map to many Pixel
+  // products, each with its own marketing name).
   { key: "image",            label: "Image" },
   { key: "b2bPrice",         label: "B2B Price" },
   { key: "retailPrice",      label: "Retail Price" },
@@ -62,7 +76,8 @@ export default function MetenziCatalogPage() {
   const [pixelResults, setPixelResults]   = useState<PixelSearch[]>([]);
   const [pixelLoading, setPixelLoading]   = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
-  const [syncingFields, setSyncingFields] = useState<Set<SyncFieldKey>>(new Set());
+  // Keyed by `${mappingId}:${field}` so per-mapping sync state can co-exist.
+  const [syncingFields, setSyncingFields] = useState<Set<string>>(new Set());
   const [syncedResult, setSyncedResult]   = useState<string[]>([]);
   const [showImport, setShowImport]   = useState(false);
   const [importFields, setImportFields] = useState<Set<SyncFieldKey>>(
@@ -131,38 +146,39 @@ export default function MetenziCatalogPage() {
     setActionLoading(false);
   };
 
-  const handleUnmap = async () => {
-    if (!selected?.mappingId || !confirm(`Remove mapping for "${selected.name}"?`)) return;
+  const handleUnmapMapping = async (mappingId: number, pixelName: string | null) => {
+    if (!confirm(`Remove mapping${pixelName ? ` for "${pixelName}"` : ""}?`)) return;
     setActionLoading(true);
-    await fetch(`${API}/admin/metenzi/mappings/${selected.mappingId}`, { method: "DELETE", headers: hdrs });
+    await fetch(`${API}/admin/metenzi/mappings/${mappingId}`, { method: "DELETE", headers: hdrs });
     await fetchCatalog(page, search, category, platform, limit);
     setActionLoading(false);
   };
 
-  const handleToggleAutoSync = async () => {
-    if (!selected?.mappingId) return;
+  const handleToggleAutoSyncMapping = async (mappingId: number, currentValue: boolean) => {
     setActionLoading(true);
-    await fetch(`${API}/admin/metenzi/mappings/${selected.mappingId}`, {
+    await fetch(`${API}/admin/metenzi/mappings/${mappingId}`, {
       method: "PATCH", headers: hdrs,
-      body: JSON.stringify({ autoSyncStock: !selected.autoSyncStock }),
+      body: JSON.stringify({ autoSyncStock: !currentValue }),
     });
     await fetchCatalog(page, search, category, platform, limit);
     setActionLoading(false);
   };
 
-  const handleSyncField = async (field: SyncFieldKey) => {
-    if (!selected?.mappingId) return;
-    setSyncingFields(prev => new Set(prev).add(field));
-    setSyncedResult([]);
+  const fieldKey = (mappingId: number, field: SyncFieldKey) => `${mappingId}:${field}`;
+
+  const handleSyncFieldMapping = async (mappingId: number, field: SyncFieldKey) => {
+    const k = fieldKey(mappingId, field);
+    setSyncingFields(prev => new Set(prev).add(k));
+    setSyncedResult(prev => prev.filter((x) => x !== k));
     const res = await fetch(`${API}/admin/metenzi/sync-field`, {
       method: "POST", headers: hdrs,
-      body: JSON.stringify({ mappingId: selected.mappingId, fields: [field] }),
+      body: JSON.stringify({ mappingId, fields: [field] }),
     });
     const data = await res.json();
-    if (res.ok && data.success) setSyncedResult(data.synced ?? [field]);
+    if (res.ok && data.success) setSyncedResult(prev => [...prev, k]);
     else alert(data.error ?? "Sync failed");
     await fetchCatalog(page, search, category, platform, limit);
-    setSyncingFields(prev => { const s = new Set(prev); s.delete(field); return s; });
+    setSyncingFields(prev => { const s = new Set(prev); s.delete(k); return s; });
   };
 
   const handleImport = async () => {
@@ -384,8 +400,26 @@ export default function MetenziCatalogPage() {
                       <span className="ml-1 inline-flex items-center justify-center rounded border border-sky-400 bg-sky-500/40 px-1.5 text-[10px] font-bold text-sky-100 tracking-wider" style={{ height: 17 }}>auto-sync</span>
                     )}
                   </td>
-                  <td className={`${td} border-r-0 text-[11px] text-[#5a8fcc]`}>
-                    {p.pixelProduct ? p.pixelProduct.name : <span className="text-[#3d4558]">—</span>}
+                  <td className={`${td} border-r-0 text-[11px] !whitespace-normal align-top`}>
+                    {p.pixelProducts && p.pixelProducts.length > 0 ? (
+                      <div className="flex flex-col gap-0.5">
+                        {p.pixelProducts.map((pp, i) => (
+                          <span
+                            key={pp.mappingId}
+                            className={`inline-flex items-center gap-1.5 rounded px-1.5 py-0.5 leading-tight ${
+                              i % 2 === 0
+                                ? "bg-sky-500/10 text-sky-300 border border-sky-500/20"
+                                : "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20"
+                            }`}
+                            title={pp.name ?? ""}
+                          >
+                            {pp.name ?? `#${pp.pixelProductId}`}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-[#3d4558]">—</span>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -434,95 +468,126 @@ export default function MetenziCatalogPage() {
             </div>
 
             <div className="px-5 py-5 space-y-5 flex-1">
-              {/* Sync feedback */}
-              {syncedResult.length > 0 && (
-                <div className="rounded border border-emerald-800 bg-emerald-900/20 px-3 py-2 flex items-center gap-2">
-                  <Check className="h-4 w-4 text-emerald-400 flex-shrink-0" />
-                  <span className="text-[12px] text-emerald-300">Synced: <strong>{syncedResult.join(", ")}</strong></span>
-                </div>
-              )}
+              {/* Per-mapping cards — one Metenzi product can link to many Pixel products. */}
+              {selected.pixelProducts && selected.pixelProducts.length > 0 && (
+                <div className="space-y-3">
+                  <p className="text-[10.5px] font-bold uppercase tracking-widest text-[#5a6a84]">
+                    Linked Pixel products ({selected.pixelProducts.length})
+                  </p>
+                  {selected.pixelProducts.map((m, i) => {
+                    // Alternate accent so multiple mappings are visually distinct.
+                    const accent = i % 2 === 0
+                      ? { border: "border-sky-900/40", bg: "bg-sky-950/15", chip: "bg-sky-500/15 text-sky-300 border-sky-500/30" }
+                      : { border: "border-emerald-900/40", bg: "bg-emerald-950/15", chip: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30" };
+                    return (
+                      <div key={m.mappingId} className={`rounded-md border ${accent.border} ${accent.bg} p-3 space-y-2.5`}>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <span className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[9.5px] font-bold uppercase tracking-wider mb-1 ${accent.chip}`}>
+                              #{i + 1}
+                            </span>
+                            <p className="text-sm font-medium text-[#dde4f0] truncate">{m.name ?? `Pixel #${m.pixelProductId}`}</p>
+                            {m.slug && <p className="text-[11px] text-[#5a6a84] truncate">/{m.slug}</p>}
+                          </div>
+                          <Button
+                            size="sm" variant="outline"
+                            className="h-6 px-2 text-[10px] border-red-800 text-red-400 hover:bg-red-950 flex-shrink-0"
+                            onClick={() => handleUnmapMapping(m.mappingId, m.name)}
+                            disabled={actionLoading}
+                          >
+                            <Unlink className="mr-1 h-3 w-3" /> Unmap
+                          </Button>
+                        </div>
 
-              {selected.mapped && selected.pixelProduct ? (
-                <>
-                  {/* Linked product */}
-                  <div className="rounded-md border border-sky-900/40 bg-sky-950/20 p-3 flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-[11px] text-[#5a6a84]">Linked Pixel product</p>
-                      <p className="text-sm font-medium text-[#dde4f0] mt-0.5">{selected.pixelProduct.name}</p>
-                      <p className="text-[11px] text-[#5a6a84]">/{selected.pixelProduct.slug}</p>
-                    </div>
-                    <Button size="sm" variant="outline" className="h-7 text-[11px] border-red-800 text-red-400 hover:bg-red-950 flex-shrink-0" onClick={handleUnmap} disabled={actionLoading}>
-                      <Unlink className="mr-1 h-3 w-3" /> Unmap
-                    </Button>
-                  </div>
-
-                  {/* Auto-sync toggle */}
-                  <div className="flex items-center justify-between rounded-md border border-[#2a2e3a] bg-[#161a24] px-4 py-3">
-                    <div>
-                      <p className="text-sm font-medium text-[#dde4f0]">Auto-sync stock</p>
-                      <p className="text-[11px] text-[#5a6a84]">Update stock every 15 min from Metenzi</p>
-                    </div>
-                    <button onClick={handleToggleAutoSync} disabled={actionLoading}
-                      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${selected.autoSyncStock ? "bg-sky-600" : "bg-[#2e3340]"}`}>
-                      <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${selected.autoSyncStock ? "translate-x-5" : "translate-x-0"}`} />
-                    </button>
-                  </div>
-
-                  {/* Sync fields */}
-                  <div>
-                    <p className="text-[10.5px] font-bold uppercase tracking-widest text-[#5a6a84] mb-2">Sync individual fields</p>
-                    <div className="grid grid-cols-2 gap-1.5">
-                      {SYNC_FIELDS.map(({ key, label }) => {
-                        const syncing = syncingFields.has(key);
-                        const synced  = syncedResult.includes(key);
-                        return (
-                          <button key={key} onClick={() => handleSyncField(key)} disabled={syncing || actionLoading}
-                            className={`flex items-center justify-between rounded border px-3 py-2 text-left transition-colors disabled:opacity-60 ${synced ? "border-emerald-700 bg-emerald-900/20" : "border-[#2a2e3a] bg-[#161a24] hover:border-[#3a4050] hover:bg-[#1e2332]"}`}>
-                            <span className={`text-[13px] ${synced ? "text-emerald-300" : "text-[#dde4f0]"}`}>{label}</span>
-                            {synced
-                              ? <Check className="h-3.5 w-3.5 text-emerald-400" />
-                              : <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "text-sky-400 animate-spin" : "text-[#5a6a84]"}`} />
-                            }
+                        {/* Auto-sync stock toggle — per mapping */}
+                        <div className="flex items-center justify-between rounded border border-[#2a2e3a] bg-[#0f1117] px-3 py-2">
+                          <div>
+                            <p className="text-[12px] font-medium text-[#dde4f0]">Auto-sync stock</p>
+                            <p className="text-[10px] text-[#5a6a84]">Pull stock every 15 min</p>
+                          </div>
+                          <button
+                            onClick={() => handleToggleAutoSyncMapping(m.mappingId, m.autoSyncStock)}
+                            disabled={actionLoading}
+                            className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${m.autoSyncStock ? "bg-sky-600" : "bg-[#2e3340]"}`}
+                          >
+                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${m.autoSyncStock ? "translate-x-4" : "translate-x-0"}`} />
                           </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-[10.5px] font-bold uppercase tracking-widest text-[#5a6a84] mb-2">Link to existing Pixel product</p>
-                    <div className="relative">
-                      <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-[#5a6a84]" />
-                      <input className="h-8 w-full rounded border border-[#3d4558] bg-[#0f1117] pl-8 pr-2 text-[13px] text-[#e8edf5] placeholder:text-[#6b7280] focus:border-sky-500/60 focus:outline-none focus:ring-1 focus:ring-sky-500/40"
-                        placeholder="Search Pixel products..." value={pixelQuery} onChange={e => handlePixelSearch(e.target.value)} />
-                    </div>
-                    {pixelLoading && <p className="text-[11px] text-[#5a6a84] mt-1 ml-1">Searching...</p>}
-                    {pixelResults.length > 0 && (
-                      <div className="mt-1 rounded border border-[#2a2e3a] bg-[#0f1117] divide-y divide-[#1e2638] max-h-48 overflow-y-auto">
-                        {pixelResults.map(pp => (
-                          <button key={pp.id} onClick={() => handleMap(pp.id)} disabled={actionLoading} className="w-full text-left px-3 py-2 hover:bg-[#161a24] transition-colors">
-                            <p className="text-[13px] text-[#dde4f0]">{pp.name}</p>
-                            <p className="text-[11px] text-[#5a6a84]">/{pp.slug}</p>
-                          </button>
-                        ))}
+                        </div>
+
+                        {/* Per-field sync buttons (excluding name — admin-owned) */}
+                        <div>
+                          <p className="text-[9.5px] font-bold uppercase tracking-widest text-[#5a6a84] mb-1.5">Sync individual fields</p>
+                          <div className="grid grid-cols-2 gap-1">
+                            {SYNC_FIELDS.map(({ key, label }) => {
+                              const k = fieldKey(m.mappingId, key);
+                              const syncing = syncingFields.has(k);
+                              const synced  = syncedResult.includes(k);
+                              return (
+                                <button
+                                  key={key}
+                                  onClick={() => handleSyncFieldMapping(m.mappingId, key)}
+                                  disabled={syncing || actionLoading}
+                                  className={`flex items-center justify-between rounded border px-2 py-1.5 text-left transition-colors disabled:opacity-60 ${synced ? "border-emerald-700 bg-emerald-900/20" : "border-[#2a2e3a] bg-[#0f1117] hover:border-[#3a4050] hover:bg-[#1e2332]"}`}
+                                >
+                                  <span className={`text-[11px] ${synced ? "text-emerald-300" : "text-[#dde4f0]"}`}>{label}</span>
+                                  {synced
+                                    ? <Check className="h-3 w-3 text-emerald-400" />
+                                    : <RefreshCw className={`h-3 w-3 ${syncing ? "text-sky-400 animate-spin" : "text-[#5a6a84]"}`} />
+                                  }
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
                       </div>
-                    )}
-                    {pixelQuery.length >= 2 && !pixelLoading && pixelResults.length === 0 && (
-                      <p className="text-[11px] text-[#5a6a84] mt-1 ml-1">No products found</p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1 h-px bg-[#2a2e3a]" />
-                    <span className="text-[11px] text-[#5a6a84]">or</span>
-                    <div className="flex-1 h-px bg-[#2a2e3a]" />
-                  </div>
-                  <Button variant="outline" className="w-full border-[#3d4558] bg-[#1a1f2e] text-[#e8edf5] hover:bg-[#252a38]" onClick={() => setShowImport(true)}>
-                    <Download className="mr-2 h-4 w-4" /> Import as new Pixel product
-                  </Button>
+                    );
+                  })}
                 </div>
               )}
+
+              {/* Add (more) Pixel product mapping */}
+              <div className="space-y-3 pt-3 border-t border-[#2a2e3a]">
+                <p className="text-[10.5px] font-bold uppercase tracking-widest text-[#5a6a84]">
+                  {selected.pixelProducts && selected.pixelProducts.length > 0 ? "Link another Pixel product" : "Link to existing Pixel product"}
+                </p>
+                <div className="relative">
+                  <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-[#5a6a84]" />
+                  <input className="h-8 w-full rounded border border-[#3d4558] bg-[#0f1117] pl-8 pr-2 text-[13px] text-[#e8edf5] placeholder:text-[#6b7280] focus:border-sky-500/60 focus:outline-none focus:ring-1 focus:ring-sky-500/40"
+                    placeholder="Search Pixel products..." value={pixelQuery} onChange={e => handlePixelSearch(e.target.value)} />
+                </div>
+                {pixelLoading && <p className="text-[11px] text-[#5a6a84] mt-1 ml-1">Searching...</p>}
+                {pixelResults.length > 0 && (
+                  <div className="mt-1 rounded border border-[#2a2e3a] bg-[#0f1117] divide-y divide-[#1e2638] max-h-48 overflow-y-auto">
+                    {pixelResults.map(pp => {
+                      const alreadyMapped = (selected.pixelProducts ?? []).some((m) => m.pixelProductId === pp.id);
+                      return (
+                        <button key={pp.id} onClick={() => !alreadyMapped && handleMap(pp.id)} disabled={actionLoading || alreadyMapped} className={`w-full text-left px-3 py-2 transition-colors ${alreadyMapped ? "opacity-50 cursor-not-allowed" : "hover:bg-[#161a24]"}`}>
+                          <p className="text-[13px] text-[#dde4f0] flex items-center gap-2">
+                            {pp.name}
+                            {alreadyMapped && <span className="text-[9px] uppercase tracking-wider text-emerald-400">linked</span>}
+                          </p>
+                          <p className="text-[11px] text-[#5a6a84]">/{pp.slug}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                {pixelQuery.length >= 2 && !pixelLoading && pixelResults.length === 0 && (
+                  <p className="text-[11px] text-[#5a6a84] mt-1 ml-1">No products found</p>
+                )}
+                {!selected.mapped && (
+                  <>
+                    <div className="flex items-center gap-3 pt-1">
+                      <div className="flex-1 h-px bg-[#2a2e3a]" />
+                      <span className="text-[11px] text-[#5a6a84]">or</span>
+                      <div className="flex-1 h-px bg-[#2a2e3a]" />
+                    </div>
+                    <Button variant="outline" className="w-full border-[#3d4558] bg-[#1a1f2e] text-[#e8edf5] hover:bg-[#252a38]" onClick={() => setShowImport(true)}>
+                      <Download className="mr-2 h-4 w-4" /> Import as new Pixel product
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>

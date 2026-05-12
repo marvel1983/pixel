@@ -79,7 +79,12 @@ router.get("/admin/metenzi/catalog", ...guard, async (req, res) => {
     const metenziIds = pageProducts.map((p) => p.id);
     const mappings = metenziIds.length
       ? await db
-          .select({ metenziProductId: metenziProductMappings.metenziProductId, pixelProductId: metenziProductMappings.pixelProductId, mappingId: metenziProductMappings.id, autoSyncStock: metenziProductMappings.autoSyncStock })
+          .select({
+            metenziProductId: metenziProductMappings.metenziProductId,
+            pixelProductId: metenziProductMappings.pixelProductId,
+            mappingId: metenziProductMappings.id,
+            autoSyncStock: metenziProductMappings.autoSyncStock,
+          })
           .from(metenziProductMappings)
           .where(and(
             inArray(metenziProductMappings.metenziProductId, metenziIds),
@@ -87,17 +92,47 @@ router.get("/admin/metenzi/catalog", ...guard, async (req, res) => {
           ))
       : [];
 
-    const mappingMap = new Map(mappings.map((m) => [m.metenziProductId, m]));
+    // A Metenzi product can map to many Pixel products — group mappings by
+    // metenzi id so each catalog row carries an array of linked Pixel products.
+    const mappingsByMetenzi = new Map<string, typeof mappings>();
+    for (const m of mappings) {
+      const list = mappingsByMetenzi.get(m.metenziProductId) ?? [];
+      list.push(m);
+      mappingsByMetenzi.set(m.metenziProductId, list);
+    }
+
     const mappedPixelIds = mappings.map((m) => m.pixelProductId).filter((id): id is number => id !== null);
     const pixelProducts = mappedPixelIds.length
-      ? await db.select({ id: products.id, name: products.name, slug: products.slug }).from(products).where(inArray(products.id, mappedPixelIds))
+      ? await db.select({ id: products.id, name: products.name, slug: products.slug })
+          .from(products)
+          .where(inArray(products.id, mappedPixelIds))
       : [];
     const pixelMap = new Map(pixelProducts.map((p) => [p.id, p]));
 
     const enriched = pageProducts.map((mp) => {
-      const mapping = mappingMap.get(mp.id);
-      const pixel = mapping?.pixelProductId ? pixelMap.get(mapping.pixelProductId) : null;
-      return { ...mp, mapped: !!mapping, mappingId: mapping?.mappingId ?? null, autoSyncStock: mapping?.autoSyncStock ?? false, pixelProduct: pixel ?? null };
+      const list = mappingsByMetenzi.get(mp.id) ?? [];
+      const pixelProductsForRow = list.map((m) => {
+        const pix = m.pixelProductId != null ? pixelMap.get(m.pixelProductId) : null;
+        return {
+          mappingId: m.mappingId,
+          autoSyncStock: m.autoSyncStock,
+          pixelProductId: m.pixelProductId,
+          name: pix?.name ?? null,
+          slug: pix?.slug ?? null,
+        };
+      });
+      // Back-compat fields (first mapping, kept for any legacy consumer).
+      const first = pixelProductsForRow[0];
+      return {
+        ...mp,
+        mapped: pixelProductsForRow.length > 0,
+        pixelProducts: pixelProductsForRow,
+        mappingId: first?.mappingId ?? null,
+        autoSyncStock: first?.autoSyncStock ?? false,
+        pixelProduct: first
+          ? { id: first.pixelProductId, name: first.name, slug: first.slug }
+          : null,
+      };
     });
 
     res.json({ products: enriched, total, page, limit });

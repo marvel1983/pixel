@@ -132,6 +132,9 @@ async function upsertProduct(mp: MetenziProduct): Promise<void> {
 
   if (existing) {
     // Fields intentionally NOT updated from Metenzi on existing products:
+    //   name        — admin owns the Pixel product's branding/title (a single
+    //                 Metenzi product can map to many Pixel products, each with
+    //                 its own marketing name — never overwrite)
     //   isActive    — admin's toggle is source of truth
     //   categoryId  — admin assigns sub-categories; Metenzi always sends "Software"
     //   slug        — preserve the original URL forever
@@ -143,7 +146,6 @@ async function upsertProduct(mp: MetenziProduct): Promise<void> {
     await db
       .update(products)
       .set({
-        name: mp.name,
         type: mapProductType(mp.type ?? "software"),
         description: existing.description ?? mp.description,
         shortDescription: existing.shortDescription ?? mp.shortDescription,
@@ -200,6 +202,10 @@ async function upsertProduct(mp: MetenziProduct): Promise<void> {
 }
 
 async function syncMappingRow(pixelProductId: number, mp: MetenziProduct): Promise<void> {
+  // With 1:N mappings (one Metenzi product → many Pixel products) we must look
+  // up the mapping by the (metenzi, pixel) pair. Looking up by metenziProductId
+  // alone returns an arbitrary sibling row and would silently re-point it,
+  // collapsing the other mappings on every sync.
   const [existing] = await db
     .select({
       id: metenziProductMappings.id,
@@ -207,14 +213,16 @@ async function syncMappingRow(pixelProductId: number, mp: MetenziProduct): Promi
       disabled: metenziProductMappings.disabled,
     })
     .from(metenziProductMappings)
-    .where(eq(metenziProductMappings.metenziProductId, mp.id))
+    .where(and(
+      eq(metenziProductMappings.metenziProductId, mp.id),
+      eq(metenziProductMappings.pixelProductId, pixelProductId),
+    ))
     .limit(1);
 
   // Respect admin's "Unmap" decision — disabled rows are owned by the admin
-  // and sync must not touch them. This is the contract that makes manual
-  // unmapping actually stick.
+  // and sync must not touch them.
   if (existing?.disabled) {
-    logger.info({ metenziProductId: mp.id, mappingId: existing.id }, "Skipping disabled mapping (admin unmapped)");
+    logger.info({ metenziProductId: mp.id, pixelProductId, mappingId: existing.id }, "Skipping disabled mapping (admin unmapped)");
     return;
   }
 
@@ -225,21 +233,9 @@ async function syncMappingRow(pixelProductId: number, mp: MetenziProduct): Promi
   };
 
   if (existing) {
-    if (existing.pixelProductId !== pixelProductId) {
-      logger.info(
-        { metenziProductId: mp.id, fromPixelProductId: existing.pixelProductId, toPixelProductId: pixelProductId },
-        "Re-pointing Metenzi mapping to follow variant migration",
-      );
-      await writeMappingAudit({
-        action: "UPDATE",
-        pixelProductId,
-        metenziProductId: mp.id,
-        details: { fromPixelProductId: existing.pixelProductId, toPixelProductId: pixelProductId, reason: "variant_migration" },
-      });
-    }
     await db
       .update(metenziProductMappings)
-      .set({ pixelProductId, ...baseFields })
+      .set(baseFields)
       .where(eq(metenziProductMappings.id, existing.id));
   } else {
     await db.insert(metenziProductMappings).values({

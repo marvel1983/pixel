@@ -51,21 +51,25 @@ router.post("/admin/metenzi/mappings", ...guard, async (req, res) => {
   const parsed = createMappingSchema.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid data" }); return; }
   const { metenziProductId, metenziSku, metenziName, pixelProductId } = parsed.data;
-  // Upsert: if a (possibly disabled) row exists for this Metenzi UUID, reactivate
-  // and re-point it. Otherwise insert. Don't DELETE — the row carries audit
-  // history and disabled state we want to preserve.
-  const [existing] = await db.select().from(metenziProductMappings).where(eq(metenziProductMappings.metenziProductId, metenziProductId)).limit(1);
+  // A single Metenzi product can be linked to many Pixel products. Uniqueness
+  // is the (metenzi_product_id, pixel_product_id) pair — re-mapping the SAME
+  // pair just reactivates an existing row instead of creating a duplicate,
+  // preserving audit history and the autoSyncStock flag.
+  const [existing] = await db.select().from(metenziProductMappings)
+    .where(and(
+      eq(metenziProductMappings.metenziProductId, metenziProductId),
+      eq(metenziProductMappings.pixelProductId, pixelProductId),
+    )).limit(1);
   let mapping;
   if (existing) {
     [mapping] = await db.update(metenziProductMappings)
-      .set({ pixelProductId, metenziSku: metenziSku ?? null, metenziName: metenziName ?? null, disabled: false, updatedAt: new Date() })
+      .set({ metenziSku: metenziSku ?? null, metenziName: metenziName ?? null, disabled: false, updatedAt: new Date() })
       .where(eq(metenziProductMappings.id, existing.id))
       .returning();
     await audit("UPDATE", req, pixelProductId, {
       kind: "admin_mapped",
       mappingId: existing.id,
       metenziProductId,
-      previousPixelProductId: existing.pixelProductId,
       reactivated: existing.disabled,
     });
   } else {
