@@ -12,6 +12,7 @@ export function CartDrawer() {
   const close = useCartDrawerStore((s) => s.close);
   const items = useCartStore((s) => s.items);
   const removeItem = useCartStore((s) => s.removeItem);
+  const removeBundleItems = useCartStore((s) => s.removeBundleItems);
   const format = useCurrencyStore((s) => s.format);
   const { dismiss } = useToast();
 
@@ -91,7 +92,13 @@ export function CartDrawer() {
                     </p>
                   </div>
                   <button
-                    onClick={() => removeItem(item.variantId, item.bundleId)}
+                    onClick={() => {
+                      // Bundle is atomic — removing any one item removes the
+                      // whole bundle so the discount doesn't carry over to
+                      // a single remaining line.
+                      if (item.bundleId) removeBundleItems(item.bundleId);
+                      else removeItem(item.variantId);
+                    }}
                     aria-label={`Remove ${item.productName}`}
                     className="shrink-0 h-7 w-7 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                   >

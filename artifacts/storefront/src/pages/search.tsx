@@ -110,6 +110,7 @@ export default function SearchPage() {
   }, [query, filters, perPage]);
 
   const totalPages = Math.max(1, Math.ceil(total / perPage));
+  const combinedTotal = total + bundleHits.length;
 
   return (
     <div className="container mx-auto px-4 py-6">
@@ -124,7 +125,7 @@ export default function SearchPage() {
               </span>
             ) : (
               <>
-                {total} {total === 1 ? t("search.result") : t("search.results")}{" "}
+                {combinedTotal} {combinedTotal === 1 ? t("search.result") : t("search.results")}{" "}
                 &ldquo;{query}&rdquo;
               </>
             )}
@@ -134,9 +135,9 @@ export default function SearchPage() {
             <BundleHitsSection bundles={bundleHits} />
           )}
 
-          {!loading && items.length === 0 ? (
+          {!loading && items.length === 0 && bundleHits.length === 0 ? (
             <NoResultsState query={query} suggestions={popularProducts} t={t} />
-          ) : !loading ? (
+          ) : !loading && items.length > 0 ? (
             <div className="flex flex-col lg:flex-row gap-6">
               <FilterSidebar filters={filters} onFilterChange={setFilters} />
               <ProductGrid

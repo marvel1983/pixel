@@ -18,8 +18,14 @@ router.get("/bundles", async (_req, res) => {
       bundlePriceUsd: bundles.bundlePriceUsd,
       isFeatured: bundles.isFeatured,
       sortOrder: bundles.sortOrder,
+      // Anchor product fallback fields — surfaced so the bundle listing card
+      // can render the anchor's image when the bundle has no cover of its own.
+      anchorImageUrl: products.imageUrl,
+      anchorAvgRating: products.avgRating,
+      anchorReviewCount: products.reviewCount,
     })
     .from(bundles)
+    .leftJoin(products, eq(bundles.primaryProductId, products.id))
     .where(eq(bundles.isActive, true))
     .orderBy(asc(bundles.sortOrder), asc(bundles.id));
 
@@ -27,7 +33,13 @@ router.get("/bundles", async (_req, res) => {
     rows.map(async (b) => {
       const items = await getBundleProducts(b.id);
       const individualTotal = items.reduce((s, i) => s + parseFloat(i.minPrice || "0"), 0);
-      return { ...b, items, individualTotal: individualTotal.toFixed(2) };
+      return {
+        ...b,
+        // Bundle's own cover takes precedence; fall back to the anchor's image.
+        imageUrl: b.imageUrl ?? b.anchorImageUrl ?? null,
+        items,
+        individualTotal: individualTotal.toFixed(2),
+      };
     }),
   );
 
