@@ -66,6 +66,29 @@ router.get("/admin/customers", requireAuth, requireAdmin, requirePermission("man
   });
 });
 
+// Lightweight stats endpoint — fetched from the order detail page so the
+// sidebar can show customer context (lifetime + 30-day totals) without
+// loading the full orders/wishlist/reviews payload.
+router.get("/admin/customers/:id/stats", requireAuth, requireAdmin, requirePermission("manageCustomers"), async (req, res) => {
+  const id = Number(paramString(req.params, "id"));
+  if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const [lifetime] = await db.select({
+    totalSpent: sum(orders.totalUsd),
+    orderCount: count(),
+  }).from(orders).where(eq(orders.userId, id));
+  const [recent] = await db.select({
+    totalSpent30d: sum(orders.totalUsd),
+    orderCount30d: count(),
+  }).from(orders).where(and(eq(orders.userId, id), gte(orders.createdAt, thirtyDaysAgo)));
+  res.json({
+    totalSpent: lifetime?.totalSpent ?? "0",
+    orderCount: Number(lifetime?.orderCount ?? 0),
+    totalSpent30d: recent?.totalSpent30d ?? "0",
+    orderCount30d: Number(recent?.orderCount30d ?? 0),
+  });
+});
+
 router.get("/admin/customers/:id", requireAuth, requireAdmin, requirePermission("manageCustomers"), async (req, res) => {
   const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid ID" }); return; }

@@ -1,6 +1,17 @@
+import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { Card, SummaryRow, formatMoney } from "./order-detail-ui";
 import type { OrderDetail } from "./order-detail-ui";
+import { useAuthStore } from "@/stores/auth-store";
+
+const API = import.meta.env.VITE_API_URL ?? "/api";
+
+interface CustomerStats {
+  totalSpent: string;
+  orderCount: number;
+  totalSpent30d: string;
+  orderCount30d: number;
+}
 
 type SidebarProps = Pick<OrderDetail, "order" | "coupon" | "customer" | "refunds">;
 
@@ -9,6 +20,22 @@ export function OrderDetailSidebar({ order, coupon, customer, refunds }: Sidebar
   const refundedTotal = (refunds ?? []).filter((r) => r.status === "COMPLETED").reduce((s, r) => s + parseFloat(r.amountUsd), 0);
   const orderTotal = parseFloat(order.totalUsd);
   const netCharge = Math.max(0, orderTotal - refundedTotal);
+
+  // Customer history (lifetime + last 30 days) so the admin can size up the
+  // shopper at a glance without clicking through to the customer page.
+  const token = useAuthStore((s) => s.token);
+  const [stats, setStats] = useState<CustomerStats | null>(null);
+  useEffect(() => {
+    if (!customer?.id || !token) return;
+    let cancelled = false;
+    fetch(`${API}/admin/customers/${customer.id}/stats`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: CustomerStats | null) => { if (!cancelled && d) setStats(d); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [customer?.id, token]);
 
   return (
     <div className="space-y-4">
@@ -56,6 +83,24 @@ export function OrderDetailSidebar({ order, coupon, customer, refunds }: Sidebar
           </div>
         )}
       </Card>
+
+      {customer && (
+        <Card title="Customer Stats">
+          {stats ? (
+            <div className="space-y-2 text-[12.5px]">
+              <div className="text-[10.5px] font-semibold uppercase tracking-wider text-[#4a5a74] -mb-1">Lifetime</div>
+              <SummaryRow label="Total Spent" value={fmt(stats.totalSpent)} valueClass="font-bold text-[#dde4f0]" />
+              <SummaryRow label="Orders" value={String(stats.orderCount)} valueClass="font-bold text-[#dde4f0]" />
+              <div className="border-t border-[#2e3340] my-1" />
+              <div className="text-[10.5px] font-semibold uppercase tracking-wider text-[#4a5a74] -mb-1">Last 30 days</div>
+              <SummaryRow label="Spent (30d)" value={fmt(stats.totalSpent30d)} valueClass="font-bold text-[#dde4f0]" />
+              <SummaryRow label="Orders (30d)" value={String(stats.orderCount30d)} valueClass="font-bold text-[#dde4f0]" />
+            </div>
+          ) : (
+            <p className="text-[11px] text-[#4a5a74]">Loading…</p>
+          )}
+        </Card>
+      )}
 
       <Card title="CPP Status">
         <div className="space-y-2 text-[12.5px]">
