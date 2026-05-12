@@ -63,6 +63,11 @@ router.get("/bundles/:slug", async (req, res) => {
       description: products.description,
       shortDescription: products.shortDescription,
       regionRestrictions: products.regionRestrictions,
+      avgRating: products.avgRating,
+      reviewCount: products.reviewCount,
+      keyFeatures: products.keyFeatures,
+      systemRequirements: products.systemRequirements,
+      platformType: products.platformType,
     })
     .from(products)
     .where(eq(products.id, anchorId))

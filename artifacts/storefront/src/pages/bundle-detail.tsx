@@ -3,7 +3,12 @@ import { useParams } from "wouter";
 import { Loader2 } from "lucide-react";
 import { ProductImage } from "@/components/product-detail/product-image";
 import { BundleHero } from "@/components/product-detail/bundle-hero";
+import { ProductTabs } from "@/components/product-detail/product-tabs";
+import { ReviewsSection } from "@/components/product-detail/reviews-section";
+import { QASection } from "@/components/product-detail/qa-section";
+import { SocialShare } from "@/components/product-detail/social-share";
 import { Breadcrumbs } from "@/components/shop/breadcrumbs";
+import { Separator } from "@/components/ui/separator";
 import { setSeoMeta, clearSeoMeta } from "@/lib/seo";
 import type { MockProduct, PublicBundle } from "@/lib/mock-data";
 
@@ -18,6 +23,11 @@ interface BundleAnchor {
   description: string | null;
   shortDescription: string | null;
   regionRestrictions: string[] | null;
+  avgRating: string | null;
+  reviewCount: number;
+  keyFeatures: string[] | null;
+  systemRequirements: Record<string, string> | null;
+  platformType: string | null;
 }
 
 interface BundleDetailResponse {
@@ -63,7 +73,8 @@ export default function BundleDetailPage() {
       </div>
     );
   }
-  if (!data || !data.anchor || !data.bundle.public) {
+  const publicBundle = data?.bundle.public ?? null;
+  if (!data || !data.anchor || !publicBundle) {
     return (
       <div className="container mx-auto px-4 py-12 text-center">
         <h1 className="text-2xl font-bold">Bundle Not Found</h1>
@@ -71,29 +82,33 @@ export default function BundleDetailPage() {
     );
   }
 
-  // BundleHero expects a MockProduct-shaped object — the only fields it reads
-  // are name, regionRestrictions, and indirectly via `product.name` for the
-  // cart toast. The bundle name takes precedence over the anchor's name so the
-  // hero heading matches what the admin titled the bundle.
+  const anchor = data.anchor;
+  const bundle = data.bundle;
+
   const productForHero: MockProduct = {
-    id: data.anchor.id,
-    name: data.bundle.name || data.anchor.name,
-    slug: data.anchor.slug,
-    imageUrl: data.bundle.imageUrl ?? data.anchor.imageUrl,
-    additionalImages: data.anchor.galleryImages ?? [],
+    id: anchor.id,
+    name: bundle.name || anchor.name,
+    slug: anchor.slug,
+    imageUrl: bundle.imageUrl ?? anchor.imageUrl,
+    additionalImages: anchor.galleryImages ?? [],
     categorySlug: "",
     avgRating: 0,
     reviewCount: 0,
     variants: [],
     isFeatured: false,
     isNew: false,
-    regionRestrictions: data.anchor.regionRestrictions ?? [],
+    regionRestrictions: anchor.regionRestrictions ?? [],
   };
 
   const breadcrumbs = [
     { label: "Bundles", href: "/bundles" },
-    { label: data.bundle.name },
+    { label: bundle.name },
   ];
+
+  // Description shown in the tabs: bundle's own copy takes precedence, fall
+  // back to the anchor product's description so the bundle isn't blank.
+  const description = bundle.description || anchor.description || "";
+  const platform = publicBundle?.components[0]?.platform ?? anchor.platformType ?? "WINDOWS";
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6 space-y-8">
@@ -105,8 +120,30 @@ export default function BundleDetailPage() {
           productName={productForHero.name}
           additionalImages={productForHero.additionalImages}
         />
-        <BundleHero product={productForHero} bundle={data.bundle.public} />
+        <BundleHero product={productForHero} bundle={publicBundle} />
       </div>
+
+      <SocialShare productName={bundle.name} />
+      <Separator />
+
+      <ProductTabs
+        productName={bundle.name}
+        platform={platform}
+        description={description}
+        keyFeatures={anchor.keyFeatures ?? []}
+        systemRequirements={anchor.systemRequirements ?? {}}
+      />
+
+      <Separator />
+      {/* Reviews and Q&A are scoped to the anchor product — the bundle is sold
+          around that product, so its reputation is what customers care about. */}
+      <ReviewsSection
+        productId={anchor.id}
+        avgRating={parseFloat(anchor.avgRating ?? "0")}
+        reviewCount={anchor.reviewCount}
+      />
+      <Separator />
+      <QASection productId={anchor.id} />
     </div>
   );
 }

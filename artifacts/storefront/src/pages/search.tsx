@@ -166,30 +166,45 @@ function BundleHitsSection({ bundles }: { bundles: SearchBundleHit[] }) {
         <Package className="h-4 w-4 text-primary" /> Bundles
       </h2>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-        {bundles.map((b) => (
-          <Link key={b.id} href={`/bundles/${b.slug}`}>
-            <div className="group bg-card border border-border rounded-lg hover:shadow-lg hover:-translate-y-0.5 transition-[shadow,transform] duration-150 h-full flex flex-col">
-              <div className="relative aspect-[3/4] shrink-0 rounded-t-lg">
-                <div className="absolute inset-0 overflow-hidden rounded-t-lg bg-white">
-                  {b.imageUrl ? (
-                    <img src={b.imageUrl} alt={b.name} className="h-full w-full object-contain p-3" loading="lazy" />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center">
-                      <Package className="h-12 w-12 text-muted-foreground/30" />
+        {bundles.map((b) => {
+          const image = b.imageUrl ?? b.anchorImageUrl ?? null;
+          const rating = parseFloat(b.anchorAvgRating ?? "0");
+          const reviewCount = b.anchorReviewCount ?? 0;
+          return (
+            <Link key={b.id} href={`/bundles/${b.slug}`}>
+              <div className="group bg-card border border-border rounded-lg hover:shadow-lg hover:-translate-y-0.5 transition-[shadow,transform] duration-150 h-full flex flex-col">
+                <div className="relative aspect-[3/4] shrink-0 rounded-t-lg">
+                  <div className="absolute inset-0 overflow-hidden rounded-t-lg bg-white">
+                    {image ? (
+                      <img src={image} alt={b.name} className="h-full w-full object-contain p-3" loading="lazy" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center">
+                        <Package className="h-12 w-12 text-muted-foreground/30" />
+                      </div>
+                    )}
+                  </div>
+                  <span className="absolute left-2 top-2 z-10 inline-flex items-center gap-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 shadow-sm">
+                    <Package className="h-3 w-3" /> Bundle
+                  </span>
+                </div>
+                <div className="flex flex-1 flex-col items-center p-3 text-center">
+                  <h3 className="text-sm font-medium line-clamp-2 mb-1 group-hover:text-primary transition-colors">{b.name}</h3>
+                  <p className="text-xs text-muted-foreground mb-1">{b.itemCount} products</p>
+                  {reviewCount > 0 && (
+                    <div className="flex items-center gap-1 text-[11px] text-muted-foreground mb-1">
+                      <span className="text-amber-500">★</span>
+                      <span>{rating.toFixed(1)}</span>
+                      <span>({reviewCount})</span>
                     </div>
                   )}
+                  <div className="mt-auto pt-2">
+                    <span className="text-lg font-bold">{format(parseFloat(b.bundlePriceUsd))}</span>
+                  </div>
                 </div>
               </div>
-              <div className="flex flex-1 flex-col items-center p-3 text-center">
-                <h3 className="text-sm font-medium line-clamp-2 mb-1 group-hover:text-primary transition-colors">{b.name}</h3>
-                <p className="text-xs text-muted-foreground mb-2">{b.itemCount} products</p>
-                <div className="mt-auto">
-                  <span className="text-base font-bold">{format(parseFloat(b.bundlePriceUsd))}</span>
-                </div>
-              </div>
-            </div>
-          </Link>
-        ))}
+            </Link>
+          );
+        })}
       </div>
     </div>
   );

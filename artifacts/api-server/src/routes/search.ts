@@ -226,8 +226,13 @@ router.get("/search", async (req: Request, res: Response) => {
       slug: bundles.slug,
       imageUrl: bundles.imageUrl,
       bundlePriceUsd: bundles.bundlePriceUsd,
+      primaryProductId: bundles.primaryProductId,
+      anchorImageUrl: products.imageUrl,
+      anchorAvgRating: products.avgRating,
+      anchorReviewCount: products.reviewCount,
     })
     .from(bundles)
+    .leftJoin(products, eq(bundles.primaryProductId, products.id))
     .where(and(eq(bundles.isActive, true), ...bundleTextConditions))
     .orderBy(asc(bundles.name))
     .limit(6);
@@ -238,7 +243,12 @@ router.get("/search", async (req: Request, res: Response) => {
         .from(bundleItems).where(inArray(bundleItems.bundleId, bundleIds)).groupBy(bundleItems.bundleId)
     : [];
   const itemCountMap = new Map(itemCounts.map((r) => [r.bundleId, r.cnt]));
-  const bundleHits = bundleRows.map((b) => ({ ...b, itemCount: itemCountMap.get(b.id) ?? 0 }));
+  const bundleHits = bundleRows.map((b) => ({
+    ...b,
+    itemCount: itemCountMap.get(b.id) ?? 0,
+    // Bundle card should show *some* image — fall back to the anchor's.
+    imageUrl: b.imageUrl ?? b.anchorImageUrl ?? null,
+  }));
 
   res.json({ items, total, limit, offset, facets, bundleHits });
 });

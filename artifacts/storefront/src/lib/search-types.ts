@@ -30,6 +30,10 @@ export interface SearchBundleHit {
   imageUrl: string | null;
   bundlePriceUsd: string;
   itemCount: number;
+  primaryProductId?: number | null;
+  anchorImageUrl?: string | null;
+  anchorAvgRating?: string | null;
+  anchorReviewCount?: number | null;
 }
 
 export interface SearchResponse {
