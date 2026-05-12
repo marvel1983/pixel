@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { users, orders, wishlists, reviews, products } from "@workspace/db/schema";
-import { eq, desc, sql, and, or, ilike, gte, lte, count, sum, inArray } from "drizzle-orm";
+import { eq, asc, desc, sql, and, or, ilike, gte, lte, count, sum, inArray } from "drizzle-orm";
 import { requireAuth, requireAdmin, evictUserStatusCache } from "../middleware/auth";
 import { requirePermission } from "../middleware/permissions";
 import bcrypt from "bcryptjs";
@@ -28,36 +28,58 @@ router.get("/admin/customers", requireAuth, requireAdmin, requirePermission("man
   const [{ withOrders }] = await db.select({ withOrders: sql<number>`COUNT(DISTINCT ${orders.userId})` }).from(orders)
     .where(sql`${orders.userId} IS NOT NULL`);
 
-  const rows = await db.select({
-    id: users.id, email: users.email, username: users.username,
-    firstName: users.firstName, lastName: users.lastName,
-    role: users.role, isActive: users.isActive, emailVerified: users.emailVerified,
-    marketingConsent: users.marketingConsent,
-    lastLoginAt: users.lastLoginAt, createdAt: users.createdAt,
-  }).from(users).where(where).orderBy(desc(users.createdAt)).limit(limit).offset(offset);
-
-  const userIds = rows.map((r) => r.id);
-  let orderStats: Record<number, { orderCount: number; totalSpent: string; lastOrder: string | null }> = {};
-  if (userIds.length > 0) {
-    const stats = await db.select({
+  // Per-user order aggregates as a subquery so we can ORDER BY them in SQL
+  // (sort by total spent / order count / last-order date — not just createdAt).
+  const orderStatsSub = db
+    .select({
       userId: orders.userId,
-      orderCount: count(),
-      totalSpent: sum(orders.totalUsd),
-      lastOrder: sql<string>`MAX(${orders.createdAt})`,
-    }).from(orders).where(inArray(orders.userId, userIds)).groupBy(orders.userId);
-    for (const s of stats) {
-      if (s.userId) orderStats[s.userId] = {
-        orderCount: Number(s.orderCount), totalSpent: s.totalSpent ?? "0",
-        lastOrder: s.lastOrder,
-      };
+      orderCount: count().as("oc"),
+      totalSpent: sum(orders.totalUsd).as("ts"),
+      lastOrder: sql<string | null>`MAX(${orders.createdAt})`.as("lo"),
+    })
+    .from(orders)
+    .where(sql`${orders.userId} IS NOT NULL`)
+    .groupBy(orders.userId)
+    .as("order_stats");
+
+  const sort = (req.query.sort as string | undefined) ?? "recent";
+  const orderByClause = (() => {
+    switch (sort) {
+      case "orders_desc":     return sql`${orderStatsSub.orderCount} DESC NULLS LAST`;
+      case "orders_asc":      return sql`${orderStatsSub.orderCount} ASC NULLS LAST`;
+      case "spent_desc":      return sql`${orderStatsSub.totalSpent}::numeric DESC NULLS LAST`;
+      case "spent_asc":       return sql`${orderStatsSub.totalSpent}::numeric ASC NULLS LAST`;
+      case "last_order_desc": return sql`${orderStatsSub.lastOrder} DESC NULLS LAST`;
+      case "last_order_asc":  return sql`${orderStatsSub.lastOrder} ASC NULLS LAST`;
+      case "oldest":          return asc(users.createdAt);
+      case "recent":
+      default:                return desc(users.createdAt);
     }
-  }
+  })();
+
+  const rows = await db
+    .select({
+      id: users.id, email: users.email, username: users.username,
+      firstName: users.firstName, lastName: users.lastName,
+      role: users.role, isActive: users.isActive, emailVerified: users.emailVerified,
+      marketingConsent: users.marketingConsent,
+      lastLoginAt: users.lastLoginAt, createdAt: users.createdAt,
+      orderCount: orderStatsSub.orderCount,
+      totalSpent: orderStatsSub.totalSpent,
+      lastOrder: orderStatsSub.lastOrder,
+    })
+    .from(users)
+    .leftJoin(orderStatsSub, eq(orderStatsSub.userId, users.id))
+    .where(where)
+    .orderBy(orderByClause)
+    .limit(limit)
+    .offset(offset);
 
   const result = rows.map((r) => ({
     ...r,
-    orderCount: orderStats[r.id]?.orderCount ?? 0,
-    totalSpent: orderStats[r.id]?.totalSpent ?? "0",
-    lastOrder: orderStats[r.id]?.lastOrder ?? null,
+    orderCount: Number(r.orderCount ?? 0),
+    totalSpent: r.totalSpent ?? "0",
+    lastOrder: r.lastOrder ?? null,
   }));
 
   res.json({

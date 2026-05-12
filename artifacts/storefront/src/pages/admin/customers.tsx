@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { Link } from "wouter";
-import { Search, ChevronLeft, ChevronRight, Users, UserPlus, ShoppingBag } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, Users, UserPlus, ShoppingBag, ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -43,6 +43,7 @@ export default function AdminCustomersPage() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [hasOrders, setHasOrders] = useState(false);
+  const [sort, setSort] = useState<string>("recent");
   const token = useAuthStore((s) => s.token);
   const limit = 25;
 
@@ -54,13 +55,26 @@ export default function AdminCustomersPage() {
     if (from) params.set("from", from);
     if (to) params.set("to", to);
     if (hasOrders) params.set("hasOrders", "true");
+    if (sort !== "recent") params.set("sort", sort);
 
     fetch(`${API}/admin/customers?${params}`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
       .then((d) => { setRows(d.customers); setTotal(d.total); setStats(d.stats); })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [token, page, search, role, from, to, hasOrders]);
+  }, [token, page, search, role, from, to, hasOrders, sort]);
+
+  // Click a column header to cycle through: desc → asc → default (recent).
+  const cycleSort = (descKey: string, ascKey: string) => {
+    setPage(1);
+    setSort((cur) => (cur === descKey ? ascKey : cur === ascKey ? "recent" : descKey));
+  };
+
+  const sortIcon = (descKey: string, ascKey: string) => {
+    if (sort === descKey) return <ArrowDown className="h-3 w-3 text-sky-300" />;
+    if (sort === ascKey) return <ArrowUp className="h-3 w-3 text-sky-300" />;
+    return <ArrowUpDown className="h-3 w-3 text-[#4a5570] opacity-60" />;
+  };
 
   useEffect(() => { fetchCustomers(); }, [fetchCustomers]);
   const totalPages = Math.ceil(total / limit);
@@ -115,12 +129,20 @@ export default function AdminCustomersPage() {
                 <th className={`${thBase} min-w-[180px]`}>Email</th>
                 <th className={`${thBase} min-w-[110px]`}>Username</th>
                 <th className={`${thBase} w-[100px]`}>Role</th>
-                <th className={`${thBase} w-[70px] text-right`}>Orders</th>
-                <th className={`${thBase} w-[90px] text-right`}>Spent</th>
-                <th className={`${thBase} w-[110px]`}>Last Order</th>
+                <th className={`${thBase} w-[70px] text-right cursor-pointer hover:bg-[#252a38] transition-colors`} onClick={() => cycleSort("orders_desc", "orders_asc")}>
+                  <span className="inline-flex items-center gap-1 justify-end w-full">Orders {sortIcon("orders_desc", "orders_asc")}</span>
+                </th>
+                <th className={`${thBase} w-[90px] text-right cursor-pointer hover:bg-[#252a38] transition-colors`} onClick={() => cycleSort("spent_desc", "spent_asc")}>
+                  <span className="inline-flex items-center gap-1 justify-end w-full">Spent {sortIcon("spent_desc", "spent_asc")}</span>
+                </th>
+                <th className={`${thBase} w-[110px] cursor-pointer hover:bg-[#252a38] transition-colors`} onClick={() => cycleSort("last_order_desc", "last_order_asc")}>
+                  <span className="inline-flex items-center gap-1">Last Order {sortIcon("last_order_desc", "last_order_asc")}</span>
+                </th>
                 <th className={`${thBase} w-[60px] text-center`}>Mktg</th>
                 <th className={`${thBase} w-[80px]`}>Status</th>
-                <th className={`${thBase} w-[110px] border-r-0`}>Registered</th>
+                <th className={`${thBase} w-[110px] border-r-0 cursor-pointer hover:bg-[#252a38] transition-colors`} onClick={() => cycleSort("recent", "oldest")}>
+                  <span className="inline-flex items-center gap-1">Registered {sortIcon("recent", "oldest")}</span>
+                </th>
               </tr>
             </thead>
             <tbody>
