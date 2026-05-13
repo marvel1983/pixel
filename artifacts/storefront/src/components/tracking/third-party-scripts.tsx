@@ -73,6 +73,14 @@ function initClarity(id: string) {
   `);
 }
 
+function afterIdle(fn: () => void) {
+  if (typeof requestIdleCallback !== "undefined") {
+    requestIdleCallback(fn, { timeout: 4000 });
+  } else {
+    setTimeout(fn, 2500);
+  }
+}
+
 export function ThirdPartyScripts() {
   const [location] = useLocation();
   const initialized = useRef(false);
@@ -80,15 +88,17 @@ export function ThirdPartyScripts() {
   useEffect(() => {
     if (initialized.current) return;
     initialized.current = true;
-    fetchProviders().then((providers) => {
-      for (const p of providers) {
-        if (p.type === "GA4") initGA4(p.trackingId);
-        else if (p.type === "GTM") initGTM(p.trackingId);
-        else if (p.type === "META_PIXEL") initMetaPixel(p.trackingId);
-        else if (p.type === "TIKTOK") initTikTok(p.trackingId);
-        else if (p.type === "CLARITY") initClarity(p.trackingId);
-      }
-      firePageView(window.location.pathname);
+    afterIdle(() => {
+      fetchProviders().then((providers) => {
+        for (const p of providers) {
+          if (p.type === "GA4") initGA4(p.trackingId);
+          else if (p.type === "GTM") initGTM(p.trackingId);
+          else if (p.type === "META_PIXEL") initMetaPixel(p.trackingId);
+          else if (p.type === "TIKTOK") initTikTok(p.trackingId);
+          else if (p.type === "CLARITY") initClarity(p.trackingId);
+        }
+        firePageView(window.location.pathname);
+      });
     });
   }, []);
 

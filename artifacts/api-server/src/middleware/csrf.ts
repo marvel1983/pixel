@@ -13,6 +13,7 @@ const EXEMPT_PATHS = [
   "/api/survey/",
   "/api/admin/", // Admin routes use Bearer token auth — CSRF is redundant
   "/api/visitors/", // Fire-and-forget analytics beacon — no sensitive state mutation
+  "/api/social-proof/", // Read-only viewer/sold counts + view event insert — no sensitive state
   "/api/track", // Customer journey ingestion — sendBeacon cannot set CSRF header
 ];
 

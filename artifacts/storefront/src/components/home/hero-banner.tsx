@@ -90,10 +90,11 @@ export function HeroBanner() {
             key={slide.id}
             type="button"
             onClick={() => goTo(i)}
-            className="rounded-full transition-all duration-300 hover:opacity-100"
+            className="rounded-full transition-[opacity,transform] duration-300 hover:opacity-100"
             style={{
-              width: i === current ? 24 : 8,
+              width: 8,
               height: 8,
+              transform: i === current ? "scaleX(3)" : "scaleX(1)",
               background: i === current ? "rgba(0,0,0,0.6)" : "rgba(0,0,0,0.25)",
               opacity: i === current ? 1 : 0.6,
             }}
