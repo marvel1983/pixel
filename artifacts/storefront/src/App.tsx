@@ -39,9 +39,9 @@ import { RouteProgressBar } from "@/components/layout/route-progress-bar";
 
 // Critical path — eager
 import HomePage from "@/pages/home";
-import ProductDetailPage from "@/pages/product-detail";
 
 // Lazy-loaded (not needed until user navigates there)
+const ProductDetailPage = lazy(() => import("@/pages/product-detail"));
 const CartPage = lazy(() => import("@/pages/cart"));
 const CheckoutPage = lazy(() => import("@/pages/checkout"));
 

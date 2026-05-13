@@ -32,8 +32,8 @@ router.get("/uploads/thumb/:filename", async (req: Request, res: Response) => {
     // Lazy import so sharp doesn't slow startup if unused
     const sharp = (await import("sharp")).default;
     await sharp(originalPath)
-      .resize(400, 534, { fit: "inside", withoutEnlargement: true })
-      .webp({ quality: 80 })
+      .resize(280, 374, { fit: "inside", withoutEnlargement: true })
+      .webp({ quality: 72 })
       .toFile(thumbPath);
 
     res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
