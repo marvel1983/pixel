@@ -7,6 +7,7 @@ import { uuidV4 } from "@/lib/uuid";
 import { hasRegionMismatch } from "@/components/cart/region-warning";
 import { getAttribution } from "@/lib/attribution";
 import { track, captureCartSnapshotForTrigger, suppressNextCartChange } from "@/lib/tracking";
+import { fireBeginCheckout } from "@/components/tracking/third-party-scripts";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -116,6 +117,7 @@ export function useCheckoutSubmit(params: Params) {
 
     track("place_order_clicked", { paymentMethod, total: total.toFixed(2), itemCount: items.length });
     captureCartSnapshotForTrigger("place_order_clicked");
+    fireBeginCheckout(total, "USD");
 
     setSubmitting(true);
     try {

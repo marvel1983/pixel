@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { fireAddToCart } from "@/components/tracking/third-party-scripts";
 
 export interface CartItem {
   variantId: number;
@@ -90,6 +91,7 @@ export const useCartStore = create<CartState>()(
               ),
             };
           }
+          fireAddToCart(parseFloat(item.priceUsd ?? "0"), "USD");
           return { items: [...state.items, { ...item, quantity: 1 }] };
         }),
 

@@ -128,6 +128,16 @@ export function fireAddToCart(value: number, currency = "EUR") {
   }
 }
 
+export function fireBeginCheckout(value: number, currency = "EUR") {
+  if (!providersCache) return;
+  for (const p of providersCache) {
+    if (p.type === "GA4" && window.gtag) window.gtag("event", "begin_checkout", { value, currency });
+    if (p.type === "META_PIXEL" && window.fbq) window.fbq("track", "InitiateCheckout", { value, currency });
+    if (p.type === "TIKTOK" && window.ttq) window.ttq.track("InitiateCheckout", { value, currency });
+    if (p.type === "GTM" && window.dataLayer) window.dataLayer.push({ event: "begin_checkout", ecommerce: { value, currency } });
+  }
+}
+
 export function ThirdPartyScripts() {
   const [location] = useLocation();
   const initialized = useRef(false);

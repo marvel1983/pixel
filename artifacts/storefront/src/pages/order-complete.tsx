@@ -11,6 +11,7 @@ import { OrderDetail } from "@/components/orders/order-detail";
 import { useAuthStore } from "@/stores/auth-store";
 import { useLoyaltyStore } from "@/stores/loyalty-store";
 import { useCartStore } from "@/stores/cart-store";
+import { firePurchase } from "@/components/tracking/third-party-scripts";
 
 interface OrderResponse {
   order: {
@@ -66,7 +67,12 @@ export default function OrderCompletePage() {
     const baseUrl = import.meta.env.VITE_API_URL ?? "/api";
     fetch(`${baseUrl}/orders/${orderNumber}?email=${encodeURIComponent(storedEmail)}`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => setData(d))
+      .then((d) => {
+        setData(d);
+        if (d?.order) {
+          firePurchase(d.order.orderNumber, parseFloat(d.order.totalUsd ?? "0"), "USD");
+        }
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [orderNumber]);
