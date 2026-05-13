@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, Link } from "wouter";
-import { ArrowLeft, Send, CheckCircle, XCircle, RotateCcw, Key, AlertTriangle, ShieldAlert, BadgeCheck, Save, Zap } from "lucide-react";
+import { ArrowLeft, Send, CheckCircle, XCircle, RotateCcw, Key, AlertTriangle, ShieldAlert, BadgeCheck, Save, Zap, Stethoscope, X } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthStore } from "@/stores/auth-store";
 import { RefundModal } from "@/components/admin/refund-modal";
@@ -26,8 +26,24 @@ export default function OrderDetailPage() {
   const [retrying, setRetrying] = useState(false);
   const [syncingKeys, setSyncingKeys] = useState(false);
   const [releasing, setReleasing] = useState(false);
+  const [diagnosing, setDiagnosing] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [diagnostics, setDiagnostics] = useState<any>(null);
   const syncOrderIdRef = useRef<HTMLInputElement>(null);
   const token = useAuthStore((s) => s.token);
+
+  const diagnose = async () => {
+    setDiagnosing(true);
+    try {
+      const r = await fetch(`${API}/admin/orders/${params.id}/diagnose`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const d = await r.json();
+      if (!r.ok) { alert(d.error ?? "Diagnostics failed"); return; }
+      setDiagnostics(d);
+    } catch { alert("Diagnostics request failed"); }
+    setDiagnosing(false);
+  };
 
   const reload = () => {
     setLoading(true);
@@ -159,7 +175,10 @@ export default function OrderDetailPage() {
         {order.externalOrderId && <ActionBtn onClick={redeliverKeys} disabled={redelivering} icon={<Key className="h-3.5 w-3.5" />} color="amber">{redelivering ? "Re-delivering..." : "Re-deliver Keys"}</ActionBtn>}
         {order.externalOrderId && order.status !== "COMPLETED" && <ActionBtn onClick={forceFulfill} disabled={forcing} icon={<Zap className="h-3.5 w-3.5" />} color="violet">{forcing ? "Forcing..." : "Force Fulfill"}</ActionBtn>}
         {order.status === "PROCESSING" && !order.externalOrderId && <ActionBtn onClick={retryFulfillment} disabled={retrying} icon={<RotateCcw className="h-3.5 w-3.5" />} color="orange">{retrying ? "Retrying..." : "Retry Fulfillment"}</ActionBtn>}
+        <ActionBtn onClick={diagnose} disabled={diagnosing} icon={<Stethoscope className="h-3.5 w-3.5" />} color="sky">{diagnosing ? "Diagnosing..." : "Diagnose"}</ActionBtn>
       </div>
+
+      {diagnostics && <DiagnosticsPanel data={diagnostics} onClose={() => setDiagnostics(null)} />}
 
       {isRefunded && (
         <div className="flex items-start gap-3 rounded border border-violet-500/50 bg-violet-500/10 px-4 py-3 text-[13px] text-violet-100">
@@ -256,6 +275,193 @@ export default function OrderDetailPage() {
       </div>
 
       {data && <RefundModal orderId={data.order.id} orderNumber={data.order.orderNumber} orderTotal={data.order.totalUsd} currencyCode={data.order.currencyCode} currencyRate={data.order.currencyRate} paymentIntentId={data.order.paymentIntentId} open={refundOpen} onClose={() => setRefundOpen(false)} onSuccess={reload} />}
+    </div>
+  );
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function DiagnosticsPanel({ data, onClose }: { data: any; onClose: () => void }) {
+  const verdictColor: Record<string, string> = {
+    fulfilled: "border-emerald-500 bg-emerald-500/10 text-emerald-200",
+    metenzi_out_of_stock: "border-red-500 bg-red-500/10 text-red-200",
+    metenzi_no_keys_yet: "border-amber-500 bg-amber-500/10 text-amber-200",
+    metenzi_api_error: "border-red-500 bg-red-500/10 text-red-200",
+    local_delivery_pipeline: "border-violet-500 bg-violet-500/10 text-violet-200",
+    no_external_order: "border-slate-500 bg-slate-500/10 text-slate-200",
+  };
+  const v = data.verdict;
+  return (
+    <div className="fixed inset-0 z-50 flex">
+      <div className="flex-1 bg-black/60" onClick={onClose} />
+      <div className="w-full max-w-3xl flex flex-col h-full bg-[#0a0f1a] border-l border-[#1e2a40] overflow-y-auto">
+        <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-3 border-b border-[#1e2a40] bg-[#0c1320]">
+          <h2 className="text-sm font-bold text-[#dde4f0] flex items-center gap-2">
+            <Stethoscope className="h-4 w-4 text-sky-400" />
+            Order Diagnostics
+          </h2>
+          <button onClick={onClose} className="text-[#5a6a84] hover:text-[#dde4f0]"><X className="h-5 w-5" /></button>
+        </div>
+
+        <div className="p-5 space-y-4 text-[12px]">
+          {/* Verdict */}
+          <div className={`rounded border px-3 py-2.5 ${verdictColor[v.code] ?? "border-[#3d4558] bg-[#1a1f2e] text-[#dde4f0]"}`}>
+            <div className="text-[10px] font-bold uppercase tracking-widest mb-0.5 opacity-80">Verdict — {v.code}</div>
+            <div className="text-[13px] font-medium">{v.msg}</div>
+          </div>
+
+          <DSection title="Order">
+            <DRow label="Status" value={data.order.status} />
+            <DRow label="External Order ID" value={data.order.externalOrderId ?? "(none)"} mono />
+            <DRow label="Created" value={new Date(data.order.createdAt).toLocaleString()} />
+            <DRow label="Total" value={`${data.order.totalUsd} ${data.order.currencyCode ?? ""}`} />
+          </DSection>
+
+          <DSection title={`Order items (${data.items.length})`}>
+            {data.items.map((it: any) => (
+              <div key={it.id} className="rounded border border-[#1e2a40] bg-[#0c1320] p-2.5 mb-2 last:mb-0">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-[#dde4f0] font-medium">{it.productName} <span className="text-[#5a6a84]">/{it.pixelProductSlug}</span></div>
+                    <div className="text-[11px] text-[#8fa0bb]">Variant: {it.variantName} · Pixel product id {it.productId} · Variant id {it.variantId}</div>
+                  </div>
+                  <span className={`text-[11px] font-bold ${it.delivered >= it.quantity ? "text-emerald-300" : "text-amber-300"}`}>
+                    {it.delivered}/{it.quantity} delivered
+                  </span>
+                </div>
+                <div className="text-[11px] text-[#8fa0bb] mt-1">
+                  Pixel stock cache: <strong className="text-[#dde4f0]">{it.stockCount}</strong>
+                  {it.backorderAllowed && <span className="ml-2 text-amber-300">backorder allowed</span>}
+                </div>
+                {it.deliveredKeys.length > 0 && (
+                  <div className="mt-1 text-[11px] text-[#8fa0bb]">
+                    Keys: {it.deliveredKeys.map((k: any) => k.mask).join(", ")}
+                  </div>
+                )}
+              </div>
+            ))}
+          </DSection>
+
+          <DSection title="Metenzi mappings for order's Pixel products">
+            {data.mappings.length === 0 ? (
+              <div className="text-rose-300 text-[12px]">⚠ No mappings — order's Pixel product is not linked to any Metenzi product. Fulfillment will never run automatically.</div>
+            ) : data.mappings.map((m: any) => (
+              <div key={m.id} className="rounded border border-[#1e2a40] bg-[#0c1320] p-2.5 mb-2 last:mb-0">
+                <DRow label="Metenzi product id" value={m.metenziProductId} mono />
+                <DRow label="Metenzi name (cached)" value={m.metenziName ?? "—"} />
+                <DRow label="Metenzi SKU (cached)" value={m.metenziSku ?? "—"} mono />
+                <DRow label="Pixel product id" value={String(m.pixelProductId)} />
+                <DRow label="Auto-sync stock" value={m.autoSyncStock ? "yes" : "no"} />
+                <DRow label="Disabled" value={m.disabled ? "YES (admin unmapped)" : "no"} />
+                <DRow label="Last stock sync" value={m.lastStockSyncAt ? new Date(m.lastStockSyncAt).toLocaleString() : "never"} />
+              </div>
+            ))}
+          </DSection>
+
+          {data.siblingMappings && data.siblingMappings.length > data.mappings.length && (
+            <DSection title="Other Pixel products sharing the same Metenzi key pool (1:N)">
+              {data.siblingMappings.map((m: any) => (
+                <div key={m.id} className="text-[11px] text-[#dde4f0] py-1 border-b border-[#1a2436] last:border-0">
+                  Metenzi <span className="font-mono">{m.metenziProductId.slice(0, 8)}…</span> → Pixel #{m.pixelProductId} <span className="text-[#8fa0bb]">{m.pixelProductName ?? ""}</span>
+                  {m.disabled && <span className="ml-1 text-rose-400">(disabled)</span>}
+                </div>
+              ))}
+            </DSection>
+          )}
+
+          <DSection title="Live Metenzi order state">
+            {data.metenziOrder.error
+              ? <div className="text-rose-300">⚠ {data.metenziOrder.error}</div>
+              : (
+                <>
+                  <DRow label="Metenzi status" value={data.metenziOrder.status ?? "(none)"} />
+                  <DRow label="Keys at Metenzi" value={String(data.metenziOrder.keyCount)} />
+                  {data.metenziOrder.keys.length > 0 && (
+                    <div className="mt-1 text-[11px] text-[#8fa0bb]">
+                      Keys: {data.metenziOrder.keys.map((k: any, i: number) => (
+                        <span key={i} className="font-mono mr-2">{k.codeMasked} <span className="text-[#5a6a84]">(prod {k.productId?.slice(0, 8)}…)</span></span>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+          </DSection>
+
+          <DSection title="Live Metenzi stock for mapped products">
+            {data.metenziProductStocks.length === 0 ? (
+              <div className="text-[#8fa0bb]">(no mappings to check)</div>
+            ) : data.metenziProductStocks.map((p: any) => (
+              <div key={p.metenziProductId} className="rounded border border-[#1e2a40] bg-[#0c1320] p-2.5 mb-2 last:mb-0">
+                <div className="text-[11px] text-[#8fa0bb] font-mono mb-0.5">{p.metenziProductId}</div>
+                {p.error ? (
+                  <div className="text-rose-300">⚠ {p.error}</div>
+                ) : (
+                  <>
+                    <DRow label="Live stock" value={<span className={p.stock === 0 ? "text-rose-300 font-bold" : "text-[#dde4f0]"}>{p.stock ?? "n/a"}{p.stock === 0 ? " ⚠ OUT OF STOCK AT METENZI" : ""}</span>} />
+                    <DRow label="Status" value={p.status ?? "n/a"} />
+                  </>
+                )}
+              </div>
+            ))}
+          </DSection>
+
+          <DSection title={`Recent audit log (${data.recentAudit.length})`}>
+            {data.recentAudit.length === 0
+              ? <div className="text-[#5a6a84]">(no entries)</div>
+              : data.recentAudit.slice(0, 10).map((a: any) => (
+                <div key={a.id} className="text-[11px] py-1 border-b border-[#1a2436] last:border-0">
+                  <div className="text-[#8fa0bb]">
+                    <span className="text-[#dde4f0] font-medium">{a.action}</span> · {a.entityType ?? "?"} · {new Date(a.createdAt).toLocaleString()}
+                  </div>
+                  <pre className="font-mono text-[10px] text-[#6b7c98] mt-0.5 whitespace-pre-wrap break-all">{JSON.stringify(a.details, null, 0)}</pre>
+                </div>
+              ))}
+          </DSection>
+
+          <DSection title={`Job queue history (${data.recentJobs.length})`}>
+            {data.recentJobs.length === 0
+              ? <div className="text-[#5a6a84]">(no entries)</div>
+              : data.recentJobs.map((j: any) => (
+                <div key={j.id} className="text-[11px] py-1 border-b border-[#1a2436] last:border-0">
+                  <div className="flex items-center justify-between">
+                    <div><span className="text-[#dde4f0] font-medium">{j.name}</span> <span className="text-[#8fa0bb]">[{j.status}]</span></div>
+                    <span className="text-[10px] text-[#5a6a84]">{new Date(j.createdAt).toLocaleString()}</span>
+                  </div>
+                  <div className="text-[10px] text-[#6b7c98]">attempts {j.attempts}/{j.maxAttempts} · scheduled {new Date(j.scheduledAt).toLocaleString()}</div>
+                  {j.lastError && <div className="text-rose-300 text-[10px] mt-0.5">{j.lastError}</div>}
+                </div>
+              ))}
+          </DSection>
+
+          {data.recentJobFailures.length > 0 && (
+            <DSection title={`Job failures (${data.recentJobFailures.length})`}>
+              {data.recentJobFailures.map((f: any) => (
+                <div key={f.id} className="text-[11px] py-1 border-b border-[#1a2436] last:border-0">
+                  <div className="text-[#dde4f0]">{f.name} <span className="text-[#5a6a84]">attempt {f.attempt}</span> · {new Date(f.failedAt).toLocaleString()}</div>
+                  <div className="text-rose-300 text-[10px]">{f.error}</div>
+                </div>
+              ))}
+            </DSection>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="rounded border border-[#1e2a40] bg-[#0c1320] p-3">
+      <h3 className="text-[10.5px] font-bold uppercase tracking-widest text-[#8fa0bb] mb-2">{title}</h3>
+      <div className="space-y-0.5">{children}</div>
+    </section>
+  );
+}
+
+function DRow({ label, value, mono }: { label: string; value: React.ReactNode; mono?: boolean }) {
+  return (
+    <div className="flex items-center justify-between gap-3 text-[11.5px]">
+      <span className="text-[#8fa0bb] shrink-0">{label}</span>
+      <span className={`text-right break-all ${mono ? "font-mono" : ""} text-[#dde4f0]`}>{value}</span>
     </div>
   );
 }
