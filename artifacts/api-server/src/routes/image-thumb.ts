@@ -5,7 +5,7 @@ import { Router, Request, Response } from "express";
 const router = Router();
 
 const uploadsDir = path.join(process.cwd(), "uploads");
-const thumbDir = path.join(process.cwd(), "uploads", "_thumbs");
+const thumbDir = path.join(process.cwd(), "uploads", "thumb");
 
 if (!fs.existsSync(thumbDir)) fs.mkdirSync(thumbDir, { recursive: true });
 
