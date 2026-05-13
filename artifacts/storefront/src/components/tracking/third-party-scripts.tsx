@@ -23,8 +23,9 @@ function injectInlineScript(id: string, code: string) {
 
 function initGA4(id: string) {
   window.dataLayer = window.dataLayer ?? [];
-  window.gtag = function (...args) { window.dataLayer!.push(args); };
-  // Must be set before config so GA4 doesn't default to denied for EU-region IPs
+  // Use canonical arguments form — gtag.js identifies commands by the Arguments prototype
+  // eslint-disable-next-line prefer-rest-params
+  window.gtag = function gtag() { window.dataLayer!.push(arguments as unknown as unknown[]); };
   window.gtag("consent", "default", {
     analytics_storage: "granted",
     ad_storage: "denied",
@@ -32,7 +33,7 @@ function initGA4(id: string) {
     ad_personalization: "denied",
   });
   window.gtag("js", new Date());
-  window.gtag("config", id, { send_page_view: false });
+  window.gtag("config", id, { send_page_view: false, debug_mode: true });
   injectScript(`https://www.googletagmanager.com/gtag/js?id=${id}`, "tp-ga4");
 }
 
