@@ -33,7 +33,7 @@ function initGA4(id: string) {
     ad_personalization: "denied",
   });
   window.gtag("js", new Date());
-  window.gtag("config", id, { send_page_view: false, debug_mode: true });
+  window.gtag("config", id, { send_page_view: false });
   injectScript(`https://www.googletagmanager.com/gtag/js?id=${id}`, "tp-ga4");
 }
 
