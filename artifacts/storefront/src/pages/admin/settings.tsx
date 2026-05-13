@@ -19,11 +19,13 @@ const SettingsSocialProofTab = lazy(() => import("./settings-social-proof"));
 const SettingsConsentTab = lazy(() => import("./settings-consent"));
 const SettingsPaymentProvidersTab = lazy(() => import("./settings-payment-providers"));
 const SettingsGuaranteeTilesTab = lazy(() => import("./settings-guarantee-tiles"));
+const SettingsTrackingTab = lazy(() => import("./settings-tracking"));
 
 const tabs = [
   { key: "general", label: "General" },
   { key: "notifications", label: "Notifications" },
   { key: "seo-tracking", label: "SEO & Tracking" },
+  { key: "tracking", label: "Analytics & Pixels" },
   { key: "consent", label: "Cookie Consent" },
   { key: "cpp-fees", label: "CPP & Fees" },
   { key: "currencies", label: "Currencies" },
@@ -54,7 +56,7 @@ export default function AdminSettingsPage() {
       <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
       <div className="flex gap-1 border-b overflow-x-auto">
         {tabs.map((t) => (
-          <button key={t.key} onClick={() => setTab(t.key)} className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap ${activeTab === t.key ? "border-blue-600 text-blue-600" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
+          <button type="button" key={t.key} onClick={() => setTab(t.key)} className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap ${activeTab === t.key ? "border-blue-600 text-blue-600" : "border-transparent text-muted-foreground hover:text-foreground"}`}>
             {t.label}
           </button>
         ))}
@@ -78,6 +80,7 @@ export default function AdminSettingsPage() {
         {activeTab === "google-oauth" && <SettingsGoogleTab />}
         {activeTab === "turnstile" && <SettingsTurnstileTab />}
         {activeTab === "risk-scoring" && <SettingsRiskScoringTab />}
+        {activeTab === "tracking" && <SettingsTrackingTab />}
       </Suspense>
     </div>
   );

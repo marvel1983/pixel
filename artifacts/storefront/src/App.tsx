@@ -30,6 +30,7 @@ import {
 import { useReferralTracking } from "@/hooks/use-referral";
 import { useVisitorPing } from "@/hooks/use-visitor-ping";
 import { bootstrapTracking, usePageViewTracker } from "@/lib/tracking";
+import { ThirdPartyScripts } from "@/components/tracking/third-party-scripts";
 import { ExitIntentPopup } from "@/components/newsletter/exit-intent-popup";
 import { PurchaseToastProvider } from "@/components/social-proof/purchase-toast";
 import { CompareBar } from "@/components/product/compare-bar";
@@ -245,6 +246,7 @@ function App() {
       <TooltipProvider>
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
           <AppInitEffect />
+          <ThirdPartyScripts />
           <ErrorBoundary>
             <AppRouter />
           </ErrorBoundary>

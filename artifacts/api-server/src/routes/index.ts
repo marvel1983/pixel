@@ -105,6 +105,7 @@ import productsRouter from "./products";
 import visitorsRouter from "./visitors";
 import campaignsRouter from "./campaigns";
 import trackingRouter from "./tracking";
+import adminTrackingProvidersRouter from "./admin-tracking-providers";
 
 const router: IRouter = Router();
 
@@ -214,5 +215,6 @@ router.use(productsRouter);
 router.use(visitorsRouter);
 router.use(campaignsRouter);
 router.use(trackingRouter);
+router.use(adminTrackingProvidersRouter);
 
 export default router;
