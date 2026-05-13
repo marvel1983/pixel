@@ -1,34 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useLocation } from "wouter";
-
-const API = import.meta.env.VITE_API_URL ?? "/api";
-
-interface ActiveProvider { type: string; trackingId: string; }
-
-declare global {
-  interface Window {
-    gtag?: (...args: unknown[]) => void;
-    dataLayer?: unknown[];
-    fbq?: (...args: unknown[]) => void;
-    _fbq?: unknown;
-    ttq?: { track: (event: string, params?: Record<string, unknown>) => void; load: (id: string) => void; page: () => void };
-  }
-}
-
-// Singleton — providers fetched once per page load
-let providersCache: ActiveProvider[] | null = null;
-
-async function fetchProviders(): Promise<ActiveProvider[]> {
-  if (providersCache) return providersCache;
-  try {
-    const res = await fetch(`${API}/tracking/active`);
-    const data = await res.json();
-    providersCache = data.providers ?? [];
-  } catch {
-    providersCache = [];
-  }
-  return providersCache!;
-}
+import { fetchProviders } from "./providers-cache";
+import { firePageView } from "./analytics";
 
 function injectScript(src: string, id: string, onLoad?: () => void) {
   if (document.getElementById(id)) { onLoad?.(); return; }
@@ -92,52 +65,6 @@ function initClarity(id: string) {
   `);
 }
 
-export function firePageView(path: string) {
-  if (!providersCache) return;
-  for (const p of providersCache) {
-    if (p.type === "GA4" && window.gtag) window.gtag("event", "page_view", { page_path: path });
-    if (p.type === "META_PIXEL" && window.fbq) window.fbq("track", "PageView");
-    if (p.type === "TIKTOK" && window.ttq) window.ttq.page();
-  }
-}
-
-export function firePurchase(orderId: string, value: number, currency = "EUR") {
-  if (!providersCache) return;
-  for (const p of providersCache) {
-    if (p.type === "GA4" && window.gtag) {
-      window.gtag("event", "purchase", { transaction_id: orderId, value, currency });
-    }
-    if (p.type === "META_PIXEL" && window.fbq) {
-      window.fbq("track", "Purchase", { value, currency });
-    }
-    if (p.type === "TIKTOK" && window.ttq) {
-      window.ttq.track("CompletePayment", { value, currency });
-    }
-    if (p.type === "GTM" && window.dataLayer) {
-      window.dataLayer.push({ event: "purchase", ecommerce: { transaction_id: orderId, value, currency } });
-    }
-  }
-}
-
-export function fireAddToCart(value: number, currency = "EUR") {
-  if (!providersCache) return;
-  for (const p of providersCache) {
-    if (p.type === "GA4" && window.gtag) window.gtag("event", "add_to_cart", { value, currency });
-    if (p.type === "META_PIXEL" && window.fbq) window.fbq("track", "AddToCart", { value, currency });
-    if (p.type === "TIKTOK" && window.ttq) window.ttq.track("AddToCart", { value, currency });
-  }
-}
-
-export function fireBeginCheckout(value: number, currency = "EUR") {
-  if (!providersCache) return;
-  for (const p of providersCache) {
-    if (p.type === "GA4" && window.gtag) window.gtag("event", "begin_checkout", { value, currency });
-    if (p.type === "META_PIXEL" && window.fbq) window.fbq("track", "InitiateCheckout", { value, currency });
-    if (p.type === "TIKTOK" && window.ttq) window.ttq.track("InitiateCheckout", { value, currency });
-    if (p.type === "GTM" && window.dataLayer) window.dataLayer.push({ event: "begin_checkout", ecommerce: { value, currency } });
-  }
-}
-
 export function ThirdPartyScripts() {
   const [location] = useLocation();
   const initialized = useRef(false);
@@ -164,3 +91,5 @@ export function ThirdPartyScripts() {
 
   return null;
 }
+
+export * from "./analytics";

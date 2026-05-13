@@ -9,6 +9,7 @@ import { ProductUpsell } from "@/components/checkout/product-upsell";
 import { EmptyCart } from "@/components/cart/empty-cart";
 import { CartRegionWarning, detectCountryFromLocale } from "@/components/cart/region-warning";
 import { setSeoMeta, clearSeoMeta } from "@/lib/seo";
+import { fireViewCart } from "@/components/tracking/analytics";
 
 export default function CartPage() {
   const { t } = useTranslation();
@@ -24,6 +25,14 @@ export default function CartPage() {
     setSeoMeta({ title: t("seo.cartTitle"), description: t("seo.cartDescription") });
     return () => { clearSeoMeta(); };
   }, [t]);
+
+  useEffect(() => {
+    const cartItems = useCartStore.getState().items;
+    if (cartItems.length > 0) {
+      const total = cartItems.reduce((s, i) => s + parseFloat(i.priceUsd) * i.quantity, 0);
+      fireViewCart(total, "USD", cartItems.map((i) => ({ id: i.variantId, name: i.productName, price: parseFloat(i.priceUsd), quantity: i.quantity })));
+    }
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">

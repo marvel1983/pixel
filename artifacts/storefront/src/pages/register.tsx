@@ -19,6 +19,7 @@ import { Breadcrumbs } from "@/components/shop/breadcrumbs";
 import { UserPlus, Eye, EyeOff, Loader2 } from "lucide-react";
 import { GoogleButton } from "@/components/auth/google-button";
 import { setSeoMeta, clearSeoMeta } from "@/lib/seo";
+import { fireSignUp, identifyUser } from "@/components/tracking/analytics";
 import { COUNTRY_OPTIONS } from "@/lib/country-options";
 
 export default function RegisterPage() {
@@ -115,6 +116,8 @@ export default function RegisterPage() {
 
       setAuth(data.user, data.token);
       toast({ title: t("auth.accountCreated") });
+      fireSignUp("email");
+      identifyUser(data.user.id);
       setLocation("/");
     } catch (err) {
       toast({

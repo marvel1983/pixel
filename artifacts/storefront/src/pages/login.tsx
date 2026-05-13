@@ -11,6 +11,7 @@ import { Breadcrumbs } from "@/components/shop/breadcrumbs";
 import { LogIn, Eye, EyeOff, Loader2 } from "lucide-react";
 import { GoogleButton } from "@/components/auth/google-button";
 import { setSeoMeta, clearSeoMeta } from "@/lib/seo";
+import { fireLogin, identifyUser } from "@/components/tracking/analytics";
 
 declare global {
   interface Window {
@@ -100,6 +101,8 @@ export default function LoginPage() {
 
       setAuth(data.user, data.token);
       toast({ title: t("auth.welcomeBack") });
+      fireLogin("email");
+      identifyUser(data.user.id);
       const isAdmin = data.user.role === "ADMIN" || data.user.role === "SUPER_ADMIN";
       setLocation(isAdmin ? "/admin" : "/");
     } catch (err) {

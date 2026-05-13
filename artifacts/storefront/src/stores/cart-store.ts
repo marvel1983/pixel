@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { fireAddToCart } from "@/components/tracking/third-party-scripts";
+import { fireAddToCart, fireRemoveFromCart } from "@/components/tracking/analytics";
 
 export interface CartItem {
   variantId: number;
@@ -91,7 +91,8 @@ export const useCartStore = create<CartState>()(
               ),
             };
           }
-          fireAddToCart(parseFloat(item.priceUsd ?? "0"), "USD");
+          const price = parseFloat(item.priceUsd ?? "0");
+          fireAddToCart(price, "USD", { id: item.variantId, name: item.productName, category: undefined, price });
           return { items: [...state.items, { ...item, quantity: 1 }] };
         }),
 
@@ -118,6 +119,11 @@ export const useCartStore = create<CartState>()(
 
       removeItem: (variantId, bundleId) =>
         set((state) => {
+          const removing = state.items.find((i) => i.variantId === variantId && i.bundleId === bundleId);
+          if (removing) {
+            const p = parseFloat(removing.priceUsd);
+            fireRemoveFromCart(p * removing.quantity, "USD", { id: removing.variantId, name: removing.productName, price: p, quantity: removing.quantity });
+          }
           const items = state.items.filter((i) => !(i.variantId === variantId && i.bundleId === bundleId));
           const coupon = couponStillEligible(state.coupon, items) ? state.coupon : null;
           return { items, coupon };

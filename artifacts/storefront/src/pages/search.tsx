@@ -11,6 +11,7 @@ import { ProductGrid } from "@/components/shop/product-grid";
 import { ProductCard } from "@/components/product/product-card";
 import { SearchX, ArrowRight, Loader2, Package } from "lucide-react";
 import { useCurrencyStore } from "@/stores/currency-store";
+import { fireSearch, fireViewItemList } from "@/components/tracking/analytics";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -94,9 +95,18 @@ export default function SearchPage() {
       })
       .then((data: SearchResponse) => {
         const list = Array.isArray(data.items) ? data.items : [];
-        setItems(list.map(toMockProduct));
-        setTotal(typeof data.total === "number" ? data.total : 0);
+        const mapped = list.map(toMockProduct);
+        setItems(mapped);
+        const tot = typeof data.total === "number" ? data.total : 0;
+        setTotal(tot);
         setBundleHits(data.bundleHits ?? []);
+        fireSearch(query, tot + (data.bundleHits?.length ?? 0));
+        if (mapped.length > 0) {
+          fireViewItemList(
+            mapped.map((p) => ({ id: p.id, name: p.name, category: p.categorySlug, price: parseFloat(p.variants[0]?.priceUsd ?? "0") })),
+            "Search Results",
+          );
+        }
       })
       .catch((err) => {
         if ((err as Error).name === "AbortError") return;

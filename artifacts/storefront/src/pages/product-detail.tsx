@@ -21,6 +21,7 @@ import { ProductJsonLd, BreadcrumbJsonLd } from "@/components/seo/json-ld";
 import { Separator } from "@/components/ui/separator";
 import { toMockProduct } from "@/lib/use-products";
 import { ProductDetailSkeleton } from "@/components/product-detail/product-detail-skeleton";
+import { fireViewItem } from "@/components/tracking/analytics";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -78,6 +79,7 @@ export default function ProductDetailPage() {
     if (product) {
       addToRecentlyViewed(product.id);
       const price = product.variants[0]?.priceUsd ?? "0";
+      fireViewItem({ id: product.id, name: product.name, category: product.categorySlug, price: parseFloat(price) });
       setSeoMeta({
         title: `${product.name} | PixelCodes`,
         description: `Buy ${product.name} for $${price}. Instant digital delivery. Genuine license key with lifetime validity. ${product.reviewCount} reviews, ${product.avgRating}/5 rating.`,

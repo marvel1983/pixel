@@ -11,6 +11,7 @@ import { CountdownTimer } from "@/components/flash-sale/countdown-timer";
 import { StockUrgencyBadge } from "@/components/social-proof/stock-urgency";
 import { PaymentIcons } from "@/components/product-detail/payment-icons";
 import type { MockProduct, MockVariant } from "@/lib/mock-data";
+import { fireAddToWishlist } from "@/components/tracking/analytics";
 
 interface EnginePrice {
   basePriceUsd: string;
@@ -237,6 +238,7 @@ export function ProductPurchaseCard({ product, selectedVariant, quantity, onQuan
           onClick={() => {
             const adding = !isWishlisted;
             toggleWishlist(product.id);
+            if (adding) fireAddToWishlist(effectivePrice, "USD", { id: product.id, name: product.name, price: effectivePrice });
             toast({ title: adding ? `${product.name} added to wishlist` : `${product.name} removed from wishlist` });
           }}
         >

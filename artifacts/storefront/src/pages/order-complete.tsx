@@ -11,7 +11,7 @@ import { OrderDetail } from "@/components/orders/order-detail";
 import { useAuthStore } from "@/stores/auth-store";
 import { useLoyaltyStore } from "@/stores/loyalty-store";
 import { useCartStore } from "@/stores/cart-store";
-import { firePurchase } from "@/components/tracking/third-party-scripts";
+import { firePurchase } from "@/components/tracking/analytics";
 
 interface OrderResponse {
   order: {
@@ -70,7 +70,17 @@ export default function OrderCompletePage() {
       .then((d) => {
         setData(d);
         if (d?.order) {
-          firePurchase(d.order.orderNumber, parseFloat(d.order.totalUsd ?? "0"), "USD");
+          firePurchase(
+            d.order.orderNumber,
+            parseFloat(d.order.totalUsd ?? "0"),
+            "USD",
+            (d.items ?? []).map((item: { id: number; productName: string; variantName: string; priceUsd: string; quantity: number }) => ({
+              id: item.id,
+              name: `${item.productName} – ${item.variantName}`,
+              price: parseFloat(item.priceUsd),
+              quantity: item.quantity,
+            })),
+          );
         }
       })
       .catch(() => {})

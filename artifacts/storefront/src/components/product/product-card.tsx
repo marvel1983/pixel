@@ -18,6 +18,7 @@ import { RegionBadge } from "@/components/product/region-badge";
 import { PlatformBadge } from "@/components/product/platform-badge";
 import { QuickViewModal } from "@/components/product/quick-view-modal";
 import { CountdownTimer } from "@/components/flash-sale/countdown-timer";
+import { fireAddToWishlist } from "@/components/tracking/analytics";
 import type { MockProduct } from "@/lib/mock-data";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
@@ -106,6 +107,7 @@ export function ProductCard({ product, flashSalePrice: flashSalePriceProp }: Pro
     e.stopPropagation();
     const adding = !isWishlisted;
     toggleWishlist(product.id);
+    if (adding) fireAddToWishlist(price, "USD", { id: product.id, name: product.name, category: product.categorySlug, price });
     setHeartPulse(true);
     toast({ title: adding ? `${product.name} added to wishlist` : `${product.name} removed from wishlist` });
   }
