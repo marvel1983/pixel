@@ -24,6 +24,13 @@ function injectInlineScript(id: string, code: string) {
 function initGA4(id: string) {
   window.dataLayer = window.dataLayer ?? [];
   window.gtag = function (...args) { window.dataLayer!.push(args); };
+  // Must be set before config so GA4 doesn't default to denied for EU-region IPs
+  window.gtag("consent", "default", {
+    analytics_storage: "granted",
+    ad_storage: "denied",
+    ad_user_data: "denied",
+    ad_personalization: "denied",
+  });
   window.gtag("js", new Date());
   window.gtag("config", id, { send_page_view: false });
   injectScript(`https://www.googletagmanager.com/gtag/js?id=${id}`, "tp-ga4");

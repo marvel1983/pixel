@@ -23,9 +23,17 @@ export function ConsentGatedScripts() {
   useEffect(() => {
     if (!consent || !ids) return;
 
-    if (consent.analytics && ids.gaId && !loaded.current.analytics) {
-      loaded.current.analytics = true;
-      loadGA(ids.gaId);
+    if (ids.gaId) {
+      if (consent.analytics && !loaded.current.analytics) {
+        loaded.current.analytics = true;
+        loadGA(ids.gaId);
+      }
+      // Always sync consent state so GA4 respects user's choice
+      if (window.gtag) {
+        window.gtag("consent", "update", {
+          analytics_storage: consent.analytics ? "granted" : "denied",
+        });
+      }
     }
 
     if (consent.marketing && ids.fbPixelId && !loaded.current.marketing) {
