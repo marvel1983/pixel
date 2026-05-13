@@ -169,7 +169,10 @@ export function Footer() {
             <div className="lg:w-72 shrink-0">
               <div className="mb-4">
                 <Link href="/">
-                  <img src="/logo.png?v=2" alt="PixelCodes" className="h-10 w-auto" width="185" height="40" />
+                  <picture>
+                    <source srcSet="/logo.webp?v=2" type="image/webp" />
+                    <img src="/logo.png?v=2" alt="PixelCodes" className="h-10 w-auto" width="185" height="40" />
+                  </picture>
                 </Link>
               </div>
 

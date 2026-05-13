@@ -5,6 +5,7 @@ import pinoHttp from "pino-http";
 import path from "path";
 import fs from "fs";
 import router from "./routes";
+import imageThumbRouter from "./routes/image-thumb";
 import { logger } from "./lib/logger";
 import { initSentry, Sentry } from "./lib/sentry";
 import { maintenanceMiddleware } from "./middleware/maintenance";
@@ -85,9 +86,10 @@ app.use(
 );
 app.use(express.urlencoded({ extended: true }));
 
-// Serve uploaded images statically
+// Serve uploaded images statically (thumb route must come before static)
 const uploadsDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+app.use(imageThumbRouter);
 app.use("/uploads", express.static(uploadsDir));
 
 app.use(securityHeaders);

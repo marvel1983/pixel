@@ -38,6 +38,8 @@ minimumReleaseAgeExclude:
 onlyBuiltDependencies:
   - bcrypt
   - esbuild
+  - sharp
+  - sharp
 
 overrides:
   path-to-regexp: '>=8.4.0'
