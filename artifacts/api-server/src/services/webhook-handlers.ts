@@ -134,13 +134,20 @@ async function handleOrderFulfilled(data: FulfilledData) {
     for (const keyItem of topLevelKeys) {
       if (!keyItem.code || !keyItem.productId) continue;
 
-      const [mapping] = await db
+      // 1:N — one Metenzi product can map to many Pixel products. Pick the
+      // mapping whose Pixel product actually appears in THIS order (don't
+      // limit(1) blindly, that returns an arbitrary sibling that won't match
+      // the order's product and the key silently drops on the floor).
+      const mappings = await db
         .select({ pixelProductId: metenziProductMappings.pixelProductId })
         .from(metenziProductMappings)
-        .where(eq(metenziProductMappings.metenziProductId, keyItem.productId))
-        .limit(1);
+        .where(and(
+          eq(metenziProductMappings.metenziProductId, keyItem.productId),
+          eq(metenziProductMappings.disabled, false),
+        ));
+      const mappedPixelIds = mappings.map((m) => m.pixelProductId).filter((id): id is number => id !== null);
 
-      if (!mapping?.pixelProductId) {
+      if (mappedPixelIds.length === 0) {
         logger.warn({ metenziProductId: keyItem.productId, orderId: order.id, hint: "Check metenziProductMappings table — run GET /admin/metenzi/mappings to see stored IDs" }, "No Pixel mapping for key.productId — skipping");
         continue;
       }
@@ -149,11 +156,11 @@ async function handleOrderFulfilled(data: FulfilledData) {
         .select({ id: orderItems.id, variantId: orderItems.variantId, productName: orderItems.productName, variantName: orderItems.variantName })
         .from(orderItems)
         .innerJoin(productVariants, eq(orderItems.variantId, productVariants.id))
-        .where(and(eq(orderItems.orderId, order.id), eq(productVariants.productId, mapping.pixelProductId)))
+        .where(and(eq(orderItems.orderId, order.id), inArray(productVariants.productId, mappedPixelIds)))
         .limit(1);
 
       if (!dbItem) {
-        logger.warn({ metenziProductId: keyItem.productId, pixelProductId: mapping.pixelProductId }, "No matching order item for key");
+        logger.warn({ metenziProductId: keyItem.productId, mappedPixelIds }, "No matching order item for key");
         continue;
       }
 
@@ -185,18 +192,22 @@ async function handleOrderFulfilled(data: FulfilledData) {
       const metenziProductId = (item.productId ?? item.variantId) as string | undefined;
       if (!metenziProductId) continue;
 
-      const [mapping] = await db
+      // 1:N — same logic as the primary path above.
+      const mappings = await db
         .select({ pixelProductId: metenziProductMappings.pixelProductId })
         .from(metenziProductMappings)
-        .where(eq(metenziProductMappings.metenziProductId, metenziProductId))
-        .limit(1);
-      if (!mapping?.pixelProductId) continue;
+        .where(and(
+          eq(metenziProductMappings.metenziProductId, metenziProductId),
+          eq(metenziProductMappings.disabled, false),
+        ));
+      const mappedPixelIds = mappings.map((m) => m.pixelProductId).filter((id): id is number => id !== null);
+      if (mappedPixelIds.length === 0) continue;
 
       const [dbItem] = await db
         .select({ id: orderItems.id, variantId: orderItems.variantId, productName: orderItems.productName, variantName: orderItems.variantName })
         .from(orderItems)
         .innerJoin(productVariants, eq(orderItems.variantId, productVariants.id))
-        .where(and(eq(orderItems.orderId, order.id), eq(productVariants.productId, mapping.pixelProductId)))
+        .where(and(eq(orderItems.orderId, order.id), inArray(productVariants.productId, mappedPixelIds)))
         .limit(1);
       if (!dbItem) continue;
 

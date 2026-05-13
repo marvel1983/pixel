@@ -53,17 +53,24 @@ export async function handleBackorderFulfilled(data: FulfilledData) {
   }
 
   for (const [metenziProductId, keyCodes] of keysByProduct) {
-    const [mapping] = await db
+    // 1:N — Metenzi product can be linked to several Pixel products. Pull
+    // every backordered order_item whose product is in ANY of the linked
+    // Pixel products (FIFO across the whole set).
+    const mappingsForThis = await db
       .select({ pixelProductId: metenziProductMappings.pixelProductId })
       .from(metenziProductMappings)
-      .where(eq(metenziProductMappings.metenziProductId, metenziProductId))
-      .limit(1);
-    if (!mapping?.pixelProductId) {
+      .where(and(
+        eq(metenziProductMappings.metenziProductId, metenziProductId),
+        eq(metenziProductMappings.disabled, false),
+      ));
+    const mappedPixelIds = mappingsForThis.map((m) => m.pixelProductId).filter((id): id is number => id !== null);
+    if (mappedPixelIds.length === 0) {
       logger.warn({ metenziProductId }, "backorder.fulfilled: no Pixel mapping for product — skipping");
       continue;
     }
 
-    // Find orders in backorder/partial states that need keys for this product (FIFO)
+    // Find orders in backorder/partial states that need keys for any of the
+    // linked Pixel products (FIFO).
     const pendingItems = await db
       .select({
         orderId: orderItems.orderId, orderItemId: orderItems.id,
@@ -77,7 +84,7 @@ export async function handleBackorderFulfilled(data: FulfilledData) {
       .innerJoin(productVariants, eq(orderItems.variantId, productVariants.id))
       .where(and(
         inArray(orders.status, ["BACKORDERED", "PARTIALLY_DELIVERED", "PROCESSING"]),
-        eq(productVariants.productId, mapping.pixelProductId),
+        inArray(productVariants.productId, mappedPixelIds),
       ))
       .orderBy(orders.id); // oldest first
 
