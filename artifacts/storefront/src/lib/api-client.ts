@@ -24,12 +24,15 @@ function urlTargetsApi(url: string): boolean {
 }
 
 let csrfToken: string | null = null;
+let csrfTokenExpiresAt = 0;
+const CSRF_TTL = 23 * 60 * 60 * 1000; // 23h — server cookie TTL is 24h
 
 export async function ensureCsrfToken(): Promise<string> {
-  if (csrfToken) return csrfToken;
+  if (csrfToken && Date.now() < csrfTokenExpiresAt) return csrfToken;
   const res = await originalFetch(joinApiPath("/csrf-token"), { credentials: "include" });
   const data = await res.json();
   csrfToken = data.csrfToken;
+  csrfTokenExpiresAt = Date.now() + CSRF_TTL;
   return csrfToken!;
 }
 
@@ -81,6 +84,12 @@ window.fetch = async function patchedFetch(input: RequestInfo | URL, init?: Requ
   if (response.status === 401 && urlTargetsApi(url) && !url.includes("/api/auth/")) {
     const { useAuthStore } = await import("@/stores/auth-store");
     useAuthStore.getState().logout();
+  }
+
+  // On 403 from any /api/ mutation, invalidate cached CSRF token so the next
+  // request fetches a fresh one (covers cookie-expiry mismatch after 24h+)
+  if (response.status === 403 && MUTATION_METHODS.has(method) && urlTargetsApi(url)) {
+    csrfToken = null;
   }
 
   return response;

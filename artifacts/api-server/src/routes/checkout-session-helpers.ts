@@ -61,10 +61,14 @@ export function parseFulfillmentPayload(notes: string | null): StripeFulfillment
 
 export function isAllowedRedirectUrl(url: string): boolean {
   try {
-    const { origin } = new URL(url);
+    const origin = new URL(url).origin;
     const storeUrl = process.env.STORE_PUBLIC_URL ?? process.env.APP_PUBLIC_URL;
-    if (storeUrl) return origin === new URL(storeUrl).origin;
-    // No store URL configured — only allow localhost (dev environments)
+    if (storeUrl) {
+      const storeOrigin = new URL(storeUrl).origin;
+      // Strip www. so both pixelcodes.com and www.pixelcodes.com are accepted
+      const normalize = (o: string) => o.replace(/^(https?:\/\/)www\./, "$1");
+      return normalize(origin) === normalize(storeOrigin);
+    }
     return origin === "http://localhost:18539" || origin === "http://localhost:3000";
   } catch {
     return false;
