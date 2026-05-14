@@ -33,8 +33,8 @@ export function ProductJsonLd({ product }: { product: MockProduct }) {
     offers: {
       "@type": "Offer",
       url: `${SITE_URL}/product/${product.slug}`,
-      priceCurrency: "EUR",
-      price: variant.priceUsd,
+      priceCurrency: "USD",
+      price: parseFloat(variant.priceUsd).toFixed(2),
       availability: variant.stockCount > 0
         ? "https://schema.org/InStock"
         : "https://schema.org/OutOfStock",

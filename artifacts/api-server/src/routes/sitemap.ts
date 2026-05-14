@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { products, categories, blogPosts, pages } from "@workspace/db/schema";
-import { eq, and } from "drizzle-orm";
+import { products, categories, blogPosts, pages, seoTracking } from "@workspace/db/schema";
+import { eq } from "drizzle-orm";
 
 const router = Router();
 
@@ -16,6 +16,18 @@ function url(path: string, lastmod?: Date | string | null, changefreq = "weekly"
     <priority>${priority}</priority>
   </url>`;
 }
+
+// Google Search Console HTML verification file
+router.get(/^\/google([a-z0-9]+)\.html$/i, async (req, res) => {
+  const rows = await db.select({ googleVerificationCode: seoTracking.googleVerificationCode }).from(seoTracking).limit(1);
+  const code = rows[0]?.googleVerificationCode?.trim();
+  if (!code) { res.status(404).end(); return; }
+  // URL must contain the code
+  const urlCode = (req.params as Record<string, string>)[0] ?? "";
+  if (urlCode.toLowerCase() !== code.toLowerCase()) { res.status(404).end(); return; }
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.send(`google-site-verification: google${code}.html`);
+});
 
 router.get("/sitemap.xml", async (_req, res) => {
   const [prods, cats, posts, staticPages] = await Promise.all([

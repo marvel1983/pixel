@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Breadcrumbs } from "@/components/shop/breadcrumbs";
 import { BlogSidebar } from "@/components/blog/blog-sidebar";
 import { ArticleJsonLd, BreadcrumbJsonLd } from "@/components/seo/json-ld";
+import { setSeoMeta, clearSeoMeta } from "@/lib/seo";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
@@ -45,6 +46,7 @@ export default function BlogPostPage() {
 
   useEffect(() => {
     loadPost();
+    return () => { clearSeoMeta(); };
   }, [params.slug]);
 
   async function loadPost() {
@@ -55,8 +57,12 @@ export default function BlogPostPage() {
         const data = await res.json();
         setPost(data.post);
         setRelated(data.related || []);
-        if (data.post.seoTitle) document.title = data.post.seoTitle;
-        else document.title = `${data.post.title} | PixelCodes Blog`;
+        setSeoMeta({
+          title: data.post.seoTitle ?? `${data.post.title} | PixelCodes Blog`,
+          description: data.post.seoDescription ?? data.post.excerpt ?? `Read ${data.post.title} on the PixelCodes blog.`,
+          canonicalUrl: `${window.location.origin}/blog/${data.post.slug}`,
+          ogImage: data.post.coverImageUrl ?? undefined,
+        });
       }
     } catch {} finally { setLoading(false); }
   }
