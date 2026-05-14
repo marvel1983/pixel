@@ -1,65 +1,73 @@
-import {
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from "recharts";
-
-interface TopProduct {
+interface ProductRow {
   productName: string;
   unitsSold: number;
   revenue: number;
+  avgPrice: number;
 }
 
-interface CategoryRevenue {
-  category: string;
+interface CustomerRow {
+  email: string;
+  name: string | null;
+  orderCount: number;
   revenue: number;
 }
 
-const PIE_COLORS = [
-  "#3b82f6", "#22c55e", "#eab308", "#ef4444", "#8b5cf6",
-  "#f97316", "#06b6d4", "#ec4899", "#14b8a6", "#6366f1",
-];
+const fmtEur = (v: number) =>
+  `€${v.toLocaleString("en", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-interface TopProductsProps {
-  data: TopProduct[];
-}
+export function ProductsSoldTable({ data }: { data: ProductRow[] }) {
+  const totals = data.reduce(
+    (acc, p) => ({ units: acc.units + p.unitsSold, revenue: acc.revenue + p.revenue }),
+    { units: 0, revenue: 0 },
+  );
 
-export function TopProductsTable({ data }: TopProductsProps) {
   return (
     <div className="rounded-lg border bg-white shadow-sm">
-      <div className="border-b px-6 py-4">
-        <h3 className="text-lg font-semibold">Top 10 Products</h3>
+      <div className="flex items-center justify-between border-b px-6 py-4">
+        <h3 className="text-lg font-semibold">Products Sold</h3>
+        <span className="text-sm text-muted-foreground">
+          {data.length} {data.length === 1 ? "product" : "products"}
+        </span>
       </div>
       {data.length === 0 ? (
         <div className="p-6 text-center text-muted-foreground">
           No sales data for this period.
         </div>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="max-h-[480px] overflow-auto">
           <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-gray-50 text-left">
+            <thead className="sticky top-0 bg-gray-50">
+              <tr className="border-b text-left">
                 <th className="px-6 py-3 font-medium text-muted-foreground">#</th>
                 <th className="px-6 py-3 font-medium text-muted-foreground">Product</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Units Sold</th>
-                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Revenue</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Units</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Avg Price</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Total</th>
               </tr>
             </thead>
             <tbody>
-              {data.map((product, idx) => (
-                <tr key={product.productName} className="border-b last:border-0">
+              {data.map((p, idx) => (
+                <tr key={p.productName} className="border-b last:border-0">
                   <td className="px-6 py-3 text-muted-foreground">{idx + 1}</td>
-                  <td className="px-6 py-3 font-medium">{product.productName}</td>
-                  <td className="px-6 py-3 text-right">{product.unitsSold}</td>
-                  <td className="px-6 py-3 text-right font-medium">
-                    ${product.revenue.toFixed(2)}
+                  <td className="px-6 py-3 font-medium">{p.productName}</td>
+                  <td className="px-6 py-3 text-right tabular-nums">{p.unitsSold}</td>
+                  <td className="px-6 py-3 text-right tabular-nums text-muted-foreground">
+                    {fmtEur(p.avgPrice)}
+                  </td>
+                  <td className="px-6 py-3 text-right font-medium tabular-nums">
+                    {fmtEur(p.revenue)}
                   </td>
                 </tr>
               ))}
             </tbody>
+            <tfoot className="sticky bottom-0 bg-gray-50">
+              <tr className="border-t font-semibold">
+                <td className="px-6 py-3" colSpan={2}>Total</td>
+                <td className="px-6 py-3 text-right tabular-nums">{totals.units}</td>
+                <td className="px-6 py-3" />
+                <td className="px-6 py-3 text-right tabular-nums">{fmtEur(totals.revenue)}</td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       )}
@@ -67,47 +75,45 @@ export function TopProductsTable({ data }: TopProductsProps) {
   );
 }
 
-interface CategoryChartProps {
-  data: CategoryRevenue[];
-}
-
-export function CategoryRevenueChart({ data }: CategoryChartProps) {
-  const total = data.reduce((sum, d) => sum + d.revenue, 0);
-
+export function TopCustomersTable({ data }: { data: CustomerRow[] }) {
   return (
-    <div className="rounded-lg border bg-white p-6 shadow-sm">
-      <h3 className="mb-4 text-lg font-semibold">Revenue by Category</h3>
+    <div className="rounded-lg border bg-white shadow-sm">
+      <div className="border-b px-6 py-4">
+        <h3 className="text-lg font-semibold">Top 15 Customers</h3>
+      </div>
       {data.length === 0 ? (
-        <div className="flex h-[300px] items-center justify-center text-muted-foreground">
-          No category data for this period.
+        <div className="p-6 text-center text-muted-foreground">
+          No customer data for this period.
         </div>
       ) : (
-        <div className="h-[300px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={data}
-                dataKey="revenue"
-                nameKey="category"
-                cx="50%"
-                cy="50%"
-                innerRadius={60}
-                outerRadius={100}
-                paddingAngle={2}
-              >
-                {data.map((_, idx) => (
-                  <Cell key={idx} fill={PIE_COLORS[idx % PIE_COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip
-                formatter={(value: number) => [
-                  `$${value.toFixed(2)} (${total > 0 ? ((value / total) * 100).toFixed(1) : 0}%)`,
-                  "Revenue",
-                ]}
-              />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-gray-50 text-left">
+                <th className="px-6 py-3 font-medium text-muted-foreground">#</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground">Customer</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Orders</th>
+                <th className="px-6 py-3 font-medium text-muted-foreground text-right">Spent</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.map((c, idx) => (
+                <tr key={c.email} className="border-b last:border-0">
+                  <td className="px-6 py-3 text-muted-foreground">{idx + 1}</td>
+                  <td className="px-6 py-3">
+                    <div className="font-medium">{c.name ?? c.email}</div>
+                    {c.name && (
+                      <div className="text-xs text-muted-foreground">{c.email}</div>
+                    )}
+                  </td>
+                  <td className="px-6 py-3 text-right tabular-nums">{c.orderCount}</td>
+                  <td className="px-6 py-3 text-right font-medium tabular-nums">
+                    {fmtEur(c.revenue)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
