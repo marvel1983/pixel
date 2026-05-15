@@ -384,14 +384,48 @@ async function fulfillFromMetenzi(orderId: number, items: OrderInput["items"], _
 
     // Resolve Metenzi product IDs from the mapping table (product-level mapping)
     const productIds = [...new Set(items.map((it) => it.productId).filter((id): id is number => !!id))];
+    // Filter out disabled rows (admin-unmapped). Order by id so when an admin
+    // accidentally leaves >1 active mapping for the same Pixel product the
+    // oldest wins deterministically instead of PG returning rows in an
+    // unspecified order — the previous code's Map collapse let either row
+    // win at random.
     const mappings = productIds.length
       ? await db
-          .select({ pixelProductId: metenziProductMappings.pixelProductId, metenziProductId: metenziProductMappings.metenziProductId })
+          .select({
+            id: metenziProductMappings.id,
+            pixelProductId: metenziProductMappings.pixelProductId,
+            metenziProductId: metenziProductMappings.metenziProductId,
+          })
           .from(metenziProductMappings)
-          .where(and(inArray(metenziProductMappings.pixelProductId, productIds), isNotNull(metenziProductMappings.pixelProductId)))
+          .where(and(
+            inArray(metenziProductMappings.pixelProductId, productIds),
+            isNotNull(metenziProductMappings.pixelProductId),
+            eq(metenziProductMappings.disabled, false),
+          ))
+          .orderBy(metenziProductMappings.id)
       : [];
+
+    // Group by pixel product id; warn if any has >1 active mapping (legitimate
+    // 1:N is Metenzi→Pixel, not Pixel→Metenzi — multiple Metenzi mappings
+    // for one Pixel product means order creation can't deterministically pick
+    // which key pool to draw from).
+    const mappingsByPixel = new Map<number, string[]>();
+    for (const m of mappings) {
+      if (m.pixelProductId == null) continue;
+      const list = mappingsByPixel.get(m.pixelProductId) ?? [];
+      list.push(m.metenziProductId);
+      mappingsByPixel.set(m.pixelProductId, list);
+    }
+    const ambiguous = [...mappingsByPixel.entries()].filter(([, ms]) => ms.length > 1);
+    if (ambiguous.length > 0) {
+      logger.warn(
+        { orderId, ambiguous: ambiguous.map(([pid, ms]) => ({ pixelProductId: pid, metenziProductIds: ms })) },
+        "Pixel product(s) have multiple active Metenzi mappings — picking the oldest. Disable the extras in Admin → Metenzi Catalog.",
+      );
+    }
+
     const mappingByProductId = new Map(
-      mappings.filter((m) => m.pixelProductId !== null).map((m) => [m.pixelProductId!, m.metenziProductId])
+      [...mappingsByPixel.entries()].map(([pid, ms]) => [pid, ms[0]]),
     );
 
     // Build full-quantity Metenzi items (no stock cap)
