@@ -99,6 +99,7 @@ export function Office2024HeroSlide() {
             src="/banners/office-2024-pro-plus-box.png"
             alt="Microsoft Office 2024 Professional Plus retail box"
             loading="eager"
+            fetchPriority="high"
             width={600}
             height={600}
           />
