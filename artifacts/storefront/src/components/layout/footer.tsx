@@ -5,82 +5,10 @@ import { Mail, Loader2, Check, Cookie, ShieldCheck, Zap, Lock } from "lucide-rea
 import { Input } from "@/components/ui/input";
 import { TrustpilotMicro } from "@/components/trustpilot/trustpilot-micro";
 import { useCookieConsentStore } from "@/stores/cookie-consent-store";
+import "./footer.css";
 
 const API = import.meta.env.VITE_API_URL ?? "/api";
 
-/* ── Background SVG ───────────────────────────────────────── */
-function FooterBg() {
-  return (
-    <svg
-      aria-hidden
-      className="pointer-events-none absolute inset-0 h-full w-full"
-      xmlns="http://www.w3.org/2000/svg"
-      preserveAspectRatio="xMidYMid slice"
-    >
-      <defs>
-        {/* Glowing orbs */}
-        <radialGradient id="orb1" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.18" />
-          <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
-        </radialGradient>
-        <radialGradient id="orb2" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.15" />
-          <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0" />
-        </radialGradient>
-        <radialGradient id="orb3" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#06b6d4" stopOpacity="0.12" />
-          <stop offset="100%" stopColor="#06b6d4" stopOpacity="0" />
-        </radialGradient>
-        {/* Grid pattern */}
-        <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-          <path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" strokeWidth="0.4" strokeOpacity="0.04" />
-        </pattern>
-      </defs>
-
-      {/* Base */}
-      <rect width="100%" height="100%" fill="#060c17" />
-
-      {/* Grid */}
-      <rect width="100%" height="100%" fill="url(#grid)" />
-
-      {/* Glowing orb — bottom left */}
-      <ellipse cx="8%" cy="80%" rx="380" ry="300" fill="url(#orb1)" />
-
-      {/* Glowing orb — center top */}
-      <ellipse cx="55%" cy="10%" rx="500" ry="220" fill="url(#orb2)" />
-
-      {/* Glowing orb — right */}
-      <ellipse cx="95%" cy="60%" rx="320" ry="280" fill="url(#orb3)" />
-
-      {/* Thin top highlight line */}
-      <line x1="0" y1="1" x2="100%" y2="1" stroke="url(#lineGrad)" strokeWidth="1" />
-      <defs>
-        <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#3b82f6" stopOpacity="0" />
-          <stop offset="30%" stopColor="#3b82f6" stopOpacity="0.5" />
-          <stop offset="70%" stopColor="#8b5cf6" stopOpacity="0.5" />
-          <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-
-      {/* Scattered dots */}
-      {[
-        [12, 20], [28, 45], [45, 15], [60, 70], [75, 30],
-        [88, 55], [20, 75], [50, 50], [35, 85], [65, 12],
-        [80, 80], [5, 50], [92, 20], [42, 60], [70, 45],
-      ].map(([cx, cy], i) => (
-        <circle
-          key={i}
-          cx={`${cx}%`}
-          cy={`${cy}%`}
-          r={i % 3 === 0 ? "1.5" : "1"}
-          fill="white"
-          fillOpacity={i % 4 === 0 ? 0.12 : 0.06}
-        />
-      ))}
-    </svg>
-  );
-}
 
 /* ── Social SVG icons ─────────────────────────────────────── */
 function IconX() {
@@ -155,8 +83,8 @@ export function Footer() {
   const { t } = useTranslation();
 
   return (
-    <footer className="relative overflow-hidden text-slate-300">
-      <FooterBg />
+    <footer className="footer-root relative overflow-hidden text-slate-300">
+      <div aria-hidden className="footer-top-line absolute inset-x-0 top-0 h-px" />
 
       {/* Content */}
       <div className="relative z-10">
