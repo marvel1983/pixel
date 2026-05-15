@@ -31,8 +31,7 @@ export async function processSurveyEmails(): Promise<{ sent: number }> {
   let sent = 0;
   const subject = settings?.emailSubject || "How was your experience?";
   const customBody = settings?.emailBody;
-  const domain = process.env["REPLIT_DEV_DOMAIN"] || process.env["REPLIT_DOMAINS"]?.split(",")[0] || "localhost:3000";
-  const baseUrl = domain.startsWith("http") ? domain : `https://${domain}`;
+  const baseUrl = process.env.STORE_PUBLIC_URL ?? process.env.APP_PUBLIC_URL ?? `https://${process.env["REPLIT_DEV_DOMAIN"] ?? process.env["REPLIT_DOMAINS"]?.split(",")[0] ?? "localhost:3000"}`;
 
   for (const order of eligibleOrders) {
     if (!order.email) continue;

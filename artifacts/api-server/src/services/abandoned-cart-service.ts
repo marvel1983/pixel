@@ -119,8 +119,7 @@ async function sendEmailForCart(
   }
 
   const { symbol: currencySymbol, rate: currencyRate } = await getSiteCurrencyInfo();
-  const domain = process.env["REPLIT_DEV_DOMAIN"] || process.env["REPLIT_DOMAINS"]?.split(",")[0] || "localhost";
-  const baseUrl = domain.startsWith("http") ? domain : `https://${domain}`;
+  const baseUrl = process.env.STORE_PUBLIC_URL ?? process.env.APP_PUBLIC_URL ?? `https://${process.env["REPLIT_DEV_DOMAIN"] ?? process.env["REPLIT_DOMAINS"]?.split(",")[0] ?? "localhost"}`;
   const recoveryUrl = `${baseUrl}/cart/recover/${cart.recoveryToken}`;
   const { subject, html } = abandonedCartEmail({
     emailNumber, siteName,

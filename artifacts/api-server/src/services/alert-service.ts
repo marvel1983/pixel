@@ -48,8 +48,7 @@ async function getSitePriceFormatter(): Promise<(amount: string | number) => str
 }
 
 function getBaseUrl(): string {
-  const domain = process.env["REPLIT_DEV_DOMAIN"] || process.env["REPLIT_DOMAINS"]?.split(",")[0] || "localhost";
-  return domain.startsWith("http") ? domain : `https://${domain}`;
+  return process.env.STORE_PUBLIC_URL ?? process.env.APP_PUBLIC_URL ?? `https://${process.env["REPLIT_DEV_DOMAIN"] ?? process.env["REPLIT_DOMAINS"]?.split(",")[0] ?? "localhost"}`;
 }
 
 export async function checkPriceDropAlerts(
