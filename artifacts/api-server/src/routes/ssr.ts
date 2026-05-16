@@ -280,10 +280,13 @@ async function siteHubDoc(canonical: string, title: string, description: string)
   const base = siteDoc(canonical, title, description);
   const [cats, top] = await Promise.all([
     db.select({ name: categories.name, slug: categories.slug }).from(categories).orderBy(asc(categories.sortOrder), asc(categories.name)),
+    // Featured first (admin-controlled signal) so flagship money pages get
+    // homepage link equity even when their review count is low; then by
+    // popularity. Both columns are indexed.
     db.select({ name: products.name, slug: products.slug })
       .from(products)
       .where(eq(products.isActive, true))
-      .orderBy(desc(products.reviewCount), desc(products.avgRating))
+      .orderBy(desc(products.isFeatured), desc(products.reviewCount), desc(products.avgRating))
       .limit(48),
   ]);
   base.jsonLd = [

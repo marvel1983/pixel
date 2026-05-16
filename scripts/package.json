@@ -9,6 +9,7 @@
     "seed:qa": "tsx ./seed-product-qa.ts",
     "seed:reviews": "tsx ./seed-reviews.ts",
     "seed:buy": "tsx ./seed-buy-pages.ts",
+    "seed:win11pro": "tsx ./seed-win11pro-bespoke.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
