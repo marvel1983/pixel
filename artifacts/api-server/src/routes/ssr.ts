@@ -271,6 +271,40 @@ function siteDoc(canonical: string, title: string, description: string): SeoDoc 
   };
 }
 
+// Homepage / shop crawl hub: the bare siteDoc gave crawlers zero internal
+// links. Surface every category + the most popular products so a crawler
+// landing on / has a rich link graph to follow and link equity flows to
+// product pages. (reviewCount desc is a cheap, index-friendly popularity
+// proxy — no orders join on every render.)
+async function siteHubDoc(canonical: string, title: string, description: string): Promise<SeoDoc> {
+  const base = siteDoc(canonical, title, description);
+  const [cats, top] = await Promise.all([
+    db.select({ name: categories.name, slug: categories.slug }).from(categories).orderBy(asc(categories.sortOrder), asc(categories.name)),
+    db.select({ name: products.name, slug: products.slug })
+      .from(products)
+      .where(eq(products.isActive, true))
+      .orderBy(desc(products.reviewCount), desc(products.avgRating))
+      .limit(48),
+  ]);
+  base.jsonLd = [
+    ...(base.jsonLd ?? []),
+    {
+      "@context": "https://schema.org", "@type": "ItemList",
+      itemListElement: top.slice(0, 24).map((p, i) => ({
+        "@type": "ListItem", position: i + 1, url: `${SITE_URL}/product/${p.slug}`, name: p.name,
+      })),
+    },
+  ];
+  base.bodyHtml = `<main>
+      <h1>${esc(title)}</h1>
+      <p>${esc(description)}</p>
+      <nav aria-label="Categories"><h2>Browse by category</h2><ul>${cats.map((c) => `<li><a href="/category/${esc(c.slug)}">${esc(c.name)}</a></li>`).join("")}</ul></nav>
+      <section><h2>Popular software keys</h2><ul>${top.map((p) => `<li><a href="/product/${esc(p.slug)}">${esc(p.name)}</a></li>`).join("")}</ul></section>
+      <p><a href="/shop">Browse all products</a> · <a href="/bundles">Software bundles</a> · <a href="/deals">Deals</a></p>
+    </main>`;
+  return base;
+}
+
 // Nginx proxies crawler traffic to /__ssr<original-path>.
 router.get(/^\/__ssr(\/.*)?$/, async (req, res) => {
   const rawPath = (req.params[0] || "/").split("?")[0];
@@ -287,9 +321,9 @@ router.get(/^\/__ssr(\/.*)?$/, async (req, res) => {
     }
     if (!doc) {
       if (rawPath === "/" || rawPath === "") {
-        doc = siteDoc("/", `${SITE_NAME} — Genuine Software Keys, Instant Email Delivery`, "Buy genuine Windows, Office, antivirus and PC game keys. Instant email delivery, lifetime activation, 24/7 support. Trusted by 50,000+ customers.");
+        doc = await siteHubDoc("/", `${SITE_NAME} — Genuine Software Keys, Instant Email Delivery`, "Buy genuine Windows, Office, antivirus and PC game keys. Instant email delivery, lifetime activation, 24/7 support. Trusted by 50,000+ customers.");
       } else if (rawPath.startsWith("/shop")) {
-        doc = siteDoc("/shop", `Shop All Software Keys | ${SITE_NAME}`, "Browse genuine Windows, Office, antivirus, VPN and PC game license keys. Instant delivery.");
+        doc = await siteHubDoc("/shop", `Shop All Software Keys | ${SITE_NAME}`, "Browse genuine Windows, Office, antivirus, VPN and PC game license keys. Instant delivery.");
       } else if (rawPath.startsWith("/bundles")) {
         doc = siteDoc("/bundles", `Software Bundles — Save More | ${SITE_NAME}`, "Save more when you buy software license keys together. Genuine keys, instant delivery.");
       } else {
