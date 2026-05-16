@@ -21,6 +21,7 @@ export interface MockProduct {
   productAttributes?: Array<{ attrName: string; attrSlug: string; optValue: string | null }>;
   customInfoTiles?: Array<{ icon: string; title: string; subtitle: string }>;
   bundle?: PublicBundle | null;
+  hasBuyPage?: boolean;
 }
 
 export interface PublicBundleComponent {

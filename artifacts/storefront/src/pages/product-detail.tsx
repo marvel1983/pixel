@@ -157,6 +157,7 @@ export default function ProductDetailPage() {
         keyFeatures={product.keyFeatures}
         systemRequirements={product.systemRequirements}
         productAttributes={product.productAttributes}
+        buySlug={product.hasBuyPage ? product.slug : undefined}
       />
 
       <Separator />

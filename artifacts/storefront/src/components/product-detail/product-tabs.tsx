@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { Link } from "wouter";
 import DOMPurify from "dompurify";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, ArrowRight } from "lucide-react";
 
 type ProductAttribute = { attrName: string; attrSlug: string; optValue: string | null };
 
@@ -11,12 +12,14 @@ interface ProductTabsProps {
   keyFeatures?: string[];
   systemRequirements?: Record<string, string>;
   productAttributes?: ProductAttribute[];
+  /** When set, show a link to the /buy/:slug landing page under Description. */
+  buySlug?: string;
 }
 
 const ALL_TABS = ["Description", "Key Features", "System Requirements", "Product Details"] as const;
 type Tab = (typeof ALL_TABS)[number];
 
-export function ProductTabs({ productName, platform, description, keyFeatures, systemRequirements, productAttributes }: ProductTabsProps) {
+export function ProductTabs({ productName, platform, description, keyFeatures, systemRequirements, productAttributes, buySlug }: ProductTabsProps) {
   const hasDetails = productAttributes && productAttributes.length > 0;
   const TABS = hasDetails ? ALL_TABS : ALL_TABS.slice(0, 3) as unknown as typeof ALL_TABS;
   const [activeTab, setActiveTab] = useState<Tab>("Description");
@@ -43,7 +46,21 @@ export function ProductTabs({ productName, platform, description, keyFeatures, s
       {/* Content */}
       <div className="p-6 bg-card min-h-[180px]">
         {activeTab === "Description" && (
-          <DescriptionTab productName={productName} description={description} />
+          <>
+            <DescriptionTab productName={productName} description={description} />
+            {buySlug && (
+              <Link
+                href={`/buy/${buySlug}`}
+                className="mt-5 flex items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 transition-colors hover:bg-primary/10"
+              >
+                <span className="text-sm">
+                  <strong className="text-foreground">Where to buy {productName}</strong>
+                  <span className="text-muted-foreground"> — pricing, activation guide &amp; FAQ</span>
+                </span>
+                <ArrowRight className="h-4 w-4 text-primary shrink-0" />
+              </Link>
+            )}
+          </>
         )}
         {activeTab === "Key Features" && (
           <KeyFeaturesTab keyFeatures={keyFeatures} />

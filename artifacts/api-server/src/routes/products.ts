@@ -372,6 +372,14 @@ router.get("/products/:slug", async (req: Request, res: Response) => {
 
   const bundle = product.isBundleAnchor ? await loadBundleForAnchor(product.id) : null;
 
+  // Does this product have a generated /buy/:slug landing page? Used to show
+  // the in-page link only when the pSEO page actually has unique content.
+  const [buyRow] = await db
+    .select({ id: productSeoContent.id })
+    .from(productSeoContent)
+    .where(eq(productSeoContent.productId, product.id))
+    .limit(1);
+
   res.json({
     ...product,
     avgRating: Number(product.avgRating),
@@ -384,6 +392,7 @@ router.get("/products/:slug", async (req: Request, res: Response) => {
     tags: productTagRows,
     productAttributes: productAttrRows,
     bundle,
+    hasBuyPage: !!buyRow,
   });
 });
 

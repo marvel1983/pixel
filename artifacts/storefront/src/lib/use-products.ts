@@ -77,6 +77,7 @@ export function toMockProduct(p: ApiProduct): MockProduct {
     productAttributes: (p as any).productAttributes ?? [],
     customInfoTiles: (p as any).customInfoTiles ?? [],
     bundle: (p as any).bundle ?? null,
+    hasBuyPage: (p as any).hasBuyPage ?? false,
     variants: p.variants.map((v) => ({
       id: v.id,
       name: v.name,
