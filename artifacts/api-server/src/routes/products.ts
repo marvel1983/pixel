@@ -4,6 +4,7 @@ import {
   products, productVariants, categories,
   tags, productTags,
   attributeDefinitions, attributeOptions, productAttributes,
+  productSeoContent,
 } from "@workspace/db/schema";
 import {
   eq, ilike, and, sql, inArray, gt, asc, desc, count, or, type SQL,
@@ -262,6 +263,44 @@ router.get("/products", async (req: Request, res: Response) => {
   const facets = await computeFacets(allMatchingIds);
 
   res.json({ items, total, limit, offset, facets });
+});
+
+// Data for the programmatic /buy/:slug landing page (lightweight — the full
+// purchase flow stays on /product/:slug, this page funnels to it).
+router.get("/products/:slug/buy", async (req: Request, res: Response) => {
+  const slug = paramString(req.params, "slug");
+  const [p] = await db
+    .select({
+      id: products.id, name: products.name, slug: products.slug,
+      imageUrl: products.imageUrl,
+      avgRating: products.avgRating, reviewCount: products.reviewCount,
+      categorySlug: sql<string | null>`(SELECT slug FROM categories WHERE id = ${products.categoryId})`,
+      categoryName: sql<string | null>`(SELECT name FROM categories WHERE id = ${products.categoryId})`,
+    })
+    .from(products)
+    .where(and(eq(products.slug, slug), eq(products.isActive, true)))
+    .limit(1);
+  if (!p) { res.status(404).json({ error: "Not found" }); return; }
+
+  const vars = await db
+    .select({ priceUsd: productVariants.priceUsd })
+    .from(productVariants)
+    .where(and(eq(productVariants.productId, p.id), eq(productVariants.isActive, true)));
+  const prices = vars.map((v) => parseFloat(v.priceUsd)).filter((n) => Number.isFinite(n));
+  const fromPrice = prices.length ? Math.min(...prices).toFixed(2) : null;
+
+  const [seo] = await db
+    .select({ intro: productSeoContent.intro, whyBuy: productSeoContent.whyBuy, faq: productSeoContent.faq, activationSteps: productSeoContent.activationSteps })
+    .from(productSeoContent).where(eq(productSeoContent.productId, p.id)).limit(1);
+
+  res.json({
+    product: {
+      name: p.name, slug: p.slug, imageUrl: p.imageUrl,
+      avgRating: p.avgRating, reviewCount: p.reviewCount,
+      categorySlug: p.categorySlug, categoryName: p.categoryName, fromPrice,
+    },
+    seo: seo ?? null,
+  });
 });
 
 router.get("/products/:slug", async (req: Request, res: Response) => {

@@ -357,6 +357,19 @@ jobs:
             echo "→ Adding use_anchor_price column to bundles (default false)..."
             $PSQL -c "ALTER TABLE bundles ADD COLUMN IF NOT EXISTS use_anchor_price BOOLEAN NOT NULL DEFAULT false;" || true
 
+            echo "→ pSEO: product_seo_content table for /buy/:slug landing pages..."
+            $PSQL -c "CREATE TABLE IF NOT EXISTS product_seo_content (
+              id SERIAL PRIMARY KEY,
+              product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+              intro TEXT NOT NULL,
+              why_buy JSONB NOT NULL DEFAULT '[]',
+              faq JSONB NOT NULL DEFAULT '[]',
+              activation_steps JSONB NOT NULL DEFAULT '[]',
+              generated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+              updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+            );" || true
+            $PSQL -c "CREATE UNIQUE INDEX IF NOT EXISTS product_seo_content_product_id_uq ON product_seo_content (product_id);" || true
+
             echo "→ Metenzi mappings: allow 1 Metenzi product → N Pixel products..."
             # Drop the old single-column unique constraint (and its auto-named index)
             # in either form Postgres might have stored it under.

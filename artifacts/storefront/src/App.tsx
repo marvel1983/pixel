@@ -42,6 +42,7 @@ import HomePage from "@/pages/home";
 
 // Lazy-loaded (not needed until user navigates there)
 const ProductDetailPage = lazy(() => import("@/pages/product-detail"));
+const BuyDetailPage = lazy(() => import("@/pages/buy-detail"));
 const CartPage = lazy(() => import("@/pages/cart"));
 const CheckoutPage = lazy(() => import("@/pages/checkout"));
 
@@ -129,6 +130,7 @@ function StorefrontWithMaintenance() {
           <Route path="/flash-sale" component={FlashSalePage} />
           <Route path="/bundles/:slug" component={BundleDetailPage} />
           <Route path="/bundles" component={BundlesPage} />
+          <Route path="/buy/:slug" component={BuyDetailPage} />
           <Route path="/product/:slug" component={ProductDetailPage} />
           <Route path="/gift-cards" component={GiftCardsPage} />
           <Route path="/account/gift-cards" component={AccountGiftCardsPage} />

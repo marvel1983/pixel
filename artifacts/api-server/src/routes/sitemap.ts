@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { products, categories, blogPosts, pages, seoTracking } from "@workspace/db/schema";
+import { products, categories, blogPosts, pages, seoTracking, productSeoContent } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 
 const router = Router();
@@ -30,7 +30,7 @@ router.get(/^\/google([a-z0-9]+)\.html$/i, async (req, res) => {
 });
 
 router.get("/sitemap.xml", async (_req, res) => {
-  const [prods, cats, posts, staticPages] = await Promise.all([
+  const [prods, cats, posts, staticPages, buyPages] = await Promise.all([
     db.select({ slug: products.slug, updatedAt: products.updatedAt })
       .from(products)
       .where(eq(products.isActive, true)),
@@ -42,6 +42,12 @@ router.get("/sitemap.xml", async (_req, res) => {
     db.select({ slug: pages.slug, updatedAt: pages.updatedAt })
       .from(pages)
       .where(eq(pages.isPublished, true)),
+    // Programmatic /buy/:slug landing pages — only those with generated
+    // unique content (others are noindex and must stay out of the sitemap).
+    db.select({ slug: products.slug, updatedAt: productSeoContent.updatedAt })
+      .from(productSeoContent)
+      .innerJoin(products, eq(products.id, productSeoContent.productId))
+      .where(eq(products.isActive, true)),
   ]);
 
   const urls: string[] = [
@@ -60,6 +66,7 @@ router.get("/sitemap.xml", async (_req, res) => {
     url("/business", null, "monthly", "0.5"),
     ...cats.map((c) => url(`/category/${c.slug}`, c.updatedAt, "daily", "0.8")),
     ...prods.map((p) => url(`/product/${p.slug}`, p.updatedAt, "weekly", "0.7")),
+    ...buyPages.map((p) => url(`/buy/${p.slug}`, p.updatedAt, "weekly", "0.8")),
     ...posts.map((p) => url(`/blog/${p.slug}`, p.updatedAt, "monthly", "0.6")),
     ...staticPages.map((p) => url(`/${p.slug}`, p.updatedAt, "monthly", "0.5")),
   ];

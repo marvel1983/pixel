@@ -2,6 +2,7 @@ export * from "./users";
 export * from "./product-feeds";
 export * from "./categories";
 export * from "./products";
+export * from "./product-seo-content";
 export * from "./orders";
 export * from "./license-keys";
 export * from "./reviews";

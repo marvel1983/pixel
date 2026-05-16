@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { products, categories, bundles, productVariants } from "@workspace/db/schema";
+import { products, categories, bundles, productVariants, productSeoContent } from "@workspace/db/schema";
 import { eq, and, asc, sql } from "drizzle-orm";
 import { renderSeoHtml, esc, plain, SITE_URL, type SeoDoc } from "../lib/ssr-render";
 import { logger } from "../lib/logger";
@@ -81,6 +81,88 @@ async function renderProduct(slug: string): Promise<SeoDoc | null> {
       <div>${plain(p.description, 1200) ? `<p>${esc(plain(p.description, 1200))}</p>` : ""}</div>
       ${vars.length ? `<h2>Editions</h2><ul>${vars.map((v) => `<li>${esc(v.name)}${v.platform ? ` (${esc(v.platform)})` : ""} — €${esc(parseFloat(v.priceUsd).toFixed(2))}</li>`).join("")}</ul>` : ""}
       <p><a href="${esc(canonical)}">Buy ${esc(p.name)} now →</a></p>
+      <p><a href="/buy/${esc(p.slug)}">Where to buy ${esc(p.name)} — pricing, activation &amp; FAQ</a></p>
+    </main>`;
+
+  return { title, description, canonical, ogImage: p.imageUrl, ogType: "product", jsonLd, bodyHtml };
+}
+
+// /buy/:slug — programmatic transactional landing page. Uses the same product
+// slug; falls back to noindex if no AI SEO content has been generated yet so
+// we never publish a thin duplicate of the product page.
+async function renderBuyPage(slug: string): Promise<SeoDoc | null> {
+  const [p] = await db
+    .select({
+      id: products.id, name: products.name, slug: products.slug,
+      imageUrl: products.imageUrl, avgRating: products.avgRating, reviewCount: products.reviewCount,
+      categorySlug: sql<string | null>`(SELECT slug FROM categories WHERE id = ${products.categoryId})`,
+      categoryName: sql<string | null>`(SELECT name FROM categories WHERE id = ${products.categoryId})`,
+    })
+    .from(products)
+    .where(and(eq(products.slug, slug), eq(products.isActive, true)))
+    .limit(1);
+  if (!p) return null;
+
+  const [seo] = await db
+    .select({ intro: productSeoContent.intro, whyBuy: productSeoContent.whyBuy, faq: productSeoContent.faq, activationSteps: productSeoContent.activationSteps })
+    .from(productSeoContent).where(eq(productSeoContent.productId, p.id)).limit(1);
+
+  const vars = await db
+    .select({ priceUsd: productVariants.priceUsd })
+    .from(productVariants)
+    .where(and(eq(productVariants.productId, p.id), eq(productVariants.isActive, true)));
+  const from = priceFrom(vars);
+  const canonical = `/buy/${p.slug}`;
+
+  // No generated content yet → render but noindex so Google never sees a
+  // thin near-duplicate of /product/:slug.
+  if (!seo) {
+    return {
+      title: `Buy ${p.name} | ${SITE_NAME}`,
+      description: `Buy ${p.name} — genuine key, instant email delivery.`,
+      canonical, ogImage: p.imageUrl, noindex: true,
+      bodyHtml: `<main><h1>Buy ${esc(p.name)}</h1><p><a href="/product/${esc(p.slug)}">View ${esc(p.name)} →</a></p></main>`,
+    };
+  }
+
+  const title = `Buy ${p.name} — Cheapest Genuine Key, Instant Delivery | ${SITE_NAME}`;
+  const description = plain(seo.intro, 300);
+
+  const jsonLd: object[] = [
+    {
+      "@context": "https://schema.org", "@type": "Product",
+      name: p.name, image: p.imageUrl ? `${SITE_URL}${p.imageUrl}` : undefined,
+      description, brand: { "@type": "Brand", name: SITE_NAME },
+      ...(from ? { offers: { "@type": "Offer", price: from, priceCurrency: "EUR", availability: "https://schema.org/InStock", url: `${SITE_URL}${canonical}`, seller: { "@type": "Organization", name: SITE_NAME } } } : {}),
+      ...(Number(p.reviewCount) > 0 ? { aggregateRating: { "@type": "AggregateRating", ratingValue: Number(p.avgRating ?? 0), reviewCount: Number(p.reviewCount), bestRating: 5 } } : {}),
+    },
+    {
+      "@context": "https://schema.org", "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Shop", item: `${SITE_URL}/shop` },
+        ...(p.categorySlug ? [{ "@type": "ListItem", position: 2, name: p.categoryName, item: `${SITE_URL}/category/${p.categorySlug}` }] : []),
+        { "@type": "ListItem", position: p.categorySlug ? 3 : 2, name: `Buy ${p.name}`, item: `${SITE_URL}${canonical}` },
+      ],
+    },
+    ...(seo.faq.length ? [{
+      "@context": "https://schema.org", "@type": "FAQPage",
+      mainEntity: seo.faq.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
+    }] : []),
+  ];
+
+  const bodyHtml = `
+    <main>
+      <nav aria-label="Breadcrumb"><a href="/shop">Shop</a>${p.categorySlug ? ` › <a href="/category/${esc(p.categorySlug)}">${esc(p.categoryName)}</a>` : ""} › <span>Buy ${esc(p.name)}</span></nav>
+      <h1>Buy ${esc(p.name)}</h1>
+      ${from ? `<p><strong>From €${esc(from)}</strong> — instant email delivery, genuine retail key, lifetime activation.</p>` : ""}
+      <p>${esc(seo.intro)}</p>
+      <p><a href="/product/${esc(p.slug)}">Buy ${esc(p.name)} now →</a></p>
+      <h2>Why buy ${esc(p.name)} from ${esc(SITE_NAME)}</h2>
+      <ul>${seo.whyBuy.map((w) => `<li>${esc(w)}</li>`).join("")}</ul>
+      <h2>How to activate ${esc(p.name)}</h2>
+      <ol>${seo.activationSteps.map((s) => `<li>${esc(s)}</li>`).join("")}</ol>
+      ${seo.faq.length ? `<h2>${esc(p.name)} — Frequently asked questions</h2>${seo.faq.map((f) => `<section><h3>${esc(f.q)}</h3><p>${esc(f.a)}</p></section>`).join("")}` : ""}
+      <p><a href="/product/${esc(p.slug)}">See full ${esc(p.name)} details and reviews →</a></p>
     </main>`;
 
   return { title, description, canonical, ogImage: p.imageUrl, ogType: "product", jsonLd, bodyHtml };
@@ -143,12 +225,13 @@ router.get(/^\/__ssr(\/.*)?$/, async (req, res) => {
   const rawPath = (req.params[0] || "/").split("?")[0];
   try {
     let doc: SeoDoc | null = null;
-    const m = rawPath.match(/^\/(product|category|bundles)\/([^/]+)\/?$/);
+    const m = rawPath.match(/^\/(product|category|bundles|buy)\/([^/]+)\/?$/);
     if (m) {
       const [, kind, slug] = m;
       const s = decodeURIComponent(slug);
       doc = kind === "product" ? await renderProduct(s)
         : kind === "category" ? await renderCategory(s)
+        : kind === "buy" ? await renderBuyPage(s)
         : await renderBundle(s);
     }
     if (!doc) {
