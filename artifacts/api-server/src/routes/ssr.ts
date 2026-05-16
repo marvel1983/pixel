@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { products, categories, bundles, productVariants, productSeoContent } from "@workspace/db/schema";
-import { eq, and, asc, sql } from "drizzle-orm";
+import { products, categories, bundles, productVariants, productSeoContent, reviews } from "@workspace/db/schema";
+import { eq, and, asc, desc, sql } from "drizzle-orm";
 import { renderSeoHtml, esc, plain, SITE_URL, type SeoDoc } from "../lib/ssr-render";
 import { logger } from "../lib/logger";
 
@@ -37,10 +37,23 @@ async function renderProduct(slug: string): Promise<SeoDoc | null> {
   if (!p) return null;
 
   const vars = await db
-    .select({ priceUsd: productVariants.priceUsd, name: productVariants.name, platform: productVariants.platform })
+    .select({ priceUsd: productVariants.priceUsd, name: productVariants.name, platform: productVariants.platform, sku: productVariants.sku })
     .from(productVariants)
     .where(and(eq(productVariants.productId, p.id), eq(productVariants.isActive, true)));
   const from = priceFrom(vars);
+  const sku = vars[0]?.sku || `PXC-${p.id}`;
+
+  // Up to 5 approved reviews → individual Review schema (richer than just the
+  // aggregate; eligible for review stars in results).
+  const revRows = await db
+    .select({ rating: reviews.rating, title: reviews.title, body: reviews.body, createdAt: reviews.createdAt })
+    .from(reviews)
+    .where(and(eq(reviews.productId, p.id), eq(reviews.status, "APPROVED")))
+    .orderBy(desc(reviews.createdAt))
+    .limit(5);
+
+  // priceValidUntil keeps the Offer "fresh" for Google (recommended field).
+  const priceValidUntil = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
   const title = p.metaTitle || `${p.name} — Genuine Key, Instant Delivery | ${SITE_NAME}`;
   const description =
@@ -54,12 +67,50 @@ async function renderProduct(slug: string): Promise<SeoDoc | null> {
       "@context": "https://schema.org", "@type": "Product",
       name: p.name, image: p.imageUrl ? `${SITE_URL}${p.imageUrl}` : undefined,
       description: plain(p.description) || description,
+      sku, mpn: sku,
       brand: { "@type": "Brand", name: SITE_NAME },
       ...(from
-        ? { offers: { "@type": "Offer", price: from, priceCurrency: "EUR", availability: "https://schema.org/InStock", url: `${SITE_URL}${canonical}`, seller: { "@type": "Organization", name: SITE_NAME } } }
+        ? {
+            offers: {
+              "@type": "Offer", price: from, priceCurrency: "EUR",
+              priceValidUntil,
+              availability: "https://schema.org/InStock",
+              itemCondition: "https://schema.org/NewCondition",
+              url: `${SITE_URL}${canonical}`,
+              seller: { "@type": "Organization", name: SITE_NAME },
+              // Digital delivery — no shipping, no physical return. Declaring
+              // these clears Google Merchant "missing field" warnings.
+              shippingDetails: {
+                "@type": "OfferShippingDetails",
+                shippingRate: { "@type": "MonetaryAmount", value: "0", currency: "EUR" },
+                deliveryTime: {
+                  "@type": "ShippingDeliveryTime",
+                  handlingTime: { "@type": "QuantitativeValue", minValue: 0, maxValue: 0, unitCode: "DAY" },
+                  transitTime: { "@type": "QuantitativeValue", minValue: 0, maxValue: 0, unitCode: "DAY" },
+                },
+              },
+              hasMerchantReturnPolicy: {
+                "@type": "MerchantReturnPolicy",
+                applicableCountry: "EU",
+                returnPolicyCategory: "https://schema.org/MerchantReturnNotPermitted",
+              },
+            },
+          }
         : {}),
       ...(Number(p.reviewCount) > 0
         ? { aggregateRating: { "@type": "AggregateRating", ratingValue: Number(p.avgRating ?? 0), reviewCount: Number(p.reviewCount), bestRating: 5 } }
+        : {}),
+      ...(revRows.length
+        ? {
+            review: revRows.map((r) => ({
+              "@type": "Review",
+              reviewRating: { "@type": "Rating", ratingValue: r.rating, bestRating: 5 },
+              author: { "@type": "Person", name: "Verified Buyer" },
+              ...(r.title ? { name: r.title } : {}),
+              ...(r.body ? { reviewBody: plain(r.body, 500) } : {}),
+              datePublished: new Date(r.createdAt).toISOString().split("T")[0],
+            })),
+          }
         : {}),
     },
     {

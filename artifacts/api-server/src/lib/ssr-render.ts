@@ -47,9 +47,32 @@ export function esc(s: unknown): string {
     .replace(/'/g, "&#39;");
 }
 
-/** Strip HTML tags + collapse whitespace for meta descriptions. */
+/**
+ * Plain-text extraction for meta descriptions / schema. Product descriptions
+ * on this store embed rich HTML cards with inline <style> blocks — naively
+ * stripping only tags leaves the CSS rule text behind (it lived between
+ * <style> and </style>, not inside a tag). Drop <style>/<script>/<template>
+ * block *contents* first, then strip tags, decode the few entities that
+ * matter, collapse whitespace. Returns "" when nothing meaningful remains
+ * (or it still looks like leftover CSS) so callers fall back cleanly.
+ */
 export function plain(s: unknown, max = 300): string {
-  const t = String(s ?? "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+  let t = String(s ?? "")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<template[\s\S]*?<\/template>/gi, " ")
+    .replace(/<!--[\s\S]*?-->/g, " ")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&(?:#39|apos|lsquo|rsquo);/gi, "'")
+    .replace(/&(?:quot|ldquo|rdquo);/gi, '"')
+    .replace(/\s+/g, " ")
+    .trim();
+  // If what's left is dominated by CSS-rule punctuation it's not prose —
+  // treat as empty so the caller uses metaDescription / a generated line.
+  const braces = (t.match(/[{}]/g) || []).length;
+  if (braces >= 2 || t.length < 20) t = "";
   return t.length > max ? t.slice(0, max - 1).trimEnd() + "…" : t;
 }
 
