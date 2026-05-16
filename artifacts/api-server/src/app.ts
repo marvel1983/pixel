@@ -7,6 +7,7 @@ import fs from "fs";
 import router from "./routes";
 import imageThumbRouter from "./routes/image-thumb";
 import sitemapRouter from "./routes/sitemap";
+import ssrRouter from "./routes/ssr";
 import { logger } from "./lib/logger";
 import { initSentry, Sentry } from "./lib/sentry";
 import { maintenanceMiddleware } from "./middleware/maintenance";
@@ -92,6 +93,7 @@ const uploadsDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 app.use(imageThumbRouter);
 app.use(sitemapRouter);
+app.use(ssrRouter);
 app.use("/uploads", express.static(uploadsDir));
 
 app.use(securityHeaders);
