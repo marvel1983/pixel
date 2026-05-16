@@ -14,12 +14,14 @@ import path from "path";
 
 const SITE_URL = (process.env.STORE_PUBLIC_URL ?? "https://pixelcodes.com").replace(/\/$/, "");
 
-// dist/public/index.html relative to the api-server's cwd
-// (PM2 cwd = .../artifacts/api-server). Override with STOREFRONT_DIST.
+// Built storefront index.html. PM2 runs the api-server with
+// cwd = /var/www/pixel-storefront (see ecosystem.config.cjs), so the build
+// lives at <cwd>/artifacts/storefront/dist/public/index.html. Override with
+// STOREFRONT_DIST if the layout ever changes.
 const DIST_INDEX =
   process.env.STOREFRONT_DIST
     ? path.join(process.env.STOREFRONT_DIST, "index.html")
-    : path.join(process.cwd(), "..", "storefront", "dist", "public", "index.html");
+    : path.join(process.cwd(), "artifacts", "storefront", "dist", "public", "index.html");
 
 let shellCache: { html: string; mtime: number } | null = null;
 
