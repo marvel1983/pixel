@@ -6,7 +6,8 @@ import { renderSeoHtml, esc, plain, SITE_URL, type SeoDoc } from "../lib/ssr-ren
 import { logger } from "../lib/logger";
 
 const router = Router();
-const SITE_NAME = "PixelCodes";
+// Env-driven so the same code serves both storefronts (Pixel / SWC).
+const SITE_NAME = process.env.SITE_NAME ?? "PixelCodes";
 
 function send(res: import("express").Response, doc: SeoDoc) {
   res.set("Content-Type", "text/html; charset=utf-8");
