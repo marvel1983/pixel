@@ -12,6 +12,7 @@
     "seed:qa": "pnpm --filter @workspace/scripts seed:qa"
   },
   "private": true,
+  "engines": { "node": ">=24.0.0" },
   "devDependencies": {
     "typescript": "~5.9.2",
     "prettier": "^3.8.1"
