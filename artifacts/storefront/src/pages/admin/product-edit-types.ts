@@ -18,6 +18,7 @@ export interface VariantData {
   costPriceUsd: string | null;
   b2bPriceUsd: string | null;
   stockCount: number; isActive: boolean;
+  maxQtyPerOrder: number | null;
 }
 
 export interface CategoryOption { id: number; name: string; }

@@ -380,6 +380,9 @@ jobs:
             # Add the new composite unique on (metenzi_product_id, pixel_product_id).
             $PSQL -c "CREATE UNIQUE INDEX IF NOT EXISTS metenzi_product_mappings_pair_uq ON metenzi_product_mappings (metenzi_product_id, pixel_product_id);" || true
 
+            echo "→ Adding max_qty_per_order to product_variants..."
+            $PSQL -c "ALTER TABLE product_variants ADD COLUMN IF NOT EXISTS max_qty_per_order INTEGER;" || true
+
             echo "→ Reloading PM2..."
             set -a; source /var/www/pixel-storefront/.env; set +a
             pm2 reload pixel-api --update-env

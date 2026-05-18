@@ -243,6 +243,21 @@ export async function runFulfillment(
 export async function executeOrderPipeline(input: OrderInput) {
   const { billing, items, orderNumber, total } = input;
 
+  const realVariantIds = items.filter((i) => i.variantId > 0).map((i) => i.variantId);
+  if (realVariantIds.length) {
+    const limits = await db
+      .select({ id: productVariants.id, maxQtyPerOrder: productVariants.maxQtyPerOrder, name: productVariants.name })
+      .from(productVariants)
+      .where(inArray(productVariants.id, realVariantIds));
+    const limitMap = new Map(limits.map((r) => [r.id, r]));
+    for (const item of items) {
+      const row = limitMap.get(item.variantId);
+      if (row?.maxQtyPerOrder != null && item.quantity > row.maxQtyPerOrder) {
+        throw new Error(`Quantity limit exceeded for "${item.variantName}": max ${row.maxQtyPerOrder} per order`);
+      }
+    }
+  }
+
   const cppAmount = input.cppSelected ? Math.round(input.subtotal * 0.05 * 100) / 100 : 0;
   const walletUsed = input.walletAmountUsd && input.walletAmountUsd > 0;
   const cardNeeded = walletUsed ? total - input.walletAmountUsd! > 0.01 : true;

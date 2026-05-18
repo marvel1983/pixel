@@ -106,8 +106,8 @@ export function VariantPricingCard({ variant, onUpdate, onDelete }: Props) {
           </div>
         </div>
 
-        {/* Row 2: Compare At | Sale Price | B2B | Stock */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 0.7fr", gap: 8 }}>
+        {/* Row 2: Compare At | Sale Price | B2B | Stock | Max Qty/Order */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 0.7fr 0.7fr", gap: 8 }}>
           <div style={fieldCard}>
             <span style={fieldLabel}>Compare At</span>
             <DollarInput style={numInp} placeholder="0.00" value={variant.compareAtPriceUsd ?? ""} onChange={(e) => set("compareAtPriceUsd", e.target.value || null)} />
@@ -129,6 +129,13 @@ export function VariantPricingCard({ variant, onUpdate, onDelete }: Props) {
             <span style={fieldLabel}>Stock</span>
             <input type="number" style={{ ...numInp, color: variant.stockCount === 0 ? "#f87171" : variant.stockCount < 5 ? "#fbbf24" : "#c8d0e0" }}
               value={variant.stockCount} onChange={(e) => set("stockCount", Number(e.target.value) || 0)} />
+          </div>
+          <div style={fieldCard}>
+            <span style={fieldLabel}>Max/Order</span>
+            <input type="number" min={1} title="Max quantity per order (empty = unlimited)"
+              style={{ ...numInp, color: variant.maxQtyPerOrder != null ? "#fbbf24" : "#566070" }}
+              placeholder="∞" value={variant.maxQtyPerOrder ?? ""}
+              onChange={(e) => set("maxQtyPerOrder", e.target.value ? Number(e.target.value) : null)} />
           </div>
         </div>
       </div>

@@ -337,7 +337,7 @@ router.post("/admin/products/:id/variants", requireAuth, requireAdmin, requirePe
   if (!Number.isInteger(productId) || productId <= 0) {
     res.status(400).json({ error: "Invalid product ID" }); return;
   }
-  const { name, sku, priceUsd, compareAtPriceUsd, costPriceUsd, b2bPriceUsd, stockCount, platform } = req.body;
+  const { name, sku, priceUsd, compareAtPriceUsd, costPriceUsd, b2bPriceUsd, stockCount, platform, maxQtyPerOrder } = req.body;
   if (!name?.trim() || !sku?.trim() || !priceUsd) {
     res.status(400).json({ error: "name, sku, and priceUsd are required" }); return;
   }
@@ -353,6 +353,7 @@ router.post("/admin/products/:id/variants", requireAuth, requireAdmin, requirePe
     b2bPriceUsd: b2bPriceUsd ? String(b2bPriceUsd) : null,
     stockCount: stockCount ?? 0,
     platform: platform || null,
+    maxQtyPerOrder: maxQtyPerOrder ? Number(maxQtyPerOrder) : null,
     isActive: true,
   }).returning();
   res.status(201).json({ variant: created });
@@ -361,7 +362,7 @@ router.post("/admin/products/:id/variants", requireAuth, requireAdmin, requirePe
 router.patch("/admin/variants/:id", requireAuth, requireAdmin, requirePermission("manageProducts"), async (req, res) => {
   const id = Number(paramString(req.params, "id"));
   if (!Number.isInteger(id) || id <= 0) { res.status(400).json({ error: "Invalid variant ID" }); return; }
-  const { name, sku, priceUsd, compareAtPriceUsd, priceOverrideUsd, costPriceUsd, b2bPriceUsd, stockCount, isActive } = req.body;
+  const { name, sku, priceUsd, compareAtPriceUsd, priceOverrideUsd, costPriceUsd, b2bPriceUsd, stockCount, isActive, maxQtyPerOrder } = req.body;
   await db.update(productVariants).set({
     ...(name !== undefined && { name }),
     ...(sku !== undefined && { sku: sku.toUpperCase() }),
@@ -372,6 +373,7 @@ router.patch("/admin/variants/:id", requireAuth, requireAdmin, requirePermission
     ...(b2bPriceUsd !== undefined && { b2bPriceUsd: b2bPriceUsd ? String(b2bPriceUsd) : null }),
     ...(stockCount !== undefined && { stockCount }),
     ...(isActive !== undefined && { isActive }),
+    ...(maxQtyPerOrder !== undefined && { maxQtyPerOrder: maxQtyPerOrder ? Number(maxQtyPerOrder) : null }),
     updatedAt: new Date(),
   }).where(eq(productVariants.id, id));
   triggerFeedRefresh();
